@@ -98,28 +98,7 @@ struct Signals {
         return &mask;
     }
 
-    // Once the custom guest signal handler is ran, it needs to sigreturn to get the correct state. But we don't really
-    // want to run a sigreturn, we want to do what we are supposed to do in this function (reconstruct the state) and jump there.
-    // So we want the signal handler to return here. So the address we give it is to a thunk that jumps here.
-    static void sigreturn(ThreadState* state);
-
-    static int sigsuspend(ThreadState* state, sigset_t* mask);
+    static void sigreturn(ThreadState* state, bool rt);
 
     static int sigprocmask(ThreadState* state, int how, sigset_t* new_set, sigset_t* old_set);
-};
-
-struct SignalGuard {
-    SignalGuard();
-    ~SignalGuard();
-    SignalGuard(const SignalGuard&) = delete;
-    SignalGuard& operator=(const SignalGuard&) = delete;
-
-    void kill() {
-        pthread_sigmask(SIG_SETMASK, &old_mask, nullptr);
-        killed = true;
-    }
-
-private:
-    sigset_t old_mask;
-    bool killed = false;
 };

@@ -57,6 +57,7 @@ X(Performance, bool, unsafe_flags, false, FELIX86_UNSAFE_FLAGS, "Assume flags ar
 X(Performance, bool, opcode_fusing, false, FELIX86_FUSE_OPCODES, "Try to fuse some x86 opcodes together if possible", false)
 X(Performance, bool, inline_syscalls, true, FELIX86_INLINE_SYSCALLS, "Use ECALL directly instead of a function for some syscalls", false)
 X(Performance, bool, inaccurate_minmax, true, FELIX86_INACCURATE_MINMAX, "Don't accurately calculate minps/minpd/maxps/maxpd instructions when it comes to NaNs", false)
+X(Performance, bool, divzero_check, true, FELIX86_DIVZERO_CHECK, "Check for division by zero for every div instruction to raise a signal if necessary", false)
 X(Performance, bool, always_tso, false, FELIX86_ALWAYS_TSO, "Use fences to emulate TSO on every memory read/write -- Will cause slowdown but may fix some games", false)
 X(Performance, bool, protect_pages, true, FELIX86_PROTECT_PAGES, "Protect pages to catch self-modifying code, disabling may perform better in some games but break others", false)
 X(Performance, bool, noflag_opts, true, FELIX86_NOFLAG_OPTS, "Optimize some instructions when the flag calculations aren't necessary", false)

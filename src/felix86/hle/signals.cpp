@@ -1,11 +1,19 @@
 #include <array>
+#include <csignal>
 #include <cstring>
+#include <bits/types/sigset_t.h>
 #include <sys/mman.h>
+#include <sys/syscall.h>
+#include <sys/ucontext.h>
 #include "felix86/common/config.hpp"
+#include "felix86/common/feature.hpp"
+#include "felix86/common/global.hpp"
+#include "felix86/common/log.hpp"
 #include "felix86/common/print.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
+#include "felix86/common/xsave.hpp"
 #include "felix86/hle/signals.hpp"
 #include "felix86/v2/recompiler.hpp"
 #undef si_pid
@@ -14,6 +22,19 @@
 #define FP_XSTATE_MAGIC2 0x46505845U
 #define SA_IA32_ABI 0x02000000u
 #define SA_X32_ABI 0x01000000u
+
+#ifndef SS_AUTODISARM
+#define SS_AUTODISARM (1U << 31)
+#endif
+
+u64* get_regs(void* ctx) {
+#ifdef __riscv
+    return (u64*)((ucontext_t*)ctx)->uc_mcontext.__gregs;
+#else
+    UNREACHABLE();
+    return nullptr;
+#endif
+}
 
 struct RegisteredHostSignal {
     int sig;                                                                            // ie SIGILL etc
@@ -104,75 +125,20 @@ bool is_in_jit_code(ThreadState* state, u8* ptr) {
     return ptr >= start && ptr < end;
 }
 
-struct x64_fpxreg {
-    unsigned short int significand[4];
-    unsigned short int exponent;
-    unsigned short int reserved[3];
+struct x64_fpstate {
+    fxsave_frame fxsave;
+    // xsave frame follows here...
 };
+static_assert(sizeof(x64_fpstate) == 512);
 
-struct Xmm128 {
-    u64 val[2];
-
-    Xmm128(const XmmReg& other) {
-        val[0] = other.data[0];
-        val[1] = other.data[1];
-    }
-
-    operator XmmReg() const {
-        XmmReg ret{};
-        ret.data[0] = val[0];
-        ret.data[1] = val[1];
-        return ret;
-    }
-};
-
-struct x64_fpx_sw_bytes {
-    u32 magic1{};
-    u32 extended_size{};
-    u64 xfeatures{};
-    u32 xstate_size{};
-    u32 padding[7]{};
-};
-
-struct x64_libc_fpstate {
-    /* 64-bit fxsave format. Also the legacy part of xsave, which is the one we use as we don't support AVX  */
-    u16 cwd;
-    u16 swd;
-    u16 ftw;
-    u16 fop;
-    u64 rip;
-    u64 rdp;
-    u32 mxcsr;
-    u32 mxcr_mask;
-    x64_fpxreg _st[8];
-    Xmm128 xmm[16];
-    u32 reserved[12];
-    x64_fpx_sw_bytes sw_reserved;
-};
-static_assert(sizeof(x64_libc_fpstate) == 512);
-
-struct x86_fpstate_32 {
-    /* Legacy FPU environment: */
-    u32 cw;
-    u32 sw;
-    u32 tag;
-    u32 ipoff;
-    u32 cssel;
-    u32 dataoff;
-    u32 datasel;
-    Float80 _st[8];
+struct x86_fpstate {
+    fsave_frame_32 fsave;
     u16 status;
     u16 magic; /* 0xffff: regular FPU data only */
     /* 0x0000: FXSR FPU data */
-
-    /* FXSR FPU environment */
-    u32 _fxsr_env[6]; /* FXSR FPU env is ignored */
-    u32 mxcsr;
-    u32 reserved;
-    struct x64_fpxreg _fxsr_st[8]; /* FXSR FPU reg data is ignored */
-    struct Xmm128 _xmm[8];         /* First 8 XMM registers */
-    u32 padding[56];
+    fxsave_frame fxsave;
 };
+static_assert(sizeof(x86_fpstate) == sizeof(fsave_frame_32) + sizeof(fxsave_frame) + 4 /* status and magic */);
 
 #ifndef __x86_64__
 enum {
@@ -203,8 +169,8 @@ enum {
 #endif
 
 struct x64_mcontext {
-    u64 gregs[23];            // using the indices in the enum above
-    x64_libc_fpstate* fpregs; // it's a pointer, points to after the end of x64_rt_sigframe in stack
+    u64 gregs[23];       // using the indices in the enum above
+    x64_fpstate* fpregs; // it's a pointer, points to after the end of x64_rt_sigframe in stack
     u64 reserved[8];
 };
 static_assert(sizeof(x64_mcontext) == 256);
@@ -215,10 +181,8 @@ struct x64_ucontext {
     stack_t uc_stack;
     x64_mcontext uc_mcontext;
     sigset_t uc_sigmask;
-    alignas(16) struct x64_libc_fpstate fpregs_mem; // fpregs points here
-    u64 ssp[4];                                     // unused
 };
-static_assert(sizeof(x64_ucontext) == 976);
+static_assert(sizeof(x64_ucontext) == 424);
 
 // https://github.com/torvalds/linux/blob/master/arch/x86/include/asm/sigframe.h#L59
 struct x64_rt_sigframe {
@@ -227,8 +191,6 @@ struct x64_rt_sigframe {
     siginfo_t info;
     // fp state follows here
 };
-static_assert(sizeof(siginfo_t) == 128);
-static_assert(sizeof(x64_rt_sigframe) == 1120);
 
 struct x86_sigcontext_32 {
     u16 gs, __gsh;
@@ -263,20 +225,23 @@ struct x86_sigcontext_32 {
     u32 cr2;
 };
 
-struct ucontext_ia32 {
+struct __attribute__((packed)) x86_ucontext {
     unsigned int uc_flags;
     unsigned int uc_link;
     x86_stack_t uc_stack;
     struct x86_sigcontext_32 uc_mcontext;
-    u64 uc_sigmask; /* mask last for extensibility */
+    sigset_t uc_sigmask; /* mask last for extensibility */
 };
 
-struct x86_sigframe {
+static_assert(offsetof(x86_ucontext, uc_mcontext) == 20);
+static_assert(offsetof(x86_ucontext, uc_sigmask) == 108);
+
+struct x86_legacy_sigframe {
     u32 pretcode;
     int sig;
     struct x86_sigcontext_32 sc;
-    struct x86_fpstate_32 fpstate_unused; // unused but we need the padding
-    unsigned int extramask[1];
+    struct x86_fpstate fpstate_unused; // unused but we need the padding
+    unsigned int extramask;
     char retcode[8];
     /* fp state follows here */
 };
@@ -287,30 +252,10 @@ struct x86_rt_sigframe {
     u32 pinfo;
     u32 puc;
     x86_siginfo_t info;
-    struct ucontext_ia32 uc;
+    struct x86_ucontext uc;
     char retcode[8];
     /* fp state follows here */
 };
-
-void reconstruct_state(ThreadState* state, const u64* gprs, const u64* fprs, const XmmReg* xmms) {
-    if (state->state_is_correct) {
-        // The ThreadState struct already contains the correct values, don't pull them out
-        // This can happen if we are inside JIT code but already wrote the state when we hit the signal
-    } else {
-        for (int i = 0; i < 16; i++) {
-            biscuit::GPR allocated_gpr = Recompiler::allocatedGPR((x86_ref_e)(X86_REF_RAX + i));
-            state->gprs[i] = gprs[allocated_gpr.Index()];
-
-            biscuit::Vec allocated_vec = Recompiler::allocatedXMM((x86_ref_e)(X86_REF_XMM0 + i));
-            state->xmm[i] = xmms[allocated_vec.Index()];
-        }
-
-        state->cf = gprs[Recompiler::allocatedGPR(X86_REF_CF).Index()];
-        state->zf = gprs[Recompiler::allocatedGPR(X86_REF_ZF).Index()];
-        state->sf = gprs[Recompiler::allocatedGPR(X86_REF_SF).Index()];
-        state->of = gprs[Recompiler::allocatedGPR(X86_REF_OF).Index()];
-    }
-}
 
 BlockMetadata* get_block_metadata(ThreadState* state, u64 host_pc) {
     auto& map = state->recompiler->getHostPcMap();
@@ -343,11 +288,29 @@ u64 get_actual_rip(BlockMetadata& metadata, u64 host_pc) {
 #define REG_PC 0 // risc-v stores it in gpr 0
 #endif
 
+bool sa_ss_flags(ThreadState* state) {
+    u64 rsp = state->GetGpr(X86_REF_RSP);
+    if (!state->alt_stack.ss_size) {
+        return SS_DISABLE;
+    }
+    if (state->alt_stack.ss_flags & SS_AUTODISARM) {
+        return 0;
+    }
+    bool is_on_altstack = rsp > (u64)state->alt_stack.ss_sp && rsp - (u64)state->alt_stack.ss_sp <= state->alt_stack.ss_size;
+    return is_on_altstack ? SS_ONSTACK : 0;
+}
+
 // arch/x86/kernel/signal.c, get_sigframe function prepares the signal frame
-void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state, const u64* host_gprs, const u64* host_fprs, const XmmReg* host_vecs,
-                    siginfo_t* guest_info) {
+void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state, siginfo_t* guest_info, ucontext_t* host_context) {
+    u64 rsp = state->GetGpr(X86_REF_RSP);
+    rsp = rsp - 128; // red zone
     bool use_altstack = signal.flags & SA_ONSTACK;
-    u64 rsp = use_altstack ? ((u64)state->alt_stack.ss_sp + state->alt_stack.ss_size) : state->GetGpr(X86_REF_RSP);
+    if (use_altstack) {
+        if (sa_ss_flags(state) == 0) {
+            rsp = (u64)state->alt_stack.ss_sp + state->alt_stack.ss_size;
+        }
+    }
+
     if (rsp == 0) {
         WARN("RSP is null, use_altstack: %d... using original stack", use_altstack);
         rsp = state->GetGpr(X86_REF_RSP);
@@ -355,17 +318,27 @@ void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state, const
     } else if (use_altstack) {
         VERBOSE("Altstack was established");
     }
+    rsp = rsp - (rsp % 16);
 
-    rsp = rsp - 128; // red zone
-    rsp = rsp - 8;
-    rsp = rsp - (rsp % 8);
+    if (felix86_xsave_contains_ymms()) {
+        // Make room for extra xsave data
+        rsp = rsp - sizeof(ymm_hi) - sizeof(xsave_header);
+        static_assert(sizeof(ymm_hi) % 16 == 0);
+        static_assert(sizeof(xsave_header) % 16 == 0);
+    }
+
+    rsp = rsp - sizeof(x64_fpstate);
+    static_assert(sizeof(x64_fpstate) % 16 == 0);
+    x64_fpstate* fpstate = (x64_fpstate*)rsp;
+
     rsp = rsp - sizeof(x64_rt_sigframe);
+    static_assert(sizeof(x64_rt_sigframe) % 16 == 0);
     x64_rt_sigframe* frame = (x64_rt_sigframe*)rsp;
 
     ASSERT(signal.restorer);
     frame->pretcode = (char*)signal.restorer;
 
-    frame->uc.uc_mcontext.fpregs = &frame->uc.fpregs_mem;
+    frame->uc.uc_mcontext.fpregs = fpstate;
 
     frame->uc.uc_flags = 0;
     frame->uc.uc_link = 0;
@@ -383,8 +356,15 @@ void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state, const
         frame->uc.uc_stack.ss_flags = 0;
     }
 
-    sigset_t* old_mask = &state->signal_mask;
-    frame->uc.uc_sigmask = *old_mask;
+    if (state->alt_stack.ss_flags & SS_AUTODISARM) {
+        state->alt_stack.ss_sp = 0;
+        state->alt_stack.ss_size = 0;
+        state->alt_stack.ss_flags = SS_DISABLE;
+    }
+
+    sigset_t old_mask;
+    Signals::sigprocmask(state, SIG_SETMASK, nullptr, &old_mask);
+    frame->uc.uc_sigmask = old_mask;
 
     // Now we need to copy the state to the frame
     frame->uc.uc_mcontext.gregs[REG_RAX] = state->GetGpr(X86_REF_RAX);
@@ -405,43 +385,8 @@ void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state, const
     frame->uc.uc_mcontext.gregs[REG_R15] = state->GetGpr(X86_REF_R15);
     frame->uc.uc_mcontext.gregs[REG_RIP] = state->GetRip();
     frame->uc.uc_mcontext.gregs[REG_EFL] = state->GetFlags();
-    frame->uc.uc_mcontext.fpregs->xmm[0] = state->GetXmm(X86_REF_XMM0);
-    frame->uc.uc_mcontext.fpregs->xmm[1] = state->GetXmm(X86_REF_XMM1);
-    frame->uc.uc_mcontext.fpregs->xmm[2] = state->GetXmm(X86_REF_XMM2);
-    frame->uc.uc_mcontext.fpregs->xmm[3] = state->GetXmm(X86_REF_XMM3);
-    frame->uc.uc_mcontext.fpregs->xmm[4] = state->GetXmm(X86_REF_XMM4);
-    frame->uc.uc_mcontext.fpregs->xmm[5] = state->GetXmm(X86_REF_XMM5);
-    frame->uc.uc_mcontext.fpregs->xmm[6] = state->GetXmm(X86_REF_XMM6);
-    frame->uc.uc_mcontext.fpregs->xmm[7] = state->GetXmm(X86_REF_XMM7);
-    frame->uc.uc_mcontext.fpregs->xmm[8] = state->GetXmm(X86_REF_XMM8);
-    frame->uc.uc_mcontext.fpregs->xmm[9] = state->GetXmm(X86_REF_XMM9);
-    frame->uc.uc_mcontext.fpregs->xmm[10] = state->GetXmm(X86_REF_XMM10);
-    frame->uc.uc_mcontext.fpregs->xmm[11] = state->GetXmm(X86_REF_XMM11);
-    frame->uc.uc_mcontext.fpregs->xmm[12] = state->GetXmm(X86_REF_XMM12);
-    frame->uc.uc_mcontext.fpregs->xmm[13] = state->GetXmm(X86_REF_XMM13);
-    frame->uc.uc_mcontext.fpregs->xmm[14] = state->GetXmm(X86_REF_XMM14);
-    frame->uc.uc_mcontext.fpregs->xmm[15] = state->GetXmm(X86_REF_XMM15);
 
-    bool is_mmx = (x87State)state->x87_state == x87State::MMX;
-    bool is_x87 = (x87State)state->x87_state == x87State::x87;
-    for (int i = 0; i < 8; i++) {
-        // TODO: verify that these aren't saved relative to TOP when using x87
-        x64_fpxreg* reg = &frame->uc.uc_mcontext.fpregs->_st[i];
-        if (is_mmx) {
-            memcpy(reg, &state->fp[i], sizeof(u64));
-            reg->exponent = 0xFFFF; // according to Intel manual MMX instructions set these to 1's
-        } else if (is_x87) {
-            Float80 f80 = f64_to_80(state->fp[i]);
-            memcpy(reg, &f80, sizeof(Float80));
-            static_assert(sizeof(Float80) == 10);
-        } else {
-            WARN("Unknown x87 state when creating signal frame");
-        }
-    }
-
-    frame->uc.uc_mcontext.fpregs->ftw = state->fpu_tw;
-    frame->uc.uc_mcontext.fpregs->cwd = state->fpu_cw;
-    frame->uc.uc_mcontext.fpregs->swd = state->fpu_sw;
+    felix86_xsave(state, &frame->uc.uc_mcontext.fpregs->fxsave);
 
     state->SetGpr(X86_REF_RSP, (u64)frame);        // set the new stack pointer
     state->SetGpr(X86_REF_RDI, sig);               // set the signal
@@ -449,12 +394,19 @@ void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state, const
     state->SetGpr(X86_REF_RDX, (u64)&frame->uc);   // set the ucontext pointer
     state->SetGpr(X86_REF_RAX, 0);
     state->SetRip(signal.func);
-
     state->SetFlag(X86_REF_DF, 0);
+
+    // Also update the allocatable state in the registers
+    u64* regs = get_regs(host_context);
+    regs[Recompiler::allocatedGPR(X86_REF_RSP).Index()] = state->GetGpr(X86_REF_RSP);
+    regs[Recompiler::allocatedGPR(X86_REF_RDI).Index()] = state->GetGpr(X86_REF_RDI);
+    regs[Recompiler::allocatedGPR(X86_REF_RSI).Index()] = state->GetGpr(X86_REF_RSI);
+    regs[Recompiler::allocatedGPR(X86_REF_RDX).Index()] = state->GetGpr(X86_REF_RDX);
+    regs[Recompiler::allocatedGPR(X86_REF_RAX).Index()] = state->GetGpr(X86_REF_RAX);
+    regs[Recompiler::allocatedGPR(X86_REF_RIP).Index()] = state->GetRip();
 }
 
-void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, const u64* host_gprs, const u64* host_fprs, const XmmReg* host_vecs,
-                       siginfo_t* guest_info) {
+void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, siginfo_t* guest_info, ucontext_t* host_context) {
     // sigreturn trampoline as it exists in the kernel
     // In x86_64 this doesn't exist and instead the user specifies a restorer
     static const struct {
@@ -474,7 +426,13 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, co
     }
 
     bool use_altstack = signal.flags & SA_ONSTACK;
-    u64 rsp = use_altstack ? ((u64)state->alt_stack.ss_sp + state->alt_stack.ss_size) : state->GetGpr(X86_REF_RSP);
+    u64 rsp = state->GetGpr(X86_REF_RSP);
+    if (use_altstack) {
+        if (sa_ss_flags(state) == 0) {
+            rsp = (u64)state->alt_stack.ss_sp + state->alt_stack.ss_size;
+        }
+    }
+
     if (rsp == 0) {
         WARN("RSP is null, use_altstack: %d... using original stack", use_altstack);
         rsp = state->GetGpr(X86_REF_RSP);
@@ -484,40 +442,20 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, co
     }
 
     rsp = rsp - (rsp % 8);
-    rsp -= sizeof(x86_fpstate_32);
-    x86_fpstate_32* fpstate = (x86_fpstate_32*)rsp;
+
+    if (felix86_xsave_contains_ymms()) {
+        rsp = rsp - sizeof(ymm_hi) - sizeof(xsave_header);
+    }
+
+    rsp -= sizeof(x86_fpstate);
+    x86_fpstate* fpstate = (x86_fpstate*)rsp;
     ASSERT((u64)fpstate < UINT32_MAX);
 
-    fpstate->cw = state->fpu_cw;
-    fpstate->sw = state->fpu_sw;
-    fpstate->tag = state->fpu_tw;
+    felix86_fsave_32(state, &fpstate->fsave);
+
     fpstate->magic = 0; // extended state
 
-    fpstate->_xmm[0] = state->GetXmm(X86_REF_XMM0);
-    fpstate->_xmm[1] = state->GetXmm(X86_REF_XMM1);
-    fpstate->_xmm[2] = state->GetXmm(X86_REF_XMM2);
-    fpstate->_xmm[3] = state->GetXmm(X86_REF_XMM3);
-    fpstate->_xmm[4] = state->GetXmm(X86_REF_XMM4);
-    fpstate->_xmm[5] = state->GetXmm(X86_REF_XMM5);
-    fpstate->_xmm[6] = state->GetXmm(X86_REF_XMM6);
-    fpstate->_xmm[7] = state->GetXmm(X86_REF_XMM7);
-
-    bool is_mmx = (x87State)state->x87_state == x87State::MMX;
-    bool is_x87 = (x87State)state->x87_state == x87State::x87;
-    for (int i = 0; i < 8; i++) {
-        // TODO: verify that these aren't saved relative to TOP when using x87
-        Float80* reg = &fpstate->_st[i];
-        if (is_mmx) {
-            memcpy(reg, &state->fp[i], sizeof(u64));
-            reg->exponent = 0xFFFF; // according to Intel manual MMX instructions set these to 1's
-        } else if (is_x87) {
-            Float80 f80 = f64_to_80(state->fp[i]);
-            memcpy(reg, &f80, sizeof(Float80));
-            static_assert(sizeof(Float80) == 10);
-        } else {
-            WARN("Unknown x87 state when creating signal frame");
-        }
-    }
+    felix86_xsave(state, &fpstate->fxsave);
 
     rsp -= sizeof(x86_rt_sigframe);
 
@@ -556,7 +494,9 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, co
     frame->uc.uc_mcontext.__dsh = 0;
     frame->uc.uc_mcontext.__ssh = 0;
     frame->uc.uc_mcontext.__esh = 0;
-    frame->uc.uc_sigmask = state->signal_mask.__val[0];
+    sigset_t old_mask;
+    Signals::sigprocmask(state, SIG_SETMASK, nullptr, &old_mask);
+    frame->uc.uc_sigmask = old_mask;
     frame->uc.uc_mcontext.fpstate = (u32)(u64)fpstate;
 
     // These are laid out in the frame in the argument order, we don't need to push any arguments
@@ -568,96 +508,190 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, co
     state->SetGpr(X86_REF_RAX, 0);
     state->SetRip(signal.func);
     state->SetFlag(X86_REF_DF, 0);
+
+    // Also update the allocatable state in the registers
+    u64* regs = get_regs(host_context);
+    regs[Recompiler::allocatedGPR(X86_REF_RSP).Index()] = state->GetGpr(X86_REF_RSP);
+    regs[Recompiler::allocatedGPR(X86_REF_RAX).Index()] = state->GetGpr(X86_REF_RAX);
+    regs[Recompiler::allocatedGPR(X86_REF_RIP).Index()] = state->GetRip();
 }
 
-void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state, const u64* host_gprs, const u64* host_fprs, const XmmReg* host_vecs,
-                    siginfo_t* guest_info) {
-    UNIMPLEMENTED();
+void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state, siginfo_t* guest_info, ucontext_t* host_context) {
+    static const struct {
+        u16 poplmovl;
+        u32 val;
+        u16 int80;
+    } __attribute__((packed)) code = {
+        0xb858, /* popl %eax ; movl $...,%eax */
+        felix86_x86_32_sigreturn,
+        0x80cd, /* int $0x80 */
+    };
+
+    // Kernel mentions some legacy altstack switching method, ensure it's not used until we find a program that does
+    ASSERT(!(state->ss != state->ds && !(signal.flags & SA_RESTORER) && signal.restorer));
+    u64 rsp = state->GetGpr(X86_REF_RSP);
+    bool use_altstack = signal.flags & SA_ONSTACK;
+    if (use_altstack) {
+        if (sa_ss_flags(state) == 0) {
+            rsp = (u64)state->alt_stack.ss_sp + state->alt_stack.ss_size;
+        }
+    }
+
+    if (rsp == 0) {
+        WARN("RSP is null, use_altstack: %d... using original stack", use_altstack);
+        rsp = state->GetGpr(X86_REF_RSP);
+        ASSERT(rsp != 0);
+    } else if (use_altstack) {
+        VERBOSE("Altstack was established");
+    }
+
+    rsp = rsp - (rsp % 8);
+    if (felix86_xsave_contains_ymms()) {
+        rsp = rsp - sizeof(ymm_hi) - sizeof(xsave_header);
+    }
+    rsp -= sizeof(x86_fpstate);
+    x86_fpstate* fpstate = (x86_fpstate*)rsp;
+    rsp = rsp - sizeof(x86_legacy_sigframe);
+    rsp = ((rsp + 4) & -16ul) - 4;
+
+    x86_legacy_sigframe* frame = (x86_legacy_sigframe*)rsp;
+    frame->sc.ax = state->GetGpr(X86_REF_RAX);
+    frame->sc.cx = state->GetGpr(X86_REF_RCX);
+    frame->sc.dx = state->GetGpr(X86_REF_RDX);
+    frame->sc.bx = state->GetGpr(X86_REF_RBX);
+    frame->sc.sp = state->GetGpr(X86_REF_RSP);
+    frame->sc.bp = state->GetGpr(X86_REF_RBP);
+    frame->sc.si = state->GetGpr(X86_REF_RSI);
+    frame->sc.di = state->GetGpr(X86_REF_RDI);
+    frame->sc.sp_at_signal = state->GetGpr(X86_REF_RSP);
+    frame->sc.ip = state->GetRip();
+    frame->sc.flags = state->GetFlags();
+    frame->sc.fs = state->fs;
+    frame->sc.gs = state->gs;
+    frame->sc.cs = state->cs;
+    frame->sc.ds = state->ds;
+    frame->sc.ss = state->ss;
+    frame->sc.es = state->es;
+    frame->sc.__fsh = 0;
+    frame->sc.__gsh = 0;
+    frame->sc.__csh = 0;
+    frame->sc.__dsh = 0;
+    frame->sc.__ssh = 0;
+    frame->sc.__esh = 0;
+    sigset_t old_mask;
+    Signals::sigprocmask(state, SIG_SETMASK, nullptr, &old_mask);
+    frame->sc.oldmask = old_mask.__val[0];
+    ASSERT((u64)frame < UINT32_MAX);
+    memcpy(frame->retcode, &code, sizeof(code));
+    frame->pretcode = (u32)(u64)(char*)frame->retcode;
+    if (signal.flags & SA_RESTORER) {
+        frame->pretcode = signal.restorer;
+    }
+    frame->sig = sig;
+    frame->extramask = old_mask.__val[1];
+    felix86_fsave_32(state, &fpstate->fsave);
+    frame->fpstate_unused.magic = 0; // extended state
+    felix86_xsave(state, &fpstate->fxsave);
+    frame->sc.fpstate = (u32)(u64)fpstate;
+
+    state->SetGpr(X86_REF_RSP, (u64)frame); // set the new stack pointer
+    state->SetGpr(X86_REF_RAX, sig);
+    state->SetGpr(X86_REF_RDX, 0);
+    state->SetGpr(X86_REF_RCX, 0);
+    state->SetRip(signal.func);
+    state->SetFlag(X86_REF_DF, 0);
+
+    // Also update the allocatable state in the registers
+    u64* regs = get_regs(host_context);
+    regs[Recompiler::allocatedGPR(X86_REF_RSP).Index()] = state->GetGpr(X86_REF_RSP);
+    regs[Recompiler::allocatedGPR(X86_REF_RAX).Index()] = state->GetGpr(X86_REF_RAX);
+    regs[Recompiler::allocatedGPR(X86_REF_RDX).Index()] = state->GetGpr(X86_REF_RDX);
+    regs[Recompiler::allocatedGPR(X86_REF_RCX).Index()] = state->GetGpr(X86_REF_RCX);
+    regs[Recompiler::allocatedGPR(X86_REF_RIP).Index()] = state->GetRip();
 }
 
-void setupFrame(RegisteredSignal& signal, int sig, ThreadState* state, const u64* host_gprs, const u64* host_fprs, const XmmReg* host_vecs,
-                siginfo_t* guest_info) {
+void setupFrame(RegisteredSignal& signal, int sig, ThreadState* state, siginfo_t* guest_info, ucontext_t* host_context) {
     if (!g_mode32) {
-        return setupFrame_x64(signal, sig, state, host_gprs, host_fprs, host_vecs, guest_info);
+        return setupFrame_x64(signal, sig, state, guest_info, host_context);
     } else {
         if (signal.flags & SA_SIGINFO) {
-            return setupFrame_x86_rt(signal, sig, state, host_gprs, host_fprs, host_vecs, guest_info);
+            return setupFrame_x86_rt(signal, sig, state, guest_info, host_context);
         } else {
-            WARN_ONCE("Legacy IA32 frame");
-            return setupFrame_x86(signal, sig, state, host_gprs, host_fprs, host_vecs, guest_info);
+            return setupFrame_x86(signal, sig, state, guest_info, host_context);
         }
     }
 }
 
-void Signals::sigreturn(ThreadState* state) {
+void restore_sigcontext_32(ThreadState* state, x86_sigcontext_32* ctx) {
+    state->SetGpr(X86_REF_RAX, ctx->ax);
+    state->SetGpr(X86_REF_RCX, ctx->cx);
+    state->SetGpr(X86_REF_RDX, ctx->dx);
+    state->SetGpr(X86_REF_RBX, ctx->bx);
+    state->SetGpr(X86_REF_RSP, ctx->sp);
+    state->SetGpr(X86_REF_RBP, ctx->bp);
+    state->SetGpr(X86_REF_RSI, ctx->si);
+    state->SetGpr(X86_REF_RDI, ctx->di);
+    state->SetRip(ctx->ip);
+
+    u64 flags = ctx->flags;
+    bool cf = (flags >> 0) & 1;
+    bool pf = (flags >> 2) & 1;
+    bool af = (flags >> 4) & 1;
+    bool zf = (flags >> 6) & 1;
+    bool sf = (flags >> 7) & 1;
+    bool of = (flags >> 11) & 1;
+    bool df = (flags >> 10) & 1;
+    state->SetFlag(X86_REF_CF, cf);
+    state->SetFlag(X86_REF_PF, pf);
+    state->SetFlag(X86_REF_AF, af);
+    state->SetFlag(X86_REF_ZF, zf);
+    state->SetFlag(X86_REF_SF, sf);
+    state->SetFlag(X86_REF_OF, of);
+    state->SetFlag(X86_REF_DF, df);
+
+    state->cs = ctx->cs;
+    state->ss = ctx->ss;
+    state->ds = ctx->ds;
+    state->es = ctx->es;
+    state->fs = ctx->fs;
+    state->gs = ctx->gs;
+}
+
+void Signals::sigreturn(ThreadState* state, bool rt) {
     u64 rsp = state->GetGpr(X86_REF_RSP);
 
-    // When the signal handler returned, it popped the return address, which is the 8 bytes "pretcode" field in the sigframe
-    // We need to adjust the rsp back before reading the entire struct.
-    rsp -= g_mode32 ? 4 : 8;
-
     if (g_mode32) {
-        x86_rt_sigframe* frame = (x86_rt_sigframe*)rsp;
-        rsp += sizeof(x86_rt_sigframe);
+        // In 32-bit mode, rt_sigreturn signals pop just the return address while legacy signals pop the sig value too, see trampoline
+        rsp -= rt ? 4 : 8;
+        x86_rt_sigframe* rt_frame = (x86_rt_sigframe*)rsp;
+        x86_legacy_sigframe* legacy_frame = (x86_legacy_sigframe*)rsp;
 
-        SIGLOG("------- 32-bit rt_sigreturn TID: %d -------", gettid());
-
-        state->SetGpr(X86_REF_RAX, frame->uc.uc_mcontext.ax);
-        state->SetGpr(X86_REF_RCX, frame->uc.uc_mcontext.cx);
-        state->SetGpr(X86_REF_RDX, frame->uc.uc_mcontext.dx);
-        state->SetGpr(X86_REF_RBX, frame->uc.uc_mcontext.bx);
-        state->SetGpr(X86_REF_RSP, frame->uc.uc_mcontext.sp);
-        state->SetGpr(X86_REF_RBP, frame->uc.uc_mcontext.bp);
-        state->SetGpr(X86_REF_RSI, frame->uc.uc_mcontext.si);
-        state->SetGpr(X86_REF_RDI, frame->uc.uc_mcontext.di);
-        state->SetRip(frame->uc.uc_mcontext.ip);
-
-        x86_fpstate_32* fpstate = (x86_fpstate_32*)(u64)frame->uc.uc_mcontext.fpstate;
-        state->fpu_tw = fpstate->tag;
-        state->fpu_sw = fpstate->sw;
-        state->fpu_cw = fpstate->cw;
-
-        u64 flags = frame->uc.uc_mcontext.flags;
-        bool cf = (flags >> 0) & 1;
-        bool pf = (flags >> 2) & 1;
-        bool af = (flags >> 4) & 1;
-        bool zf = (flags >> 6) & 1;
-        bool sf = (flags >> 7) & 1;
-        bool of = (flags >> 11) & 1;
-        bool df = (flags >> 10) & 1;
-        state->SetFlag(X86_REF_CF, cf);
-        state->SetFlag(X86_REF_PF, pf);
-        state->SetFlag(X86_REF_AF, af);
-        state->SetFlag(X86_REF_ZF, zf);
-        state->SetFlag(X86_REF_SF, sf);
-        state->SetFlag(X86_REF_OF, of);
-        state->SetFlag(X86_REF_DF, df);
-
-        for (int i = 0; i < 8; i++) {
-            Float80 reg = fpstate->_st[i];
-            if (reg.exponent == 0xFFFF) {
-                memcpy(&state->fp[i], &reg.significand, sizeof(u64));
-            } else {
-                double f64 = f80_to_64(&reg);
-                memcpy(&state->fp[i], &f64, sizeof(u64));
-            }
+        SIGLOG("------- 32-bit rt_sigreturn TID: %d returning to RIP=%lx -------", gettid(), state->GetRip());
+        x86_sigcontext_32* ctx;
+        if (rt) {
+            ctx = &rt_frame->uc.uc_mcontext;
+        } else {
+            ctx = &legacy_frame->sc;
         }
+        restore_sigcontext_32(state, ctx);
+        felix86_xrstor(state, &((x86_fpstate*)(u64)ctx->fpstate)->fxsave);
 
         // Restore signal mask to what it was supposed to be outside of signal handler
-        sigset_t host_mask = {};
-        host_mask.__val[0] = frame->uc.uc_sigmask & *(u64*)Signals::hostSignalMask();
-        pthread_sigmask(SIG_SETMASK, &host_mask, nullptr);
-
-        u64* new_mask = (u64*)&frame->uc.uc_sigmask;
-        u64* old_mask = (u64*)&state->signal_mask;
-        if (*new_mask != *old_mask) {
-            WARN("Signal mask was changed in the signal handler from %lx to %lx", *old_mask, *new_mask);
+        sigset_t new_set;
+        if (rt) {
+            new_set = rt_frame->uc.uc_sigmask;
+        } else {
+            sigemptyset(&new_set);
+            new_set.__val[0] = legacy_frame->sc.oldmask;
+            new_set.__val[1] = legacy_frame->extramask;
         }
+        Signals::sigprocmask(state, SIG_SETMASK, &new_set, nullptr);
     } else {
+        // When the signal handler returned, it popped the return address, which is the 8 bytes "pretcode" field in the sigframe
+        // We need to adjust the rsp back before reading the entire struct.
+        rsp -= 8;
         x64_rt_sigframe* frame = (x64_rt_sigframe*)rsp;
         rsp += sizeof(x64_rt_sigframe);
-
-        SIGLOG("------- 64-bit rt_sigreturn TID: %d -------", gettid());
 
         // The registers need to be restored to what they were before the signal handler was called, or what the signal handler changed them to.
         state->SetGpr(X86_REF_RAX, frame->uc.uc_mcontext.gregs[REG_RAX]);
@@ -678,9 +712,7 @@ void Signals::sigreturn(ThreadState* state) {
         state->SetGpr(X86_REF_R15, frame->uc.uc_mcontext.gregs[REG_R15]);
         state->SetRip(frame->uc.uc_mcontext.gregs[REG_RIP]);
 
-        state->fpu_tw = frame->uc.uc_mcontext.fpregs->ftw;
-        state->fpu_sw = frame->uc.uc_mcontext.fpregs->swd;
-        state->fpu_cw = frame->uc.uc_mcontext.fpregs->cwd;
+        SIGLOG("------- 64-bit rt_sigreturn TID: %d returning to RIP=%lx -------", gettid(), state->GetRip());
 
         u64 flags = frame->uc.uc_mcontext.gregs[REG_EFL];
         bool cf = (flags >> 0) & 1;
@@ -698,49 +730,10 @@ void Signals::sigreturn(ThreadState* state) {
         state->SetFlag(X86_REF_OF, of);
         state->SetFlag(X86_REF_DF, df);
 
-        if (!g_no_riscv_v_state) {
-            state->SetXmm(X86_REF_XMM0, frame->uc.uc_mcontext.fpregs->xmm[0]);
-            state->SetXmm(X86_REF_XMM1, frame->uc.uc_mcontext.fpregs->xmm[1]);
-            state->SetXmm(X86_REF_XMM2, frame->uc.uc_mcontext.fpregs->xmm[2]);
-            state->SetXmm(X86_REF_XMM3, frame->uc.uc_mcontext.fpregs->xmm[3]);
-            state->SetXmm(X86_REF_XMM4, frame->uc.uc_mcontext.fpregs->xmm[4]);
-            state->SetXmm(X86_REF_XMM5, frame->uc.uc_mcontext.fpregs->xmm[5]);
-            state->SetXmm(X86_REF_XMM6, frame->uc.uc_mcontext.fpregs->xmm[6]);
-            state->SetXmm(X86_REF_XMM7, frame->uc.uc_mcontext.fpregs->xmm[7]);
-            state->SetXmm(X86_REF_XMM8, frame->uc.uc_mcontext.fpregs->xmm[8]);
-            state->SetXmm(X86_REF_XMM9, frame->uc.uc_mcontext.fpregs->xmm[9]);
-            state->SetXmm(X86_REF_XMM10, frame->uc.uc_mcontext.fpregs->xmm[10]);
-            state->SetXmm(X86_REF_XMM11, frame->uc.uc_mcontext.fpregs->xmm[11]);
-            state->SetXmm(X86_REF_XMM12, frame->uc.uc_mcontext.fpregs->xmm[12]);
-            state->SetXmm(X86_REF_XMM13, frame->uc.uc_mcontext.fpregs->xmm[13]);
-            state->SetXmm(X86_REF_XMM14, frame->uc.uc_mcontext.fpregs->xmm[14]);
-            state->SetXmm(X86_REF_XMM15, frame->uc.uc_mcontext.fpregs->xmm[15]);
-        } else {
-            // Don't set the state, because the frame isn't going to have correct
-            // values. Most things shouldn't modify the values of registers in signal handlers.
-            // But if they do, and you need support for that, update your kernel.
-        }
-
-        for (int i = 0; i < 8; i++) {
-            x64_fpxreg* reg = &frame->uc.uc_mcontext.fpregs->_st[i];
-            if (reg->exponent == 0xFFFF) {
-                memcpy(&state->fp[i], reg->significand, sizeof(u64));
-            } else {
-                double f64 = f80_to_64((Float80*)reg);
-                memcpy(&state->fp[i], &f64, sizeof(u64));
-            }
-        }
+        felix86_xrstor(state, &frame->uc.uc_mcontext.fpregs->fxsave);
 
         // Restore signal mask to what it was supposed to be outside of signal handler
-        sigset_t host_mask;
-        sigandset(&host_mask, &frame->uc.uc_sigmask, Signals::hostSignalMask());
-        pthread_sigmask(SIG_SETMASK, &host_mask, nullptr);
-
-        u64* new_mask = (u64*)&frame->uc.uc_sigmask;
-        u64* old_mask = (u64*)&state->signal_mask;
-        if (*new_mask != *old_mask) {
-            WARN("Signal mask was changed in the signal handler from %lx to %lx", *old_mask, *new_mask);
-        }
+        Signals::sigprocmask(state, SIG_SETMASK, &frame->uc.uc_sigmask, nullptr);
     }
 }
 
@@ -770,15 +763,6 @@ void set_pc(void* ctx, u64 new_pc) {
 #endif
 }
 
-u64* get_regs(void* ctx) {
-#ifdef __riscv
-    return (u64*)((ucontext_t*)ctx)->uc_mcontext.__gregs;
-#else
-    UNREACHABLE();
-    return nullptr;
-#endif
-}
-
 u64* get_fprs(void* ctx) {
 #ifdef __riscv
     return (u64*)((ucontext_t*)ctx)->uc_mcontext.__fpregs.__d.__f;
@@ -805,6 +789,134 @@ riscv_v_state* get_riscv_vector_state(void* ctx) {
 #else
     return nullptr;
 #endif
+}
+
+void pull_registers_from_context(ThreadState* state, ucontext_t* uctx) {
+    // Pull registers out from statically allocated registers and commit them to memory
+    riscv_v_state* vector_state = get_riscv_vector_state(uctx);
+    if (!vector_state) {
+        ERROR("Kernel version too old, can't recover vector state");
+    }
+
+    std::array<XmmReg, 32> xmm_regs;
+    u8* datap = (u8*)vector_state->datap;
+    for (int i = 0; i < 32; i++) {
+        xmm_regs[i] = *(XmmReg*)datap;
+        datap += vector_state->vlenb;
+    }
+
+    for (int i = 0; i < 16; i++) {
+        x86_ref_e ref = (x86_ref_e)(X86_REF_XMM0 + i);
+        state->SetXmm(ref, xmm_regs[Recompiler::allocatedXMM(ref).Index()]);
+    }
+
+    u64* regs = get_regs(uctx);
+    for (int i = 0; i < 16; i++) {
+        x86_ref_e ref = (x86_ref_e)(X86_REF_RAX + i);
+        state->SetGpr(ref, regs[Recompiler::allocatedGPR(ref).Index()]);
+    }
+
+    state->SetFlag(X86_REF_OF, regs[Recompiler::allocatedGPR(X86_REF_OF).Index()]);
+    state->SetFlag(X86_REF_CF, regs[Recompiler::allocatedGPR(X86_REF_CF).Index()]);
+    state->SetFlag(X86_REF_ZF, regs[Recompiler::allocatedGPR(X86_REF_ZF).Index()]);
+    state->SetFlag(X86_REF_SF, regs[Recompiler::allocatedGPR(X86_REF_SF).Index()]);
+    state->SetRip(regs[Recompiler::allocatedGPR(X86_REF_RIP).Index()]);
+    // The rest of the state is never statically allocated, so at safepoints it is always correct in memory
+}
+
+// Set ucontext_t register values in preparation of signal and setup the stack
+// Afterwards we return from the signal handler normally. The RISC-V PC will be set to the
+// dispatcher and the x86 RIP to the signal handler.
+void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uctx) {
+    ThreadState* state = ThreadState::Get();
+    u64 rip = state->GetRip();
+    set_pc(uctx, state->recompiler->getCompileNext());
+
+    RegisteredSignal* handler = state->signal_table->getRegisteredSignal(sig);
+
+    // While we *could* just jump to the handler and let the registers be
+    // we pull them to ThreadState so we can construct the signal context using ThreadState instead of ucontext_t
+    // as it makes the code cleaner
+    pull_registers_from_context(state, uctx);
+
+    setupFrame(*handler, sig, state, guest_info, uctx);
+
+    sigset_t set;
+    sigemptyset(&set);
+    if (handler->flags & SA_NODEFER) {
+        WARN("Preparing signal with SA_NODEFER");
+    } else {
+        sigaddset(&set, sig);
+    }
+    sigorset(&set, &set, (const sigset_t*)&handler->mask);
+    int result = Signals::sigprocmask(state, SIG_BLOCK, &set, nullptr);
+    ASSERT(result == 0);
+
+    // Sigprocmask sets the mask inside the signal handler, set it outside too
+    sigset_t host_new_mask = state->signal_mask;
+    sigandset(&host_new_mask, &state->signal_mask, Signals::hostSignalMask());
+    uctx->uc_sigmask = host_new_mask;
+
+    SIGLOG("Preparing signal %s during RIP=%lx, RSP=%lx, handler at %lx", sigdescr_np(sig), rip, state->gprs[X86_REF_RSP], handler->func);
+}
+
+void prepare_synchronous_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx, u64 rip) {
+    // Set GP to actual instruction that faulted so that prepare_guest_signal picks it up for the context
+    get_regs(ctx)[Recompiler::allocatedGPR(X86_REF_RIP).Index()] = rip;
+    prepare_guest_signal(sig, info, (ucontext_t*)ctx);
+}
+
+bool handle_safepoint(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
+    // First we need to check if we are a safepoint
+    // Safepoint instructions perform SD(x0, -8, Recompiler::threadStatePointer())
+    u32 expected_instruction;
+    Assembler tas((u8*)&expected_instruction, sizeof(u32));
+    tas.SD(x0, -8, Recompiler::threadStatePointer());
+
+    u32 current_instruction = *(u32*)pc;
+    if (current_instruction != expected_instruction) {
+        // Not in a safepoint, don't handle signal now
+        // Return. If no host signal handler picks up this signal, then it will be deferred
+        return false;
+    }
+
+    if (!is_in_jit_code(current_state, (u8*)pc)) {
+        // Not in JIT code, rare but possible
+        return false;
+    }
+
+    if (info->si_addr != (u8*)current_state - 8) {
+        // Sanity check. An SD(x0, -8, Recompiler::threadStatePointer()) that is inside
+        // the JIT code will always be a safe point but we can never have enough checks
+        WARN("Faulting address expected to be safepoint page but it's not?");
+        return false;
+    }
+
+    u64 deferred_signals = current_state->deferred_signals;
+    ASSERT_MSG(deferred_signals, "Faulted at safepoint, but no deferred signals?");
+
+    // While the order of standard signals is unspecified, if standard and real-time signals are queued
+    // standard signals are serviced first, and real-time signals follow a least to most order
+    // Thus we just get the least significant set bit
+    int sig = __builtin_ctzll(deferred_signals);
+    // Since the host signal handler isn't registered with SA_NODEFER, it's not possible for a signal of the same
+    // type to happen, thus not possible for a race in this guest_info fetch
+    siginfo_t guest_info = current_state->deferred_info[sig];
+    current_state->deferred_signals = deferred_signals & ~(1ull << sig);
+    if (current_state->deferred_signals == 0) {
+        ASSERT(mprotect(current_state->deferred_fault_page, 4096, PROT_READ | PROT_WRITE) == 0);
+    }
+
+    // This gives us a 0-indexed signal, but the actual signal number starts from 1
+    sig += 1;
+
+    // Handle signal...
+    // In order to handle the signal, we need to set the context in such a way that the JIT will jump
+    // to the dispatcher after returning, the stack will be well prepared. When finished, the code will naturally return to where it was supposed
+    // to return because sigreturn will set the PC according to the ucontext. Or it will longjmp out, but we don't care because we are out of the
+    // host signal handler Being in a safepoint means we can do this PC manipulation without worrying about potential locks or stack overflows
+    prepare_guest_signal(sig, &guest_info, context);
+    return true;
 }
 
 bool handle_smc(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
@@ -858,7 +970,8 @@ bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, ucontext_t
     bool capture_it = g_config.capture_sigsegv;
     if (capture_it) {
         int pid = gettid();
-        PLAIN("I have been hit by a wild SIGSEGV%s! My TID is %d, you have 40 seconds to attach gdb using `gdb -p %d` to find out why! If you think "
+        PLAIN("I have been hit by a wild SIGSEGV%s! My TID is %d, you have 40 seconds to attach gdb using `gdb -p %d` to find out why! If you "
+              "think "
               "this SIGSEGV was intended, disabled this mode by unsetting the `capture_sigsegv` option.",
               !in_jit_code ? ANSI_BOLD " in emulator code" ANSI_COLOR_RESET : "", pid, pid);
 
@@ -870,7 +983,9 @@ bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, ucontext_t
                     u64 actual_rip = get_actual_rip(*current_block, pc);
                     print_address(actual_rip);
                 } else {
-                    WARN("Failed to get actual RIP"); // <- TODO: get it from REG_GP
+#ifdef __riscv
+                    WARN("Failed to get actual RIP, block: %lx", context->uc_mcontext.__gregs[Recompiler::allocatedGPR(X86_REF_RIP).Index()]);
+#endif
                 }
             } else {
                 print_address(current_state->rip);
@@ -905,7 +1020,9 @@ bool handle_wild_sigabrt(ThreadState* current_state, siginfo_t* info, ucontext_t
                     u64 actual_rip = get_actual_rip(*current_block, pc);
                     print_address(actual_rip);
                 } else {
-                    WARN("Failed to get actual RIP"); // <- TODO: get it from REG_GP
+#ifdef __riscv
+                    WARN("Failed to get actual RIP, block: %lx", context->uc_mcontext.__gregs[Recompiler::allocatedGPR(X86_REF_RIP).Index()]);
+#endif
                 }
             } else {
                 print_address(current_state->rip);
@@ -922,8 +1039,74 @@ bool handle_wild_sigabrt(ThreadState* current_state, siginfo_t* info, ucontext_t
     }
 }
 
-constexpr std::array<RegisteredHostSignal, 4> host_signals = {{
+bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
+    // We can't cause a SIGSEGV SI_KERNEL from RISC-V, so fix up info->si_code to match x86 behavior
+    if (!is_in_jit_code(current_state, (u8*)pc)) {
+        return false;
+    }
+
+    u32 faulting_instruction = *(u32*)pc;
+    u32 expected_instruction;
+    Assembler tas((u8*)&expected_instruction, sizeof(u32));
+    tas.SD(x0, 0, x0);
+    if (faulting_instruction != expected_instruction) {
+        return false;
+    }
+
+    // Check the hint right after to make sure this is a hlt
+    u32 next_instruction = *(((u32*)pc) + 1);
+
+    u32 expected_hlt, expected_divzero, expected_int3, expected_ud2;
+    {
+        Assembler tas2((u8*)&expected_hlt, sizeof(u32));
+        tas2.SLTIU(x0, x0, 0x86);
+    }
+    {
+        Assembler tas2((u8*)&expected_divzero, sizeof(u32));
+        tas2.SLTIU(x0, x0, 0xd0);
+    }
+    {
+        Assembler tas2((u8*)&expected_int3, sizeof(u32));
+        tas2.SLTIU(x0, x0, 0xc3);
+    }
+    {
+        Assembler tas2((u8*)&expected_ud2, sizeof(u32));
+        tas2.SLTIU(x0, x0, 0xd2);
+    }
+
+    BlockMetadata* current_block = get_block_metadata(current_state, pc);
+    ASSERT_MSG(current_block, "Failed to get current block during synchronous signal with PC=%lx, RIP=%lx", pc, current_state->rip);
+    u64 actual_rip = get_actual_rip(*current_block, pc);
+
+    int sig;
+    if (next_instruction == expected_hlt) {
+        sig = SIGSEGV;
+        info->si_code = SI_KERNEL;
+        info->si_addr = nullptr;
+    } else if (next_instruction == expected_divzero) {
+        sig = SIGFPE;
+        info->si_code = FPE_INTDIV;
+        info->si_addr = (void*)actual_rip;
+    } else if (next_instruction == expected_int3) {
+        sig = SIGTRAP;
+        info->si_code = SI_KERNEL;
+        info->si_addr = nullptr;
+    } else if (next_instruction == expected_ud2) {
+        sig = SIGILL;
+        info->si_code = ILL_ILLOPN;
+        info->si_addr = (void*)actual_rip;
+    } else {
+        return false;
+    }
+
+    prepare_synchronous_signal(current_state, sig, info, context, actual_rip);
+    return true;
+}
+
+constexpr std::array<RegisteredHostSignal, 6> host_signals = {{
+    {SIGSEGV, SEGV_ACCERR, handle_safepoint},
     {SIGSEGV, SEGV_ACCERR, handle_smc},
+    {SIGSEGV, SEGV_MAPERR, handle_synchronous},
     {SIGILL, 0, handle_breakpoint},
     {SIGSEGV, 0, handle_wild_sigsegv}, // order matters, relevant sigsegvs are handled before this handler
     {SIGABRT, 0, handle_wild_sigabrt},
@@ -945,194 +1128,10 @@ bool dispatch_host(int sig, siginfo_t* info, void* ctx) {
     return false;
 }
 
-// Will just start executing a guest signal inside the host signal handler immediately.
-bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
-    ThreadState* state = ThreadState::Get();
-    u64 pc = get_pc(ctx);
-    bool in_jit_code = is_in_jit_code(state, (u8*)pc);
-    RegisteredSignal* handler = state->signal_table->getRegisteredSignal(sig);
-    if (!handler) {
-        return false;
-    }
-
-    if ((void*)handler->func == SIG_DFL) {
-        switch (sig) {
-        case SIGHUP:
-        case SIGINT:
-        case SIGQUIT:
-        case SIGILL:
-        case SIGABRT:
-        case SIGBUS:
-        case SIGFPE:
-        case SIGUSR1:
-        case SIGSEGV:
-        case SIGUSR2:
-        case SIGPIPE:
-        case SIGALRM:
-        case SIGTERM:
-        case SIGSTKFLT:
-        case SIGVTALRM:
-        case SIGPROF:
-        case SIGIO:
-        case SIGPWR:
-        case SIGSYS: {
-            ERROR("Hit signal %s (%d) but signal handler is SIG_DFL, and the default behavior is terminate. Probably a bug.", strsignal(sig), sig);
-        }
-        }
-
-        if (g_config.paranoid) {
-            WARN("Signal %s is going through default handler", strsignal(sig));
-        }
-
-        return true;
-    }
-
-    if (handler->func == (u64)SIG_IGN) {
-        SIGLOG("Signal %d hit but signal handler is SIGIGN", sig);
-        return true;
-    }
-
-    ASSERT(sig > 0);
-
-    SIGLOG("------- Guest signal %s (%d) %s TID: %d, handler: %lx -------", sigdescr_np(sig), sig, in_jit_code ? "in jit code" : "not in jit code",
-           gettid(), handler->func);
-
-    XmmReg* xmms;
-
-    u64* gprs = get_regs(ctx);
-    u64* fprs = get_fprs(ctx);
-    std::array<XmmReg, 32> xmm_regs;
-
-    riscv_v_state* v_state = get_riscv_vector_state(ctx);
-    if (v_state) {
-        u8* datap = (u8*)v_state->datap;
-        for (int i = 0; i < 32; i++) {
-            xmm_regs[i] = *(XmmReg*)datap;
-            datap += v_state->vlenb;
-        }
-    } else {
-        // In the chance that this is an old kernel and we couldn't get the vector state in the signal handler,
-        // the xmm values in the signal handler are going to be wrong. Most thing shouldn't care about this
-        // so we aren't going to do anything here
-        g_no_riscv_v_state = true;
-        WARN_ONCE("You have an old kernel with no vector state in signal handlers, this may cause problems in some programs");
-    }
-
-    xmms = xmm_regs.data();
-
-    siginfo_t guest_info = *info;
-
-    if (!state->state_is_correct) {
-        // We were in the middle of executing a basic block, the state up to that point needs to be written back to the state struct
-        u64 pc = gprs[REG_PC];
-        BlockMetadata* current_block = get_block_metadata(state, pc);
-        if (current_block) {
-            u64 actual_rip = get_actual_rip(*current_block, pc);
-            reconstruct_state(state, gprs, fprs, xmms);
-            state->SetRip(actual_rip);
-        } else {
-            // Assume RIP is correct. This can happen if we are in the address cache code for example, state_is_correct is 0
-            // but we aren't inside a block. In this case the REG_GP holds the correct RIP
-            u64 actual_rip = gprs[3]; // <- REG_GP
-            state->SetRip(actual_rip);
-        }
-    } else {
-        // State reconstruction isn't necessary, the state should be in some stable form
-    }
-
-    u64 old_rip = state->GetRip();
-
-    // Prepares everything necessary to run the signal handler when we return from the host signal handler.
-    // The stack is switched if necessary and filled with the frame that the signal handler expects.
-    setupFrame(*handler, sig, state, gprs, fprs, xmms, &guest_info);
-
-    // Block the signals specified in the sa_mask until the signal handler returns
-    sigset_t new_mask;
-    sigset_t mask_during_signal;
-    mask_during_signal = *(sigset_t*)&handler->mask;
-
-    // Combine with the current signal mask
-    sigorset(&new_mask, &mask_during_signal, &state->signal_mask);
-
-    if (handler->flags & SA_NODEFER) {
-        sigdelset(&new_mask, sig);
-    } else {
-        sigaddset(&new_mask, sig);
-    }
-
-    sigandset(&new_mask, &new_mask, Signals::hostSignalMask());
-
-    pthread_sigmask(SIG_SETMASK, &new_mask, nullptr);
-
-    if (handler->flags & SA_RESETHAND) {
-        handler->func = (u64)SIG_DFL;
-    }
-
-#if 0
-    print_address(old_rip);
-    print_address(handler->func);
-#endif
-
-    // Eventually, this should return right after this call and have the correct state.
-    // When entering the dispatcher, the host state is saved in the host stack
-    // sigreturn will call exitDispatcher, which will load the old frame and return back here after this call.
-    // This way we can support signals inside signal handlers too.
-    // The only problem would be longjmps out of signal handlers. This is evil but possible that a game or something does it
-    // In that case the frames would eventually overflow and at least we'd gave an appropriate message.
-    state->recompiler->enterDispatcher(state);
-
-    if (state->exit_reason != EXIT_REASON_SIGRETURN) {
-        // Unwind all frames and exit
-        ASSERT(state->exit_reason == EXIT_REASON_EXIT_SYSCALL || state->exit_reason == EXIT_REASON_EXIT_GROUP_SYSCALL);
-        SIGLOG("Signal handler called %s", state->exit_reason == EXIT_REASON_EXIT_SYSCALL ? "exit" : "exit_group");
-#ifdef __riscv
-        ASSERT(state->first_frame);
-        u64* regs = get_regs(ctx);
-        regs[biscuit::a0.Index()] = state->first_frame;
-        set_pc(ctx, state->recompiler->getExitDispatcher()); // return immediately to exit dispatcher code
-        return true;
-#else
-        UNREACHABLE();
-#endif
-    }
-
-    u64 new_rip = state->GetRip();
-    if (in_jit_code) {
-        // We are returning to JIT code. We need to set the host registers from the ucontext accordingly,
-        // as they may have been changed in the signal handler.
-        // TODO: we also need to set xmms, sts, flags too...
-        u64* regs = get_regs(ctx);
-        int reg_count = g_mode32 ? 8 : 16;
-        for (int i = 0; i < reg_count; i++) {
-            x86_ref_e ref = (x86_ref_e)(X86_REF_RAX + i);
-            u64 new_value = state->GetGpr(ref);
-            if (regs[Recompiler::allocatedGPR(ref).Index()] != new_value) {
-                WARN("Signal handler changed %s from %lx to %lx", print_guest_register((x86_ref_e)(ref - X86_REF_RAX)),
-                     regs[Recompiler::allocatedGPR(ref).Index()], new_value);
-            }
-            regs[Recompiler::allocatedGPR(ref).Index()] = new_value;
-        }
-
-        // If the signal handler changed our RIP we need to go back to the dispatcher to compile a new block
-        // Otherwise we will continue where we left off when the signal happened
-        if (new_rip != old_rip) {
-#ifdef __riscv
-            regs[3] = new_rip;
-            static_assert(Recompiler::allocatedGPR(X86_REF_RIP) == biscuit::gp);
-            static_assert(biscuit::gp.Index() == 3);
-            WARN("Signal handler changed RIP from %lx to %lx", old_rip, new_rip);
-#endif
-            set_pc(ctx, state->recompiler->getCompileNext());
-        }
-    }
-
-    return true;
-}
-
 // Main signal handler function, all signals come here
 void signal_handler(int sig, siginfo_t* info, void* ctx) {
     if (g_config.print_all_signals) {
-        SIGLOG("------- Signal %s -------", sigdescr_np(sig));
+        SIGLOG("------- Signal %s with code %d -------", sigdescr_np(sig), info->si_code);
     }
 
     // First, check if this is a host signal
@@ -1144,14 +1143,32 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         return;
     }
 
-    handled = dispatch_guest(sig, info, ctx);
-    if (handled) {
-        VERBOSE("Guest signal %d was handled successfully", sig);
-        return;
+    ThreadState* state = ThreadState::Get();
+    // Note: It's not enough to just check si_code > 0, for example SIGCHLD can be sent at any moment but it has a positive code
+    // But we do need a si_code > 0 check, because si_code <= 0 means asynchronous and we can (unfortunately) be sent e.g. SIGSEGV from another
+    // process via kill or whatever other method
+    if (info->si_code > 0 && (sig == SIGSEGV || sig == SIGBUS || sig == SIGILL || sig == SIGFPE || sig == SIGTRAP)) {
+        // Synchronous signal, handle immediately
+        u64 pc = get_pc(ctx);
+        if (is_in_jit_code(state, (u8*)pc)) {
+            BlockMetadata* current_block = get_block_metadata(state, pc);
+            ASSERT_MSG(current_block, "Failed to get current block during synchronous signal with PC=%lx, RIP=%lx", pc, state->rip);
+            u64 actual_rip = get_actual_rip(*current_block, pc);
+            return prepare_synchronous_signal(state, sig, info, ctx, actual_rip);
+        } else {
+            ERROR("Synchronous signal %s with code %d but not in JIT code during RIP=%lx, PC=%lx", sigdescr_np(sig), info->si_code, state->rip, pc);
+        }
+    } else {
+        // Asynchronous signal, defer
+        // If we were in a safepoint, the signal would've been handled
+        ASSERT(sig >= 1 && sig <= 64);
+        int index = sig - 1;
+        state->deferred_signals |= 1ull << index;
+        state->deferred_info[index] = *info;
+        // Make our safepoints fault
+        ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
+        SIGLOG("Deferring signal %s during RIP=%lx", sigdescr_np(sig), state->GetRip());
     }
-
-    // Uncaught signal even though we have a signal handler?
-    ERROR("Couldn't find host or guest signal handler for %s", strsignal(sig));
 }
 
 void Signals::initialize() {
@@ -1184,6 +1201,10 @@ void Signals::registerSignalHandler(ThreadState* state, int sig, u64 handler, u6
         struct riscv_sigaction sa;
         sa.sigaction = signal_handler;
         sa.sa_flags = SA_SIGINFO;
+        if (flags & SA_RESTART) {
+            // Pass it over to the kernel too
+            sa.sa_flags |= SA_RESTART;
+        }
         sa.restorer = nullptr;
         sa.sa_mask = 0;
 
@@ -1199,37 +1220,8 @@ RegisteredSignal Signals::getSignalHandler(ThreadState* state, int sig) {
     return *state->signal_table->getRegisteredSignal(sig);
 }
 
-int Signals::sigsuspend(ThreadState* state, sigset_t* mask) {
-    sigset_t old_mask = state->signal_mask;
-    memcpy(&state->signal_mask, mask, sizeof(u64));
-    int result = ::sigsuspend(mask);
-    memcpy(&state->signal_mask, &old_mask, sizeof(u64));
-    if (result == -1) {
-        return -errno;
-    } else {
-        return result;
-    }
-}
-
-SignalGuard::SignalGuard() {
-    static sigset_t full_mask = []() {
-        sigset_t t;
-        sigfillset(&t);
-        sigandset(&t, &t, Signals::hostSignalMask());
-        return t;
-    }();
-
-    pthread_sigmask(SIG_SETMASK, &full_mask, &old_mask);
-}
-
-SignalGuard::~SignalGuard() {
-    if (!killed) {
-        pthread_sigmask(SIG_SETMASK, &old_mask, nullptr);
-    }
-}
-
 int Signals::sigprocmask(ThreadState* state, int how, sigset_t* set, sigset_t* oldset) {
-    sigset_t old_host_set = state->signal_mask;
+    sigset_t old_guest_set = state->signal_mask;
     int result = 0;
     if (set) {
         if (how == SIG_BLOCK) {
@@ -1252,12 +1244,15 @@ int Signals::sigprocmask(ThreadState* state, int how, sigset_t* set, sigset_t* o
 
         sigset_t host_mask;
         sigandset(&host_mask, &state->signal_mask, Signals::hostSignalMask());
-        result = pthread_sigmask(SIG_SETMASK, &host_mask, nullptr);
+        result = ::sigprocmask(SIG_SETMASK, &host_mask, nullptr);
         ASSERT(result == 0);
+
+        sigdelset(&state->signal_mask, SIGKILL);
+        sigdelset(&state->signal_mask, SIGSTOP);
     }
 
     if (oldset) {
-        memcpy(oldset, &old_host_set, sizeof(u64));
+        memcpy(oldset, &old_guest_set, sizeof(u64));
     }
 
     return result;

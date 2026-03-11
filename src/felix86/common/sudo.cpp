@@ -30,7 +30,6 @@ bool Sudo::dropPermissions() {
         return false;
     }
 
-    std::string user = getenv("SUDO_USER");
     gid_t gid = std::stoul(gid_env);
     uid_t uid = std::stoul(uid_env);
 

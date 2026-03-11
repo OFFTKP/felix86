@@ -1634,20 +1634,29 @@ FAST_HANDLE(AND) {
 }
 
 FAST_HANDLE(HLT) {
-    rec.setExitReason(ExitReason::EXIT_REASON_HLT);
-    rec.writebackState();
-    as.MV(a0, sp);
-    rec.callPointer(offsetof(ThreadState, felix86_exit_dispatcher));
+    if (g_testing) {
+        rec.writebackState();
+        as.MV(a0, sp);
+        rec.callPointer(offsetof(ThreadState, felix86_exit_dispatcher));
+    } else {
+        as.SD(x0, 0, x0);
+        // This hint will tell the handle_synchronous signal handler to change si_code from SEGV_MAPERR to SI_KERNEL
+        // which is the behavior on x86
+        as.SLTIU(x0, x0, 0x86);
+        // Unreachable
+        as.C_UNDEF();
+        as.C_UNDEF();
+    }
     rec.stopCompiling();
 }
 
 FAST_HANDLE(UD2) {
     WARN_ONCE("UD2 instruction being compiled?");
-
-    // UD2 will trigger SIGILL, so we need to do the same
-    // 8 bytes total to satisfy the linking code that asserts we have at least 2 instructions per block
-    as.C_UNDEF();
-    as.C_UNDEF();
+    as.SD(x0, 0, x0);
+    // This hint will tell the handle_synchronous signal handler to change si_code to SI_KERNEL
+    // which is the behavior on x86
+    as.SLTIU(x0, x0, 0xd2);
+    // Unreachable
     as.C_UNDEF();
     as.C_UNDEF();
     rec.stopCompiling();
@@ -1660,16 +1669,16 @@ FAST_HANDLE(CALL) {
     case ZYDIS_OPERAND_TYPE_REGISTER:
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::GPR src = rec.getGPR(&operands[0]);
+        biscuit::GPR scratch = rec.scratch();
         biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+        u64 return_address_offset = (rip - rec.getCurrentRipregValue()) + instruction.length;
+        rec.addi(scratch, ripreg, return_address_offset);
         // Don't need to zero extend here as it's loaded as a DWORD
         as.MV(ripreg, src);
         biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
         as.ADDI(rsp, rsp, -rec.stackPointerSize());
         rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
 
-        biscuit::GPR scratch = rec.scratch();
-        u64 return_address = rip + instruction.length;
-        as.LI(scratch, return_address);
         rec.writeMemory(scratch, rsp, 0, rec.stackWidth());
         rec.backToDispatcher();
         rec.stopCompiling();
@@ -1677,7 +1686,7 @@ FAST_HANDLE(CALL) {
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
         u64 displacement = rec.sextImmediate(rec.getImmediate(&operands[0]), operands[0].imm.size);
-        u64 return_address_offset = (rip - rec.getCurrentMetadata().guest_address) + instruction.length;
+        u64 return_address_offset = (rip - rec.getCurrentRipregValue()) + instruction.length;
 
         biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
         as.ADDI(rsp, rsp, -rec.stackPointerSize());
@@ -2489,7 +2498,7 @@ FAST_HANDLE(JMP) {
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
         u64 displacement = rec.sextImmediate(rec.getImmediate(&operands[0]), operands[0].imm.size);
         u64 address = rip + instruction.length + displacement;
-        u64 offset = (rip - rec.getCurrentMetadata().guest_address) + instruction.length + displacement;
+        u64 offset = (rip - rec.getCurrentRipregValue()) + instruction.length + displacement;
         biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
         rec.addi(ripreg, ripreg, offset);
         if (g_mode32) {
@@ -2553,6 +2562,19 @@ FAST_HANDLE(DIV) {
     x86_size_e size = rec.getSize(&operands[0]);
     // we don't need to move src to scratch because the rdx and rax in all these cases are in scratches
     biscuit::GPR src = rec.getGPR(&operands[0]);
+
+    if (g_config.divzero_check) {
+        biscuit::Label after;
+        as.BNEZ(src, &after);
+        as.SD(x0, 0, x0);
+        // This hint will tell the handle_synchronous signal handler to raise a SIGFPE FPE_INTDIV
+        // as this happens on x86 but division by zero on RISC-V doesn't raise a signal
+        as.SLTIU(x0, x0, 0xd0);
+        // Unreachable
+        as.C_UNDEF();
+        as.C_UNDEF();
+        as.Bind(&after);
+    }
 
     switch (size) {
     case X86_SIZE_BYTE:
@@ -2643,6 +2665,19 @@ FAST_HANDLE(DIV) {
 FAST_HANDLE(IDIV) {
     x86_size_e size = rec.getSize(&operands[0]);
     biscuit::GPR src = rec.getGPR(&operands[0]);
+
+    if (g_config.divzero_check) {
+        biscuit::Label after;
+        as.BNEZ(src, &after);
+        as.SD(x0, 0, x0);
+        // This hint will tell the handle_synchronous signal handler to raise a SIGFPE FPE_INTDIV
+        // as this happens on x86 but division by zero on RISC-V doesn't raise a signal
+        as.SLTIU(x0, x0, 0xd0);
+        // Unreachable
+        as.C_UNDEF();
+        as.C_UNDEF();
+        as.Bind(&after);
+    }
 
     switch (size) {
     case X86_SIZE_BYTE:
@@ -4085,8 +4120,19 @@ FAST_HANDLE(SYSCALL) {
         }
     }
 
+    // Flush any potential x87 and MMX state so we can insert a safepoint
+    rec.flushX87();
+
+    u64 offset = rip - rec.getCurrentRipregValue();
+    biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
     biscuit::GPR rcx = rec.allocatedGPR(X86_REF_RCX);
-    as.LI(rcx, rip + instruction.length);
+    // Point the RIP to the syscall instruction, in case we need to service a signal
+    if (offset != 0) {
+        rec.setCurrentRipregValue(rec.getCurrentRipregValue() + offset);
+        rec.addi(ripreg, ripreg, offset);
+    }
+    rec.insertSafepoint();
+    rec.addi(rcx, ripreg, instruction.length);
     rec.setGPR(X86_REF_RCX, X86_SIZE_QWORD, rcx);
 
     // Normally the syscall instruction also writes the flags to R11 but we don't need them in our syscall handler
@@ -4094,6 +4140,28 @@ FAST_HANDLE(SYSCALL) {
     as.MV(a0, sp);
     rec.callPointer(offsetof(ThreadState, felix86_syscall));
     rec.restoreState();
+
+    biscuit::Label after;
+    // TODO: we can get this faster by returning
+    biscuit::GPR temp = rec.scratch();
+    as.LI(temp, rip);
+    as.BEQ(ripreg, temp, &after);
+    // RIP changed during syscall. This happens on sigreturn. Go back to dispatcher
+    rec.backToDispatcher();
+    as.Bind(&after);
+
+    // After restoring the state, insert a safepoint
+    // When a signal happens during a syscall like sigsuspend or read, the signal handler points to the instruction
+    // after the syscall. The syscall itself returns with EINTR, meaning RAX is set to -EINTR, which is done in the function
+    // So we need to update the RIP register to point to the correct RIP, in case a signal happens so as to set the correct
+    // RIP in the guest ucontext_t
+    rec.addi(ripreg, ripreg, instruction.length);
+    rec.setCurrentRipregValue(rec.getCurrentRipregValue() + instruction.length);
+    rec.insertSafepoint();
+
+    if (g_mode32) {
+        ASSERT(rec.getCurrentRipregValue() <= UINT32_MAX);
+    }
 }
 
 FAST_HANDLE(MOVZX) {
@@ -9030,6 +9098,50 @@ FAST_HANDLE(FXRSTOR64) {
     rec.restoreState();
 }
 
+FAST_HANDLE(XSAVE) {
+    WARN("XSAVE instruction");
+    biscuit::GPR address = rec.lea(&operands[0]);
+    rec.writebackState();
+    as.MV(a1, address);
+    as.MV(a0, rec.threadStatePointer());
+    as.LI(a2, 0);
+    rec.callPointer(offsetof(ThreadState, felix86_xsave));
+    rec.restoreState();
+}
+
+FAST_HANDLE(XSAVE64) {
+    WARN("XSAVE64 instruction");
+    biscuit::GPR address = rec.lea(&operands[0]);
+    rec.writebackState();
+    as.MV(a1, address);
+    as.MV(a0, rec.threadStatePointer());
+    as.LI(a2, 1);
+    rec.callPointer(offsetof(ThreadState, felix86_xsave));
+    rec.restoreState();
+}
+
+FAST_HANDLE(XRSTOR) {
+    WARN("XRSTOR instruction");
+    biscuit::GPR address = rec.lea(&operands[0]);
+    rec.writebackState();
+    as.MV(a1, address);
+    as.MV(a0, rec.threadStatePointer());
+    as.LI(a2, 0);
+    rec.callPointer(offsetof(ThreadState, felix86_xrstor));
+    rec.restoreState();
+}
+
+FAST_HANDLE(XRSTOR64) {
+    WARN("XRSTOR64 instruction");
+    biscuit::GPR address = rec.lea(&operands[0]);
+    rec.writebackState();
+    as.MV(a1, address);
+    as.MV(a0, rec.threadStatePointer());
+    as.LI(a2, 1);
+    rec.callPointer(offsetof(ThreadState, felix86_xrstor));
+    rec.restoreState();
+}
+
 FAST_HANDLE(WRFSBASE) {
     biscuit::GPR reg = rec.getGPR(&operands[0]);
 
@@ -11361,28 +11473,55 @@ FAST_HANDLE(FRSTOR) {
 }
 
 FAST_HANDLE(INT3) {
-    WARN("Compiling an INT3");
-    rec.writebackState();
-    as.EBREAK();
+    WARN_ONCE("INT3 instruction being compiled?");
+    as.SD(x0, 0, x0);
+    // This hint will tell the handle_synchronous signal handler to change si_code to SI_KERNEL
+    // which is the behavior on x86
+    as.SLTIU(x0, x0, 0xc3);
+    // Unreachable
+    as.C_UNDEF();
+    as.C_UNDEF();
     rec.stopCompiling();
-
-    // Not coming back here
-    // If the guest has installed a handler for the ebreak then it should hit it and change our RIP
-    rec.callPointer(offsetof(ThreadState, felix86_crash_and_burn));
 }
 
 FAST_HANDLE(INT) {
     ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE);
     if (operands[0].imm.value.u == 0x80) {
+        // Flush any potential x87 and MMX state so we can insert a safepoint
+        rec.flushX87();
+        u64 offset = rip - rec.getCurrentRipregValue();
+        biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+        if (offset != 0) {
+            rec.setCurrentRipregValue(rec.getCurrentRipregValue() + offset);
+            rec.addi(ripreg, ripreg, offset);
+        }
+        rec.insertSafepoint();
         rec.writebackState();
         as.MV(a0, sp);
-        as.LI(a1, rip + instruction.length);
+        as.ADDI(a1, ripreg, instruction.length);
         rec.callPointer(offsetof(ThreadState, felix86_syscall32));
         rec.restoreState();
+
+        biscuit::Label after;
+        // TODO: we can get this faster by returning
+        biscuit::GPR temp = rec.scratch();
+        as.LI(temp, rip);
+        as.BEQ(ripreg, temp, &after);
+        // RIP changed during syscall. This happens on sigreturn. Go back to dispatcher
+        rec.backToDispatcher();
+        as.Bind(&after);
+
+        rec.setCurrentRipregValue(rec.getCurrentRipregValue() + instruction.length);
+        rec.addi(ripreg, ripreg, instruction.length);
+        rec.insertSafepoint();
     } else if (operands[0].imm.value.u == 3) {
         fast_INT3(rec, rip, as, instruction, operands);
     } else {
         ERROR("INT encountered with unknown immediate: %d", operands[0].imm.value.u);
+    }
+
+    if (g_mode32) {
+        ASSERT(rec.getCurrentRipregValue() <= UINT32_MAX);
     }
 }
 
@@ -11452,7 +11591,6 @@ FAST_HANDLE(INVLPG) {
         break;
     }
     case INVLPG_GUEST_CODE_FINISHED: {
-        rec.setExitReason(ExitReason::EXIT_REASON_GUEST_CODE_FINISHED);
         rec.writebackState();
         as.MV(a0, sp);
         rec.callPointer(offsetof(ThreadState, felix86_exit_dispatcher));

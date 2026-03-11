@@ -89,11 +89,11 @@ extern std::unique_ptr<Filesystem> g_fs;
 extern std::unique_ptr<GDBJIT> g_gdbjit;
 extern int g_linux_major;
 extern int g_linux_minor;
-extern bool g_no_riscv_v_state;
 extern std::filesystem::path g_executable_path_absolute;
 extern std::filesystem::path g_executable_path_guest_override;
 extern std::filesystem::path g_mounts_path;
 extern bool g_dont_chdir;
+extern bool g_testing;
 
 struct FakeMountNode {
     std::filesystem::path src_path;

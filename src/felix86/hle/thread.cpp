@@ -1,4 +1,5 @@
 #include <atomic>
+#include <csignal>
 #include <fcntl.h>
 #include <linux/futex.h>
 #include <sys/mman.h>
@@ -6,6 +7,8 @@
 #include <sys/poll.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
+#include <sys/syscall.h>
+#include "felix86/common/exit.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
@@ -39,14 +42,7 @@ void* pthread_handler(void* args) {
 
     state->tid = gettid();
 
-    sigset_t mask;
-    sigfillset(&mask);
-    pthread_sigmask(SIG_UNBLOCK, &mask, nullptr);
-
-    int res = prctl(PR_SET_NAME, (unsigned long)"ChildProcess", 0, 0, 0);
-    if (res < 0) {
-        ERROR("prctl failed with %d", errno);
-    }
+    Signals::sigprocmask(state, SIG_SETMASK, &state->signal_mask, nullptr);
 
     if (clone_args.guest_flags & CLONE_CHILD_SETTID && clone_args.child_tid) {
         *clone_args.child_tid = state->tid;
@@ -91,25 +87,12 @@ void* pthread_handler(void* args) {
 
     LOG("Thread %ld started", state->tid);
     Threads::StartThread(state);
-    LOG("Thread %ld exited with reason: %s", state->tid, print_exit_reason(state->exit_reason));
-
-    if (state->clear_tid_address) {
-        __atomic_store_n(state->clear_tid_address, 0, __ATOMIC_SEQ_CST);
-        syscall(SYS_futex, state->clear_tid_address, FUTEX_WAKE, ~0ULL, 0, 0, 0);
-    }
-
-    ThreadState::Destroy(state);
-
+    UNREACHABLE();
     return nullptr;
 }
 
 int clone_handler(void* args) {
     CloneArgs* clone_args = (CloneArgs*)args;
-    int res = prctl(PR_SET_NAME, (unsigned long)"CloneHandler", 0, 0, 0);
-    if (res < 0) {
-        ERROR("prctl failed with %d", errno);
-    }
-
     ASSERT(clone_args->guest_flags & CLONE_VM);
 
     // We can't use this cloned process, because when the guest created it, it passed a guest TLS which we can't use,
@@ -218,7 +201,6 @@ long ForkMe(CloneArgs& host_clone_args) {
     // for correct operation, the CLONE_VM option should not be specified.
     ASSERT(!(host_clone_args.guest_flags & CLONE_VM));
     ASSERT(!(host_clone_args.guest_flags & CLONE_VFORK));
-    int parent_tid = host_clone_args.parent_state->tid;
     int parent_pid = getpid();
     long ret = syscall(SYS_clone, host_clone_args.guest_flags, nullptr, host_clone_args.parent_tid, host_clone_args.child_tid,
                        nullptr); // args are flipped in syscall
@@ -242,9 +224,7 @@ long ForkMe(CloneArgs& host_clone_args) {
         }
 
         // it's fine to just return to felix86_syscall, which will set the result to 0 and continue execution
-        // in this new process. Just give it a new name to make debugging easier
-        std::string name = "ForkedFrom" + std::to_string(parent_tid); // forked from parent tid
-        prctl(PR_SET_NAME, name.c_str(), 0, 0, 0);
+        // in this new process
         SIGLOG("%d forked to %d", parent_pid, getpid());
         state->tid = gettid();
     } else {
@@ -270,8 +250,6 @@ long VForkMe(CloneArgs& args) {
         // Close the read end of the pipe.
         // Keep the write end open so the parent can poll it.
         close(pipes[0]);
-        std::string name = "VForkedFrom" + std::to_string(parent_pid);
-        prctl(PR_SET_NAME, name.c_str(), 0, 0, 0);
         SIGLOG("%d vforked to %d", parent_pid, getpid());
         ThreadState* state = ThreadState::Get();
         // TODO: probably clean up states here, but it doesn't matter cus it gets execve'd anyway
@@ -445,7 +423,6 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
 void Threads::StartThread(ThreadState* state) {
     state->tid = gettid();
     state->recompiler->enterDispatcher(state);
-    VERBOSE("Thread exited with reason %s", print_exit_reason(state->exit_reason));
 }
 
 int Threads::Unshare(int flags) {

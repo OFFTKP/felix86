@@ -46,12 +46,12 @@ std::string g_emulator_path;
 StartParameters g_params{};
 int g_linux_major = 0;
 int g_linux_minor = 0;
-bool g_no_riscv_v_state{};
 std::filesystem::path g_executable_path_absolute{};
 std::filesystem::path g_executable_path_guest_override{};
 std::filesystem::path g_mounts_path{};
 std::vector<FakeMountNode> g_fake_mounts{};
 bool g_dont_chdir = false;
+bool g_testing = false;
 
 // g_output_fd should be replaced upon connecting to the server, however if an error occurs before then we should at least log it
 int g_output_fd = STDERR_FILENO;
@@ -141,7 +141,6 @@ std::string get_extensions() {
         if (!extensions.empty())
             extensions += ",";
         extensions += "v";
-        extensions += std::to_string(Extensions::VLEN);
     }
     if (Extensions::C) {
         if (!extensions.empty())
@@ -220,7 +219,6 @@ std::string get_extensions() {
 void initialize_extensions() {
     if (!g_extensions_manually_specified) {
         biscuit::CPUInfo cpuinfo;
-        Extensions::VLEN = cpuinfo.GetVlenb() * 8;
         Extensions::G = cpuinfo.Has(RISCVExtension::I) && cpuinfo.Has(RISCVExtension::M) && cpuinfo.Has(RISCVExtension::A) &&
                         cpuinfo.Has(RISCVExtension::F) && cpuinfo.Has(RISCVExtension::D);
         Extensions::V = cpuinfo.Has(RISCVExtension::V);
@@ -278,6 +276,17 @@ void initialize_globals() {
     int count = readlink("/proc/self/exe", g_emulator_path.data(), PATH_MAX);
     ASSERT(count != -1);
 
+    const char* inherited_extensions = getenv("__FELIX86_EXTENSIONS");
+    if (inherited_extensions) {
+        if (!parse_extensions(inherited_extensions)) {
+            WARN("Failed to parse environment variable __FELIX86_EXTENSIONS");
+        } else {
+            g_extensions_manually_specified = true;
+        }
+    } else {
+        ASSERT(!g_execve_process);
+    }
+
     // Check for FELIX86_EXTENSIONS environment variable
     const char* all_extensions_env = getenv("FELIX86_ALL_EXTENSIONS");
     if (all_extensions_env) {
@@ -287,7 +296,7 @@ void initialize_globals() {
         }
 
         if (!parse_extensions(all_extensions_env)) {
-            WARN("Failed to parse environment variable FELIX86_EXTENSIONS");
+            WARN("Failed to parse environment variable FELIX86_ALL_EXTENSIONS");
         } else {
             g_extensions_manually_specified = true;
             environment += "\nFELIX86_ALL_EXTENSIONS=" + std::string(all_extensions_env);
@@ -449,10 +458,14 @@ void initialize_globals() {
 
     std::string extensions = get_extensions();
     if (extensions.empty()) {
+        ASSERT(!g_execve_process);
         initialize_extensions();
         extensions = get_extensions();
         ASSERT(!extensions.empty());
     }
+
+    biscuit::CPUInfo cpuinfo;
+    Extensions::VLEN = cpuinfo.GetVlenb() * 8;
 
 #ifdef __riscv
     if (Extensions::V) {
@@ -547,9 +560,6 @@ bool parse_extensions(const char* arg) {
             }
         }
     }
-
-    biscuit::CPUInfo cpuinfo;
-    Extensions::VLEN = cpuinfo.GetVlenb() * 8;
 
     return true;
 }

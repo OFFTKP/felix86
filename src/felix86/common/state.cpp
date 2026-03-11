@@ -14,8 +14,13 @@ void ThreadState::InitializeKey() {
 }
 
 ThreadState* ThreadState::Create(ThreadState* copy_state) {
-    ThreadState* state = new ThreadState;
+    // Allocate an extra page before ThreadState which will be used for signal deferring
+    u8* state_memory = (u8*)mmap(nullptr, sizeof(ThreadState) + 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    ASSERT(state_memory != MAP_FAILED);
+    u8* state_location = state_memory + 4096;
+    ThreadState* state = new (state_location) ThreadState;
     state->recompiler = new Recompiler;
+    state->deferred_fault_page = state_memory;
 
     sigemptyset(&state->signal_mask);
 
@@ -54,6 +59,7 @@ ThreadState* ThreadState::Create(ThreadState* copy_state) {
         state->es = copy_state->es;
 
         state->alt_stack = copy_state->alt_stack;
+        state->signal_mask = copy_state->signal_mask;
     }
 
     state->riscv_trampoline_storage =
@@ -87,5 +93,6 @@ void ThreadState::Destroy(ThreadState* state) {
     munmap(state->riscv_trampoline_storage_start, trampoline_storage_size);
     munmap(state->x86_trampoline_storage_start, trampoline_storage_size);
     delete state->recompiler;
-    delete state;
+    u8* ptr = (u8*)state;
+    munmap(ptr - 4096, 4096 + sizeof(ThreadState));
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include "biscuit/isa.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
@@ -121,11 +122,6 @@ typedef enum : u8 {
     X86_SIZE_ST,
 } x86_size_e;
 
-struct XmmReg {
-    u64 data[4] = {0, 0, 0, 0};
-};
-static_assert(sizeof(XmmReg) == 32);
-
 #define FUNCTION_POINTERS                                                                                                                            \
     X(f80_to_64)                                                                                                                                     \
     X(felix86_fsin)                                                                                                                                  \
@@ -156,6 +152,8 @@ static_assert(sizeof(XmmReg) == 32);
     X(felix86_syscall32)                                                                                                                             \
     X(felix86_fxsave)                                                                                                                                \
     X(felix86_fxrstor)                                                                                                                               \
+    X(felix86_xsave)                                                                                                                                 \
+    X(felix86_xrstor)                                                                                                                                \
     X(felix86_pcmpxstrx)                                                                                                                             \
     X(felix86_mpsadbw)                                                                                                                               \
     X(felix86_vpsadbw)                                                                                                                               \
@@ -207,12 +205,6 @@ struct ThreadState {
     // Because if they are x87 registers we need to f64_to_f80 them when saving using fsave or when reading from signal handlers
     x87State x87_state = x87State::MMX;
 
-    // Whenever we writeback the state we set this bool so that the signal handler knows not to pull registers from ucontext
-    // and instead pull them from ThreadState. If this is false then we haven't done a writeback so pull from ucontext.
-    // This is useful because sometimes we are in JIT code but we also are thrashing registers (setting a0, a1 etc.) so
-    // sometimes we want to pull from ThreadState even though we are in JIT code.
-    bool state_is_correct = false;
-    ExitReason exit_reason{};
     pid_t* clear_tid_address = nullptr;
     pthread_t thread{}; // The pthread this state belongs to
     u64 tid{};
@@ -233,20 +225,22 @@ struct ThreadState {
 
     sigset_t signal_mask{};
 
-    u8 exit_code{}; // process exit code
-
     bool mode32 = false; // 32-bit execution mode, changes the behavior of some instructions and the decoder
 
     u32 gdt[32]{};
 
     u64 persona = 0;
 
+    Recompiler* recompiler;
+
 #define X(name) u64 name = (u64)::name;
     // We don't want our code to hardcode pointers in order to be reusable (cached)
     FUNCTION_POINTERS;
 #undef X
 
-    Recompiler* recompiler;
+    u64 deferred_signals = 0;
+    std::array<siginfo_t, 64> deferred_info{};
+    void* deferred_fault_page = nullptr;
 
     // For storing generated risc-v or x86 code that needs to outlive code cache clears
     u8* riscv_trampoline_storage_start = nullptr;

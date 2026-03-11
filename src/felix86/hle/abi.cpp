@@ -428,15 +428,12 @@ void enter_dispatcher_for_callback(ThreadState* state) {
     u64 rip = state->rip;
     VERBOSE("Entering dispatcher for callback at %p", rip);
     state->recompiler->enterDispatcher(state);
-    ASSERT(state->exit_reason == EXIT_REASON_GUEST_CODE_FINISHED);
-    state->exit_reason = EXIT_REASON_UNKNOWN;
     VERBOSE("Finished callback %p", rip);
 }
 
 void* ABIMadness::hostToGuestTrampoline(const char* signature, const void* guest_function) {
     // We need custom guest code and custom host code
     ThreadState* state = ThreadState::Get();
-    SignalGuard guard;
     u8* const x86_code = state->x86_trampoline_storage;
     u8* curr = x86_code;
     // Our recompiler marks guest code as PROT_READ, we need to undo this as it may have marked previous trampolines

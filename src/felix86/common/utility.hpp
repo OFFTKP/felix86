@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include "biscuit/isa.hpp"
 #include "felix86/common/types.hpp"
+#include "felix86/common/xsave.hpp"
 
 [[nodiscard]] constexpr bool IsValidJTypeImm(ptrdiff_t value) {
     return value >= -0x80000 && value <= 0x7FFFF;
@@ -47,16 +48,10 @@ bool has_region(u64 address);
 
 void update_symbols();
 
-void felix86_fsave_16(struct ThreadState* state, u64 address);
-void felix86_fsave_32(struct ThreadState* state, u64 address);
-void felix86_frstor_16(struct ThreadState* state, u64 address);
-void felix86_frstor_32(struct ThreadState* state, u64 address);
 void felix86_fstenv_16(struct ThreadState* state, u64 address);
 void felix86_fstenv_32(struct ThreadState* state, u64 address);
 void felix86_fldenv_16(struct ThreadState* state, u64 address);
 void felix86_fldenv_32(struct ThreadState* state, u64 address);
-void felix86_fxsave(struct ThreadState* state, u64 address);
-void felix86_fxrstor(struct ThreadState* state, u64 address);
 
 void felix86_pmaddwd(i16* dst, i16* src);
 
@@ -85,11 +80,6 @@ inline RMode rounding_mode(x86RoundingMode mode) {
     __builtin_unreachable();
 }
 
-typedef struct __attribute__((packed)) {
-    u64 significand;
-    u16 exponent;
-} Float80;
-
 Float80 f64_to_80(double);
 double f80_to_64(Float80*);
 void f64_to_80_mem(double value, u64 address);
@@ -114,8 +104,6 @@ void felix86_f2xm1(ThreadState* state);
 void felix86_fscale(ThreadState* state);
 void felix86_fyl2x(ThreadState* state);
 void felix86_fyl2xp1(ThreadState* state);
-
-const char* print_exit_reason(int reason);
 
 inline std::vector<std::string> split_string(const std::string& txt, char ch) {
     std::vector<std::string> strs;
@@ -216,4 +204,26 @@ inline std::string hex_to_string(const std::string& str) {
         output.push_back(hi << 4 | lo);
     }
     return output;
+}
+
+inline bool to_u64(u64* num, const char* str) {
+    if (!str || !num)
+        return false;
+
+    char* end;
+    errno = 0;
+    u64 result = strtoul(str, &end, 10);
+
+    if (end == str) {
+        return false;
+    }
+    if (*end != '\0') {
+        return false;
+    }
+    if (errno != 0) {
+        return false;
+    }
+
+    *num = result;
+    return true;
 }

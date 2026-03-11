@@ -758,10 +758,6 @@ int main(int argc, char* argv[]) {
     // TODO: These "hacky" environment variables are bandaid solutions to problems that we need to eventually fix
     // They are enabled by default
     if (g_config.hacky_envs) {
-        // Go uses a bunch of signals for preemption and this breaks our current signal handling
-        // Apps like `snap` use go, and those are used sometimes by `apt`, and this async preemption is useless in a lot of programs
-        g_params.envp.push_back("GODEBUG=asyncpreemptoff=1");
-
         // DOTNET tries to allocate too much heap memory, and many RISC-V boards currently come with 39-bit address space
         // To counteract this by default, we'll limit the heap memory dotnet allocates
         g_params.envp.push_back("DOTNET_GCHeapHardLimit=1C0000000");
@@ -922,12 +918,6 @@ int main(int argc, char* argv[]) {
 
     SIGLOG("New felix86 instance with PID %d and executable path %s", getpid(), g_params.executable_path.c_str());
 
-    if (g_execve_process) {
-        pthread_setname_np(pthread_self(), "ExecveProcess");
-    } else {
-        pthread_setname_np(pthread_self(), "MainProcess");
-    }
-
     // Create a thread that does nothing and immediately exits
     // glibc sets up the setuid signal handler when you create the first thread
     // We want it to set it before we start emulation, then the guest handler can trample it
@@ -937,20 +927,6 @@ int main(int argc, char* argv[]) {
     pthread_create(&thread, nullptr, &empty_pthread_handler, nullptr);
     pthread_join(thread, nullptr);
 
-    auto [exit_reason, exit_code] = Emulator::Start();
-
-    if (!g_execve_process) {
-        LOG("Main process %d exited with reason: %s. Exit code: %d", getpid(), print_exit_reason(exit_reason), exit_code);
-    } else {
-        LOG("Execve process %d exited with reason: %s. Exit code: %d", getpid(), print_exit_reason(exit_reason), exit_code);
-    }
-
-    if (exit_reason == EXIT_REASON_EXIT_SYSCALL) {
-        syscall(SYS_exit, exit_code);
-    } else if (exit_reason == EXIT_REASON_EXIT_GROUP_SYSCALL) {
-        syscall(SYS_exit_group, exit_code);
-    } else {
-        WARN("Exiting with bad exit reason: %s", print_exit_reason(exit_reason));
-        syscall(SYS_exit, exit_code);
-    }
+    Emulator::Start();
+    UNREACHABLE();
 }

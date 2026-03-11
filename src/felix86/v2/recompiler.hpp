@@ -149,8 +149,6 @@ struct Recompiler {
 
     void stopCompiling();
 
-    void setExitReason(ExitReason reason);
-
     void backToDispatcher();
 
     void writebackState();
@@ -190,6 +188,8 @@ struct Recompiler {
     void jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false);
 
     void invalidateBlock(BlockMetadata* block);
+
+    void insertSafepoint();
 
     static void invalidateRangeGlobal(u64 start, u64 end, const char* reason);
 
@@ -686,6 +686,14 @@ struct Recompiler {
 
     void skipNext();
 
+    u64 getCurrentRipregValue() {
+        return current_ripreg_value;
+    }
+
+    void setCurrentRipregValue(u64 value) {
+        current_ripreg_value = value;
+    }
+
     std::pair<ZydisDecodedInstruction*, ZydisDecodedOperand*> getNextInstruction();
 
 private:
@@ -719,6 +727,7 @@ private:
     ZydisDecodedInstruction* current_instruction;
     ZydisDecodedOperand* current_operands;
     u64 current_rip;
+    u64 current_ripreg_value;
     u64 current_instruction_index = 0;
 
     void (*enter_dispatcher)(ThreadState*){};

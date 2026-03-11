@@ -1,3 +1,4 @@
+#include <csignal>
 #include <span>
 #include <vector>
 #include <elf.h>
@@ -9,6 +10,9 @@
 #include <sys/mman.h>
 #include <sys/prctl.h>
 #include <sys/random.h>
+#include <sys/ucontext.h>
+#include "felix86/common/global.hpp"
+#include "felix86/common/log.hpp"
 #include "felix86/common/script.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
@@ -59,7 +63,7 @@ struct auxv32_t {
     u32 a_val;
 };
 
-std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
+static void setupMainStack(ThreadState* state) {
     ssize_t argc = g_params.argv.size();
     if (argc > 1) {
         VERBOSE("Passing %zu arguments to guest executable", argc - 1);
@@ -113,7 +117,6 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
     int result = getrandom((void*)rand_address, 16, 0);
     if (result == -1 || result != 16) {
         ERROR("Failed to get random data");
-        return pair;
     }
 
     std::vector<std::pair<u64, u64>> auxv_entries = {
@@ -200,28 +203,20 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
     ASSERT_MSG(rsp == final_rsp, "%lx == %lx", rsp, final_rsp);
     if (rsp & 0xF) {
         ERROR("Stack not aligned to 16 bytes");
-        return pair;
     }
 
     u64 rsp_guest = rsp;
     state->SetGpr(X86_REF_RSP, rsp_guest);
-
-    return pair;
 }
 
 void* Emulator::CompileNext(ThreadState* thread_state) {
     g_dispatcher_exit_count++;
-
-    SignalGuard guard;
     u64 next_block = thread_state->recompiler->getCompiledBlock(thread_state, thread_state->GetRip());
     ASSERT_MSG(next_block != 0, "getCompiledBlock returned null?");
     return (void*)next_block;
 }
 
-std::pair<ExitReason, int> Emulator::Start() {
-    ExitReason exit_reason;
-    int exit_code;
-
+void Emulator::Start() {
     g_process_globals.initialize();
 
 #ifdef PR_RISCV_SET_ICACHE_FLUSH_CTX
@@ -288,7 +283,22 @@ std::pair<ExitReason, int> Emulator::Start() {
     main_state->signal_table = SignalHandlerTable::Create(nullptr);
     main_state->SetRip(g_fs->GetEntrypoint());
 
-    auto [stack, size] = setupMainStack(main_state);
+    const char* mask = getenv("__FELIX86_SIGNAL_MASK");
+    if (mask) {
+        ASSERT(g_execve_process);
+        u64 signal_mask;
+        bool ok = to_u64(&signal_mask, mask);
+        if (!ok) {
+            WARN("Failed to convert __FELIX86_SIGNAL_MASK=%s to a number", mask);
+        } else {
+            sigset_t set;
+            sigemptyset(&set);
+            set.__val[0] = signal_mask;
+            Signals::sigprocmask(main_state, SIG_SETMASK, &set, nullptr);
+        }
+    }
+
+    setupMainStack(main_state);
 
     // The Emulator::Run will only return when exit_dispatcher is jumped to
     VERBOSE("Executable: %016lx - %016lx", g_executable_start, g_executable_end);
@@ -299,13 +309,7 @@ std::pair<ExitReason, int> Emulator::Start() {
     VERBOSE("Entering main thread :)");
 
     Threads::StartThread(main_state);
-
-    VERBOSE("Bye-bye main thread :(");
-
-    exit_reason = main_state->exit_reason;
-    exit_code = main_state->exit_code;
-
-    return {exit_reason, exit_code};
+    UNREACHABLE();
 }
 
 void Emulator::StartTest(const TestConfig& config, u64 stack) {
@@ -322,5 +326,6 @@ void Emulator::StartTest(const TestConfig& config, u64 stack) {
         }
     }
 
+    g_testing = true;
     Threads::StartThread(main_state);
 }

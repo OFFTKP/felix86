@@ -2,7 +2,9 @@
 #include <sys/file.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include "Zycore/Status.h"
 #include "Zydis/Disassembler.h"
+#include "Zydis/SharedTypes.h"
 #include "felix86/common/config.hpp"
 #include "felix86/common/frame.hpp"
 #include "felix86/common/gdbjit.hpp"
@@ -497,6 +499,10 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
     return start;
 }
 
+void Recompiler::insertSafepoint() {
+    as.SD(x0, -8, Recompiler::threadStatePointer());
+}
+
 void Recompiler::markPagesAsReadOnly(u64 start, u64 end) {
     if (!g_config.protect_pages) {
         return;
@@ -543,10 +549,16 @@ u64 Recompiler::compileSequence(u64 rip) {
     v0_has_mask = false;
 
     current_block_metadata->guest_address = rip;
+    current_ripreg_value = rip; // may change in a syscall to check for safepoints, or after a set amount of instructions in the future
 
     current_instruction_index = 0;
 
     bool ran_mmx_once = false;
+
+    // Insert a safepoint at the start of the block, as it's easier than doing it at the end of the block
+    // Also, this means that when a signal returns it will find a compiled block instead of needing to compile a new one
+    // TODO: insert safepoints within the block every N instructions, needs to flushx87 too
+    insertSafepoint();
 
     while (compiling) {
         auto& [instruction, operands] = instructions[current_instruction_index];
@@ -1689,7 +1701,7 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
 
     if (operand->mem.base == ZYDIS_REGISTER_RIP) {
         ASSERT(!g_mode32);
-        u64 offset_from_start = (current_rip - current_block_metadata->guest_address) + current_instruction->length + (u64)operand->mem.disp.value;
+        u64 offset_from_start = (current_rip - getCurrentRipregValue()) + current_instruction->length + (u64)operand->mem.disp.value;
         u64 offset_from_cursor = (current_rip + current_instruction->length + operand->mem.disp.value) - (u64)as.GetCursorPointer();
         if (IsValid2GBImm(offset_from_cursor) && !IsValidSigned12BitImm(offset_from_start) && !relocatable) {
             u32 hi20 = static_cast<i32>(((static_cast<u32>(offset_from_cursor) + 0x800) >> 12) & 0xFFFFF);
@@ -1896,13 +1908,6 @@ void Recompiler::stopCompiling() {
     compiling = false;
 }
 
-void Recompiler::setExitReason(ExitReason reason) {
-    biscuit::GPR reg = scratch();
-    as.LI(reg, (int)reason);
-    as.SB(reg, offsetof(ThreadState, exit_reason), threadStatePointer());
-    popScratch();
-}
-
 void Recompiler::writebackState() {
     v0Modified();
     resetVectorState();
@@ -1953,13 +1958,6 @@ void Recompiler::writebackState() {
     as.SB(zf, offsetof(ThreadState, zf), threadStatePointer());
     as.SB(sf, offsetof(ThreadState, sf), threadStatePointer());
     as.SB(of, offsetof(ThreadState, of), threadStatePointer());
-
-    biscuit::GPR temp = scratch();
-    // Now that everything is written to ThreadState, signal handlers can use it
-    // instead of reading registers from ucontext
-    as.LI(temp, 1);
-    as.SB(temp, offsetof(ThreadState, state_is_correct), threadStatePointer());
-    popScratch();
 
     resetVectorState();
     cached_lea_operand = nullptr;
@@ -2027,8 +2025,6 @@ void Recompiler::restoreState() {
         popScratch();
     }
 
-    // Mark state as invalid again as we will be modifying the host registers
-    as.SB(x0, offsetof(ThreadState, state_is_correct), threadStatePointer());
     as.FENCETSO();
 
     resetVectorState();
@@ -2632,11 +2628,11 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
     Label true_label;
     as.BNEZ(condition, &true_label);
 
-    biscuit::GPR rip = allocatedGPR(X86_REF_RIP);
-    u64 rip_false_offset = rip_false - getCurrentMetadata().guest_address;
-    addi(rip, rip, rip_false_offset);
+    biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
+    u64 rip_false_offset = rip_false - getCurrentRipregValue();
+    addi(ripreg, ripreg, rip_false_offset);
     if (g_mode32) {
-        zext(rip, rip, X86_SIZE_DWORD);
+        zext(ripreg, ripreg, X86_SIZE_DWORD);
         rip_false = (u32)rip_false;
     }
 
@@ -2648,10 +2644,10 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
     }
 
     as.Bind(&true_label);
-    u64 rip_true_offset = rip_true - getCurrentMetadata().guest_address;
-    addi(rip, rip, rip_true_offset);
+    u64 rip_true_offset = rip_true - getCurrentRipregValue();
+    addi(ripreg, ripreg, rip_true_offset);
     if (g_mode32) {
-        zext(rip, rip, X86_SIZE_DWORD);
+        zext(ripreg, ripreg, X86_SIZE_DWORD);
         rip_true = (u32)rip_true;
     }
 

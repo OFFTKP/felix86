@@ -6,6 +6,7 @@
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/state.hpp"
+#include "felix86/common/xsave.hpp"
 #include "felix86/hle/cpuid.hpp"
 
 constexpr u32 NO_SUBLEAF = 0xFFFFFFFF;
@@ -161,6 +162,18 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
         bit_set(result.ecx, 9, is_feature_enabled(x86_feature::VAES));
         bit_set(result.ecx, 10, is_feature_enabled(x86_feature::VPCLMULQDQ));
         bit_set(result.ebx, 5, is_feature_enabled(x86_feature::AVX2));
+    }
+
+    if (found && leaf == 0x0000'000D) {
+        result.eax = 0;
+        result.ebx = 0;
+        result.ecx = 0;
+        result.edx = 0;
+        if (subleaf == 2 && felix86_xsave_contains_ymms()) {
+            // AVX YMM_HI size and offset in XSAVE
+            result.eax = sizeof(ymm_hi);
+            result.ebx = sizeof(fxsave_frame) + sizeof(xsave_header);
+        }
     }
 
     if (found && leaf == 0x8000'0001) {

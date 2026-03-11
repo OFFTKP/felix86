@@ -348,7 +348,6 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
     size_t sigsize = strlen(signature);
     size_t namesize = strlen(name);
     ThreadState* state = ThreadState::Get();
-    SignalGuard guard;
     // We can't put this code in code cache, because it needs to outlive potential code cache clears
     u8* memory = state->x86_trampoline_storage;
     // Our recompiler marks guest code as PROT_READ, we need to undo this as it may have marked previous trampolines

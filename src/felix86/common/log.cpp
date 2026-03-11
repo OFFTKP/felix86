@@ -7,12 +7,10 @@
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/hle/fd.hpp"
-#include "felix86/hle/signals.hpp"
 
 std::string g_pipe_name;
 
 void Logger::log(const char* format, ...) {
-    SignalGuard guard;
     va_list args;
     va_start(args, format);
     vdprintf(g_output_fd, format, args);

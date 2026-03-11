@@ -19,12 +19,10 @@ struct Emulator {
 
     static void* CompileNext(ThreadState* state);
 
-    [[nodiscard]] static std::pair<ExitReason, int> Start();
+    [[noreturn]] static void Start();
 
     static void StartTest(const TestConfig& config, u64 stack);
 
 private:
-    [[nodiscard]] static std::pair<void*, size_t> setupMainStack(ThreadState* state);
-
     Filesystem fs;
 };
