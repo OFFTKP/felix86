@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - master
+    tags:
+      - '[0-9][0-9].[0-9][0-9]'
   pull_request:
     branches:
       - master
@@ -29,7 +31,11 @@ jobs:
           sudo cp -r /usr/include/vk_video /usr/local/include/vk_video
       - name: Configure
         run: |
-          cmake -B ${{ github.workspace }}/build -DBUILD_TESTS=1 -DCMAKE_TOOLCHAIN_FILE=riscv.cmake -DBUILD_THUNKING=1 -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Release
+          EXTRA_FLAGS=""
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            EXTRA_FLAGS="-DFELIX86_MONTHLY_RELEASE=1"
+          fi
+          cmake -B ${{ github.workspace }}/build -DBUILD_TESTS=1 -DCMAKE_TOOLCHAIN_FILE=riscv.cmake -DBUILD_THUNKING=1 -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Release $EXTRA_FLAGS
       - name: Build
         run: |
           cmake --build ${{ github.workspace }}/build -j$(nproc)

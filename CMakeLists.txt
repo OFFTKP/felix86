@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
-option(BUILD_THUNKING "Build with thunking support" ON)
+option(FELIX86_BUILD_THUNKING "Build with thunking support" ON)
+option(FELIX86_MONTHLY_RELEASE "Build as a monthly release" OFF)
 
 project(felix86)
 include(CheckGit.cmake)
@@ -53,7 +54,7 @@ add_subdirectory(external/biscuit)
 add_subdirectory(external/zydis)
 add_subdirectory(external/fmt)
 
-if (BUILD_THUNKING)
+if (FELIX86_BUILD_THUNKING)
     message("Building with thunking support")
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(GLX REQUIRED gl)
@@ -64,6 +65,13 @@ if (BUILD_THUNKING)
     include_directories(${X11_INCLUDE_DIRS})
 else()
     message("Building without thunking support")
+endif()
+
+if (FELIX86_MONTHLY_RELEASE)
+    message("Building as a monthly release")
+    target_compile_definitions(felix86_core PUBLIC FELIX86_MONTHLY_RELEASE)
+else()
+    message("Building as a daily release")
 endif()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=implicit-fallthrough -Werror=incompatible-pointer-types -Wall -fPIE")
@@ -152,7 +160,7 @@ target_sources(felix86_core PRIVATE ${FELIX86_CORE_SOURCES})
 target_include_directories(felix86_core PUBLIC ${FELIX86_INCLUDES})
 target_link_libraries(felix86_core PUBLIC Zydis fmt biscuit git_version)
 
-if (BUILD_THUNKING)
+if (FELIX86_BUILD_THUNKING)
     target_compile_definitions(felix86_core PUBLIC BUILD_THUNKING)
 endif()
 
