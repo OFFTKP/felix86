@@ -28,6 +28,14 @@ void* empty_pthread_handler(void*) {
     return nullptr;
 }
 
+void rootfs_not_set_error() {
+    printf("Rootfs path not set. Set it using `felix86 -s /path/to/rootfs`.\n");
+    printf("Consult the installation guide: https://felix86.com/docs/users/installation-guide/\n\n");
+    printf("If you don't have an x86 rootfs, you can use the rootfs installer script to download and install one:\n");
+    printf("    bash <(curl -s https://install.felix86.com/rootfs.sh)\n");
+    exit(1);
+}
+
 void __attribute__((noreturn)) enter_repl();
 
 std::string version_full = get_version_full();
@@ -413,8 +421,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         std::error_code ec;
         Config::initialize();
         if (g_config.rootfs_path.empty()) {
-            printf("Rootfs path not set. Set it using `felix86 -s <path>`. If you don't have one, use the installer script!\n");
-            exit(1);
+            rootfs_not_set_error();
         }
 
         bool rootfs_exists = std::filesystem::exists(g_config.rootfs_path, ec);
@@ -647,6 +654,9 @@ int main(int argc, char* argv[]) {
         // Guest applications can change the user, which would then mean we have no access to $home
         // to load the config file. So all execve'd runs should load the configs from a string
         Config::initializeChild();
+    }
+    if (g_config.rootfs_path.empty()) {
+        rootfs_not_set_error();
     }
     initialize_globals();
     Signals::initialize();
