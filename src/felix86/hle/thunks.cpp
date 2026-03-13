@@ -4,7 +4,7 @@
 // TODO: this file is messy. Split it up to separate files per library once our thunking implementation is more concrete
 
 // Thunks need libX11
-#ifndef BUILD_THUNKING
+#ifndef FELIX86_BUILD_THUNKING
 #include <cstdlib>
 #include <string>
 #include "felix86/common/config.hpp"
@@ -19,7 +19,7 @@ void Thunks::initialize() {
         Config c;
         std::string def = c.enabled_thunks;
         if (std::string(env) != def) {
-            WARN("You've set FELIX86_ENABLED_THUNKS but this felix86 was built without -DBUILD_THUNKING=ON");
+            WARN("You've set FELIX86_ENABLED_THUNKS but this felix86 was built without -DFELIX86_BUILD_THUNKING=ON");
         }
     }
 }
@@ -956,8 +956,9 @@ void Thunks::initialize() {
     ASSERT_MSG(std::filesystem::exists(thunks), "The thunks path set with FELIX86_THUNKS %s does not exist", thunks.c_str());
     std::string srootfs = g_config.rootfs_path.string();
 
-#ifndef BUILD_THUNKING
-    ERROR("FELIX86_THUNKS is set, but this build of felix86 was not built with thunking support, enable BUILD_THUNKING in cmake configuration");
+#ifndef FELIX86_BUILD_THUNKING
+    ERROR(
+        "FELIX86_THUNKS is set, but this build of felix86 was not built with thunking support, enable FELIX86_BUILD_THUNKING in cmake configuration");
     return;
 #endif
 

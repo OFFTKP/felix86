@@ -35,7 +35,7 @@ jobs:
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             EXTRA_FLAGS="-DFELIX86_MONTHLY_RELEASE=1"
           fi
-          cmake -B ${{ github.workspace }}/build -DBUILD_TESTS=1 -DCMAKE_TOOLCHAIN_FILE=riscv.cmake -DBUILD_THUNKING=1 -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Release $EXTRA_FLAGS
+          cmake -B ${{ github.workspace }}/build -DBUILD_TESTS=1 -DCMAKE_TOOLCHAIN_FILE=riscv.cmake -DFELIX86_BUILD_THUNKING=1 -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Release $EXTRA_FLAGS
       - name: Build
         run: |
           cmake --build ${{ github.workspace }}/build -j$(nproc)

@@ -1,4 +1,4 @@
-#ifdef BUILD_THUNKING
+#ifdef FELIX86_BUILD_THUNKING
 
 #include <unordered_map>
 #include <dlfcn.h>
@@ -58,17 +58,17 @@ int host_lua_cpcall(lua_State* L, lua_CFunction func, void* ud) {
 }
 
 lua_CFunction host_lua_atpanic(lua_State* L, lua_CFunction panicf) {
-    static auto lua_atpanic = (lua_CFunction(*)(lua_State * L, lua_CFunction panicf)) dlsym(libluajit, "lua_atpanic");
+    static auto lua_atpanic = (lua_CFunction (*)(lua_State* L, lua_CFunction panicf))dlsym(libluajit, "lua_atpanic");
     return lua_atpanic(L, panicf);
 }
 
 lua_CFunction host_lua_tocfunction(lua_State* L, int idx) {
-    static auto lua_tocfunction = (lua_CFunction(*)(lua_State * L, int idx)) dlsym(libluajit, "lua_tocfunction");
+    static auto lua_tocfunction = (lua_CFunction (*)(lua_State* L, int idx))dlsym(libluajit, "lua_tocfunction");
     return lua_tocfunction(L, idx);
 }
 
 void host_lua_pushcclosure(lua_State* L, lua_CFunction fn, int n) {
-    static auto lua_pushcclosure = (lua_CFunction(*)(lua_State * L, lua_CFunction fn, int n)) dlsym(libluajit, "lua_pushcclosure");
+    static auto lua_pushcclosure = (lua_CFunction (*)(lua_State* L, lua_CFunction fn, int n))dlsym(libluajit, "lua_pushcclosure");
     lua_pushcclosure(L, fn, n);
 }
 
@@ -78,7 +78,7 @@ lua_State* host_lua_newstate(lua_Alloc f, void* ud) {
 }
 
 lua_Alloc host_lua_getallocf(lua_State* L, void** ud) {
-    static auto lua_getallocf = (lua_Alloc(*)(lua_State * f, void* ud)) dlsym(libluajit, "lua_getallocf");
+    static auto lua_getallocf = (lua_Alloc (*)(lua_State* f, void* ud))dlsym(libluajit, "lua_getallocf");
     return lua_getallocf(L, ud);
 }
 

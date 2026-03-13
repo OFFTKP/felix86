@@ -161,7 +161,7 @@ target_include_directories(felix86_core PUBLIC ${FELIX86_INCLUDES})
 target_link_libraries(felix86_core PUBLIC Zydis fmt biscuit git_version)
 
 if (FELIX86_BUILD_THUNKING)
-    target_compile_definitions(felix86_core PUBLIC BUILD_THUNKING)
+    target_compile_definitions(felix86_core PUBLIC FELIX86_BUILD_THUNKING)
 endif()
 
 add_executable(felix86)
