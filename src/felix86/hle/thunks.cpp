@@ -1006,8 +1006,14 @@ void Thunks::initialize() {
     auto add_overlays = [&thunks](std::initializer_list<const char*> names) {
         std::filesystem::path thunk_path;
         for (const char* name : names) {
-            if (std::filesystem::exists(thunks / name)) {
-                thunk_path = thunks / name;
+            std::filesystem::path path;
+            if (!g_mode32) {
+                path = thunks / "x86_64-linux-gnu" / name;
+            } else {
+                path = thunks / "i386-linux-gnu" / name;
+            }
+            if (std::filesystem::exists(path)) {
+                thunk_path = path;
                 break;
             }
         }
