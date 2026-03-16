@@ -77,7 +77,7 @@ static bool flag_passthrough(ZydisMnemonic mnemonic, x86_ref_e flag) {
     case ZYDIS_MNEMONIC_SAR:
     case ZYDIS_MNEMONIC_ROL:
     case ZYDIS_MNEMONIC_ROR: {
-        return flag == X86_REF_CF || flag == X86_REF_OF;
+        return true;
     }
     default: {
         return false;
