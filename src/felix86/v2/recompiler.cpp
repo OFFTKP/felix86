@@ -67,7 +67,6 @@ private:
 // Some instructions modify the flags conditionally or sometimes they don't modify them at all.
 // This needs to be marked as a usage of the flag as it can be passed through if they don't modify,
 // and previous instructions need to know that.
-// TODO: actually this might be unnecessary if Zydis doesn't mark these flags as modified, test it
 static bool flag_passthrough(ZydisMnemonic mnemonic, x86_ref_e flag) {
     switch (mnemonic) {
     case ZYDIS_MNEMONIC_SHL:
