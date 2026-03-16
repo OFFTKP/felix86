@@ -30,19 +30,25 @@ struct into<toml::value> {
 } // namespace toml
 
 std::filesystem::path Config::getConfigDir() {
-    const char* homedir;
+    std::string homedir;
 
     // If SUDO_HOME is defined, use that as the home directory
     // `sudo` sets SUDO_HOME to the original HOME, and HOME to /root
     // We want felix86 instances running under sudo to use the original HOME so they can find the config file
     if (getenv("SUDO_HOME")) {
         homedir = getenv("SUDO_HOME");
-    } else {
+    } else if (getenv("SUDO_USER")) {
+        homedir = "/home/" + std::string(getenv("SUDO_USER"));
+    } else if (getenv("HOME")) {
         homedir = getenv("HOME");
     }
 
-    if (!homedir) {
+    if (homedir.empty()) {
         return {};
+    }
+
+    if (homedir == "/root") {
+        WARN("Home dir is /root, couldn't find user home");
     }
 
     std::error_code ec;
