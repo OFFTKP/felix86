@@ -67,7 +67,7 @@ private:
 // Some instructions modify the flags conditionally or sometimes they don't modify them at all.
 // This needs to be marked as a usage of the flag as it can be passed through if they don't modify,
 // and previous instructions need to know that.
-static bool flag_passthrough(ZydisMnemonic mnemonic, x86_ref_e flag) {
+static bool flag_passthrough(ZydisMnemonic mnemonic) {
     switch (mnemonic) {
     case ZYDIS_MNEMONIC_SHL:
     case ZYDIS_MNEMONIC_SHLD:
@@ -2130,38 +2130,39 @@ void Recompiler::scanAhead(u64 rip) {
             u32 changed =
                 instruction.cpu_flags->modified | instruction.cpu_flags->set_0 | instruction.cpu_flags->set_1 | instruction.cpu_flags->undefined;
             u32 used = instruction.cpu_flags->tested;
+            bool passthrough = flag_passthrough(instruction.mnemonic);
 
-            if (used & ZYDIS_CPUFLAG_CF || flag_passthrough(instruction.mnemonic, X86_REF_CF)) {
+            if (used & ZYDIS_CPUFLAG_CF || passthrough) {
                 flag_access_cpazso[0].push_back({false, rip});
             } else if (changed & ZYDIS_CPUFLAG_CF) {
                 flag_access_cpazso[0].push_back({true, rip});
             }
 
-            if (used & ZYDIS_CPUFLAG_PF || flag_passthrough(instruction.mnemonic, X86_REF_PF)) {
+            if (used & ZYDIS_CPUFLAG_PF || passthrough) {
                 flag_access_cpazso[1].push_back({false, rip});
             } else if (changed & ZYDIS_CPUFLAG_PF) {
                 flag_access_cpazso[1].push_back({true, rip});
             }
 
-            if (used & ZYDIS_CPUFLAG_AF || flag_passthrough(instruction.mnemonic, X86_REF_AF)) {
+            if (used & ZYDIS_CPUFLAG_AF || passthrough) {
                 flag_access_cpazso[2].push_back({false, rip});
             } else if (changed & ZYDIS_CPUFLAG_AF) {
                 flag_access_cpazso[2].push_back({true, rip});
             }
 
-            if (used & ZYDIS_CPUFLAG_ZF || flag_passthrough(instruction.mnemonic, X86_REF_ZF)) {
+            if (used & ZYDIS_CPUFLAG_ZF || passthrough) {
                 flag_access_cpazso[3].push_back({false, rip});
             } else if (changed & ZYDIS_CPUFLAG_ZF) {
                 flag_access_cpazso[3].push_back({true, rip});
             }
 
-            if (used & ZYDIS_CPUFLAG_SF || flag_passthrough(instruction.mnemonic, X86_REF_SF)) {
+            if (used & ZYDIS_CPUFLAG_SF || passthrough) {
                 flag_access_cpazso[4].push_back({false, rip});
             } else if (changed & ZYDIS_CPUFLAG_SF) {
                 flag_access_cpazso[4].push_back({true, rip});
             }
 
-            if (used & ZYDIS_CPUFLAG_OF || flag_passthrough(instruction.mnemonic, X86_REF_OF)) {
+            if (used & ZYDIS_CPUFLAG_OF || passthrough) {
                 flag_access_cpazso[5].push_back({false, rip});
             } else if (changed & ZYDIS_CPUFLAG_OF) {
                 flag_access_cpazso[5].push_back({true, rip});
@@ -2204,6 +2205,11 @@ void Recompiler::scanAhead(u64 rip) {
                             u32 changed = instruction_ahead.cpu_flags->modified | instruction_ahead.cpu_flags->set_0 |
                                           instruction_ahead.cpu_flags->set_1 | instruction_ahead.cpu_flags->undefined;
                             u32 used = instruction_ahead.cpu_flags->tested;
+                            if (flag_passthrough(mnemonic)) {
+                                // For now, instructions that conditionally modify flags will act as if they use flags
+                                // This is necessary so that any block that jumps to a e.g. shift instruction will still emit its final flags
+                                used = flags_we_care_about;
+                            }
 
                             u32 used_not_previously_changed = used & ~changed_this_block;
                             used_this_block |= used_not_previously_changed;
