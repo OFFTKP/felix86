@@ -19,6 +19,11 @@ enum class x87State : u8 {
     MMX = 2,
 };
 
+struct SignalQueueNode {
+    siginfo_t info = {};
+    SignalQueueNode* next = nullptr;
+};
+
 #define C0_BIT (1 << 8)
 #define C1_BIT (1 << 9)
 #define C2_BIT (1 << 10)
@@ -223,6 +228,7 @@ struct ThreadState {
     // Two processes can share the same signal handler table
     SignalHandlerTable* signal_table{};
 
+    // TODO: make it a u64
     sigset_t signal_mask{};
 
     bool mode32 = false; // 32-bit execution mode, changes the behavior of some instructions and the decoder
@@ -239,7 +245,8 @@ struct ThreadState {
 #undef X
 
     u64 deferred_signals = 0;
-    std::array<siginfo_t, 64> deferred_info{};
+    std::array<siginfo_t, 31> deferred_standard_info{};
+    std::array<SignalQueueNode*, 33> deferred_realtime_info{};
     void* deferred_fault_page = nullptr;
 
     // For storing generated risc-v or x86 code that needs to outlive code cache clears

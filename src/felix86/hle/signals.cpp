@@ -857,7 +857,7 @@ void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uctx) {
     sigandset(&host_new_mask, &state->signal_mask, Signals::hostSignalMask());
     uctx->uc_sigmask = host_new_mask;
 
-    SIGLOG("Preparing signal %s during RIP=%lx, RSP=%lx, handler at %lx", sigdescr_np(sig), rip, state->gprs[X86_REF_RSP], handler->func);
+    SIGLOG("Preparing signal %s (%d) during RIP=%lx, RSP=%lx, handler at %lx", sigdescr_np(sig), sig, rip, state->gprs[X86_REF_RSP], handler->func);
 }
 
 void prepare_synchronous_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx, u64 rip) {
@@ -892,20 +892,38 @@ bool handle_safepoint(ThreadState* current_state, siginfo_t* info, ucontext_t* c
         return false;
     }
 
-    u64 deferred_signals = current_state->deferred_signals;
-    ASSERT_MSG(deferred_signals, "Faulted at safepoint, but no deferred signals?");
+    // Mask signals until we are done messing with these
+    sigset_t full, old;
+    ASSERT(sigfillset(&full) == 0);
+    ASSERT(sigprocmask(SIG_SETMASK, &full, &old) == 0);
+
+    u64 effective_deferred_signals = current_state->deferred_signals & ~current_state->signal_mask.__val[0];
+    ASSERT_MSG(effective_deferred_signals, "Faulted at safepoint, but no effective deferred signals, this shouldn't happen");
 
     // While the order of standard signals is unspecified, if standard and real-time signals are queued
     // standard signals are serviced first, and real-time signals follow a least to most order
     // Thus we just get the least significant set bit
-    int sig = __builtin_ctzll(deferred_signals);
-    // Since the host signal handler isn't registered with SA_NODEFER, it's not possible for a signal of the same
-    // type to happen, thus not possible for a race in this guest_info fetch
-    siginfo_t guest_info = current_state->deferred_info[sig];
-    current_state->deferred_signals = deferred_signals & ~(1ull << sig);
-    if (current_state->deferred_signals == 0) {
-        ASSERT(mprotect(current_state->deferred_fault_page, 4096, PROT_READ | PROT_WRITE) == 0);
+    int sig = __builtin_ctzll(effective_deferred_signals);
+
+    // Since we block signals, race here due to another signal being deferred is not possible
+    siginfo_t guest_info;
+    if (sig <= 30) {
+        guest_info = current_state->deferred_standard_info[sig];
+        current_state->deferred_signals = current_state->deferred_signals & ~(1ull << sig);
+    } else {
+        SignalQueueNode* node = current_state->deferred_realtime_info[sig - 31];
+        ASSERT(node);
+        guest_info = node->info;
+        if (node->next == nullptr) {
+            current_state->deferred_signals = current_state->deferred_signals & ~(1ull << sig);
+        } else {
+            current_state->deferred_realtime_info[sig - 31] = node->next;
+        }
+        ASSERT(munmap(node, 4096) == 0);
     }
+
+    // Safe to restore our mask now
+    ASSERT(sigprocmask(SIG_SETMASK, &old, nullptr) == 0);
 
     // This gives us a 0-indexed signal, but the actual signal number starts from 1
     sig += 1;
@@ -914,7 +932,7 @@ bool handle_safepoint(ThreadState* current_state, siginfo_t* info, ucontext_t* c
     // In order to handle the signal, we need to set the context in such a way that the JIT will jump
     // to the dispatcher after returning, the stack will be well prepared. When finished, the code will naturally return to where it was supposed
     // to return because sigreturn will set the PC according to the ucontext. Or it will longjmp out, but we don't care because we are out of the
-    // host signal handler Being in a safepoint means we can do this PC manipulation without worrying about potential locks or stack overflows
+    // host signal handler. Being in a safepoint means we can do this PC manipulation without worrying about potential locks or stack overflows
     prepare_guest_signal(sig, &guest_info, context);
     return true;
 }
@@ -1131,7 +1149,7 @@ bool dispatch_host(int sig, siginfo_t* info, void* ctx) {
 // Main signal handler function, all signals come here
 void signal_handler(int sig, siginfo_t* info, void* ctx) {
     if (g_config.print_all_signals) {
-        SIGLOG("------- Signal %s with code %d -------", sigdescr_np(sig), info->si_code);
+        SIGLOG("------- Signal %s (%d) with code %d -------", sigdescr_np(sig), sig, info->si_code);
     }
 
     // First, check if this is a host signal
@@ -1164,10 +1182,40 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         ASSERT(sig >= 1 && sig <= 64);
         int index = sig - 1;
         state->deferred_signals |= 1ull << index;
-        state->deferred_info[index] = *info;
+        if (index <= 30) {
+            state->deferred_standard_info[index] = *info;
+        } else {
+            // NOTE: This is wasteful. However, we can't use e.g. std::vector::push_back or similar functions that depend
+            // on malloc here, as we are in a signal handler that can happen whenever. A smarter implementation might allocate
+            // arenas for these and save quite a bit of memory per signal, but it is quite rare we get many queued signals anyway
+            // and this is a significantly simpler and foolproof implementation
+            // TODO: one day consider using arenas for this
+            void* mem = mmap(nullptr, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            ASSERT(mem != MAP_FAILED);
+            SignalQueueNode* new_node = (SignalQueueNode*)mem;
+            new_node->info = *info;
+            new_node->next = nullptr;
+            // Since the host signal handler is always registered without SA_NODEFER, there's no
+            // possibility of a race here as the same signal can't happen here
+            SignalQueueNode* node = state->deferred_realtime_info[index - 31];
+            if (!node) {
+                state->deferred_realtime_info[index - 31] = new_node;
+            } else {
+                size_t count = 0;
+                while (node->next) {
+                    node = node->next;
+                    count++;
+                }
+                ASSERT_MSG(count <= 32, "Too many realtime signals of SIGRT%d", sig);
+                node->next = new_node;
+            }
+        }
         // Make our safepoints fault
-        ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
-        SIGLOG("Deferring signal %s during RIP=%lx", sigdescr_np(sig), state->GetRip());
+        u64 effective_deferred_signals = state->deferred_signals & ~state->signal_mask.__val[0];
+        if (effective_deferred_signals != 0) {
+            ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
+        }
+        SIGLOG("Deferring signal %s (%d) during RIP=%lx", sigdescr_np(sig), sig, state->GetRip());
     }
 }
 
@@ -1242,13 +1290,31 @@ int Signals::sigprocmask(ThreadState* state, int how, sigset_t* set, sigset_t* o
             return -EINVAL;
         }
 
+        // Host mask needs to not block some signals used by the emulator
         sigset_t host_mask;
         sigandset(&host_mask, &state->signal_mask, Signals::hostSignalMask());
-        result = ::sigprocmask(SIG_SETMASK, &host_mask, nullptr);
-        ASSERT(result == 0);
 
         sigdelset(&state->signal_mask, SIGKILL);
         sigdelset(&state->signal_mask, SIGSTOP);
+
+        // Temporarily block all signals so we can safely check state->deferred_signals and set the page
+        // without worrying of a signal happening after the check but before the mprotect
+        sigset_t full;
+        sigfillset(&full);
+        ASSERT(::sigprocmask(SIG_BLOCK, &full, nullptr) == 0);
+
+        // If any deferred signals become unmasked, make the page PROT_NONE
+        // Otherwise, make it read/write
+        u64 effective_deferred_signals = state->deferred_signals & ~state->signal_mask.__val[0];
+        if (effective_deferred_signals != 0) {
+            ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
+        } else {
+            ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_READ | PROT_WRITE) == 0);
+        }
+
+        // Finally, set our new host mask
+        result = ::sigprocmask(SIG_SETMASK, &host_mask, nullptr);
+        ASSERT(result == 0);
     }
 
     if (oldset) {

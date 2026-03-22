@@ -44,7 +44,7 @@ struct x86_sigaction {
     u32 handler;
     u32 sa_flags;
     u32 restorer;
-    u64 sa_mask;
+    u32 sa_mask[128 / 32];
 };
 
 // Funny reordering that had to happen, with sa_mask not being the last member of the struct it didn't allow

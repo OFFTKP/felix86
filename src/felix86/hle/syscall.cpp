@@ -1158,6 +1158,14 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         result = SYSCALL(clock_nanosleep, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
+    case felix86_riscv64_rt_sigqueueinfo: {
+        result = SYSCALL(rt_sigqueueinfo, arg1, arg2, arg3);
+        break;
+    }
+    case felix86_riscv64_rt_tgsigqueueinfo: {
+        result = SYSCALL(rt_tgsigqueueinfo, arg1, arg2, arg3, arg4);
+        break;
+    }
     case felix86_riscv64_rt_sigaction: {
         if (arg1 > 64) {
             result = -EINVAL;
@@ -2241,7 +2249,8 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             RegisteredSignal old = Signals::getSignalHandler(state, arg1);
             if (act) {
                 auto handler = act->handler;
-                Signals::registerSignalHandler(state, arg1, (u64)handler, act->sa_mask, act->sa_flags, act->restorer);
+                u64 mask = (u64)act->sa_mask[0] | (u64)act->sa_mask[1] << 32;
+                Signals::registerSignalHandler(state, arg1, (u64)handler, mask, act->sa_flags, act->restorer);
 #if 0
                 PLAIN("Installed signal handler %s at:", strsignal(arg1));
                 print_address((u64)handler);
@@ -2253,7 +2262,8 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             if (old_act) {
                 old_act->handler = (decltype(old_act->handler))old.func;
                 old_act->sa_flags = old.flags;
-                old_act->sa_mask = old.mask;
+                old_act->sa_mask[0] = old.mask;
+                old_act->sa_mask[1] = old.mask >> 32;
             }
 
             result = 0;
