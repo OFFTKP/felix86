@@ -2051,6 +2051,28 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             result = ::pipe((int*)arg1);
             break;
         }
+        case felix86_x86_32_rt_sigqueueinfo: {
+            siginfo_t* host_info;
+            siginfo_t host_info_storage;
+            x86_siginfo_t* guest_info = (x86_siginfo_t*)arg3;
+            if (guest_info) {
+                host_info_storage = *guest_info;
+                host_info = &host_info_storage;
+            }
+            result = SYSCALL(rt_sigqueueinfo, arg1, arg2, host_info);
+            break;
+        }
+        case felix86_x86_32_rt_tgsigqueueinfo: {
+            siginfo_t* host_info;
+            siginfo_t host_info_storage;
+            x86_siginfo_t* guest_info = (x86_siginfo_t*)arg4;
+            if (guest_info) {
+                host_info_storage = *guest_info;
+                host_info = &host_info_storage;
+            }
+            result = SYSCALL(rt_tgsigqueueinfo, arg1, arg2, arg3, host_info);
+            break;
+        }
         case felix86_x86_32_llseek: {
             int fd = arg1;
             u64 offset_high = arg2;
