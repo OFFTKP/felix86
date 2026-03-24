@@ -494,6 +494,20 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, si
     frame->uc.uc_mcontext.__dsh = 0;
     frame->uc.uc_mcontext.__ssh = 0;
     frame->uc.uc_mcontext.__esh = 0;
+    if (use_altstack) {
+        frame->uc.uc_stack.ss_sp = (u32)(u64)state->alt_stack.ss_sp;
+        frame->uc.uc_stack.ss_size = state->alt_stack.ss_size;
+        frame->uc.uc_stack.ss_flags = state->alt_stack.ss_flags;
+    } else {
+        frame->uc.uc_stack.ss_sp = 0;
+        frame->uc.uc_stack.ss_size = 0;
+        frame->uc.uc_stack.ss_flags = 0;
+    }
+    if (state->alt_stack.ss_flags & SS_AUTODISARM) {
+        state->alt_stack.ss_sp = 0;
+        state->alt_stack.ss_size = 0;
+        state->alt_stack.ss_flags = SS_DISABLE;
+    }
     sigset_t old_mask;
     Signals::sigprocmask(state, SIG_SETMASK, nullptr, &old_mask);
     frame->uc.uc_sigmask = old_mask;
@@ -897,9 +911,8 @@ bool handle_safepoint(ThreadState* current_state, siginfo_t* info, ucontext_t* c
     }
 
     // Mask signals until we are done messing with these
-    sigset_t full, old;
-    ASSERT(sigfillset(&full) == 0);
-    ASSERT(sigprocmask(SIG_SETMASK, &full, &old) == 0);
+    u64 full = -1ull, old;
+    ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &full, &old, sizeof(u64)) == 0);
 
     ASSERT_MSG(current_state->effective_deferred_signals, "Faulted at safepoint, but no effective deferred signals, this shouldn't happen");
 
@@ -927,8 +940,10 @@ bool handle_safepoint(ThreadState* current_state, siginfo_t* info, ucontext_t* c
         ASSERT(munmap(node, 4096) == 0);
     }
 
+    SIGLOG("Effective deferred signals: %lx, deferred signals: %lx", current_state->effective_deferred_signals, current_state->deferred_signals);
+
     // Safe to restore our mask now
-    ASSERT(sigprocmask(SIG_SETMASK, &old, nullptr) == 0);
+    ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old, nullptr, sizeof(u64)) == 0);
 
     // This gives us a 0-indexed signal, but the actual signal number starts from 1
     sig += 1;
@@ -1021,6 +1036,23 @@ bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, ucontext_t
         ::sleep(40);
         return true;
     } else {
+        // Check if signal handler is SIG_DFL or SIG_IGN
+        RegisteredSignal* handler = current_state->signal_table->getRegisteredSignal(SIGSEGV);
+        if (handler->func == (u64)SIG_DFL) {
+            // We need to die from a SIGSEGV, set the handler to default and unmask it
+            WARN("SIGSEGV with default behavior, terminating...");
+            ASSERT((i64)signal(SIGSEGV, SIG_DFL) > 0);
+            sigset_t set;
+            sigemptyset(&set);
+            sigaddset(&set, SIGSEGV);
+            ASSERT(sigprocmask(SIG_UNBLOCK, &set, nullptr) == 0);
+            raise(SIGSEGV);
+            UNREACHABLE();
+        } else if (handler->func == (u64)SIG_IGN) {
+            // Uhh... warn and return true?
+            WARN("SIGSEGV with ignore behavior");
+            return true;
+        }
         return false;
     }
 }
@@ -1221,6 +1253,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
         }
         state->effective_deferred_signals = effective_deferred_signals;
+        SIGLOG("Effective deferred signals: %lx, deferred signals: %lx", state->effective_deferred_signals, state->deferred_signals);
         SIGLOG("Deferring signal %s (%d) during RIP=%lx", sigdescr_np(sig), sig, state->GetRip());
     }
 }
@@ -1322,6 +1355,8 @@ int Signals::sigprocmask(ThreadState* state, int how, sigset_t* set, sigset_t* o
         } else {
             ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_READ | PROT_WRITE) == 0);
         }
+
+        SIGLOG("Effective deferred signals: %lx, deferred signals: %lx", state->effective_deferred_signals, state->deferred_signals);
 
         // Finally, set our new host mask
         result = syscall(SYS_rt_sigprocmask, SIG_SETMASK, &host_mask.__val[0], nullptr, sizeof(u64));
