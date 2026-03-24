@@ -940,8 +940,6 @@ bool handle_safepoint(ThreadState* current_state, siginfo_t* info, ucontext_t* c
         ASSERT(munmap(node, 4096) == 0);
     }
 
-    SIGLOG("Effective deferred signals: %lx, deferred signals: %lx", current_state->effective_deferred_signals, current_state->deferred_signals);
-
     // Safe to restore our mask now
     ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old, nullptr, sizeof(u64)) == 0);
 
@@ -1253,7 +1251,6 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
         }
         state->effective_deferred_signals = effective_deferred_signals;
-        SIGLOG("Effective deferred signals: %lx, deferred signals: %lx", state->effective_deferred_signals, state->deferred_signals);
         SIGLOG("Deferring signal %s (%d) during RIP=%lx", sigdescr_np(sig), sig, state->GetRip());
     }
 }
@@ -1290,10 +1287,10 @@ void Signals::registerSignalHandler(ThreadState* state, int sig, u64 handler, u6
     if ((handler != (u64)SIG_DFL && handler != (u64)SIG_IGN) || (bit & ~hostSignalMask()->__val[0])) {
         sa.sigaction = signal_handler;
         sa.sa_flags = SA_SIGINFO;
-        if (flags & SA_RESTART) {
-            // Pass it over to the kernel too
-            sa.sa_flags |= SA_RESTART;
-        }
+        // if (flags & SA_RESTART) {
+        //     // Pass it over to the kernel too
+        //     sa.sa_flags |= SA_RESTART;
+        // }
     } else {
         sa.sigaction = (decltype(sa.sigaction))handler;
         sa.sa_flags = 0;
@@ -1355,8 +1352,6 @@ int Signals::sigprocmask(ThreadState* state, int how, sigset_t* set, sigset_t* o
         } else {
             ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_READ | PROT_WRITE) == 0);
         }
-
-        SIGLOG("Effective deferred signals: %lx, deferred signals: %lx", state->effective_deferred_signals, state->deferred_signals);
 
         // Finally, set our new host mask
         result = syscall(SYS_rt_sigprocmask, SIG_SETMASK, &host_mask.__val[0], nullptr, sizeof(u64));
