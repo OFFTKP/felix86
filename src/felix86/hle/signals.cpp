@@ -858,6 +858,10 @@ void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uctx) {
     uctx->uc_sigmask = host_new_mask;
 
     SIGLOG("Preparing signal %s (%d) during RIP=%lx, RSP=%lx, handler at %lx", sigdescr_np(sig), sig, rip, state->gprs[X86_REF_RSP], handler->func);
+
+    if (handler->flags & SA_RESETHAND) {
+        Signals::registerSignalHandler(state, sig, (u64)SIG_DFL, handler->mask, handler->flags, handler->restorer);
+    }
 }
 
 void prepare_synchronous_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx, u64 rip) {
@@ -897,25 +901,26 @@ bool handle_safepoint(ThreadState* current_state, siginfo_t* info, ucontext_t* c
     ASSERT(sigfillset(&full) == 0);
     ASSERT(sigprocmask(SIG_SETMASK, &full, &old) == 0);
 
-    u64 effective_deferred_signals = current_state->deferred_signals & ~current_state->signal_mask.__val[0];
-    ASSERT_MSG(effective_deferred_signals, "Faulted at safepoint, but no effective deferred signals, this shouldn't happen");
+    ASSERT_MSG(current_state->effective_deferred_signals, "Faulted at safepoint, but no effective deferred signals, this shouldn't happen");
 
     // While the order of standard signals is unspecified, if standard and real-time signals are queued
     // standard signals are serviced first, and real-time signals follow a least to most order
     // Thus we just get the least significant set bit
-    int sig = __builtin_ctzll(effective_deferred_signals);
+    int sig = __builtin_ctzll(current_state->effective_deferred_signals);
 
     // Since we block signals, race here due to another signal being deferred is not possible
     siginfo_t guest_info;
     if (sig <= 30) {
         guest_info = current_state->deferred_standard_info[sig];
         current_state->deferred_signals = current_state->deferred_signals & ~(1ull << sig);
+        current_state->effective_deferred_signals = current_state->effective_deferred_signals & ~(1ull << sig);
     } else {
         SignalQueueNode* node = current_state->deferred_realtime_info[sig - 31];
         ASSERT(node);
         guest_info = node->info;
         if (node->next == nullptr) {
             current_state->deferred_signals = current_state->deferred_signals & ~(1ull << sig);
+            current_state->effective_deferred_signals = current_state->effective_deferred_signals & ~(1ull << sig);
         } else {
             current_state->deferred_realtime_info[sig - 31] = node->next;
         }
@@ -1215,6 +1220,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         if (effective_deferred_signals != 0) {
             ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
         }
+        state->effective_deferred_signals = effective_deferred_signals;
         SIGLOG("Deferring signal %s (%d) during RIP=%lx", sigdescr_np(sig), sig, state->GetRip());
     }
 }
@@ -1241,25 +1247,31 @@ void Signals::initialize() {
 void Signals::registerSignalHandler(ThreadState* state, int sig, u64 handler, u64 mask, int flags, u64 restorer) {
     ASSERT(sig >= 1 && sig <= 64);
 
-    // Hopefully externally synchronized, no need for locks :cluegi:
     state->signal_table->registerSignal(sig, handler, mask, flags, restorer);
 
-    // Start capturing at the first register of a signal handler and don't stop capturing even if it is disabled
-    if (handler != 0) {
-        struct riscv_sigaction sa;
+    // If not SIG_DFL or SIG_IGN, register the host signal handler to capture the signal
+    // If SIG_DFL or SIG_IGN, we want to passthrough the handler to the kernel
+    // However, we can't do that for signals used by the emulator
+    u64 bit = 1ull << (sig - 1);
+    struct riscv_sigaction sa;
+    if ((handler != (u64)SIG_DFL && handler != (u64)SIG_IGN) || (bit & ~hostSignalMask()->__val[0])) {
         sa.sigaction = signal_handler;
         sa.sa_flags = SA_SIGINFO;
         if (flags & SA_RESTART) {
             // Pass it over to the kernel too
             sa.sa_flags |= SA_RESTART;
         }
-        sa.restorer = nullptr;
-        sa.sa_mask = 0;
+    } else {
+        sa.sigaction = (decltype(sa.sigaction))handler;
+        sa.sa_flags = 0;
+    }
 
-        // The libc `sigaction` function fails when you try to modify handlers for SIG33 for example
-        if (syscall(SYS_rt_sigaction, sig, &sa, nullptr, 8) != 0) {
-            WARN("Failed when setting signal handler for signal: %d (%s)", sig, strsignal(sig));
-        }
+    sa.restorer = nullptr;
+    sa.sa_mask = 0;
+
+    // The libc `sigaction` function fails when you try to modify handlers for SIG33 for example
+    if (syscall(SYS_rt_sigaction, sig, &sa, nullptr, 8) != 0) {
+        WARN("Failed when setting signal handler for signal: %d (%s)", sig, strsignal(sig));
     }
 }
 
@@ -1298,22 +1310,21 @@ int Signals::sigprocmask(ThreadState* state, int how, sigset_t* set, sigset_t* o
         sigdelset(&state->signal_mask, SIGSTOP);
 
         // Temporarily block all signals so we can safely check state->deferred_signals and set the page
-        // without worrying of a signal happening after the check but before the mprotect
-        sigset_t full;
-        sigfillset(&full);
-        ASSERT(::sigprocmask(SIG_BLOCK, &full, nullptr) == 0);
+        // without worrying of a signal happening
+        u64 full = -1ull;
+        ASSERT(syscall(SYS_rt_sigprocmask, SIG_BLOCK, &full, nullptr, sizeof(full)) == 0);
 
         // If any deferred signals become unmasked, make the page PROT_NONE
         // Otherwise, make it read/write
-        u64 effective_deferred_signals = state->deferred_signals & ~state->signal_mask.__val[0];
-        if (effective_deferred_signals != 0) {
+        state->effective_deferred_signals = state->deferred_signals & ~state->signal_mask.__val[0];
+        if (state->effective_deferred_signals != 0) {
             ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
         } else {
             ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_READ | PROT_WRITE) == 0);
         }
 
         // Finally, set our new host mask
-        result = ::sigprocmask(SIG_SETMASK, &host_mask, nullptr);
+        result = syscall(SYS_rt_sigprocmask, SIG_SETMASK, &host_mask.__val[0], nullptr, sizeof(u64));
         ASSERT(result == 0);
     }
 

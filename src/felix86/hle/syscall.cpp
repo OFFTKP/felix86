@@ -1648,7 +1648,17 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         if (state->deferred_signals) {
             WARN("There are deferred signals before running sigsuspend");
         }
+        // If a signal happens during sigsuspend we need to defer it and activate the fault page
+        // The signal needs to be set in effective_deferred_signals accordingly, so we need to temporarily change the mask
+        sigset_t old_mask = state->signal_mask;
+        sigset_t* new_mask = (sigset_t*)arg1;
+        if (new_mask && arg2) {
+            state->signal_mask.__val[0] = new_mask->__val[0];
+        } else {
+            WARN("Couldn't copy sigsuspend mask");
+        }
         result = SYSCALL(rt_sigsuspend, arg1, arg2);
+        state->signal_mask.__val[0] = old_mask.__val[0];
         SIGLOG("rt_sigsuspend returned with %d", result);
         // Will set RAX to EINTR and the actual signal will be handled in the safepoint after the syscall
         break;

@@ -61,10 +61,9 @@ ThreadState* ThreadState::Create(ThreadState* copy_state) {
         state->alt_stack = copy_state->alt_stack;
         state->signal_mask = copy_state->signal_mask;
 
-        // If there was any deferred signals at the time of clone, protect the fault page
-        u64 effective_deferred_signals = state->deferred_signals & ~state->signal_mask.__val[0];
-        if (effective_deferred_signals != 0) {
-            ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
+        // Currently unsupported, warn
+        if (copy_state->deferred_signals != 0) {
+            WARN("Deferred signals during clone?");
         }
     }
 
