@@ -1287,10 +1287,9 @@ void Signals::registerSignalHandler(ThreadState* state, int sig, u64 handler, u6
     if ((handler != (u64)SIG_DFL && handler != (u64)SIG_IGN) || (bit & ~hostSignalMask()->__val[0])) {
         sa.sigaction = signal_handler;
         sa.sa_flags = SA_SIGINFO;
-        // if (flags & SA_RESTART) {
-        //     // Pass it over to the kernel too
-        //     sa.sa_flags |= SA_RESTART;
-        // }
+        if (flags & SA_RESTART) {
+            WARN("Installing signal handler for %s (%d) with SA_RESTART", sigdescr_np(sig), sig);
+        }
     } else {
         sa.sigaction = (decltype(sa.sigaction))handler;
         sa.sa_flags = 0;
