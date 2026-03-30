@@ -2870,7 +2870,7 @@ void Recompiler::readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset,
     }
     }
 
-    if (g_config.always_tso && !Extensions::TSO && !(g_config.no_tso_stack && current_instruction_on_stack)) {
+    if (g_config.always_tso && !Extensions::TSO && !(g_config.no_tso_stack && current_instruction_on_stack && !g_config.paranoid)) {
         as.FENCE(FenceOrder::R, FenceOrder::RW);
     }
 }
@@ -2915,7 +2915,7 @@ void Recompiler::readMemory(biscuit::Vec vec, biscuit::GPR address, int size) {
 }
 
 void Recompiler::writeMemory(biscuit::GPR src, biscuit::GPR address, i64 offset, x86_size_e size) {
-    if (g_config.always_tso && !Extensions::TSO && !(g_config.no_tso_stack && current_instruction_on_stack)) {
+    if (g_config.always_tso && !Extensions::TSO && !(g_config.no_tso_stack && current_instruction_on_stack && !g_config.paranoid)) {
         as.FENCE(FenceOrder::RW, FenceOrder::W);
     }
 
