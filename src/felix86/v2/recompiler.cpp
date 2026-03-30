@@ -579,6 +579,11 @@ u64 Recompiler::compileSequence(u64 rip) {
                       (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].reg.value >= ZYDIS_REGISTER_YMM0 &&
                        operands[1].reg.value <= ZYDIS_REGISTER_YMM15);
 
+        bool op1_on_stack = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && zydisToRef(operands[0].mem.base) == X86_REF_RSP;
+        bool op2_on_stack = operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY && zydisToRef(operands[1].mem.base) == X86_REF_RSP;
+        bool op3_on_stack = operands[2].type == ZYDIS_OPERAND_TYPE_MEMORY && zydisToRef(operands[2].mem.base) == X86_REF_RSP;
+        current_instruction_on_stack = op1_on_stack || op2_on_stack || op3_on_stack;
+
         if (instruction.mnemonic == ZYDIS_MNEMONIC_EMMS) {
             ran_mmx_once = false; // if we run another mmx instruction, set tag to valid again
         }
@@ -2865,7 +2870,7 @@ void Recompiler::readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset,
     }
     }
 
-    if (g_config.always_tso && !Extensions::TSO) {
+    if (g_config.always_tso && !Extensions::TSO && !(g_config.no_tso_stack && current_instruction_on_stack)) {
         as.FENCE(FenceOrder::R, FenceOrder::RW);
     }
 }
@@ -2910,7 +2915,7 @@ void Recompiler::readMemory(biscuit::Vec vec, biscuit::GPR address, int size) {
 }
 
 void Recompiler::writeMemory(biscuit::GPR src, biscuit::GPR address, i64 offset, x86_size_e size) {
-    if (g_config.always_tso && !Extensions::TSO) {
+    if (g_config.always_tso && !Extensions::TSO && !(g_config.no_tso_stack && current_instruction_on_stack)) {
         as.FENCE(FenceOrder::RW, FenceOrder::W);
     }
 
