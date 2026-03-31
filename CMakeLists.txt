@@ -67,13 +67,6 @@ else()
     message("Building without thunking support")
 endif()
 
-if (FELIX86_MONTHLY_RELEASE)
-    message("Building as a monthly release")
-    target_compile_definitions(felix86_core PUBLIC FELIX86_MONTHLY_RELEASE)
-else()
-    message("Building as a daily release")
-endif()
-
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=implicit-fallthrough -Werror=incompatible-pointer-types -Wall -fPIE")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=implicit-fallthrough -Wall -Werror=switch -fPIE")
 
@@ -160,6 +153,15 @@ add_library(felix86_core STATIC)
 target_sources(felix86_core PRIVATE ${FELIX86_CORE_SOURCES})
 target_include_directories(felix86_core PUBLIC ${FELIX86_INCLUDES})
 target_link_libraries(felix86_core PUBLIC Zydis fmt biscuit git_version)
+
+
+if (FELIX86_MONTHLY_RELEASE)
+    message("Building as a monthly release")
+    target_compile_definitions(felix86_core PUBLIC FELIX86_MONTHLY_RELEASE)
+else()
+    message("Building as a daily release")
+endif()
+
 
 if (FELIX86_BUILD_THUNKING)
     target_compile_definitions(felix86_core PUBLIC FELIX86_BUILD_THUNKING)
