@@ -6,6 +6,8 @@
 #pragma once
 
 #include <filesystem>
+#include <string>
+#include <vector>
 #include "felix86/common/types.hpp"
 
 struct Config {

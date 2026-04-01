@@ -722,8 +722,7 @@ int main(int argc, char* argv[]) {
         }
 
         if (!g_config.environment.empty()) {
-            std::vector<std::string> envs = split_string(g_config.environment, ';');
-            for (const auto& env : envs) {
+            for (const auto& env : g_config.environment) {
                 if (!env.empty()) {
                     auto pos = env.find("=");
                     if (pos == std::string::npos) {
@@ -736,8 +735,7 @@ int main(int argc, char* argv[]) {
         }
 
         if (!g_config.host_environment.empty()) {
-            std::vector<std::string> envs = split_string(g_config.host_environment, ';');
-            for (const auto& env : envs) {
+            for (const auto& env : g_config.host_environment) {
                 if (!env.empty()) {
                     auto pos = env.find("=");
                     if (pos == std::string::npos) {

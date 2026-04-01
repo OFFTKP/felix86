@@ -106,6 +106,17 @@ std::string namify(const std::string& val) {
     return val;
 }
 
+template <>
+std::string namify(const std::vector<std::string>& val) {
+    std::string result;
+    for (size_t i = 0; i < val.size(); ++i) {
+        if (i > 0)
+            result += ';';
+        result += val[i];
+    }
+    return result;
+}
+
 bool Config::initialize(bool ignore_envs) {
     const std::filesystem::path config_dir = getConfigDir();
     if (config_dir.empty()) {
@@ -208,9 +219,9 @@ bool Config::initialize(bool ignore_envs) {
         // Enables Vulkan/Wayland thunking and sets environment variables to enable Zink
         Config zink_config{};
         zink_config.enabled_thunks = "vk,wl";
-        zink_config.environment = "LIBGL_KOPPER_DRI2=1;MESA_LOADER_DRIVER_OVERRIDE=zink";
+        zink_config.environment = {"LIBGL_KOPPER_DRI2=1", "MESA_LOADER_DRIVER_OVERRIDE=zink"};
         // Set in host environment too for thunks
-        zink_config.host_environment = "LIBGL_KOPPER_DRI2=1;MESA_LOADER_DRIVER_OVERRIDE=zink";
+        zink_config.host_environment = {"LIBGL_KOPPER_DRI2=1", "MESA_LOADER_DRIVER_OVERRIDE=zink"};
         Config::save(profiles_path / "zink.toml", zink_config, true);
     }
 
@@ -265,6 +276,12 @@ void addValue(std::string& str, Type& value) {
         str += value.string();
     } else if constexpr (std::is_same_v<Type, std::string>) {
         str += value;
+    } else if constexpr (std::is_same_v<Type, std::vector<std::string>>) {
+        for (size_t i = 0; i < value.size(); ++i) {
+            if (i > 0)
+                str += ';';
+            str += value[i];
+        }
     } else {
         static_assert(false);
     }
@@ -350,6 +367,14 @@ bool loadFromToml(const toml::value& toml, const char* group, const char* name, 
             } else if constexpr (std::is_same_v<Type, std::string>) {
                 value = value_toml.as_string();
                 return true;
+            } else if constexpr (std::is_same_v<Type, std::vector<std::string>>) {
+                if (value_toml.is_array()) {
+                    value = toml::get<std::vector<std::string>>(value_toml);
+                } else {
+                    // Legacy: semicolon-separated string for backward compatibility
+                    value = split_string(toml::get<std::string>(value_toml), ';');
+                }
+                return true;
             } else {
                 static_assert(false);
             }
@@ -371,6 +396,9 @@ bool loadFromEnv(Config& config, Type& value, const char* env) {
         return true;
     } else if constexpr (std::is_same_v<Type, std::string>) {
         value = env;
+        return true;
+    } else if constexpr (std::is_same_v<Type, std::vector<std::string>>) {
+        value = split_string(env, ';');
         return true;
     } else {
         static_assert(false);
