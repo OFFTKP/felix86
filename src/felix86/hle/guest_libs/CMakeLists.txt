@@ -53,7 +53,7 @@ target_link_libraries(GLX PRIVATE X11)
  
 add_library(GL-asm OBJECT libGL.asm)
 target_include_directories(GL-asm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-add_library(GL SHARED ${EMPTY_C} $<TARGET_OBJECTS:GL-asm>)
+add_library(GL SHARED libGLX.c $<TARGET_OBJECTS:GL-asm>)
 set_target_properties(GL PROPERTIES
     OUTPUT_NAME "GL"
     SOVERSION 1
