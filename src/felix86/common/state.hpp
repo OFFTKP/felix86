@@ -21,6 +21,14 @@ enum class x87State : u8 {
 
 struct SignalQueueNode {
     siginfo_t info = {};
+    // If a signal caused a syscall to restart, when deferring we need to set
+    // restarted to true and original_rax to the value of rax at the time of the syscall
+    // which would be the syscall number
+    todo;
+    we can obtain this from ThreadState as the new RAX hasnt been set yet;
+    todo;
+    give ThreadState these restarted and original rax values instead its ok if multiple* * unmasked * *signals are deferred;
+    just pick one and setup the restart;
     SignalQueueNode* next = nullptr;
 };
 
@@ -249,9 +257,11 @@ struct ThreadState {
     // Importantly, this isn't deferred_signals & ~signal_mask, but deferred_signals & ~signal_mask_at_time_of_signal
     // This distinction is important for when a signal happens during sigsuspend
     u64 effective_deferred_signals = 0;
-    std::array<siginfo_t, 31> deferred_standard_info{};
+    std::array<SignalQueueNode, 31> deferred_standard_info{};
     std::array<SignalQueueNode*, 33> deferred_realtime_info{};
     void* deferred_fault_page = nullptr;
+    bool restarted_syscall = false;
+    u64 restarted_syscall_original_rax = 0;
 
     // For storing generated risc-v or x86 code that needs to outlive code cache clears
     u8* riscv_trampoline_storage_start = nullptr;

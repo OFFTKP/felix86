@@ -11,6 +11,12 @@
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
 
+#define FELIX86_HINT_SAFEPOINT_SYSCALL 0xa5
+#define FELIX86_HINT_HLT 0x86
+#define FELIX86_HINT_DIVZERO 0xd0
+#define FELIX86_HINT_INT3 0xc3
+#define FELIX86_HINT_UD2 0xd2
+
 constexpr int address_cache_bits = 16;
 
 struct AddressCacheEntry {

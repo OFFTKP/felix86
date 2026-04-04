@@ -1642,7 +1642,7 @@ FAST_HANDLE(HLT) {
         as.SD(x0, 0, x0);
         // This hint will tell the handle_synchronous signal handler to change si_code from SEGV_MAPERR to SI_KERNEL
         // which is the behavior on x86
-        as.SLTIU(x0, x0, 0x86);
+        as.SLTIU(x0, x0, FELIX86_HINT_HLT);
         // Unreachable
         as.C_UNDEF();
         as.C_UNDEF();
@@ -1655,7 +1655,7 @@ FAST_HANDLE(UD2) {
     as.SD(x0, 0, x0);
     // This hint will tell the handle_synchronous signal handler to change si_code to SI_KERNEL
     // which is the behavior on x86
-    as.SLTIU(x0, x0, 0xd2);
+    as.SLTIU(x0, x0, FELIX86_HINT_UD2);
     // Unreachable
     as.C_UNDEF();
     as.C_UNDEF();
@@ -2569,7 +2569,7 @@ FAST_HANDLE(DIV) {
         as.SD(x0, 0, x0);
         // This hint will tell the handle_synchronous signal handler to raise a SIGFPE FPE_INTDIV
         // as this happens on x86 but division by zero on RISC-V doesn't raise a signal
-        as.SLTIU(x0, x0, 0xd0);
+        as.SLTIU(x0, x0, FELIX86_HINT_DIVZERO);
         // Unreachable
         as.C_UNDEF();
         as.C_UNDEF();
@@ -2672,7 +2672,7 @@ FAST_HANDLE(IDIV) {
         as.SD(x0, 0, x0);
         // This hint will tell the handle_synchronous signal handler to raise a SIGFPE FPE_INTDIV
         // as this happens on x86 but division by zero on RISC-V doesn't raise a signal
-        as.SLTIU(x0, x0, 0xd0);
+        as.SLTIU(x0, x0, FELIX86_HINT_DIVZERO);
         // Unreachable
         as.C_UNDEF();
         as.C_UNDEF();
@@ -4157,6 +4157,9 @@ FAST_HANDLE(SYSCALL) {
     // RIP in the guest ucontext_t
     rec.addi(ripreg, ripreg, instruction.length);
     rec.setCurrentRipregValue(rec.getCurrentRipregValue() + instruction.length);
+    // With this hint we can quickly find out this safepoint is right after a syscall
+    // This tells us we need to check state->restart_syscall so that we can restart the syscall
+    as.SLTIU(x0, x0, FELIX86_HINT_SAFEPOINT_SYSCALL);
     rec.insertSafepoint();
 
     if (g_mode32) {
@@ -11477,7 +11480,7 @@ FAST_HANDLE(INT3) {
     as.SD(x0, 0, x0);
     // This hint will tell the handle_synchronous signal handler to change si_code to SI_KERNEL
     // which is the behavior on x86
-    as.SLTIU(x0, x0, 0xc3);
+    as.SLTIU(x0, x0, FELIX86_HINT_INT3);
     // Unreachable
     as.C_UNDEF();
     as.C_UNDEF();
@@ -11513,6 +11516,7 @@ FAST_HANDLE(INT) {
 
         rec.setCurrentRipregValue(rec.getCurrentRipregValue() + instruction.length);
         rec.addi(ripreg, ripreg, instruction.length);
+        as.SLTIU(x0, x0, FELIX86_HINT_SAFEPOINT_SYSCALL); // See SYSCALL handler
         rec.insertSafepoint();
     } else if (operands[0].imm.value.u == 3) {
         fast_INT3(rec, rip, as, instruction, operands);

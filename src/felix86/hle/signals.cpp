@@ -888,8 +888,10 @@ bool handle_safepoint(ThreadState* current_state, siginfo_t* info, ucontext_t* c
     // First we need to check if we are a safepoint
     // Safepoint instructions perform SD(x0, -8, Recompiler::threadStatePointer())
     u32 expected_instruction;
-    Assembler tas((u8*)&expected_instruction, sizeof(u32));
-    tas.SD(x0, -8, Recompiler::threadStatePointer());
+    {
+        Assembler tas((u8*)&expected_instruction, sizeof(u32));
+        tas.SD(x0, -8, Recompiler::threadStatePointer());
+    }
 
     u32 current_instruction = *(u32*)pc;
     if (current_instruction != expected_instruction) {
@@ -908,6 +910,26 @@ bool handle_safepoint(ThreadState* current_state, siginfo_t* info, ucontext_t* c
         // the JIT code will always be a safe point but we can never have enough checks
         WARN("Faulting address expected to be safepoint page but it's not?");
         return false;
+    }
+
+    if (current_state->restarted_syscall) {
+        // Check if previous instruction is FELIX86_HINT_SAFEPOINT_SYSCALL, i.e. if this safepoint is right after a syscall
+        u32 expected_previous_instruction, actual_previous_instruction;
+        {
+            Assembler tas((u8*)&expected_previous_instruction, sizeof(u32));
+            tas.SLTIU(x0, x0, FELIX86_HINT_SAFEPOINT_SYSCALL);
+        }
+
+        if (expected_previous_instruction == actual_previous_instruction) {
+            // Set RIP to RIP - 2 to go back to the syscall instruction and restore the RAX
+            // We do this in the context and then prepare_guest_signal will pick it up
+            context->uc_mcontext.gregs[Recompiler::allocatedGPR(X86_REF_RIP).Index()] -= 2;
+            u8* data = (u8*)context->uc_mcontext.gregs[Recompiler::allocatedGPR(X86_REF_RIP).Index()];
+            ASSERT((data[0] == 0x0f && data[1] == 0x05) || (data[0] == 0xcd && data[1] == 0x80));
+            context->uc_mcontext.gregs[Recompiler::allocatedGPR(X86_REF_RAX).Index()] = current_state->restarted_syscall_original_rax;
+        } else {
+            ASSERT_MSG(false, "state->restarted_syscall set but not at a syscall safepoint?");
+        }
     }
 
     // Mask signals until we are done messing with these
@@ -1112,19 +1134,19 @@ bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucontext_t*
     u32 expected_hlt, expected_divzero, expected_int3, expected_ud2;
     {
         Assembler tas2((u8*)&expected_hlt, sizeof(u32));
-        tas2.SLTIU(x0, x0, 0x86);
+        tas2.SLTIU(x0, x0, FELIX86_HINT_HLT);
     }
     {
         Assembler tas2((u8*)&expected_divzero, sizeof(u32));
-        tas2.SLTIU(x0, x0, 0xd0);
+        tas2.SLTIU(x0, x0, FELIX86_HINT_DIVZERO);
     }
     {
         Assembler tas2((u8*)&expected_int3, sizeof(u32));
-        tas2.SLTIU(x0, x0, 0xc3);
+        tas2.SLTIU(x0, x0, FELIX86_HINT_INT3);
     }
     {
         Assembler tas2((u8*)&expected_ud2, sizeof(u32));
-        tas2.SLTIU(x0, x0, 0xd2);
+        tas2.SLTIU(x0, x0, FELIX86_HINT_UD2);
     }
 
     BlockMetadata* current_block = get_block_metadata(current_state, pc);
