@@ -249,7 +249,7 @@ struct ThreadState {
     // Importantly, this isn't deferred_signals & ~signal_mask, but deferred_signals & ~signal_mask_at_time_of_signal
     // This distinction is important for when a signal happens during sigsuspend
     u64 effective_deferred_signals = 0;
-    std::array<SignalQueueNode, 31> deferred_standard_info{};
+    std::array<siginfo_t, 31> deferred_standard_info{};
     std::array<SignalQueueNode*, 33> deferred_realtime_info{};
     void* deferred_fault_page = nullptr;
     bool in_restartable_syscall = false;
