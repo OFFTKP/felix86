@@ -21,15 +21,6 @@ enum class x87State : u8 {
 
 struct SignalQueueNode {
     siginfo_t info = {};
-    // If a signal caused a syscall to restart, when deferring we need to set
-    // restarted to true and original_rax to the value of rax at the time of the syscall
-    // which would be the syscall number
-    todo;
-    we can obtain this from ThreadState as the new RAX hasnt been set yet;
-    todo;
-    give ThreadState these restarted and original rax values instead its ok if multiple* * unmasked * *signals are deferred;
-    just pick one and setup the restart;
-    SignalQueueNode* next = nullptr;
 };
 
 #define C0_BIT (1 << 8)
