@@ -912,7 +912,6 @@ bool handle_safepoint(ThreadState* current_state, siginfo_t* info, ucontext_t* c
         return false;
     }
 
-    WARN("In safepoint: %d", current_state->should_restart_syscall);
     if (current_state->should_restart_syscall) {
         // Check if previous instruction is FELIX86_HINT_SAFEPOINT_SYSCALL, i.e. if this safepoint is right after a syscall
         u32 expected_previous_instruction;
@@ -1248,8 +1247,6 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             tas.ECALL();
         }
         RegisteredSignal* signal = state->signal_table->getRegisteredSignal(sig);
-        WARN("Signal: %d %d %d %d", state->in_restartable_syscall, !!(signal->flags & SA_RESTART), *((u32*)(pc - 4)) == ecall,
-             get_regs(ctx)[biscuit::a0.Index()] == -EINTR);
         if (state->in_restartable_syscall && (signal->flags & SA_RESTART) && *((u32*)(pc - 4)) == ecall &&
             get_regs(ctx)[biscuit::a0.Index()] == -EINTR) {
             state->should_restart_syscall = true;
