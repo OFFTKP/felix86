@@ -1967,15 +1967,16 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
     ASSERT(!(arg6 & ~0xFFFF'FFFF));
 
     switch (syscall_number) {
-    case felix86_x86_64_futex:
-    case felix86_x86_64_waitid:
-    case felix86_x86_64_wait4:
-    case felix86_x86_64_open:
-    case felix86_x86_64_read:
-    case felix86_x86_64_readv:
-    case felix86_x86_64_write:
-    case felix86_x86_64_writev:
-    case felix86_x86_64_ioctl: {
+    case felix86_x86_32_futex:
+    case felix86_x86_32_waitid:
+    case felix86_x86_32_waitpid:
+    case felix86_x86_32_wait4:
+    case felix86_x86_32_open:
+    case felix86_x86_32_read:
+    case felix86_x86_32_readv:
+    case felix86_x86_32_write:
+    case felix86_x86_32_writev:
+    case felix86_x86_32_ioctl: {
         state->in_restartable_syscall = true;
         break;
     }
@@ -2107,7 +2108,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_rt_sigqueueinfo: {
-            siginfo_t* host_info;
+            siginfo_t* host_info = nullptr;
             siginfo_t host_info_storage;
             x86_siginfo_t* guest_info = (x86_siginfo_t*)arg3;
             if (guest_info) {
@@ -2118,7 +2119,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_rt_tgsigqueueinfo: {
-            siginfo_t* host_info;
+            siginfo_t* host_info = nullptr;
             siginfo_t host_info_storage;
             x86_siginfo_t* guest_info = (x86_siginfo_t*)arg4;
             if (guest_info) {
