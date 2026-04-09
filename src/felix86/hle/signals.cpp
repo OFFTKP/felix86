@@ -912,6 +912,7 @@ bool handle_safepoint(ThreadState* current_state, siginfo_t* info, ucontext_t* c
         return false;
     }
 
+    WARN("In safepoint: %d", current_state->should_restart_syscall);
     if (current_state->should_restart_syscall) {
         // Check if previous instruction is FELIX86_HINT_SAFEPOINT_SYSCALL, i.e. if this safepoint is right after a syscall
         u32 expected_previous_instruction;
