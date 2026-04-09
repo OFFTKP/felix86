@@ -912,7 +912,7 @@ bool handle_safepoint(ThreadState* current_state, siginfo_t* info, ucontext_t* c
         return false;
     }
 
-    if (current_state->restarted_syscall) {
+    if (current_state->should_restart_syscall) {
         // Check if previous instruction is FELIX86_HINT_SAFEPOINT_SYSCALL, i.e. if this safepoint is right after a syscall
         u32 expected_previous_instruction, actual_previous_instruction;
         {
@@ -928,8 +928,9 @@ bool handle_safepoint(ThreadState* current_state, siginfo_t* info, ucontext_t* c
             ASSERT((data[0] == 0x0f && data[1] == 0x05) || (data[0] == 0xcd && data[1] == 0x80));
             context->uc_mcontext.gregs[Recompiler::allocatedGPR(X86_REF_RAX).Index()] = current_state->restarted_syscall_original_rax;
         } else {
-            ASSERT_MSG(false, "state->restarted_syscall set but not at a syscall safepoint?");
+            ASSERT_MSG(false, "state->should_restart_syscall set but not at a syscall safepoint?");
         }
+        current_state->should_restart_syscall = false;
     }
 
     // Mask signals until we are done messing with these
@@ -1218,13 +1219,13 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         return;
     }
 
+    u64 pc = get_pc(ctx);
     ThreadState* state = ThreadState::Get();
     // Note: It's not enough to just check si_code > 0, for example SIGCHLD can be sent at any moment but it has a positive code
     // But we do need a si_code > 0 check, because si_code <= 0 means asynchronous and we can (unfortunately) be sent e.g. SIGSEGV from another
     // process via kill or whatever other method
     if (info->si_code > 0 && (sig == SIGSEGV || sig == SIGBUS || sig == SIGILL || sig == SIGFPE || sig == SIGTRAP)) {
         // Synchronous signal, handle immediately
-        u64 pc = get_pc(ctx);
         if (is_in_jit_code(state, (u8*)pc)) {
             BlockMetadata* current_block = get_block_metadata(state, pc);
             ASSERT_MSG(current_block, "Failed to get current block during synchronous signal with PC=%lx, RIP=%lx", pc, state->rip);
@@ -1238,6 +1239,16 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         // If we were in a safepoint, the signal would've been handled
         ASSERT(sig >= 1 && sig <= 64);
         int index = sig - 1;
+        u32 ecall;
+        {
+            Assembler tas((u8*)&ecall, sizeof(u32));
+            tas.ECALL();
+        }
+        RegisteredSignal* signal = state->signal_table->getRegisteredSignal(sig);
+        if (state->in_restartable_syscall && (signal->flags & SA_RESTART) && *((u32*)(pc - 4)) == ecall &&
+            get_regs(ctx)[biscuit::a0.Index()] == -EINTR) {
+            state->should_restart_syscall = true;
+        }
         state->deferred_signals |= 1ull << index;
         if (index <= 30) {
             state->deferred_standard_info[index] = *info;

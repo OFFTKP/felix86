@@ -1689,7 +1689,9 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
 void felix86_syscall(felix86_frame* frame) {
     ASSERT(frame->magic == felix86_frame::expected_magic);
     ThreadState* state = frame->state;
+    state->should_restart_syscall = false;
     u64 syscall_number = state->GetGpr(X86_REF_RAX);
+    state->restarted_syscall_original_rax = syscall_number;
     u64 arg1 = state->GetGpr(X86_REF_RDI);
     u64 arg2 = state->GetGpr(X86_REF_RSI);
     u64 arg3 = state->GetGpr(X86_REF_RDX);
@@ -1699,6 +1701,24 @@ void felix86_syscall(felix86_frame* frame) {
 
     bool is_common = is_x64_common(syscall_number);
     Result result;
+
+    switch (syscall_number) {
+    case felix86_x86_64_futex:
+    case felix86_x86_64_waitid:
+    case felix86_x86_64_wait4:
+    case felix86_x86_64_open:
+    case felix86_x86_64_read:
+    case felix86_x86_64_readv:
+    case felix86_x86_64_write:
+    case felix86_x86_64_writev:
+    case felix86_x86_64_ioctl: {
+        state->in_restartable_syscall = true;
+        break;
+    }
+    default: {
+        break;
+    }
+    }
 
     if (syscall_number == felix86_x86_64_rt_sigreturn) {
         STRACE("rt_sigreturn: {}");
@@ -1906,6 +1926,12 @@ void felix86_syscall(felix86_frame* frame) {
         }
     }
 
+    state->in_restartable_syscall = false;
+    if (state->should_restart_syscall) {
+        state->restarted_syscall_original_rax = syscall_number;
+        WARN("Syscall %s interrupted by signal, restarting", x64_get_name(syscall_number));
+    }
+
     state->SetGpr(X86_REF_RAX, result);
 
     if (g_config.strace || (g_config.strace_errors && (i64)result < 0)) {
@@ -1924,6 +1950,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
     ASSERT(frame->magic == felix86_frame::expected_magic);
     ASSERT(g_mode32);
     ThreadState* state = frame->state;
+    state->should_restart_syscall = false;
     u64 syscall_number = state->GetGpr(X86_REF_RAX);
     u64 arg1 = state->GetGpr(X86_REF_RBX);
     u64 arg2 = state->GetGpr(X86_REF_RCX);

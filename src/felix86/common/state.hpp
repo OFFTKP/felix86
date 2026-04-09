@@ -260,7 +260,8 @@ struct ThreadState {
     std::array<SignalQueueNode, 31> deferred_standard_info{};
     std::array<SignalQueueNode*, 33> deferred_realtime_info{};
     void* deferred_fault_page = nullptr;
-    bool restarted_syscall = false;
+    bool in_restartable_syscall = false;
+    bool should_restart_syscall = false;
     u64 restarted_syscall_original_rax = 0;
 
     // For storing generated risc-v or x86 code that needs to outlive code cache clears
