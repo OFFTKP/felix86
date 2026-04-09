@@ -1968,6 +1968,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
 
     switch (syscall_number) {
     case felix86_x86_32_futex:
+    case felix86_x86_32_futex_time32:
     case felix86_x86_32_waitid:
     case felix86_x86_32_waitpid:
     case felix86_x86_32_wait4:
