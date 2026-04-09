@@ -1966,6 +1966,24 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
     ASSERT(!(arg5 & ~0xFFFF'FFFF));
     ASSERT(!(arg6 & ~0xFFFF'FFFF));
 
+    switch (syscall_number) {
+    case felix86_x86_64_futex:
+    case felix86_x86_64_waitid:
+    case felix86_x86_64_wait4:
+    case felix86_x86_64_open:
+    case felix86_x86_64_read:
+    case felix86_x86_64_readv:
+    case felix86_x86_64_write:
+    case felix86_x86_64_writev:
+    case felix86_x86_64_ioctl: {
+        state->in_restartable_syscall = true;
+        break;
+    }
+    default: {
+        break;
+    }
+    }
+
     if (syscall_number == felix86_x86_32_rt_sigreturn) {
         STRACE("rt_sigreturn: {}");
         Signals::sigreturn(frame->state, true);
@@ -3128,6 +3146,12 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         }
+    }
+
+    state->in_restartable_syscall = false;
+    if (state->should_restart_syscall) {
+        state->restarted_syscall_original_rax = syscall_number;
+        WARN("Syscall %s interrupted by signal, restarting", x86_get_name(syscall_number));
     }
 
     state->SetGpr(X86_REF_RAX, result);
