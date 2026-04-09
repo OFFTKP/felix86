@@ -21,6 +21,7 @@ enum class x87State : u8 {
 
 struct SignalQueueNode {
     siginfo_t info = {};
+    SignalQueueNode* next = nullptr;
 };
 
 #define C0_BIT (1 << 8)
