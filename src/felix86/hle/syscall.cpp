@@ -1985,7 +1985,6 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         break;
     }
     }
-    WARN("Syscall number: %d (%s) %d", syscall_number, x86_get_name(syscall_number), state->in_restartable_syscall);
 
     if (syscall_number == felix86_x86_32_rt_sigreturn) {
         STRACE("rt_sigreturn: {}");
