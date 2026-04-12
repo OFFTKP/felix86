@@ -136,6 +136,12 @@ void compile(const std::string& input) {
         fin = (u16*)(end - 2);
     }
 
+    // TODO: can we make this less hacky
+    // Skip the safepoint at the start of the sequence
+    start += 4;
+    // Also remove a store to zero and a hint used to emulate ud2
+    end -= 8;
+
     size_t span_index = 0;
     for (int i = 0; i < end - start;) {
         void* address = start + i;
