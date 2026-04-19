@@ -5,3 +5,4 @@ x86build/
 *.txt
 !CMakeLists.txt
 .vscode
+.qtcreator
