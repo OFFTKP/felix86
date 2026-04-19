@@ -25,9 +25,9 @@ SET(CMAKE_SYSTEM_NAME Linux)
 #
 # Look for RISC-V cross-compilers. The "official" RISC-V GNU Compiler Toolchain [1]
 # used prefix "riscv64-unknown-linux-gnu-" whereas Debian / Ubuntu (and possibly other)
-# RISC-V toolchains [2] use just "riscv64-linux-gnu-" prefix. 
-# 
-# Here we use find_program() to make it work on both. 
+# RISC-V toolchains [2] use just "riscv64-linux-gnu-" prefix.
+#
+# Here we use find_program() to make it work on both.
 #
 # [1]: https://github.com/riscv/riscv-gnu-toolchain
 # [2]: https://packages.debian.org/buster/amd64/gcc-riscv64-linux-gnu/filelist
@@ -37,10 +37,11 @@ find_program(CMAKE_CXX_COMPILER NAMES riscv64-unknown-linux-gnu-g++ riscv64-linu
 
 #
 # Include sysroot /usr/local/include to the path so compiler can find
-# `riscv.h` and `riscv-opc.h`. This is required for "official" RISC-V GNU 
+# `riscv.h` and `riscv-opc.h`. This is required for "official" RISC-V GNU
 # Compiler Toolchain.
-# 
+#
 include_directories("${CMAKE_FIND_ROOT_PATH}/usr/local/include")
+include_directories("${CMAKE_FIND_ROOT_PATH}/usr/include")
 
 SET(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 SET(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
