@@ -31,7 +31,7 @@ function(CheckGitVersion)
         OUTPUT_STRIP_TRAILING_WHITESPACE
         ERROR_QUIET
     )
-    
+
     if (NOT IS_REPO STREQUAL "true")
         set(GIT_HASH "?")
         set(GIT_HASH_CACHE "INVALID")
