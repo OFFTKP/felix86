@@ -27,7 +27,7 @@ CheckGitSetup()
 
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
     if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
-        AND CMAKE_CXX_COMPILER_VERSION MATCHES "14.*")
+        AND CMAKE_CXX_COMPILER_VERSION MATCHES "^14.*")
         # It seems that gcc-14 has a bug where it compiles a badly aligned
         # vector load from one of our packed structs, namely the conversion
         # of x86_flock64 in Portal. This bug seems to be fixed in later gcc
