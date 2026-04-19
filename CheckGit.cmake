@@ -43,7 +43,6 @@ function(CheckGitVersion)
         set(GIT_HASH UNKNOWN)
     endif()
 
-
     # Only update the git_version.cpp if the hash has changed. This will
     # prevent us from rebuilding the project more than we need to.
     if (NOT GIT_HASH STREQUAL GIT_HASH_CACHE OR
