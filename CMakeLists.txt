@@ -6,11 +6,12 @@ option(FELIX86_MONTHLY_RELEASE "Build as a monthly release" OFF)
 project(felix86)
 include(CheckGit.cmake)
 
-if (NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE RelWithDebInfo)
+get_property(IS_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if (NOT IS_MULTI_CONFIG AND NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo
+        CACHE STRING "Choose the type of build." FORCE)
+    message(STATUS "No build type set, defaulting to a RelWithDebInfo build")
 endif()
-
-include_directories(/usr/include)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     message(STATUS "Enabling link time optimization for Release build")
@@ -18,19 +19,24 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
 endif()
 
 # Set the "SOURCE_PATH_SIZE" variable to the size of the source directory
-# We can then abuse this to truncate the __FILE__ macro to only show the filename
+# We can abuse this to truncate the __FILE__ macro to only show the filename
 string(LENGTH "${CMAKE_SOURCE_DIR}/" SOURCE_PATH_SIZE)
 add_definitions("-DSOURCE_PATH_SIZE=${SOURCE_PATH_SIZE}")
 
 CheckGitSetup()
 
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
-    string(REGEX MATCH "^([0-9]+)" GCC_VERSION_MAJOR "${CMAKE_CXX_COMPILER_VERSION}")
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND GCC_VERSION_MAJOR STREQUAL "14")
-        # It seems that gcc-14 has a bug where it compiles a badly aligned vector load from one of our packed structs,
-        # namely the conversion of x86_flock64 in Portal. This bug seems to be fixed in later gcc versions, but isn't
-        # backported so we need to warn and disable the V extension from static compilation.
-        message(WARNING "GCC 14 has a bug that causes unaligned vector load/stores which may cause bus errors in some of our packed structs. It is suggested you use a different compiler. More info: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115789")
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
+        AND CMAKE_CXX_COMPILER_VERSION MATCHES "^14.*")
+        # It seems that gcc-14 has a bug where it compiles a badly aligned
+        # vector load from one of our packed structs, namely the conversion
+        # of x86_flock64 in Portal. This bug seems to be fixed in later gcc
+        # versions, but isn't backported so we need to warn and disable the
+        # V extension from static compilation.
+        message(WARNING "GCC 14 has a bug that causes unaligned vector"
+            " load/stores which may cause bus errors in some of our packed"
+            " structs. It is suggested you use a different compiler. More info:"
+            " https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115789")
 
         # Don't use vector extension to avoid this bug
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=rv64gc_zicsr_zifencei -mno-relax")
