@@ -23,11 +23,11 @@ endfunction()
 
 if (NOT DEFINED pre_configure_dir)
     set(pre_configure_dir ${CMAKE_CURRENT_LIST_DIR}/src/felix86/common)
-endif ()
+endif()
 
 if (NOT DEFINED post_configure_dir)
     set(post_configure_dir ${CMAKE_BINARY_DIR}/generated)
-endif ()
+endif()
 
 set(pre_configure_file ${pre_configure_dir}/git_version.cpp.in)
 set(post_configure_file ${post_configure_dir}/git_version.cpp)
@@ -37,7 +37,12 @@ function(CheckGitVersion)
 
     if (NOT EXISTS ${post_configure_dir})
         file(MAKE_DIRECTORY ${post_configure_dir})
-    endif ()
+    endif()
+
+    if (NOT GIT_HASH)
+        set(GIT_HASH UNKNOWN)
+    endif()
+
 
     # Only update the git_version.cpp if the hash has changed. This will
     # prevent us from rebuilding the project more than we need to.
@@ -70,5 +75,4 @@ endfunction()
 # This is used to run this function from an external cmake process.
 if (RUN_CHECK_GIT_VERSION)
     CheckGitVersion()
-endif ()
-
+endif()
