@@ -56,9 +56,11 @@ include(CheckPIESupported)
 check_pie_supported()
 set(BISCUIT_CODE_BUFFER_MMAP ON)
 set(BUILD_TESTING OFF)
+add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fno-rtti> $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>)
 add_subdirectory(external/biscuit)
 add_subdirectory(external/zydis)
 add_subdirectory(external/fmt)
+target_compile_definitions(fmt PRIVATE FMT_USE_EXCEPTIONS=0)
 
 if (FELIX86_BUILD_THUNKING)
     message("Building with thunking support")
@@ -75,8 +77,6 @@ endif()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=implicit-fallthrough -Werror=incompatible-pointer-types -Wall -fPIE")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=implicit-fallthrough -Wall -Werror=switch -fPIE")
-
-add_compile_options($<$<COMPILE_LANGUAGE:CPP>:-fno-rtti> $<$<COMPILE_LANGUAGE:CPP>:-fno-exceptions>)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
@@ -153,14 +153,14 @@ set(FELIX86_INCLUDES
     external/robin-map/include
     external/json
     external/biscuit/include
-    external/toml11
+    external/tomlc17
 )
 
+add_library(tomlc17 STATIC external/tomlc17/tomlc17.c)
 add_library(felix86_core STATIC)
 target_sources(felix86_core PRIVATE ${FELIX86_CORE_SOURCES})
 target_include_directories(felix86_core PUBLIC ${FELIX86_INCLUDES})
-target_link_libraries(felix86_core PUBLIC Zydis fmt biscuit git_version)
-
+target_link_libraries(felix86_core PUBLIC Zydis fmt tomlc17 biscuit git_version)
 
 if (FELIX86_MONTHLY_RELEASE)
     message("Building as a monthly release")

@@ -1,33 +1,17 @@
+#include <algorithm>
 #include <filesystem>
 #include <system_error>
 #include <pwd.h>
 #include <sys/types.h>
-#include <toml.hpp>
 #include "felix86/common/config.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
 #include "fmt/format.h"
+#include "tomlc17.h"
 
 Config g_config{};
 Config g_initial_config{};
-
-namespace toml {
-template <>
-struct from<std::filesystem::path> {
-    static std::filesystem::path from_toml(const toml::value& v) {
-        return std::filesystem::path(toml::get<std::string>(v));
-    }
-};
-
-// Specialization to convert from std::filesystem::path to TOML
-template <>
-struct into<toml::value> {
-    static toml::value into_toml(const std::filesystem::path& p) {
-        return toml::value(p.string());
-    }
-};
-} // namespace toml
 
 std::filesystem::path Config::getConfigDir() {
     std::string homedir;
@@ -333,22 +317,42 @@ u64 get_int(const char* str) {
 }
 
 template <typename Type>
-bool loadFromToml(const toml::value& toml, const char* group, const char* name, Type& value) {
-    if (toml.contains(group)) {
-        const toml::value& group_toml = toml.at(group);
-        if (group_toml.contains(name)) {
-            const toml::value& value_toml = group_toml.at(name);
+bool loadFromToml(const toml_result_t& toml, const char* group, const char* name, Type& value) {
+    toml_datum_t table = toml_get(toml.toptab, group);
+    if (table.type != TOML_UNKNOWN) {
+        if (table.type != TOML_TABLE) {
+            WARN("Expected %s to be table when opening toml file", group);
+            return false;
+        }
+        toml_datum_t member = toml_get(table, name);
+        if (member.type != TOML_UNKNOWN) {
             if constexpr (std::is_same_v<Type, bool>) {
-                value = value_toml.as_boolean();
+                if (member.type != TOML_BOOLEAN) {
+                    WARN("Expected %s to be boolean but it has type of %d", name, member.type);
+                    return false;
+                }
+                value = member.u.boolean;
                 return true;
             } else if constexpr (std::is_same_v<Type, u64>) {
-                value = value_toml.as_integer();
+                if (member.type != TOML_INT64) {
+                    WARN("Expected %s to be int64 but it has type of %d", name, member.type);
+                    return false;
+                }
+                value = member.u.int64;
                 return true;
             } else if constexpr (std::is_same_v<Type, std::filesystem::path>) {
-                value = value_toml.as_string();
+                if (member.type != TOML_STRING) {
+                    WARN("Expected %s to be string but it has type of %d", name, member.type);
+                    return false;
+                }
+                value = std::string(member.u.str.ptr, member.u.str.len);
                 return true;
             } else if constexpr (std::is_same_v<Type, std::string>) {
-                value = value_toml.as_string();
+                if (member.type != TOML_STRING) {
+                    WARN("Expected %s to be string but it has type of %d", name, member.type);
+                    return false;
+                }
+                value = std::string(member.u.str.ptr, member.u.str.len);
                 return true;
             } else {
                 static_assert(false);
@@ -428,12 +432,11 @@ void Config::initializeChild() {
 Config Config::load(const std::filesystem::path& path, bool ignore_envs) {
     Config config = {};
 
-    auto attempt = toml::try_parse(path);
-    if (attempt.is_err()) {
+    toml_result_t result = toml_parse_file_ex(path.c_str());
+    if (!result.ok) {
+        WARN("Failed to parse toml file %s with error: %s", path.c_str(), result.errmsg);
         return config;
     }
-
-    auto toml = attempt.unwrap();
 
 #define X(group, type, name, default_value, env_name, description, required)                                                                         \
     {                                                                                                                                                \
@@ -442,7 +445,7 @@ Config Config::load(const std::filesystem::path& path, bool ignore_envs) {
         if (env && !ignore_envs) {                                                                                                                   \
             loaded = loadFromEnv<type>(config, config.name, env);                                                                                    \
         } else {                                                                                                                                     \
-            loaded = loadFromToml<type>(toml, #group, #name, config.name);                                                                           \
+            loaded = loadFromToml<type>(result, #group, #name, config.name);                                                                         \
         }                                                                                                                                            \
         if (!loaded && required) {                                                                                                                   \
             ERROR("A value for %s is required but was not set. Please set it using the %s environment variable or in the configuration file %s in "  \
@@ -453,39 +456,66 @@ Config Config::load(const std::filesystem::path& path, bool ignore_envs) {
 #include "config.inc"
 #undef X
 
+    toml_free(result);
     return config;
 }
 
 bool Config::loadProfile(Config& config, const std::filesystem::path& profile) {
-    auto attempt = toml::try_parse(profile);
-    if (attempt.is_err()) {
+    toml_result_t result = toml_parse_file_ex(profile.c_str());
+    if (!result.ok) {
+        WARN("Failed to parse toml file %s with error: %s", profile.c_str(), result.errmsg);
         return false;
     }
 
-    auto toml = attempt.unwrap();
-
 #define X(group, type, name, default_value, env_name, description, required)                                                                         \
     {                                                                                                                                                \
-        (void)loadFromToml<type>(toml, #group, #name, config.name);                                                                                  \
+        (void)loadFromToml<type>(result, #group, #name, config.name);                                                                                \
     }
 #include "config.inc"
 #undef X
     return true;
 }
 
+template <typename T>
+std::string stringify(const T& value) {
+    static_assert(false);
+    return "";
+}
+
+template <>
+std::string stringify<std::string>(const std::string& value) {
+    return '\"' + value + '\"';
+}
+
+template <>
+std::string stringify<std::filesystem::path>(const std::filesystem::path& value) {
+    return '\"' + value.string() + '\"';
+}
+
+template <>
+std::string stringify<bool>(const bool& value) {
+    return value ? "true" : "false";
+}
+
+template <>
+std::string stringify<u64>(const u64& value) {
+    return fmt::format("{:#x}", value);
+}
+
 void Config::save(const std::filesystem::path& path, const Config& config, bool only_non_default) {
-    toml::ordered_table toml;
+    std::string toml;
+    std::string current_group;
 
 #define X(group, type, name, default_value, env_name, description, required)                                                                         \
     if (!only_non_default || config.name != default_value) {                                                                                         \
-        if (!toml.contains(#group)) {                                                                                                                \
-            toml[#group] = toml::ordered_table{};                                                                                                    \
+        if (current_group != #group) {                                                                                                               \
+            current_group = #group;                                                                                                                  \
+            toml += "[" #group "]\n";                                                                                                                \
         }                                                                                                                                            \
-        auto& value = toml[#group][#name];                                                                                                           \
-        value = config.name;                                                                                                                         \
-        value.comments().push_back("# " #name " (" #type ")");                                                                                       \
-        value.comments().push_back("# Description: " description);                                                                                   \
-        value.comments().push_back("# Environment variable: " #env_name);                                                                            \
+        toml += "# " #name " (" #type ")\n";                                                                                                         \
+        toml += "# Description: " description "\n";                                                                                                  \
+        toml += "# Environment variable: " #env_name "\n";                                                                                           \
+        toml += #name " = " + stringify<type>(config.name) + "\n\n";                                                                                 \
     }
 #include "config.inc"
 #undef X
@@ -497,6 +527,6 @@ void Config::save(const std::filesystem::path& path, const Config& config, bool 
     }
     ofs << "# Autogenerated TOML configuration file for felix86\n";
     ofs << "# You may change any values here, or their respective environment variable\n";
-    ofs << "# The environment variables override the values here\n";
-    ofs << toml::ordered_value{toml};
+    ofs << "# The environment variables override the values here\n\n";
+    ofs << toml;
 }
