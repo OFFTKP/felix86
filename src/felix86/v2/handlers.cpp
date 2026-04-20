@@ -1,5 +1,4 @@
 #include <cmath>
-#include <functional>
 #include <Zydis/Zydis.h>
 #include "Zydis/DecoderTypes.h"
 #include "Zydis/SharedTypes.h"
@@ -1782,12 +1781,8 @@ FAST_HANDLE(CALL) {
             rec.zext(ripreg, ripreg, X86_SIZE_DWORD);
             address = (u32)address;
         }
-        u8* here = as.GetCursorPointer();
         as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
         rec.jumpAndLink(address);
-        if (!rec.isRelocatable()) {
-            ASSERT(as.GetCursorPointer() == here + 12);
-        }
         rec.stopCompiling();
         break;
     }
@@ -2681,12 +2676,8 @@ FAST_HANDLE(JMP) {
             rec.zext(ripreg, ripreg, X86_SIZE_DWORD);
             address = (u32)address;
         }
-        u8* here = as.GetCursorPointer();
         as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
         rec.jumpAndLink(address);
-        if (!rec.isRelocatable()) {
-            ASSERT(as.GetCursorPointer() == here + 12);
-        }
         rec.stopCompiling();
         break;
     }

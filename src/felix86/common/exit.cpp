@@ -23,5 +23,16 @@ void felix86_exit(int code) {
         sleep(40);
     }
 
-    exit(code);
+    if (g_config.abort_error) {
+        // Re-raise as SIGABRT so that a core dump is generated
+        struct sigaction sa{};
+        sa.sa_handler = SIG_DFL;
+        sigaction(SIGABRT, &sa, nullptr);
+        sigset_t full;
+        sigfillset(&full);
+        ASSERT(sigprocmask(SIG_UNBLOCK, &full, nullptr) == 0);
+        raise(SIGABRT);
+    } else {
+        exit(code);
+    }
 }

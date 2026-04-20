@@ -14,6 +14,7 @@
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/emulator.hpp"
+#include "felix86/hle/ptrace.hpp"
 #include "felix86/hle/syscall.hpp"
 #include "felix86/v2/handlers.hpp"
 #include "felix86/v2/recompiler.hpp"
@@ -202,6 +203,8 @@ void Recompiler::emitDispatcher() {
     as.SD(t1, offsetof(felix86_frame, invalidate_caller_thunk_ptr), sp);
 
     as.MV(threadStatePointer(), a0);
+
+    restore_state_handler = (u64)as.GetCursorPointer();
 
     restoreState();
 
@@ -560,7 +563,7 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
     }
 
     if (all_zeroes) {
-        WARN("Jumped to address %lx which has a sequence of zeroes -- probably a bad jump?", rip);
+        VERBOSE("Jumped to address %lx which has a sequence of zeroes -- probably a bad jump?", rip);
     }
 
     // When invalidating from other threads we need to do it in a single atomic instruction, thus block starts
@@ -644,6 +647,17 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
 
         u64 start_pc = (u64)as.GetCursorPointer();
 
+        if (g_breakpoints.find(rip) != g_breakpoints.end()) {
+            u64 current_address = (u64)as.GetCursorPointer();
+            g_breakpoints[rip].push_back(current_address);
+            as.GetCodeBuffer().Emit32(0); // UNIMP instruction
+        }
+
+        bool is_breakpoint = checkIfBreakpoint(rip);
+        if (is_breakpoint) {
+            break;
+        }
+
         if (is_mmx) {
             if (!ran_mmx_once) {
                 // Set FPU tag word to valid for the first MMX instruction in this block
@@ -685,12 +699,6 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
             setFsrmSSE(true);
         }
 
-        if (g_breakpoints.find(rip) != g_breakpoints.end()) {
-            u64 current_address = (u64)as.GetCursorPointer();
-            g_breakpoints[rip].push_back(current_address);
-            as.GetCodeBuffer().Emit32(0); // UNIMP instruction
-        }
-
         // Last instruction before block ends, flush x87
         if (current_instruction_index == instructions.size() - 1) {
             resetScratch();
@@ -713,13 +721,17 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
             ASSERT(offset != 0);
             setCurrentRipregValue(getCurrentRipregValue() + offset);
             addi(ripreg, ripreg, offset);
-            if (single_step == SingleStepMode::TrapFlag) {
+            if (single_step != SingleStepMode::None) {
                 as.SD(x0, 0, x0);
                 as.SLTIU(x0, x0, FELIX86_HINT_TF);
                 // Unreachable
                 as.C_UNDEF();
                 as.C_UNDEF();
+                if (single_step == SingleStepMode::PtraceSinglestep) {
+                    single_step = SingleStepMode::None;
+                }
             } else {
+                // g_config.single_step
                 backToDispatcher();
             }
             stopCompiling();
@@ -1341,6 +1353,35 @@ biscuit::Vec Recompiler::getVec(const ZydisDecodedOperand* operand) {
         return v0;
     }
     }
+}
+
+void Recompiler::addBreakpoint(int index, u64 address) {
+    ASSERT(index >= 0 && index <= 3);
+    breakpoints[index] = {true, address};
+}
+
+void Recompiler::clearBreakpoints() {
+    for (auto& bp : breakpoints) {
+        bp.first = false;
+        bp.second = 0;
+    }
+}
+
+bool Recompiler::checkIfBreakpoint(u64 rip) {
+    for (size_t i = 0; i < breakpoints.size(); i++) {
+        if (rip == breakpoints[i].second) {
+            writebackState();
+            as.MV(a0, Recompiler::threadStatePointer());
+            as.LI(a1, rip);
+            as.LI(a2, i);
+            callPointer(offsetof(ThreadState, felix86_raise_hardware_breakpoint));
+            restoreState();
+            backToDispatcher();
+            stopCompiling();
+            return true;
+        }
+    }
+    return false;
 }
 
 biscuit::FPR Recompiler::getElementFPR(ZydisDecodedOperand* operand, x86_size_e size, int element) {
@@ -2004,7 +2045,17 @@ void Recompiler::restoreState() {
 
 void Recompiler::backToDispatcher() {
     OptimizationGuard guard(as, optimization_guard_counter);
-    if (!relocatable) {
+    const bool is_single_step = single_step != SingleStepMode::None;
+    if (compiling && is_single_step) {
+        as.SD(x0, 0, x0);
+        as.SLTIU(x0, x0, FELIX86_HINT_TF);
+        // Unreachable
+        as.C_UNDEF();
+        as.C_UNDEF();
+        if (single_step == SingleStepMode::PtraceSinglestep) {
+            single_step = SingleStepMode::None;
+        }
+    } else if (!relocatable) {
         const u64 offset = compile_next_handler - (u64)as.GetCursorPointer();
         ASSERT(IsValid2GBImm(offset));
         const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
@@ -2036,12 +2087,17 @@ void Recompiler::scanAhead(u64 rip) {
 
     current_block_big = false;
 
+    bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
     u64 initial_rip = rip;
     instructions.clear();
     while (true) {
         instructions.push_back({});
         auto& [instruction, operands] = instructions.back();
         ZydisMnemonic mnemonic = decode(rip, instruction, operands);
+        if (is_single_step) {
+            break;
+        }
+
         bool too_big = instructions.size() > g_config.max_block_size;
         bool is_jump = instruction.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
         bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET || mnemonic == ZYDIS_MNEMONIC_IRETD || mnemonic == ZYDIS_MNEMONIC_IRETQ;
@@ -2608,7 +2664,8 @@ void Recompiler::updateSign(biscuit::GPR result, x86_size_e size) {
 
 void Recompiler::jumpAndLink(u64 rip) {
     OptimizationGuard guard(as, optimization_guard_counter);
-    if (!g_config.link || relocatable) {
+    const bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
+    if (!g_config.link || is_single_step || relocatable) {
         // Just emit jump to dispatcher
         backToDispatcher();
         return;
@@ -2659,12 +2716,8 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
         rip_false = (u32)rip_false;
     }
 
-    u8* here = as.GetCursorPointer();
     as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
     jumpAndLink(rip_false);
-    if (!relocatable) {
-        ASSERT(as.GetCursorPointer() == here + 12);
-    }
 
     as.Bind(&true_label);
     u64 rip_true_offset = rip_true - getCurrentRipregValue();
@@ -2674,12 +2727,8 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
         rip_true = (u32)rip_true;
     }
 
-    here = as.GetCursorPointer();
     as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
     jumpAndLink(rip_true);
-    if (!relocatable) {
-        ASSERT(as.GetCursorPointer() == here + 12);
-    }
 }
 
 void Recompiler::expirePendingLinks(u64 rip) {

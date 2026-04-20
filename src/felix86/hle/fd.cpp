@@ -104,7 +104,7 @@ int FD::dup3(int old_fd, int new_fd, int flags) {
 
 int FD::moveToHighNumber(int fd) {
     // rand() so that it has a higher likelyhood of succeeding first try
-    int high_fd = 512 + rand() % 64;
+    int high_fd = rand() % (FD::max() - FD::min() + 1) + FD::min();
     int tries = 50;
     while (tries-- > 0) {
         int result = fcntl(high_fd, F_GETFD);
@@ -116,6 +116,9 @@ int FD::moveToHighNumber(int fd) {
             return new_fd;
         }
         high_fd++;
+        if (high_fd == FD::max()) {
+            high_fd = FD::min();
+        }
     }
 
     ERROR("Failed to find available FD to duplicate %d", fd);

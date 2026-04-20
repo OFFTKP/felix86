@@ -15,6 +15,7 @@
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/common/xsave.hpp"
+#include "felix86/hle/ptrace.hpp"
 #include "felix86/hle/signals.hpp"
 #include "felix86/v2/recompiler.hpp"
 #undef si_pid
@@ -1002,12 +1003,25 @@ void pull_registers_from_context(ThreadState* state, ucontext_t* uctx) {
 // dispatcher and the x86 RIP to the signal handler.
 void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uctx) {
     ThreadState* state = ThreadState::Get();
-    RegisteredSignal* handler = state->signal_table->getRegisteredSignal(sig);
+    RegisteredSignal* handler = SignalHandlerTable::getRegisteredSignal(state->signal_table, sig);
 
     // While we *could* just jump to the handler and let the registers be
     // we pull them to ThreadState so we can construct the signal context using ThreadState instead of ucontext_t
     // as it makes the code cleaner
     pull_registers_from_context(state, uctx);
+
+    if (Ptrace::is_traced(state)) {
+        int old_sig = sig;
+        Ptrace::raise_stop(StopType::SignalDeliveryStop, sig, guest_info);
+        if (sig == 0) {
+            // Reload the registers from ThreadState as it may have been changed remotely by the tracer
+            set_pc(uctx, state->recompiler->getRestoreState());
+            GUESTPTRACELOG("Skipping signal %d", old_sig);
+            return;
+        } else if (old_sig != sig) {
+            GUESTPTRACELOG("Tracer changed our signal from %d to %d", old_sig, sig);
+        }
+    }
 
     SignalBehavior behavior = SignalBehavior::Handler;
     // Normally we passthrough SIG_DFL and SIG_IGN to the kernel
@@ -1091,6 +1105,59 @@ void prepare_synchronous_signal(ThreadState* state, int sig, siginfo_t* info, vo
     prepare_guest_signal(sig, info, (ucontext_t*)ctx);
 }
 
+static void defer_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx) {
+    // Asynchronous signal, defer
+    // If we were in a safepoint, the signal would've been handled
+    ASSERT(sig >= 1 && sig <= 64);
+    int index = sig - 1;
+    u32 ecall;
+    {
+        Assembler tas((u8*)&ecall, sizeof(u32));
+        tas.ECALL();
+    }
+    u64 pc = get_pc(ctx);
+    RegisteredSignal* signal = SignalHandlerTable::getRegisteredSignal(state->signal_table, sig);
+    if (state->in_restartable_syscall && (signal->flags & SA_RESTART) && *((u32*)(pc - 4)) == ecall && get_regs(ctx)[biscuit::a0.Index()] == -EINTR) {
+        state->should_restart_syscall = true;
+    }
+    state->deferred_signals |= 1ull << index;
+    if (index <= 30) {
+        state->deferred_standard_info[index] = *info;
+    } else {
+        // NOTE: This is wasteful. However, we can't use e.g. std::vector::push_back or similar functions that depend
+        // on malloc here, as we are in a signal handler that can happen whenever. A smarter implementation might allocate
+        // arenas for these and save quite a bit of memory per signal, but it is quite rare we get many queued signals anyway
+        // and this is a significantly simpler and foolproof implementation
+        // TODO: one day consider using arenas for this
+        void* mem = mmap(nullptr, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        ASSERT(mem != MAP_FAILED);
+        SignalQueueNode* new_node = (SignalQueueNode*)mem;
+        new_node->info = *info;
+        new_node->next = nullptr;
+        // Since the host signal handler is always registered without SA_NODEFER, there's no
+        // possibility of a race here as the same signal can't happen here
+        SignalQueueNode* node = state->deferred_realtime_info[index - 31];
+        if (!node) {
+            state->deferred_realtime_info[index - 31] = new_node;
+        } else {
+            size_t count = 0;
+            while (node->next) {
+                node = node->next;
+                count++;
+            }
+            ASSERT_MSG(count <= 32, "Too many realtime signals of SIGRT%d", sig);
+            node->next = new_node;
+        }
+    }
+    // Make our safepoints fault
+    u64 effective_deferred_signals = state->deferred_signals & ~state->signal_mask.__val[0];
+    if (effective_deferred_signals != 0) {
+        ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
+    }
+    state->effective_deferred_signals = effective_deferred_signals;
+    SIGLOG("Deferring signal %s (%d) during RIP=%lx", sigdescr_np(sig), sig, state->GetRip());
+}
+
 bool handle_safepoint(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
     // First we need to check if we are a safepoint
     // Safepoint instructions perform SD(x0, -8, Recompiler::threadStatePointer())
@@ -1104,11 +1171,13 @@ bool handle_safepoint(ThreadState* current_state, siginfo_t* info, ucontext_t* c
     if (current_instruction != expected_instruction) {
         // Not in a safepoint, don't handle signal now
         // Return. If no host signal handler picks up this signal, then it will be deferred
+        SIGLOG("Not expected instruction");
         return false;
     }
 
     if (!is_in_jit_code(current_state, (u8*)pc)) {
         // Not in JIT code, rare but possible
+        SIGLOG("Not in jit code");
         return false;
     }
 
@@ -1135,7 +1204,7 @@ bool handle_safepoint(ThreadState* current_state, siginfo_t* info, ucontext_t* c
             regs[Recompiler::allocatedGPR(X86_REF_RIP).Index()] -= 2;
             u8* data = (u8*)regs[Recompiler::allocatedGPR(X86_REF_RIP).Index()];
             ASSERT((data[0] == 0x0f && data[1] == 0x05) || (data[0] == 0xcd && data[1] == 0x80));
-            regs[Recompiler::allocatedGPR(X86_REF_RAX).Index()] = current_state->restarted_syscall_original_rax;
+            regs[Recompiler::allocatedGPR(X86_REF_RAX).Index()] = current_state->ctx.orig_rax;
         } else {
             ASSERT_MSG(false, "state->should_restart_syscall set but not at a syscall safepoint?");
         }
@@ -1278,7 +1347,7 @@ bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, ucontext_t
         return true;
     } else {
         // Check if signal handler is SIG_DFL or SIG_IGN
-        RegisteredSignal* handler = current_state->signal_table->getRegisteredSignal(SIGSEGV);
+        RegisteredSignal* handler = SignalHandlerTable::getRegisteredSignal(current_state->signal_table, SIGSEGV);
         if (handler->func == (u64)SIG_DFL) {
             // We need to die from a SIGSEGV, set the handler to default and unmask it
             WARN("SIGSEGV with default behavior, terminating...");
@@ -1353,7 +1422,7 @@ bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucontext_t*
     // Check the hint right after to make sure this is a hlt
     u32 next_instruction = *(((u32*)pc) + 1);
 
-    u32 expected_divzero, expected_int3, expected_ud2, expected_gp, expected_tf;
+    u32 expected_divzero, expected_int3, expected_ud2, expected_gp, expected_tf, expected_hwbp;
     {
         Assembler tas2((u8*)&expected_divzero, sizeof(u32));
         tas2.SLTIU(x0, x0, FELIX86_HINT_DIVZERO);
@@ -1375,9 +1444,17 @@ bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucontext_t*
         tas2.SLTIU(x0, x0, FELIX86_HINT_TF);
     }
 
-    BlockMetadata* current_block = get_block_metadata(current_state, pc);
-    ASSERT_MSG(current_block, "Failed to get current block during synchronous signal with PC=%lx, RIP=%lx", pc, current_state->ctx.rip);
-    u64 actual_rip = get_actual_rip(*current_block, current_block->guest_address, pc);
+    u64 actual_rip;
+    if (next_instruction == expected_tf) {
+        // In trap flag scenarios code cache is often cleared, so get_block_metadata won't work
+        // However, since single stepping is enabled and ripreg is updated on every instruction
+        // the actual rip is whatever the ripreg holds and points to the next instruction
+        actual_rip = get_regs(context)[Recompiler::allocatedGPR(X86_REF_RIP).Index()];
+    } else {
+        BlockMetadata* current_block = get_block_metadata(current_state, pc);
+        ASSERT_MSG(current_block, "Failed to get current block during synchronous signal with PC=%lx, RIP=%lx", pc, current_state->ctx.rip);
+        actual_rip = get_actual_rip(*current_block, current_block->guest_address, pc);
+    }
 
     int sig;
     if (next_instruction == expected_divzero) {
@@ -1388,6 +1465,8 @@ bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucontext_t*
         sig = SIGTRAP;
         info->si_code = SI_KERNEL;
         info->si_addr = nullptr;
+        SIGLOG("Hit INT3 instruction");
+        // The stop happens after the INT3 instruction in x86
         actual_rip += 1;
     } else if (next_instruction == expected_ud2) {
         sig = SIGILL;
@@ -1398,24 +1477,76 @@ bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucontext_t*
         info->si_code = SI_KERNEL;
         info->si_addr = nullptr;
     } else if (next_instruction == expected_tf) {
-        u64 rip = get_regs(context)[Recompiler::allocatedGPR(X86_REF_RIP).Index()]; // points to next instruction
-        ASSERT(rip > actual_rip && rip <= actual_rip + 15);
-        actual_rip = rip;
         sig = SIGTRAP;
         info->si_code = TRAP_TRACE;
         info->si_addr = (void*)actual_rip;
     } else {
         return false;
     }
+    info->si_signo = sig;
 
     prepare_synchronous_signal(current_state, sig, info, context, actual_rip);
     return true;
 }
 
-constexpr std::array<RegisteredHostSignal, 6> host_signals = {{
+bool handle_sigptrace(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
+    if (!Ptrace::is_traced(current_state)) {
+        WARN_ONCE("SIG53 but not a tracee?");
+        return false;
+    }
+
+    int reason = info->si_code;
+    switch (reason) {
+    case FELIX86_PTRACE_CODE_INSTOP: {
+        // These should not reach the tracee, as they are used by the tracee to notify
+        // the tracer it has reached a stop and then skipped by the tracer
+        ERROR("Process %d got sigptrace with reason == %d, this shouldn't happen", gettid(), reason);
+        return false;
+    }
+    case FELIX86_PTRACE_CODE_DEFER: {
+        // There's some signals that are captured by a tracer but can't or won't be captured by a tracee
+        // These are signals like SIGSTOP and signals that are ignored or have a default behavior (ignore/stop/terminate).
+        // We want to defer even an ignored signal, because it needs to cause a signal-delivery-stop on the tracer.
+        // For these cases, we change the signal to sigptrace and pass the actual signal number in ptrace_page
+        // This way we can manually defer the signal here and handle it in a safepoint
+        bool deferred = __atomic_load_n(&current_state->ptrace_page->force_defer.deferred, __ATOMIC_SEQ_CST);
+        if (!deferred) {
+            WARN("FELIX86_PTRACE_CODE_SIGSTOP, but ptrace_page->force_defer.deferred == false?");
+            return false;
+        }
+
+        // When the tracer defers a signal to this signal (for example, turns a SIGURG, default: ignore, into SIGPTRACE)
+        // and we reach this point, there could be a race if then another signal happens and the tracer tries to defer
+        // it too. For this reason, we block all tracee signals from the tracer side (using PTRACE_SETSIGMASK)
+        // This way, when we are here, no other signal can happen until we exit the signal handler.
+        // Except for one: SIGSTOP. To prevent the rare case that a SIGSTOP happens and it needs to be deferred,
+        // the tracer will discard the SIGSTOP and wait for deferred to be false before sending it again
+        // If this didn't happen, the tracer would overwrite the original_sig/original_info with the SIGSTOP info
+        // before the tracee had a chance to defer the signal
+        int actual_sig = current_state->ptrace_page->force_defer.original_sig;
+        siginfo_t actual_info = current_state->ptrace_page->force_defer.original_info;
+        // PTRACE_SETSIGMASK which blocks our signals will not cause the original mask to be restored
+        // after we're done, so we need to make sure to restore it properly after the signal handler exits
+        u64 actual_mask = current_state->ptrace_page->force_defer.original_mask;
+        context->uc_sigmask.__val[0] = actual_mask;
+        GUESTPTRACELOG("Deferring injected signal %d on thread %d", actual_sig, gettid());
+        defer_signal(current_state, actual_sig, &actual_info, context);
+
+        __atomic_store_n(&current_state->ptrace_page->force_defer.deferred, false, __ATOMIC_SEQ_CST);
+        return true;
+    }
+    default: {
+        WARN("This program uses sigptrace of unknown si_code: %d", info->si_code);
+        return false;
+    }
+    }
+}
+
+constexpr std::array<RegisteredHostSignal, 7> host_signals = {{
     {SIGSEGV, SEGV_ACCERR, handle_safepoint},
     {SIGSEGV, SEGV_ACCERR, handle_smc},
     {SIGSEGV, SEGV_MAPERR, handle_synchronous},
+    {FELIX86_PTRACE_SIGNAL, 0, handle_sigptrace},
     {SIGILL, 0, handle_breakpoint},
     {SIGSEGV, 0, handle_wild_sigsegv}, // order matters, relevant sigsegvs are handled before this handler
     {SIGABRT, 0, handle_wild_sigabrt},
@@ -1457,7 +1588,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     // Note: It's not enough to just check si_code > 0, for example SIGCHLD can be sent at any moment but it has a positive code
     // But we do need a si_code > 0 check, because si_code <= 0 means asynchronous and we can (unfortunately) be sent e.g. SIGSEGV from another
     // process via kill or whatever other method
-    if (info->si_code > 0 && (sig == SIGSEGV || sig == SIGBUS || sig == SIGILL || sig == SIGFPE || sig == SIGTRAP)) {
+    if (info->si_code > 0 && (sig == SIGSEGV || sig == SIGBUS || sig == SIGILL || sig == SIGTRAP)) {
         // Synchronous signal, handle immediately
         if (is_in_jit_code(state, (u8*)pc)) {
             BlockMetadata* current_block = get_block_metadata(state, pc);
@@ -1472,56 +1603,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
                   sigdescr_np(sig), info->si_code, state->ctx.rip, pc, get_regs(ctx)[1], entry.guest, entry.host);
         }
     } else {
-        // Asynchronous signal, defer
-        // If we were in a safepoint, the signal would've been handled
-        ASSERT(sig >= 1 && sig <= 64);
-        int index = sig - 1;
-        u32 ecall;
-        {
-            Assembler tas((u8*)&ecall, sizeof(u32));
-            tas.ECALL();
-        }
-        RegisteredSignal* signal = state->signal_table->getRegisteredSignal(sig);
-        if (state->in_restartable_syscall && (signal->flags & SA_RESTART) && *((u32*)(pc - 4)) == ecall &&
-            get_regs(ctx)[biscuit::a0.Index()] == -EINTR) {
-            state->should_restart_syscall = true;
-        }
-        state->deferred_signals |= 1ull << index;
-        if (index <= 30) {
-            state->deferred_standard_info[index] = *info;
-        } else {
-            // NOTE: This is wasteful. However, we can't use e.g. std::vector::push_back or similar functions that depend
-            // on malloc here, as we are in a signal handler that can happen whenever. A smarter implementation might allocate
-            // arenas for these and save quite a bit of memory per signal, but it is quite rare we get many queued signals anyway
-            // and this is a significantly simpler and foolproof implementation
-            // TODO: one day consider using arenas for this
-            void* mem = mmap(nullptr, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-            ASSERT(mem != MAP_FAILED);
-            SignalQueueNode* new_node = (SignalQueueNode*)mem;
-            new_node->info = *info;
-            new_node->next = nullptr;
-            // Since the host signal handler is always registered without SA_NODEFER, there's no
-            // possibility of a race here as the same signal can't happen here
-            SignalQueueNode* node = state->deferred_realtime_info[index - 31];
-            if (!node) {
-                state->deferred_realtime_info[index - 31] = new_node;
-            } else {
-                size_t count = 0;
-                while (node->next) {
-                    node = node->next;
-                    count++;
-                }
-                ASSERT_MSG(count <= 32, "Too many realtime signals of SIGRT%d", sig);
-                node->next = new_node;
-            }
-        }
-        // Make our safepoints fault
-        u64 effective_deferred_signals = state->deferred_signals & ~state->signal_mask.__val[0];
-        if (effective_deferred_signals != 0) {
-            ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
-        }
-        state->effective_deferred_signals = effective_deferred_signals;
-        SIGLOG("Deferring signal %s (%d) during RIP=%lx", sigdescr_np(sig), sig, state->GetRip());
+        defer_signal(state, sig, info, ctx);
     }
 }
 
@@ -1547,7 +1629,7 @@ void Signals::initialize() {
 void Signals::registerSignalHandler(ThreadState* state, int sig, u64 handler, u64 mask, int flags, u64 restorer) {
     ASSERT(sig >= 1 && sig <= 64);
 
-    state->signal_table->registerSignal(sig, handler, mask, flags, restorer);
+    SignalHandlerTable::registerSignal(state->signal_table, sig, handler, mask, flags, restorer);
 
     // If not SIG_DFL or SIG_IGN, register the host signal handler to capture the signal
     // If SIG_DFL or SIG_IGN, we want to passthrough the handler to the kernel
@@ -1558,7 +1640,7 @@ void Signals::registerSignalHandler(ThreadState* state, int sig, u64 handler, u6
         sa.sigaction = signal_handler;
         sa.sa_flags = SA_SIGINFO;
         if (flags & SA_RESTART) {
-            WARN("Installing signal handler for %s (%d) with SA_RESTART", sigdescr_np(sig), sig);
+            VERBOSE("Installing signal handler for %s (%d) with SA_RESTART", sigdescr_np(sig), sig);
         }
     } else {
         sa.sigaction = (decltype(sa.sigaction))handler;
@@ -1572,11 +1654,6 @@ void Signals::registerSignalHandler(ThreadState* state, int sig, u64 handler, u6
     if (syscall(SYS_rt_sigaction, sig, &sa, nullptr, 8) != 0) {
         WARN("Failed when setting signal handler for signal: %d (%s)", sig, strsignal(sig));
     }
-}
-
-RegisteredSignal Signals::getSignalHandler(ThreadState* state, int sig) {
-    ASSERT(sig >= 1 && sig <= 64);
-    return *state->signal_table->getRegisteredSignal(sig);
 }
 
 int Signals::sigprocmask(ThreadState* state, int how, sigset_t* set, sigset_t* oldset) {

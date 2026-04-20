@@ -19,6 +19,8 @@ enum class x87State : u8 {
     MMX = 2,
 };
 
+struct PtracePage;
+
 struct SignalQueueNode {
     siginfo_t info = {};
     SignalQueueNode* next = nullptr;
@@ -169,6 +171,7 @@ typedef enum : u8 {
     X(felix86_vmpsadbw_128)                                                                                                                          \
     X(felix86_vmpsadbw_256)                                                                                                                          \
     X(felix86_crash_and_burn)                                                                                                                        \
+    X(felix86_raise_hardware_breakpoint)                                                                                                             \
     X(felix86_exit_dispatcher)
 
 struct UserContext {
@@ -184,6 +187,10 @@ struct UserContext {
     bool of{};
     bool df{};
     bool tf{};
+    // Actual segment values
+    // These are 64-bit here to simplify our life in PTRACE_POKEUSER emulation
+    // Since host is 64-bit but guest can be 32-bit, it's nice to be able to use host PTRACE_POKEDATA that does 64-bit write
+    // instead of going with process_vm_writev
     u64 gs{};
     u64 fs{};
     u64 cs{};
@@ -202,6 +209,11 @@ struct UserContext {
     u16 fpu_tw{};
     u16 fpu_sw{};
     u8 fpu_top{};
+    u64 orig_rax{};
+
+    u64 debug_register[4]{};
+    u64 debug_status = 0xFFFF0FF0;
+    u64 debug_control = 0x400;
 
     // This is important so that we know whether the current values in the fp array are MMX registers or x87 registers
     // Because if they are x87 registers we need to f64_to_f80 them when saving using fsave or when reading from signal handlers
@@ -290,13 +302,15 @@ struct ThreadState {
     void* deferred_fault_page = nullptr;
     bool in_restartable_syscall = false;
     bool should_restart_syscall = false;
-    u64 restarted_syscall_original_rax = 0;
 
     // For storing generated risc-v or x86 code that needs to outlive code cache clears
     u8* riscv_trampoline_storage_start = nullptr;
     u8* x86_trampoline_storage_start = nullptr;
     u8* riscv_trampoline_storage = nullptr;
     u8* x86_trampoline_storage = nullptr;
+
+    u64 ptrace_fd = 0;
+    PtracePage* ptrace_page = nullptr;
 
     u64 GetGpr(x86_ref_e ref) const {
         if (ref < X86_REF_RAX || ref > X86_REF_R15) {
@@ -462,6 +476,10 @@ struct ThreadState {
     }
 
     static ThreadState* Create(ThreadState* copy_state = nullptr);
+
+    static void Set(ThreadState* state);
+
+    static void CreatePtracePage(ThreadState* state);
 
     static ThreadState* Get();
 
