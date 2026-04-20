@@ -37,7 +37,7 @@ felix86 依赖于多个优秀项目：
 - [Catch2](https://github.com/catchorg/Catch2) 用于单元测试
 - [fmt](https://github.com/fmtlib/fmt) 用于字符串格式化
 - [nlohmann/json](https://github.com/nlohmann/json) 用于 JSON 解析
-- [toml11](https://github.com/ToruNiina/toml11) 用于 TOML 解析
+- [tomlc17](https://github.com/cktan/tomlc17) 用于 TOML 解析
 
 我们还采用其他项目的二进制测试来验证正确行为并防止回归。    
 [测试用例详见此处](https://github.com/felix86-emu/binary_tests)

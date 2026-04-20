@@ -37,7 +37,7 @@ felix86 relies on several great projects:
 - [Catch2](https://github.com/catchorg/Catch2) for unit testing
 - [fmt](https://github.com/fmtlib/fmt) for string formatting
 - [nlohmann/json](https://github.com/nlohmann/json) for JSON parsing
-- [toml11](https://github.com/ToruNiina/toml11) for TOML parsing
+- [tomlc17](https://github.com/cktan/tomlc17) for TOML parsing
 
 We also use binary tests from other projects to verify correct behavior and prevent regressions.    
 [You can find these tests here.](https://github.com/felix86-emu/binary_tests)
