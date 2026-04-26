@@ -462,32 +462,6 @@ int Filesystem::LinkAt(int oldfd, const char* oldpath, int newfd, const char* ne
     return linkatInternal(old_fd_path.fd(), old_fd_path.path(), new_fd_path.fd(), new_fd_path.path(), flags);
 }
 
-int Filesystem::Chown(const char* filename, u64 owner, u64 group) {
-    FdPath fd_path = resolve(filename, true);
-    if (fd_path.is_error()) {
-        VERBOSE("Error while resolving path during chown(%s), error: %s", filename, strerror(fd_path.get_errno()));
-        return -fd_path.get_errno();
-    }
-    int result = ::chown(fd_path.full_path(), owner, group);
-    if (result == -1) {
-        result = -errno;
-    }
-    return result;
-}
-
-int Filesystem::LChown(const char* filename, u64 owner, u64 group) {
-    FdPath fd_path = resolve(filename, false);
-    if (fd_path.is_error()) {
-        VERBOSE("Error while resolving path during lchown(%s), error: %s", filename, strerror(fd_path.get_errno()));
-        return -fd_path.get_errno();
-    }
-    int result = ::lchown(fd_path.full_path(), owner, group);
-    if (result == -1) {
-        result = -errno;
-    }
-    return result;
-}
-
 int Filesystem::Chdir(const char* filename) {
     FdPath fd_path = resolve(filename, true);
     if (fd_path.is_error()) {
@@ -534,6 +508,16 @@ int Filesystem::FChmodAt(int fd, const char* filename, u64 mode) {
         return -fd_path.get_errno();
     }
     return fchmodatInternal(fd_path.fd(), fd_path.path(), mode);
+}
+
+int Filesystem::FChownAt(int fd, const char* filename, uid_t user, gid_t group, int flags) {
+    bool follow = !(flags & AT_SYMLINK_NOFOLLOW);
+    FdPath fd_path = resolve(fd, filename, follow);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during fchownat(%d, %s), error: %s", fd, filename, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    return fchownatInternal(fd_path.fd(), fd_path.path(), user, group, flags);
 }
 
 int Filesystem::LGetXAttr(const char* filename, const char* name, void* value, size_t size) {
@@ -923,6 +907,10 @@ int Filesystem::utimensatInternal(int fd, const char* filename, struct timespec*
 
 int Filesystem::fchmodatInternal(int fd, const char* filename, u64 mode) {
     return ::syscall(SYS_fchmodat, fd, filename, mode);
+}
+
+int Filesystem::fchownatInternal(int fd, const char* filename, uid_t user, gid_t group, int flags) {
+    return ::syscall(SYS_fchownat, fd, filename, user, group, flags);
 }
 
 int Filesystem::rmdirInternal(const char* path) {

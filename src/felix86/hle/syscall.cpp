@@ -1393,7 +1393,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         break;
     }
     case felix86_riscv64_fchownat: {
-        result = SYSCALL(fchownat, arg1, arg2, arg3, arg4, arg5, arg6);
+        result = Filesystem::FChownAt(arg1, (const char*)arg2, arg3, arg4, arg5);
         break;
     }
     case felix86_riscv64_sync_file_range: {
@@ -1828,11 +1828,11 @@ void felix86_syscall(felix86_frame* frame) {
             break;
         }
         case felix86_x86_64_chown: {
-            result = Filesystem::Chown((char*)arg1, arg2, arg3);
+            result = Filesystem::FChownAt(AT_FDCWD, (const char*)arg1, arg2, arg3, 0);
             break;
         }
         case felix86_x86_64_lchown: {
-            result = Filesystem::LChown((char*)arg1, arg2, arg3);
+            result = Filesystem::FChownAt(AT_FDCWD, (const char*)arg1, arg2, arg3, AT_SYMLINK_NOFOLLOW);
             break;
         }
         case felix86_x86_64_access: {
@@ -2938,6 +2938,14 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             if (result > 0) {
                 Ioctl32::duplicateFd(arg1, result);
             }
+            break;
+        }
+        case felix86_x86_32_chown: {
+            result = Filesystem::FChownAt(AT_FDCWD, (const char*)arg1, arg2, arg3, 0);
+            break;
+        }
+        case felix86_x86_32_lchown: {
+            result = Filesystem::FChownAt(AT_FDCWD, (const char*)arg1, arg2, arg3, AT_SYMLINK_NOFOLLOW);
             break;
         }
         case felix86_x86_32_recvmmsg: {
