@@ -279,14 +279,19 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         const std::filesystem::path home_inside_rootfs = g_config.rootfs_path / home.relative_path();
         std::filesystem::create_directories(home_inside_rootfs, ec);
         if (ec) {
-            printf("Failed to create directories %s\n", home_inside_rootfs.c_str());
-            exit(1);
-        }
-
-        int result = chdir(home_inside_rootfs.c_str());
-        if (result != 0) {
-            printf("Failed to chdir to %s\n", home_inside_rootfs.c_str());
-            exit(1);
+            // The home directory inside the rootfs doesn't exist, and we couldn't create it
+            // chdir to root instead
+            int result = chdir(g_config.rootfs_path.c_str());
+            if (result != 0) {
+                printf("Failed to chdir to %s\n", g_config.rootfs_path.c_str());
+                exit(1);
+            }
+        } else {
+            int result = chdir(home_inside_rootfs.c_str());
+            if (result != 0) {
+                printf("Failed to chdir to %s\n", home_inside_rootfs.c_str());
+                exit(1);
+            }
         }
 
         std::string path_string = shell_path;
