@@ -202,15 +202,13 @@ struct Filesystem {
 
     static int Chmod(const char* path, u64 mode);
 
+    static int FChownAt(int fd, const char* filename, uid_t user, gid_t group, int flags);
+
     static int Statx(int fd, const char* filename, int flags, u32 mask, struct statx* statxbuf);
 
     static int UnlinkAt(int fd, const char* path, int flags);
 
     static int LinkAt(int oldfd, const char* oldpath, int newfd, const char* newpath, int flags);
-
-    static int Chown(const char* filename, u64 owner, u64 group);
-
-    static int LChown(const char* filename, u64 owner, u64 group);
 
     static int Creat(const char* filename, u64 mode);
 
@@ -292,6 +290,8 @@ private:
     static int utimensatInternal(int fd, const char* filename, struct timespec* spec, int flags);
 
     static int fchmodatInternal(int fd, const char* filename, u64 mode);
+
+    static int fchownatInternal(int fd, const char* filename, uid_t user, gid_t group, int flags);
 
     static int rmdirInternal(const char* path);
 
