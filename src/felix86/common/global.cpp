@@ -320,7 +320,7 @@ void initialize_globals() {
     if (mounts_path) {
         ASSERT(g_execve_process);
         g_mounts_path = mounts_path;
-    } else {
+    } else if (!g_config.no_rootfs) {
         // Create just the mounts path, which in most cases will be at /run/user/$UID/felix86/mounts
         // It's important we do this on the first run: Programs can change our UID with CLONE_NEWUSER
         // and we won't know which /run/user/ directory is ours
@@ -343,31 +343,24 @@ void initialize_globals() {
         g_mounts_path = mounts;
     }
 
-    const char* guest_rootfs = getenv("__FELIX86_ROOTFS");
-    std::filesystem::path original_rootfs = g_config.rootfs_path;
-    if (guest_rootfs) {
-        g_config.rootfs_path = guest_rootfs;
-    } else {
-        ASSERT(!g_execve_process);
-        ASSERT_MSG(!g_config.rootfs_path.empty(), "Empty rootfs path, please set using felix86 -s <PATH>");
-    }
-
-    if (g_config.rootfs_path.empty()) {
-        printf("Rootfs path is empty. Please run `felix86 -s <rootfs_path>` or set the rootfs_path variable in %s\n", g_config.path().c_str());
-
-        if (geteuid() == 0) {
-            printf("\nI noticed you are running as root, did you forget to pass `-E` to sudo?\n");
+    if (!g_config.no_rootfs) {
+        const char* guest_rootfs = getenv("__FELIX86_ROOTFS");
+        std::filesystem::path original_rootfs = g_config.rootfs_path;
+        if (guest_rootfs) {
+            g_config.rootfs_path = guest_rootfs;
+        } else {
+            ASSERT(!g_execve_process);
+            ASSERT_MSG(!g_config.rootfs_path.empty(), "Empty rootfs path, please set using felix86 -s <PATH>");
         }
-        exit(1);
-    }
 
-    if (!std::filesystem::exists(g_config.rootfs_path)) {
-        ERROR("Rootfs path does <%s> not exist", g_config.rootfs_path.c_str());
-    }
+        if (!std::filesystem::exists(g_config.rootfs_path)) {
+            ERROR("Rootfs path does <%s> not exist", g_config.rootfs_path.c_str());
+        }
 
-    std::string srootfs_path = g_config.rootfs_path.string();
-    if (srootfs_path.size() == 1 && srootfs_path[0] == '/') {
-        ERROR("You selected the system root as the rootfs path, which is wrong");
+        std::string srootfs_path = g_config.rootfs_path.string();
+        if (srootfs_path.size() == 1 && srootfs_path[0] == '/') {
+            ERROR("You selected the system root as the rootfs path, which is wrong");
+        }
     }
 
     // TODO: pass in similar way as __FELIX86_CONFIG to children
