@@ -473,7 +473,7 @@ int main(int argc, char* argv[]) {
         // to load the config file. So all execve'd runs should load the configs from a string
         Config::initializeChild();
     }
-    if (g_config.rootfs_path.empty()) {
+    if (!g_config.no_rootfs && g_config.rootfs_path.empty()) {
         rootfs_not_set_error();
     }
     initialize_globals();

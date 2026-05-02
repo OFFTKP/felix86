@@ -6,6 +6,7 @@ X(General, std::string, enabled_thunks, "none", FELIX86_ENABLED_THUNKS, "Set the
 X(General, std::string, environment, "", FELIX86_ENVIRONMENT, "Environment variables, separated by ';', to pass to the guest program", false)
 X(General, std::string, host_environment, "", FELIX86_HOST_ENVIRONMENT, "Environment variables, separated by ';', to export in the host", false)
 X(General, bool, binfmt_misc_installed, false, FELIX86_BINFMT_MISC_INSTALLED, "Whether binfmt_misc is installed, do NOT change this manually unless if you know what you're doing -- install with `felix86 --binfmt-misc` instead", false)
+X(General, bool, no_rootfs, false, FELIX86_NO_ROOTFS, "Do not use a rootfs, passthrough all filesystem syscalls to the host", false)
 
 X(Logging, bool, verbose, false, FELIX86_VERBOSE, "Enable verbose logging", false)
 X(Logging, bool, quiet, false, FELIX86_QUIET, "Disable all logging", false)
