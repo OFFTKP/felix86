@@ -417,6 +417,9 @@ void initialize_globals() {
         } else {
             g_process_globals.mount_paths.push_back(g_config.rootfs_path);
         }
+    } else {
+        g_dont_chdir = true;
+        g_rootfs_fd = -1;
     }
 
     const char* env_file = getenv("FELIX86_ENV_FILE");
