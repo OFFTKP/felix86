@@ -320,7 +320,7 @@ void initialize_globals() {
     if (mounts_path) {
         ASSERT(g_execve_process);
         g_mounts_path = mounts_path;
-    } else {
+    } else if (!g_config.no_rootfs) {
         // Create just the mounts path, which in most cases will be at /run/user/$UID/felix86/mounts
         // It's important we do this on the first run: Programs can change our UID with CLONE_NEWUSER
         // and we won't know which /run/user/ directory is ours
@@ -343,88 +343,83 @@ void initialize_globals() {
         g_mounts_path = mounts;
     }
 
-    const char* guest_rootfs = getenv("__FELIX86_ROOTFS");
     std::filesystem::path original_rootfs = g_config.rootfs_path;
-    if (guest_rootfs) {
-        g_config.rootfs_path = guest_rootfs;
-    } else {
-        ASSERT(!g_execve_process);
-        ASSERT_MSG(!g_config.rootfs_path.empty(), "Empty rootfs path, please set using felix86 -s <PATH>");
-    }
-
-    if (g_config.rootfs_path.empty()) {
-        printf("Rootfs path is empty. Please run `felix86 -s <rootfs_path>` or set the rootfs_path variable in %s\n", g_config.path().c_str());
-
-        if (geteuid() == 0) {
-            printf("\nI noticed you are running as root, did you forget to pass `-E` to sudo?\n");
+    if (!g_config.no_rootfs) {
+        const char* guest_rootfs = getenv("__FELIX86_ROOTFS");
+        if (guest_rootfs) {
+            g_config.rootfs_path = guest_rootfs;
+        } else {
+            ASSERT(!g_execve_process);
+            ASSERT_MSG(!g_config.rootfs_path.empty(), "Empty rootfs path, please set using felix86 -s <PATH>");
         }
-        exit(1);
-    }
 
-    if (!std::filesystem::exists(g_config.rootfs_path)) {
-        ERROR("Rootfs path does <%s> not exist", g_config.rootfs_path.c_str());
-    }
+        if (!std::filesystem::exists(g_config.rootfs_path)) {
+            ERROR("Rootfs path does <%s> not exist", g_config.rootfs_path.c_str());
+        }
 
-    std::string srootfs_path = g_config.rootfs_path.string();
-    if (srootfs_path.size() == 1 && srootfs_path[0] == '/') {
-        ERROR("You selected the system root as the rootfs path, which is wrong");
-    }
+        std::string srootfs_path = g_config.rootfs_path.string();
+        if (srootfs_path.size() == 1 && srootfs_path[0] == '/') {
+            ERROR("You selected the system root as the rootfs path, which is wrong");
+        }
+        ASSERT(std::filesystem::is_directory(g_config.rootfs_path));
 
-    // TODO: pass in similar way as __FELIX86_CONFIG to children
-    std::error_code ec;
-    const std::filesystem::path config_dir = Config::getConfigDir();
-    if (!config_dir.empty()) {
-        const std::filesystem::path trusted_paths = config_dir / "trusted.txt";
-        if (std::filesystem::exists(trusted_paths, ec)) {
-            std::ifstream file(trusted_paths);
-            if (file.is_open()) {
-                std::string line;
-                bool all_ok = true;
-                while (std::getline(file, line)) {
-                    if (line.empty()) {
-                        continue;
+        // TODO: pass in similar way as __FELIX86_CONFIG to children
+        std::error_code ec;
+        const std::filesystem::path config_dir = Config::getConfigDir();
+        if (!config_dir.empty()) {
+            const std::filesystem::path trusted_paths = config_dir / "trusted.txt";
+            if (std::filesystem::exists(trusted_paths, ec)) {
+                std::ifstream file(trusted_paths);
+                if (file.is_open()) {
+                    std::string line;
+                    bool all_ok = true;
+                    while (std::getline(file, line)) {
+                        if (line.empty()) {
+                            continue;
+                        }
+
+                        bool ok = Filesystem::TrustFolder(line);
+                        if (!ok) {
+                            WARN("Failed to trust folder %s", line.c_str());
+                            all_ok = false;
+                        }
                     }
 
-                    bool ok = Filesystem::TrustFolder(line);
-                    if (!ok) {
-                        WARN("Failed to trust folder %s", line.c_str());
-                        all_ok = false;
+                    if (!all_ok) {
+                        WARN("Failed to trust some folders. If they don't exist anymore, remove them from %s", trusted_paths.c_str());
                     }
-                }
-
-                if (!all_ok) {
-                    WARN("Failed to trust some folders. If they don't exist anymore, remove them from %s", trusted_paths.c_str());
                 }
             }
         }
-    }
 
-    ASSERT_MSG(g_config.rootfs_path.string().back() != '/', "Rootfs path should not end in '/'");
-    ASSERT(std::filesystem::exists(g_config.rootfs_path));
-    ASSERT(std::filesystem::is_directory(g_config.rootfs_path));
-    g_rootfs_fd = open(g_config.rootfs_path.c_str(), O_PATH | O_DIRECTORY);
-    ASSERT_MSG(g_rootfs_fd > 0, "Failed to open rootfs directory");
-    g_rootfs_fd = FD::moveToHighNumber(g_rootfs_fd);
-    FD::protect(g_rootfs_fd);
+        g_rootfs_fd = open(g_config.rootfs_path.c_str(), O_PATH | O_DIRECTORY);
+        ASSERT_MSG(g_rootfs_fd > 0, "Failed to open rootfs directory");
+        g_rootfs_fd = FD::moveToHighNumber(g_rootfs_fd);
+        FD::protect(g_rootfs_fd);
 
-    ASSERT_MSG(Filesystem::FakeMount("/dev", original_rootfs / "dev"), "Failed to fake-mount /dev");
-    ASSERT_MSG(Filesystem::FakeMount("/proc", original_rootfs / "proc"), "Failed to fake-mount /proc");
-    ASSERT_MSG(Filesystem::FakeMount("/sys", original_rootfs / "sys"), "Failed to fake-mount /sys");
-    ASSERT_MSG(Filesystem::FakeMount("/run", original_rootfs / "run"), "Failed to fake-mount /run");
-    ASSERT_MSG(Filesystem::FakeMount("/tmp", original_rootfs / "tmp"), "Failed to fake-mount /tmp");
+        ASSERT_MSG(g_config.rootfs_path.string().back() != '/', "Rootfs path should not end in '/'");
+        ASSERT_MSG(Filesystem::FakeMount("/dev", original_rootfs / "dev"), "Failed to fake-mount /dev");
+        ASSERT_MSG(Filesystem::FakeMount("/proc", original_rootfs / "proc"), "Failed to fake-mount /proc");
+        ASSERT_MSG(Filesystem::FakeMount("/sys", original_rootfs / "sys"), "Failed to fake-mount /sys");
+        ASSERT_MSG(Filesystem::FakeMount("/run", original_rootfs / "run"), "Failed to fake-mount /run");
+        ASSERT_MSG(Filesystem::FakeMount("/tmp", original_rootfs / "tmp"), "Failed to fake-mount /tmp");
 
-    if (getenv("__FELIX86_MOUNT_0")) {
-        size_t current_mount = 0;
-        for (;;) {
-            auto mount_path = getenv((std::string("__FELIX86_MOUNT_") + std::to_string(current_mount++)).c_str());
-            if (!mount_path) {
-                break;
-            } else {
-                g_process_globals.mount_paths.push_back(mount_path);
+        if (getenv("__FELIX86_MOUNT_0")) {
+            size_t current_mount = 0;
+            for (;;) {
+                auto mount_path = getenv((std::string("__FELIX86_MOUNT_") + std::to_string(current_mount++)).c_str());
+                if (!mount_path) {
+                    break;
+                } else {
+                    g_process_globals.mount_paths.push_back(mount_path);
+                }
             }
+        } else {
+            g_process_globals.mount_paths.push_back(g_config.rootfs_path);
         }
     } else {
-        g_process_globals.mount_paths.push_back(g_config.rootfs_path);
+        g_dont_chdir = true;
+        g_rootfs_fd = -1;
     }
 
     const char* env_file = getenv("FELIX86_ENV_FILE");

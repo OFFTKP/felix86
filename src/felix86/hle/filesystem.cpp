@@ -634,6 +634,10 @@ std::filesystem::path create_unique_mount_path() {
 
 int Filesystem::Chroot(const char* path) {
     WARN("chroot(%s)", path);
+    if (g_config.no_rootfs) {
+        return syscall(SYS_chroot, path);
+    }
+
     if (!path) {
         return -EINVAL;
     }
@@ -675,6 +679,10 @@ int Filesystem::Chroot(const char* path) {
 
 int Filesystem::PivotRoot(const char* new_root, const char* put_old) {
     WARN("pivot_root(%s, %s)", new_root, put_old);
+    if (g_config.no_rootfs) {
+        return syscall(SYS_pivot_root, new_root, put_old);
+    }
+
     const std::filesystem::path rootfs = g_config.rootfs_path;
     FdPath new_root_resolved = resolve(new_root, true);
 
@@ -745,6 +753,10 @@ int Filesystem::PivotRoot(const char* new_root, const char* put_old) {
 }
 
 int Filesystem::Mount(const char* source, const char* target, const char* fstype, u64 flags, const void* data) {
+    if (g_config.no_rootfs) {
+        return ::mount(source, target, fstype, flags, data);
+    }
+
     bool mount_root_if_fail = false;
     if (source == nullptr && std::string(target) == "/" && (flags & MS_SLAVE) && fstype == nullptr && data == nullptr) {
         // HACK: changing propagation type of root, but rootfs may not be a mount, and it will cause this to fail
@@ -932,6 +944,10 @@ FdPath Filesystem::resolve(const char* path, bool resolve_symlinks) {
 }
 
 void Filesystem::removeRootfsPrefix(std::string& path) {
+    if (g_config.no_rootfs) {
+        return;
+    }
+
     // Check if the path starts with rootfs (ie. when readlinking /proc stuff) and remove it
     auto lock = g_process_globals.states_lock.lock();
     for (const auto& rootfs : g_process_globals.mount_paths) {
@@ -953,16 +969,18 @@ bool Filesystem::isProcSelfExe(const char* path) {
 }
 
 FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
-    if (path == nullptr) {
-        return FdPath::create(fd, nullptr);
-    }
+    if (!g_config.no_rootfs) {
+        if (path == nullptr) {
+            return FdPath::create(fd, nullptr);
+        }
 
-    if (path[0] == 0) {
-        return FdPath::create(fd, path);
-    }
+        if (path[0] == 0) {
+            return FdPath::create(fd, path);
+        }
 
-    if (path[0] == '/' && path[1] == 0) {
-        return FdPath::create(AT_FDCWD, g_config.rootfs_path);
+        if (path[0] == '/' && path[1] == 0) {
+            return FdPath::create(AT_FDCWD, g_config.rootfs_path);
+        }
     }
 
     if (isProcSelfExe(path)) {
@@ -971,6 +989,10 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
         } else {
             return FdPath::create(AT_FDCWD, g_executable_path_guest_override);
         }
+    }
+
+    if (g_config.no_rootfs) {
+        return FdPath::create(fd, path);
     }
 
     int current_fd;

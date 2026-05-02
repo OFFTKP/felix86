@@ -233,8 +233,12 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     case 5: {
         std::error_code ec;
         Config::initialize();
-        if (g_config.rootfs_path.empty()) {
-            rootfs_not_set_error();
+        if (!g_config.no_rootfs) {
+            if (g_config.rootfs_path.empty()) {
+                rootfs_not_set_error();
+            }
+        } else {
+            g_config.rootfs_path = "/";
         }
 
         bool rootfs_exists = std::filesystem::exists(g_config.rootfs_path, ec);
@@ -415,7 +419,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         printf("These are the configurations for felix86\n");
         printf("You may edit %s or set the corresponding environment variable\n", g_config.path().c_str());
 
-#define X(group, type, name, def, env, description, required)                                                                                        \
+#define X(group, type, name, def, env, description)                                                                                                  \
     if (current_group != #group) {                                                                                                                   \
         current_group = #group;                                                                                                                      \
         printf("\n[%s]\n", current_group.c_str());                                                                                                   \
@@ -473,7 +477,7 @@ int main(int argc, char* argv[]) {
         // to load the config file. So all execve'd runs should load the configs from a string
         Config::initializeChild();
     }
-    if (g_config.rootfs_path.empty()) {
+    if (!g_config.no_rootfs && g_config.rootfs_path.empty()) {
         rootfs_not_set_error();
     }
     initialize_globals();
@@ -596,7 +600,7 @@ int main(int argc, char* argv[]) {
     if (g_params.executable_path.empty()) {
         ERROR("Executable path not specified");
         return 1;
-    } else {
+    } else if (!g_config.no_rootfs) {
         g_params.executable_path = std::filesystem::absolute(g_params.executable_path);
         if (is_subpath(g_params.executable_path, g_config.rootfs_path)) {
             // All is good
