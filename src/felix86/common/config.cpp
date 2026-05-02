@@ -244,7 +244,7 @@ bool Config::initialize(bool ignore_envs) {
     // g_config can be changed, c_initial_config won't be changed
     g_initial_config = g_config;
 
-#define X(group, type, name, default_value, env_name, description, required)                                                                         \
+#define X(group, type, name, default_value, env_name, description)                                                                                   \
     if (g_config.name != type{default_value}) {                                                                                                      \
         addToEnvironment(g_config, #env_name, namify(g_config.name).c_str());                                                                        \
     }
@@ -271,7 +271,7 @@ void addValue(std::string& str, Type& value) {
 
 std::string Config::getConfigHex() {
     std::string str;
-#define X(group, type, name, default_value, env_name, description, required)                                                                         \
+#define X(group, type, name, default_value, env_name, description)                                                                                   \
     {                                                                                                                                                \
         str += #env_name;                                                                                                                            \
         str += "=";                                                                                                                                  \
@@ -419,7 +419,7 @@ void Config::initializeChild() {
         env_map[name] = value;
     }
 
-#define X(group, type, name, default_value, env_name, description, required)                                                                         \
+#define X(group, type, name, default_value, env_name, description)                                                                                   \
     {                                                                                                                                                \
         bool loaded = false;                                                                                                                         \
         loaded = loadFromEnv<type>(config, config.name, env_map.at(#env_name).c_str());                                                              \
@@ -438,8 +438,9 @@ Config Config::load(const std::filesystem::path& path, bool ignore_envs) {
     Config config = {};
 
     bool no_config_path = path.empty();
+    toml_result_t result;
     if (!no_config_path) {
-        toml_result_t result = toml_parse_file_ex(path.c_str());
+        result = toml_parse_file_ex(path.c_str());
         if (!result.ok) {
             WARN("Failed to parse toml file %s with error: %s", path.c_str(), result.errmsg);
             return config;
@@ -449,7 +450,7 @@ Config Config::load(const std::filesystem::path& path, bool ignore_envs) {
         return config;
     }
 
-#define X(group, type, name, default_value, env_name, description, required)                                                                         \
+#define X(group, type, name, default_value, env_name, description)                                                                                   \
     {                                                                                                                                                \
         bool loaded = false;                                                                                                                         \
         const char* env = getenv(#env_name);                                                                                                         \
@@ -476,7 +477,7 @@ bool Config::loadProfile(Config& config, const std::filesystem::path& profile) {
         return false;
     }
 
-#define X(group, type, name, default_value, env_name, description, required)                                                                         \
+#define X(group, type, name, default_value, env_name, description)                                                                                   \
     {                                                                                                                                                \
         (void)loadFromToml<type>(result, #group, #name, config.name);                                                                                \
     }
@@ -515,7 +516,7 @@ void Config::save(const std::filesystem::path& path, const Config& config, bool 
     std::string toml;
     std::string current_group;
 
-#define X(group, type, name, default_value, env_name, description, required)                                                                         \
+#define X(group, type, name, default_value, env_name, description)                                                                                   \
     if (!only_non_default || config.name != default_value) {                                                                                         \
         if (current_group != #group) {                                                                                                               \
             current_group = #group;                                                                                                                  \

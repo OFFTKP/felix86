@@ -419,7 +419,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         printf("These are the configurations for felix86\n");
         printf("You may edit %s or set the corresponding environment variable\n", g_config.path().c_str());
 
-#define X(group, type, name, def, env, description, required)                                                                                        \
+#define X(group, type, name, def, env, description)                                                                                                  \
     if (current_group != #group) {                                                                                                                   \
         current_group = #group;                                                                                                                      \
         printf("\n[%s]\n", current_group.c_str());                                                                                                   \
