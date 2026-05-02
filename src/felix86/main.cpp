@@ -233,8 +233,12 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     case 5: {
         std::error_code ec;
         Config::initialize();
-        if (g_config.rootfs_path.empty()) {
-            rootfs_not_set_error();
+        if (!g_config.no_rootfs) {
+            if (g_config.rootfs_path.empty()) {
+                rootfs_not_set_error();
+            }
+        } else {
+            g_config.rootfs_path = "/";
         }
 
         bool rootfs_exists = std::filesystem::exists(g_config.rootfs_path, ec);
