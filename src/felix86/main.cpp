@@ -326,6 +326,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         do {
             std::string str = *envs;
             if (str.find("PS1=") == 0) {
+                envs++;
                 continue;
             }
             envp.push_back(*envs++);
