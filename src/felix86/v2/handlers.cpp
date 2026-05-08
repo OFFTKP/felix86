@@ -7147,7 +7147,7 @@ FAST_HANDLE(ROL) {
             as.SEQZ(is_zero, masked_src);
             biscuit::GPR rotated = rec.scratch();
             as.ROLW(rotated, dst, masked_src);
-            rec.setGPR(&operands[0], dst);
+            rec.setGPR(&operands[0], rotated);
         } else if (operands[0].size == 64) {
             biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD); // ROL will mask for us
             as.ROL(dst, dst, src);
@@ -7218,7 +7218,7 @@ FAST_HANDLE(ROR) {
             as.SEQZ(is_zero, masked_src);
             biscuit::GPR rotated = rec.scratch();
             as.RORW(rotated, dst, masked_src);
-            rec.setGPR(&operands[0], dst);
+            rec.setGPR(&operands[0], rotated);
         } else if (operands[0].size == 64) {
             biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD); // ROR will mask for us
             as.ROR(dst, dst, src);
