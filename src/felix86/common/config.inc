@@ -57,7 +57,7 @@ X(Performance, bool, address_cache, true, FELIX86_ADDRESS_CACHE, "Use lower addr
 X(Performance, bool, unsafe_flags, false, FELIX86_UNSAFE_FLAGS, "Assume flags are thrashed on every call/ret to avoid some calculations")
 X(Performance, bool, opcode_fusing, false, FELIX86_FUSE_OPCODES, "Try to fuse some x86 opcodes together if possible")
 X(Performance, bool, inline_syscalls, true, FELIX86_INLINE_SYSCALLS, "Use ECALL directly instead of a function for some syscalls")
-X(Performance, bool, inaccurate_minmax, true, FELIX86_INACCURATE_MINMAX, "Don't accurately calculate minps/minpd/maxps/maxpd instructions when it comes to NaNs")
+X(Performance, bool, inaccurate_minmax, false, FELIX86_INACCURATE_MINMAX, "Don't accurately calculate minps/minpd/maxps/maxpd instructions when it comes to NaNs")
 X(Performance, bool, divzero_check, true, FELIX86_DIVZERO_CHECK, "Check for division by zero for every div instruction to raise a signal if necessary")
 X(Performance, bool, always_tso, false, FELIX86_ALWAYS_TSO, "Use fences to emulate TSO on every memory read/write -- Will cause slowdown but may fix some games")
 X(Performance, bool, no_tso_stack, true, FELIX86_NO_TSO_STACK, "Don't emulate TSO on stack accesses")
