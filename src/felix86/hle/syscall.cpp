@@ -1954,7 +1954,9 @@ void felix86_syscall(felix86_frame* frame) {
 
 void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
     ASSERT(frame->magic == felix86_frame::expected_magic);
-    ASSERT(g_mode32);
+    if (!g_mode32) {
+        WARN("Executing 32-bit syscall on 64-bit process");
+    }
     ThreadState* state = frame->state;
     state->should_restart_syscall = false;
     u64 syscall_number = state->GetGpr(X86_REF_RAX);

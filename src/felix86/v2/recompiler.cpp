@@ -600,6 +600,9 @@ u64 Recompiler::compileSequence(u64 rip) {
             ASSERT_MSG(Extensions::V, "TODO: Implement MMX for no RVV");
             WARN_ONCE("This program makes use of MMX");
             if (local_x87_state != x87State::MMX) {
+                if (local_x87_state == x87State::x87) {
+                    flushX87();
+                }
                 switchToMMX();
             }
         }
