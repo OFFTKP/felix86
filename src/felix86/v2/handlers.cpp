@@ -7180,9 +7180,8 @@ FAST_HANDLE(ROL) {
         as.SRLI(of, dst, rec.getBitSize(size) - 1);
         as.XOR(of, of, cf);
 
-        rec.setGPR(&operands[0], dst);
-
         as.Bind(&zero_count);
+        rec.setGPR(&operands[0], dst);
     }
 }
 
@@ -7253,9 +7252,8 @@ FAST_HANDLE(ROR) {
         as.ANDI(of, of, 1);
         as.XOR(of, of, cf);
 
-        rec.setGPR(&operands[0], dst);
-
         as.Bind(&zero_count);
+        rec.setGPR(&operands[0], dst);
     }
 }
 
