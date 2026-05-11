@@ -50,6 +50,8 @@ void Logger::startServer(bool detach) {
             prctl(PR_SET_PDEATHSIG, SIGTERM);
             serverLoop(fd);
         } else {
+            // Close the log file from this side
+            ASSERT(close(fd) == 0);
             // Open write end of pipe -- we need to do it here otherwise the thing will hang (both ends need to be opened simultaneously)
             g_output_fd = open(g_pipe_name.c_str(), O_WRONLY, 0644);
             ASSERT(g_output_fd > 0);
