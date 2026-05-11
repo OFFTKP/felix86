@@ -5,6 +5,7 @@
 #include <fmt/format.h>
 #include <grp.h>
 #include <spawn.h>
+#include <sys/auxv.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -498,7 +499,9 @@ int main(int argc, char* argv[]) {
         g_params.argv[0] = argv0_original;
     } else {
         ASSERT(!g_execve_process);
-        replace_all(g_params.argv[0], g_config.rootfs_path, "");
+        if (g_params.argv[0].find(g_config.rootfs_path) == 0) {
+            replace_all(g_params.argv[0], g_config.rootfs_path, "");
+        }
     }
 
     std::string args = "Arguments: ";

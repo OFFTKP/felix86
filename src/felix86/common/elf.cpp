@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/auxv.h>
 #include <sys/mman.h>
 #include <sys/personality.h>
 #include <sys/prctl.h>
@@ -303,25 +304,27 @@ Elf::~Elf() {
 }
 
 void Elf::Load(const std::filesystem::path& path) {
-    if (!std::filesystem::exists(path)) {
-        WARN("File %s does not exist", path.c_str());
-        return;
-    }
-
-    if (!std::filesystem::is_regular_file(path)) {
-        WARN("File %s is not a regular file", path.c_str());
-        return;
-    }
-
     u64 lowest_vaddr = 0xFFFFFFFFFFFFFFFF;
     u64 highest_vaddr = 0;
 
+    bool open_execfd = false;
     FILE* file = fopen(path.c_str(), "rb");
-    int fd = fileno(file);
+    if (!file && path == g_executable_path_absolute) {
+        u64 fd = getauxval(AT_EXECFD);
+        if (fd == 0 && errno == ENOENT) {
+            if (!g_config.binfmt_misc_installed) {
+                WARN("If this is an execute-only file you need to install felix86 in binfmt_misc");
+            }
+            ERROR("Failed to open ELF at %s and no EXECFD", path.c_str());
+        }
 
+        file = fdopen(fd, "r");
+        open_execfd = true;
+    }
     if (!file) {
         ERROR("Failed to open file %s", path.c_str());
     }
+    int fd = fileno(file);
 
     fseek(file, 0, SEEK_END);
     u64 size = ftell(file);
@@ -560,13 +563,31 @@ void Elf::Load(const std::filesystem::path& path) {
     phnum = ehdr.phnum();
     phent = ehdr.phentsize();
 
-    fclose(file);
+    if (!open_execfd) {
+        fclose(file);
+    } else {
+        // Don't close our execfd here, we close it right before Threads::StartThread
+    }
 
     ok = true;
 }
 
 Elf::PeekResult Elf::Peek(const std::filesystem::path& path) {
+    bool open_execfd = false;
     FILE* file = fopen(path.c_str(), "rb");
+    if (!file && path == g_executable_path_absolute) {
+        u64 fd = getauxval(AT_EXECFD);
+        if (fd == 0 && errno == ENOENT) {
+            WARN("Failed to open ELF at %s and no EXECFD", path.c_str());
+            if (!g_config.binfmt_misc_installed) {
+                WARN("If this is an execute-only file you need to install felix86 in binfmt_misc");
+            }
+        }
+
+        file = fdopen(fd, "r");
+        open_execfd = true;
+    }
+
     if (!file) {
         VERBOSE("Failed to open file %s: %s", path.c_str(), strerror(errno));
         return PeekResult::NotElf;
@@ -579,14 +600,23 @@ Elf::PeekResult Elf::Peek(const std::filesystem::path& path) {
     }
 
     if (e_ident[0] != 0x7F || e_ident[1] != 'E' || e_ident[2] != 'L' || e_ident[3] != 'F') {
-        fclose(file);
+        if (!open_execfd) {
+            fclose(file);
+        } else {
+            // Don't close our execfd here, we close it right before Threads::StartThread
+        }
         return PeekResult::NotElf;
     }
 
     bool mode32 = e_ident[4] == ELFCLASS32;
     fseek(file, 0, SEEK_SET);
     Elf_Ehdr ehdr(mode32, file);
-    fclose(file);
+
+    if (!open_execfd) {
+        fclose(file);
+    } else {
+        // Don't close our execfd here, we close it right before Threads::StartThread
+    }
 
     if (ehdr.machine() != EM_386 && ehdr.machine() != EM_X86_64) {
         return PeekResult::NotElf;

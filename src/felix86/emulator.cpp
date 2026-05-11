@@ -7,6 +7,7 @@
 #include <fmt/format.h>
 #include <linux/prctl.h>
 #include <stdlib.h>
+#include <sys/auxv.h>
 #include <sys/mman.h>
 #include <sys/prctl.h>
 #include <sys/random.h>
@@ -308,6 +309,10 @@ void Emulator::Start() {
 
     VERBOSE("Entering main thread :)");
 
+    u64 fd = getauxval(AT_EXECFD);
+    if (fd != 0 || errno != ENOENT /* it's possible fd==0 is the execfd if all other fds are closed */) {
+        close(fd);
+    }
     Threads::StartThread(main_state);
     UNREACHABLE();
 }

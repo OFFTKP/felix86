@@ -846,12 +846,12 @@ int Filesystem::openatInternal(int fd, const char* filename, int flags, u64 mode
     int opened_fd = ::syscall(SYS_openat, fd, filename, flags, mode);
     if (opened_fd != -1) {
         struct statx stat;
-        ASSERT(statx(opened_fd, "", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &stat) == 0);
+        ASSERT(::statx(opened_fd, "", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &stat) == 0);
         for (int i = 0; i < EMULATED_NODE_COUNT; i++) {
             EmulatedNode& node = emulated_nodes[i];
             if (statx_inode_same(&stat, &node.stat)) {
                 // This is one of our emulated files, close the opened fd and replace it with our own
-                close(opened_fd);
+                ::close(opened_fd);
                 int new_fd = node.open_func(filename, flags);
                 ASSERT_MSG(new_fd >= 0, "Our emulated fd has a negative number: %d", new_fd);
                 return new_fd;
@@ -1164,12 +1164,12 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
                 int result2_error = errno;
 
                 // TODO: maybe optimize some cases using close_range
-                close(dirfd);
+                ::close(dirfd);
                 if (result1 > 0) {
-                    close(result1);
+                    ::close(result1);
                 }
                 if (result2 > 0) {
-                    close(result2);
+                    ::close(result2);
                 }
 
                 if (result1 > 0 && result2 > 0) {
