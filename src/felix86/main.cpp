@@ -502,7 +502,6 @@ int main(int argc, char* argv[]) {
             replace_all(g_params.argv[0], g_config.rootfs_path, "");
         }
     }
-    VERBOSE("Arg[0]: %s", g_params.argv[0].c_str());
 
     std::string args = "Arguments: ";
     for (const auto& arg : g_params.argv) {
