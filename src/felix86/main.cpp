@@ -306,7 +306,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             ps1 = "PS1=%F{215}felix86%f %F{153}%~%f > ";
             norc = "-f";
         } else if (shell_path.filename() == "bash") {
-            ps1 = "PS1=\\033[38;5;215mfelix86 \\033[38;5;153m\\w\\033[0m > ";
+            ps1 = "PS1=\\[\\033[38;5;215m\\]felix86 \\[\\033[38;5;153m\\]\\w\\[\\033[0m\\] > ";
             norc = "--norc";
         } else {
             // We don't know the escape codes used...
