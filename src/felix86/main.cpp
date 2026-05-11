@@ -448,7 +448,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
 static struct argp argp = {options, parse_opt, args_doc, doc};
 
 int main(int argc, char* argv[]) {
-    for (int i = 0; i < argc; i++) {
+    for (int i = 0; i <= argc; i++) {
         printf("%s\n", argv[i]);
     }
 
