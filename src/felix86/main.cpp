@@ -448,13 +448,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
 
 static struct argp argp = {options, parse_opt, args_doc, doc};
 
-void pauseme(int i) {
-    printf("%d\n", getpid());
-    pause();
-}
-
 int main(int argc, char* argv[]) {
-    signal(SIGSEGV, pauseme);
     if (getenv("__FELIX86_TEST_BINFMT_MISC")) {
         // This shouldn't be printed as when we run /bin/env in detect_binfmt_misc we mute stdout and stderr
         WARN("__FELIX86_TEST_BINFMT_MISC was detected, if you see this then something is wrong");

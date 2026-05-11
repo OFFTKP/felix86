@@ -5,6 +5,7 @@
 
 Script::PeekResult Script::Peek(const std::filesystem::path& path) {
     FILE* file = fopen(path.c_str(), "r");
+    bool open_execfd = false;
     if (!file && path == g_executable_path_absolute) {
         u64 fd = getauxval(AT_EXECFD);
         if (fd == 0 && errno == ENOENT) {
@@ -15,6 +16,7 @@ Script::PeekResult Script::Peek(const std::filesystem::path& path) {
         }
 
         file = fdopen(fd, "r");
+        open_execfd = true;
     }
 
     if (!file) {
@@ -30,7 +32,11 @@ Script::PeekResult Script::Peek(const std::filesystem::path& path) {
     u8 data[PATH_MAX];
     size = std::min((size_t)PATH_MAX, size);
     size_t size_read = fread(data, 1, size, file);
-    fclose(file);
+    if (!open_execfd) {
+        fclose(file);
+    } else {
+        // Don't close our execfd here, we close it right before Threads::StartThread
+    }
 
     if (size_read != size) {
         ERROR("Failed to read file %s", path.c_str());
@@ -49,6 +55,7 @@ Script::PeekResult Script::Peek(const std::filesystem::path& path) {
 }
 
 Script::Script(const std::filesystem::path& script) {
+    bool open_execfd = false;
     FILE* file = fopen(script.c_str(), "r");
     if (!file && script == g_executable_path_absolute) {
         u64 fd = getauxval(AT_EXECFD);
@@ -60,6 +67,7 @@ Script::Script(const std::filesystem::path& script) {
         }
 
         file = fdopen(fd, "r");
+        open_execfd = true;
     }
 
     if (!file) {
@@ -76,7 +84,11 @@ Script::Script(const std::filesystem::path& script) {
     fseek(file, 2, SEEK_SET); // skip #!
     size = std::min((size_t)PATH_MAX, size - 2);
     size_t size_read = fread(data, 1, size, file);
-    fclose(file);
+    if (!open_execfd) {
+        fclose(file);
+    } else {
+        // Don't close our execfd here, we close it right before Threads::StartThread
+    }
 
     if (size_read != size) {
         ERROR("Failed to read file %s", script.c_str());
