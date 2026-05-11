@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/auxv.h>
 #include <sys/mman.h>
 #include <sys/personality.h>
 #include <sys/prctl.h>
@@ -303,20 +304,21 @@ Elf::~Elf() {
 }
 
 void Elf::Load(const std::filesystem::path& path) {
-    if (!std::filesystem::exists(path)) {
-        WARN("File %s does not exist", path.c_str());
-        return;
-    }
-
-    if (!std::filesystem::is_regular_file(path)) {
-        WARN("File %s is not a regular file", path.c_str());
-        return;
-    }
-
     u64 lowest_vaddr = 0xFFFFFFFFFFFFFFFF;
     u64 highest_vaddr = 0;
 
     FILE* file = fopen(path.c_str(), "rb");
+    if (!file && path == g_executable_path_absolute) {
+        u64 fd = getauxval(AT_EXECFD);
+        if (fd == 0 && errno == ENOENT) {
+            WARN("Failed to open ELF at %s and no EXECFD", path.c_str());
+            if (!g_config.binfmt_misc_installed) {
+                WARN("If this is an execute-only file you need to install felix86 in binfmt_misc");
+            }
+        }
+
+        file = fdopen(fd, "r");
+    }
     int fd = fileno(file);
 
     if (!file) {
@@ -567,6 +569,18 @@ void Elf::Load(const std::filesystem::path& path) {
 
 Elf::PeekResult Elf::Peek(const std::filesystem::path& path) {
     FILE* file = fopen(path.c_str(), "rb");
+    if (!file && path == g_executable_path_absolute) {
+        u64 fd = getauxval(AT_EXECFD);
+        if (fd == 0 && errno == ENOENT) {
+            WARN("Failed to open ELF at %s and no EXECFD", path.c_str());
+            if (!g_config.binfmt_misc_installed) {
+                WARN("If this is an execute-only file you need to install felix86 in binfmt_misc");
+            }
+        }
+
+        file = fdopen(fd, "r");
+    }
+
     if (!file) {
         VERBOSE("Failed to open file %s: %s", path.c_str(), strerror(errno));
         return PeekResult::NotElf;

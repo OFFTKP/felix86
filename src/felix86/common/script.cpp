@@ -1,10 +1,21 @@
-#include <climits>
 #include <cstring>
+#include <sys/auxv.h>
 #include "felix86/common/log.hpp"
 #include "felix86/common/script.hpp"
 
 Script::PeekResult Script::Peek(const std::filesystem::path& path) {
     FILE* file = fopen(path.c_str(), "r");
+    if (!file && path == g_executable_path_absolute) {
+        u64 fd = getauxval(AT_EXECFD);
+        if (fd == 0 && errno == ENOENT) {
+            WARN("Failed to open ELF at %s and no EXECFD", path.c_str());
+            if (!g_config.binfmt_misc_installed) {
+                WARN("If this is an execute-only file you need to install felix86 in binfmt_misc");
+            }
+        }
+
+        file = fdopen(fd, "r");
+    }
 
     if (!file) {
         ERROR("Failed to open file %s", path.c_str());
@@ -39,6 +50,17 @@ Script::PeekResult Script::Peek(const std::filesystem::path& path) {
 
 Script::Script(const std::filesystem::path& script) {
     FILE* file = fopen(script.c_str(), "r");
+    if (!file && script == g_executable_path_absolute) {
+        u64 fd = getauxval(AT_EXECFD);
+        if (fd == 0 && errno == ENOENT) {
+            WARN("Failed to open ELF at %s and no EXECFD", script.c_str());
+            if (!g_config.binfmt_misc_installed) {
+                WARN("If this is an execute-only file you need to install felix86 in binfmt_misc");
+            }
+        }
+
+        file = fdopen(fd, "r");
+    }
 
     if (!file) {
         ERROR("Failed to open file %s", script.c_str());
