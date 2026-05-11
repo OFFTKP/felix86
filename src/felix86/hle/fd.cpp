@@ -112,7 +112,7 @@ int FD::moveToHighNumber(int fd) {
             // We can use this FD
             int new_fd = ::dup2(fd, high_fd);
             ASSERT_MSG(new_fd > 0, "Failed to duplicate fd %d to %d with error %s", fd, high_fd, strerror(errno));
-            close(fd);
+            ::close(fd);
             return new_fd;
         }
         high_fd++;
