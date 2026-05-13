@@ -202,7 +202,9 @@ struct Recompiler {
     int invalidateRange(u64 start, u64 end);
 
     constexpr static biscuit::GPR threadStatePointer() {
-        return x27; // saved register so that when we exit VM we don't have to save it
+        return gp; // due to -mno-relax, this register won't be modified in C++ code
+                   // which is great because it means we can access it at any time during
+                   // the process's lifetime
     }
 
     // TODO: move these elsewhere
@@ -218,7 +220,7 @@ struct Recompiler {
         // !!! --- WARN: If any allocations are changed here, change them in the docs as well
         switch (reg) {
         case X86_REF_RIP: {
-            return biscuit::gp; // we set --no-relax flag so that we can allocate gp
+            return biscuit::s11;
         }
         case X86_REF_RAX: {
             return biscuit::x5;

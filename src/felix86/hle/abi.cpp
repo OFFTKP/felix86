@@ -155,7 +155,7 @@ void GuestToHostMarshaller::emitPrologue(biscuit::Assembler& as) {
 
     if (g_config.print_thunks) {
         biscuit::Label after;
-        as.MV(a0, s11);
+        as.MV(a0, Recompiler::threadStatePointer());
         as.LI(t0, (u64)my_printer);
         as.AUIPC(a1, 0);
         as.ADDI(a1, a1, 16);
@@ -469,52 +469,11 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, const void* guest
     void* trampoline = as.GetCursorPointer();
     as.ADDI(sp, sp, -32);
     as.SD(ra, 24, sp);
-    as.SD(s11, 0, sp);
     as.SD(s10, 8, sp);
 
-    biscuit::GPR thread_state_pointer = s11;
+    // Since ThreadState is always in gp, we can just access it here
+    biscuit::GPR thread_state_pointer = Recompiler::threadStatePointer();
     biscuit::GPR guest_stack_pointer = t1;
-
-    // ThreadState* in s11, RSP in t1
-    // This is yucky... we need to store all of our saved registers to get the ThreadState at runtime
-    // We can't just call ThreadState::Get because it will ruin our arguments.
-    as.ADDI(sp, sp, -16 * 8);
-    as.SD(a0, 0 * 8, sp);
-    as.SD(a1, 1 * 8, sp);
-    as.SD(a2, 2 * 8, sp);
-    as.SD(a3, 3 * 8, sp);
-    as.SD(a4, 4 * 8, sp);
-    as.SD(a5, 5 * 8, sp);
-    as.SD(a6, 6 * 8, sp);
-    as.SD(a7, 7 * 8, sp);
-    as.FSD(fa0, 8 * 8, sp);
-    as.FSD(fa1, 9 * 8, sp);
-    as.FSD(fa2, 10 * 8, sp);
-    as.FSD(fa3, 11 * 8, sp);
-    as.FSD(fa4, 12 * 8, sp);
-    as.FSD(fa5, 13 * 8, sp);
-    as.FSD(fa6, 14 * 8, sp);
-    as.FSD(fa7, 15 * 8, sp);
-    as.LI(t1, (u64)ThreadState::Get);
-    as.JALR(t1);
-    as.MV(thread_state_pointer, a0);
-    as.LD(a0, 0 * 8, sp);
-    as.LD(a1, 1 * 8, sp);
-    as.LD(a2, 2 * 8, sp);
-    as.LD(a3, 3 * 8, sp);
-    as.LD(a4, 4 * 8, sp);
-    as.LD(a5, 5 * 8, sp);
-    as.LD(a6, 6 * 8, sp);
-    as.LD(a7, 7 * 8, sp);
-    as.FLD(fa0, 8 * 8, sp);
-    as.FLD(fa1, 9 * 8, sp);
-    as.FLD(fa2, 10 * 8, sp);
-    as.FLD(fa3, 11 * 8, sp);
-    as.FLD(fa4, 12 * 8, sp);
-    as.FLD(fa5, 13 * 8, sp);
-    as.FLD(fa6, 14 * 8, sp);
-    as.FLD(fa7, 15 * 8, sp);
-    as.ADDI(sp, sp, 16 * 8);
 
     as.LD(guest_stack_pointer, offsetof(ThreadState, gprs) + (X86_REF_RSP - X86_REF_RAX) * 8, thread_state_pointer);
 
@@ -622,7 +581,7 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, const void* guest
     as.LI(t0, (u64)x86_code);
     as.SD(t0, offsetof(ThreadState, rip), thread_state_pointer);
 
-    as.MV(a0, s11);
+    as.MV(a0, thread_state_pointer);
     as.LI(t2, (u64)enter_dispatcher_for_callback);
 
     // Finally we "jump" to the guest code
@@ -666,7 +625,6 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, const void* guest
     }
     }
 
-    as.LD(s11, 0, sp);
     as.LD(s10, 8, sp);
     as.LD(ra, 24, sp);
     as.ADDI(sp, sp, 32);

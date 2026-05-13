@@ -33,7 +33,6 @@ u64 g_current_brk = 0;
 u64 g_current_brk_size = 0;
 u64 g_dispatcher_exit_count = 0;
 std::unordered_map<u64, std::vector<u64>> g_breakpoints{};
-pthread_key_t g_thread_state_key = -1;
 ProcessGlobals g_process_globals{};
 std::unique_ptr<Mapper> g_mapper{};
 std::unique_ptr<GDBJIT> g_gdbjit;
@@ -499,8 +498,6 @@ void initialize_globals() {
 
         LOG("Extensions enabled for the recompiler: %s", extensions.c_str());
     }
-
-    ThreadState::InitializeKey();
 
     g_fs = std::make_unique<Filesystem>();
     g_mapper = std::make_unique<Mapper>();

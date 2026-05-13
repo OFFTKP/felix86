@@ -40,16 +40,15 @@ void* pthread_handler(void* args) {
         state->signal_table = SignalHandlerTable::Create(clone_args.parent_state->signal_table);
     }
 
-    state->tid = gettid();
-
     Signals::sigprocmask(state, SIG_SETMASK, &state->signal_mask, nullptr);
 
+    int tid = gettid();
     if (clone_args.guest_flags & CLONE_CHILD_SETTID && clone_args.child_tid) {
-        *clone_args.child_tid = state->tid;
+        *clone_args.child_tid = tid;
     }
 
     if (clone_args.guest_flags & CLONE_PARENT_SETTID && clone_args.parent_tid) {
-        *clone_args.parent_tid = state->tid;
+        *clone_args.parent_tid = tid;
     }
 
     if (clone_args.guest_flags & CLONE_PIDFD) {
@@ -83,9 +82,9 @@ void* pthread_handler(void* args) {
 
     // Once we are finished with initialization we can signal to the parent thread that we are done
     std::atomic_signal_fence(std::memory_order_seq_cst); // Don't let the compiler reorder the copy after this fence
-    __atomic_store_n(finished, state->tid, __ATOMIC_SEQ_CST);
+    __atomic_store_n(finished, tid, __ATOMIC_SEQ_CST);
 
-    LOG("Thread %ld started", state->tid);
+    LOG("Thread %ld started", tid);
     Threads::StartThread(state);
     UNREACHABLE();
     return nullptr;
@@ -226,7 +225,6 @@ long ForkMe(CloneArgs& host_clone_args) {
         // it's fine to just return to felix86_syscall, which will set the result to 0 and continue execution
         // in this new process
         SIGLOG("%d forked to %d", parent_pid, getpid());
-        state->tid = gettid();
     } else {
         if (ret < 0) {
             ERROR("clone (probably fork) failed with %d", errno);
@@ -256,8 +254,6 @@ long VForkMe(CloneArgs& args) {
         if (args.new_rsp) {
             state->gprs[X86_REF_RSP] = args.new_rsp;
         }
-
-        state->tid = gettid();
 
         if (args.guest_flags & CLONE_SETTLS) {
             WARN("vfork giving us new TLS?");
@@ -421,7 +417,6 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
 }
 
 void Threads::StartThread(ThreadState* state) {
-    state->tid = gettid();
     state->recompiler->enterDispatcher(state);
 }
 

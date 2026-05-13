@@ -212,7 +212,6 @@ struct ThreadState {
 
     pid_t* clear_tid_address = nullptr;
     pthread_t thread{}; // The pthread this state belongs to
-    u64 tid{};
     stack_t alt_stack{};
     bool cpuid_bit{}; // stupid rflags bit that is modifiable when cpuid is present, so we need to store its state here. SDL2 modifies it to
                       // check presence of cpuid... on x86-64 processors... lol...
@@ -427,8 +426,6 @@ struct ThreadState {
         flags |= of << 11;
         return flags;
     }
-
-    static void InitializeKey();
 
     static ThreadState* Create(ThreadState* copy_state = nullptr);
 

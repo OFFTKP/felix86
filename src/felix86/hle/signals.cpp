@@ -879,7 +879,7 @@ void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uctx) {
 }
 
 void prepare_synchronous_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx, u64 rip) {
-    // Set GP to actual instruction that faulted so that prepare_guest_signal picks it up for the context
+    // Set the RIP register to actual instruction that faulted so that prepare_guest_signal picks it up for the context
     get_regs(ctx)[Recompiler::allocatedGPR(X86_REF_RIP).Index()] = rip;
     prepare_guest_signal(sig, info, (ucontext_t*)ctx);
 }

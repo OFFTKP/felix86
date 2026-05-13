@@ -551,7 +551,7 @@ void dump_states() {
     auto& states = g_process_globals.states;
     int i = 0;
     for (auto& state : states) {
-        dprintf(g_output_fd, ANSI_COLOR_RED "State %d (%ld):" ANSI_COLOR_RESET "\n", i, state->tid);
+        dprintf(g_output_fd, ANSI_COLOR_RED "State %d (%ld):" ANSI_COLOR_RESET "\n", i, gettid());
 
         if (g_config.calltrace) {
             auto it = state->recompiler->getCalltrace().rbegin();
@@ -797,7 +797,7 @@ void push_calltrace(ThreadState* state, u64 address) {
     }
 
     if (g_print_all_calls) {
-        dprintf(g_output_fd, "Thread %ld calling: ", state->tid);
+        dprintf(g_output_fd, "Thread %d calling: ", gettid());
         print_address(state->rip);
     }
 }
@@ -808,7 +808,7 @@ void pop_calltrace(ThreadState* state) {
     }
 
     if (g_print_all_calls) {
-        dprintf(g_output_fd, "Thread %ld returning: ", state->tid);
+        dprintf(g_output_fd, "Thread %d returning: ", gettid());
         print_address(state->rip);
     }
 
