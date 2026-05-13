@@ -5,12 +5,11 @@
 
 constexpr size_t trampoline_storage_size = 1024 * 512;
 
-void ThreadState::InitializeKey() {
-    int result = pthread_key_create(&g_thread_state_key, [](void*) {});
-    if (result != 0) {
-        ERROR("Failed to create thread state key: %s", strerror(result));
-        exit(1);
-    }
+__attribute__((naked)) static void set_thread_state(ThreadState* state) {
+    asm volatile(R"(
+        mv gp, a0
+        ret
+    )");
 }
 
 ThreadState* ThreadState::Create(ThreadState* copy_state) {
@@ -77,15 +76,17 @@ ThreadState* ThreadState::Create(ThreadState* copy_state) {
 
     auto lock = g_process_globals.states_lock.lock();
     g_process_globals.states.push_back(state);
-    ASSERT(g_thread_state_key != (pthread_key_t)-1);
-    ASSERT(pthread_getspecific(g_thread_state_key) == nullptr);
-    pthread_setspecific(g_thread_state_key, state);
+    set_thread_state(state);
     return state;
 }
 
-ThreadState* ThreadState::Get() {
-    return (ThreadState*)pthread_getspecific(g_thread_state_key);
+__attribute__((naked)) ThreadState* ThreadState::Get() {
+    asm volatile(R"(
+        mv a0, gp
+        ret
+    )");
 }
+static_assert(Recompiler::threadStatePointer() == gp);
 
 void ThreadState::Destroy(ThreadState* state) {
     auto lock = g_process_globals.states_lock.lock();
@@ -93,7 +94,7 @@ void ThreadState::Destroy(ThreadState* state) {
     if (it != g_process_globals.states.end()) {
         g_process_globals.states.erase(it);
     } else {
-        WARN("Thread state %ld not found in global list", state->tid);
+        WARN("Thread state %ld not found in global list", gettid());
     }
     munmap(state->riscv_trampoline_storage_start, trampoline_storage_size);
     munmap(state->x86_trampoline_storage_start, trampoline_storage_size);

@@ -225,7 +225,6 @@ FEXTestLoader::~FEXTestLoader() {
     ThreadState* state = ThreadState::Get();
     ASSERT(state);
     ThreadState::Destroy(state);
-    pthread_setspecific(g_thread_state_key, nullptr);
 }
 
 void FEXTestLoader::Run() {

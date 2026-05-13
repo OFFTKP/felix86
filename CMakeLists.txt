@@ -47,6 +47,11 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=rv64gcv_zicsr_zifencei -mno-relax")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gcv_zicsr_zifencei -mno-relax")
     endif()
+
+    # Just an extra layer of making sure the compiler doesn't decide to use GP as an allocatable reg
+    # -mno-relax should be enough but you never know
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffixed-gp")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffixed-gp")
 endif()
 
 
