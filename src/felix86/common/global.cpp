@@ -49,7 +49,6 @@ std::filesystem::path g_executable_path_absolute{};
 std::filesystem::path g_executable_path_guest_override{};
 std::filesystem::path g_mounts_path{};
 std::vector<FakeMountNode> g_fake_mounts{};
-bool g_dont_chdir = false;
 bool g_testing = false;
 
 // g_output_fd should be replaced upon connecting to the server, however if an error occurs before then we should at least log it
@@ -425,7 +424,6 @@ void initialize_globals() {
             g_process_globals.mount_paths.push_back(g_config.rootfs_path);
         }
     } else {
-        g_dont_chdir = true;
         g_rootfs_fd = -1;
     }
 

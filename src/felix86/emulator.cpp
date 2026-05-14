@@ -273,10 +273,31 @@ void Emulator::Start() {
     BRK::allocate();
 
     if (!g_execve_process) {
-        if (!g_dont_chdir) {
-            // Go inside the rootfs
-            ASSERT(g_rootfs_fd > 0);
-            ASSERT(fchdir(g_rootfs_fd) == 0);
+        if (!g_config.no_rootfs) {
+            char buffer[PATH_MAX];
+            char* cwd = getcwd(buffer, PATH_MAX);
+            ASSERT(cwd == buffer);
+            std::string scwd = cwd;
+            bool ok = false;
+            if (!is_subpath(scwd, g_config.rootfs_path)) {
+                for (auto& mount : g_fake_mounts) {
+                    if (is_subpath(scwd, mount.src_path)) {
+                        // Current directory is inside fakemount, which is fine
+                        ok = true;
+                        break;
+                    }
+                }
+            } else {
+                // Current directory is inside rootfs
+                ok = true;
+            }
+
+            if (!ok) {
+                // If current directory is not inside rootfs or a fakemount, we need to go inside
+                WARN("Chdiring inside rootfs");
+                ASSERT(g_rootfs_fd > 0);
+                ASSERT(fchdir(g_rootfs_fd) == 0);
+            }
         }
     }
 
