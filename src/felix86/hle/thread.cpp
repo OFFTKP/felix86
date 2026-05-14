@@ -102,8 +102,8 @@ int clone_handler(void* args) {
     LOG("Process %ld started", tid);
     if (same_vm) {
         ASSERT(clone_args->new_rip);
-        state->rip = clone_args->new_rip; // TODO: move in same_vm?
-        state->gprs[X86_REF_RAX] = 0;     // return value for thread
+        state->rip = clone_args->new_rip;
+        state->gprs[X86_REF_RAX] = 0; // return value for thread
         Threads::StartThread(state);
         UNREACHABLE();
     } else {
@@ -196,7 +196,7 @@ long CloneMe(CloneArgs& host_clone_args) {
         pthread_attr_destroy(&attr);
         while (!__atomic_load_n(&stacktls.stack, __ATOMIC_SEQ_CST) || !__atomic_load_n(&stacktls.tls, __ATOMIC_SEQ_CST))
             ;
-        new_stack = stacktls.stack;
+        new_stack = mmap(nullptr, 8 * 1024 * 1024, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
         new_tls = stacktls.tls;
         host_flags |= CLONE_SETTLS;
         SIGLOG("Stolen stack: %lx, tls: %lx", new_stack, new_tls);
