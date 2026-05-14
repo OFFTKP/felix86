@@ -211,7 +211,6 @@ struct ThreadState {
     x87State x87_state = x87State::MMX;
 
     pid_t* clear_tid_address = nullptr;
-    pthread_t thread{}; // The pthread this state belongs to
     stack_t alt_stack{};
     bool cpuid_bit{}; // stupid rflags bit that is modifiable when cpuid is present, so we need to store its state here. SDL2 modifies it to
                       // check presence of cpuid... on x86-64 processors... lol...

@@ -105,14 +105,94 @@ void* pthread_handler(void* args) {
     return nullptr;
 }
 
+struct StackTLS {
+    void* stack;
+    void* tls;
+};
+
+__attribute__((noreturn)) __attribute__((naked)) void* steal_stack_and_tls_and_exit(void* pointer) {
+    asm(R"(
+        sd tp, 8(a0)
+        sd sp, 0(a0)
+        mv a0, 0
+        mv a7, 93
+        ecall
+    )");
+}
+
 int clone_handler(void* args) {
     CloneArgs* clone_args = (CloneArgs*)args;
 
-    // We can't use this cloned process, because when the guest created it, it passed a guest TLS which we can't use,
-    // both due to differences in TLS and because the guest needs it, and creating a host TLS is not possible sans some hacky ways.
-    // So we need to create a pthread (which will create a proper TLS) as the actual child process.
-    pthread_create(&clone_args->new_thread, nullptr, pthread_handler, args);
-    pthread_detach(clone_args->new_thread);
+    ThreadState* state;
+    bool same_vm = clone_args->guest_flags & CLONE_VM;
+    if (!same_vm) {
+        state = ThreadState::Get();
+        ASSERT(std::erase(g_process_globals.states, state) == 1);
+        g_process_globals.initialize(); // New memory space, reinitialize the process globals
+        g_process_globals.states.push_back(state);
+    } else {
+        state = ThreadState::Create(clone_args->parent_state);
+    }
+
+    if (clone_args->guest_flags & CLONE_SIGHAND) {
+        // If CLONE_SIGHAND is set, the child and the parent share the same signal handler table
+        ASSERT(clone_args->guest_flags & CLONE_VM);
+        state->signal_table = clone_args->parent_state->signal_table;
+    } else {
+        // otherwise it gets a copy
+        state->signal_table = SignalHandlerTable::Create(clone_args->parent_state->signal_table);
+    }
+
+    Signals::sigprocmask(state, SIG_SETMASK, &state->signal_mask, nullptr);
+
+    int tid = gettid();
+    if (clone_args->guest_flags & CLONE_CHILD_SETTID && clone_args->child_tid) {
+        *clone_args->child_tid = tid;
+    }
+
+    if (clone_args->guest_flags & CLONE_PARENT_SETTID && clone_args->parent_tid) {
+        *clone_args->parent_tid = tid;
+    }
+
+    if (clone_args->guest_flags & CLONE_PIDFD) {
+        ERROR("CLONE_PIDFD in pthread_handler is not handled");
+    }
+
+    if (clone_args->guest_flags & CLONE_CHILD_CLEARTID) {
+        state->clear_tid_address = clone_args->child_tid;
+    }
+
+    state->gprs[X86_REF_RAX] = 0; // return value
+    state->rip = clone_args->new_rip;
+    if (clone_args->new_rsp) {
+        state->gprs[X86_REF_RSP] = clone_args->new_rsp;
+    } else {
+        // Uses the parent stack
+        ASSERT(!same_vm);
+    }
+
+    if (clone_args->guest_flags & CLONE_SETTLS) {
+        state->SetTLS(clone_args->new_tls);
+    } else if (clone_args->new_tls) {
+        ERROR("TLS specified but CLONE_SETTLS not set");
+    }
+
+    // A child process created via fork(2) inherits a
+    // copy of its parent's alternate signal stack settings.  The same
+    // is also true for a child process created using clone(2), unless
+    // the clone flags include CLONE_VM and do not include CLONE_VFORK,
+    // in which case any alternate signal stack that was established in
+    // the parent is disabled in the child process.
+    if ((clone_args->guest_flags & CLONE_VM) && !(clone_args->guest_flags & CLONE_VFORK)) {
+        state->alt_stack = {};
+    }
+
+    // Once we are finished with initialization we can signal to the parent thread that we are done
+    __atomic_store_n(&clone_args->new_tid, tid, __ATOMIC_SEQ_CST);
+
+    LOG("Thread %ld started", tid);
+    Threads::StartThread(state);
+    UNREACHABLE();
 
     return 0;
 }
@@ -174,8 +254,6 @@ static std::string flags_to_string(u64 f) {
 
 long CloneMe(CloneArgs& host_clone_args) {
     ASSERT(!(host_clone_args.guest_flags & CLONE_VFORK)); // should be handled in a vfork handler
-    size_t host_stack_size = 1024 * 1024;
-    void* host_stack = mmap(nullptr, host_stack_size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 
     if (host_clone_args.guest_flags & CLONE_PIDFD) {
         ERROR("CLONE_PIDFD in CloneMe is not handled");
@@ -189,28 +267,28 @@ long CloneMe(CloneArgs& host_clone_args) {
     }
 
     int host_flags = (host_clone_args.guest_flags & ~(CLONE_SETTLS | CLONE_CHILD_SETTID | CLONE_CHILD_CLEARTID | CLONE_PARENT_SETTID));
-    long result = clone(clone_handler, (u8*)host_stack + host_stack_size, host_flags, &host_clone_args, nullptr, nullptr, nullptr);
+    void* new_stack = nullptr;
+    void* new_tls = nullptr;
+    if (same_vm) {
+        StackTLS stacktls;
+        pthread_t thread;
+        pthread_attr_t attr;
+        pthread_attr_init(&attr);
+        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+        pthread_create(&thread, &attr, steal_stack_and_tls_and_exit, &stacktls);
+        pthread_attr_destroy(&attr);
+        new_stack = stacktls.stack;
+        new_tls = stacktls.tls;
+        host_flags |= CLONE_SETTLS;
+    } else {
+        // Just use the parent stack/tls, since we are in a new address space there's no issue
+    }
+
+    long result = clone(clone_handler, new_stack, host_flags, &host_clone_args, nullptr, new_tls, nullptr);
 
     if (result < 0) {
         ERROR("clone failed with %d", errno);
     }
-
-    // Wait for the clone_handler to finish
-    pid_t waited;
-    int status;
-    do {
-        waited = waitpid(result, &status, 0);
-    } while (waited == -1 && errno == EINTR);
-    ASSERT(result == waited);
-    ASSERT(WIFEXITED(status));
-    ASSERT(WEXITSTATUS(status) == 0);
-
-    // The clone_handler stack can be free'd
-    munmap(host_stack, host_stack_size);
-
-    // Wait for the pthread_handler to finish initialization and set this flag
-    while (!__atomic_load_n(&host_clone_args.new_tid, __ATOMIC_SEQ_CST))
-        ;
 
     // Return the tid of the new thread that was started inside the clone_handler
     return host_clone_args.new_tid;
