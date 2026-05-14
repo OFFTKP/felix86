@@ -8,6 +8,7 @@
 #include <sys/prctl.h>
 #include <sys/resource.h>
 #include <sys/syscall.h>
+#include <sys/wait.h>
 #include "felix86/common/exit.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/state.hpp"
@@ -29,7 +30,16 @@ void* pthread_handler(void* args) {
         finished = &copy_me->new_tid;
     }
 
-    ThreadState* state = ThreadState::Create(clone_args.parent_state);
+    ThreadState* state;
+    bool same_vm = clone_args.guest_flags & CLONE_VM;
+    if (!same_vm) {
+        state = ThreadState::Get();
+        ASSERT(std::erase(g_process_globals.states, state) == 1);
+        g_process_globals.initialize(); // New memory space, reinitialize the process globals
+        g_process_globals.states.push_back(state);
+    } else {
+        state = ThreadState::Create(clone_args.parent_state);
+    }
 
     if (clone_args.guest_flags & CLONE_SIGHAND) {
         // If CLONE_SIGHAND is set, the child and the parent share the same signal handler table
@@ -61,7 +71,11 @@ void* pthread_handler(void* args) {
 
     state->gprs[X86_REF_RAX] = 0; // return value
     state->rip = clone_args.new_rip;
-    state->gprs[X86_REF_RSP] = clone_args.new_rsp;
+    if (clone_args.new_rsp) {
+        state->gprs[X86_REF_RSP] = clone_args.new_rsp;
+    } else {
+        ASSERT(!same_vm);
+    }
     state->thread = clone_args.new_thread;
 
     if (clone_args.guest_flags & CLONE_SETTLS) {
@@ -159,7 +173,6 @@ static std::string flags_to_string(u64 f) {
 }
 
 long CloneMe(CloneArgs& host_clone_args) {
-    ASSERT(host_clone_args.guest_flags & CLONE_VM);
     ASSERT(!(host_clone_args.guest_flags & CLONE_VFORK)); // should be handled in a vfork handler
     void* host_stack = malloc(1024 * 1024);
 
@@ -167,72 +180,36 @@ long CloneMe(CloneArgs& host_clone_args) {
         ERROR("CLONE_PIDFD in CloneMe is not handled");
     }
 
-    // We use this "tid" to check that the cloned process has finished
-    pid_t clone_tid = -1;
+    bool same_vm = host_clone_args.guest_flags & CLONE_VM;
+    if (same_vm && host_clone_args.new_rsp == 0) {
+        // Shared vm + stack would mean chaos
+        // Maybe this is possible in vfork situations...
+        ERROR("CLONE_VM and null stack, this is unexpected");
+    }
 
-    int host_flags = (host_clone_args.guest_flags & (~CLONE_SETTLS)) | CLONE_CHILD_CLEARTID;
-    long result = clone(clone_handler, (u8*)host_stack + 1024 * 1024, host_flags, &host_clone_args, nullptr, nullptr, &clone_tid);
-
-    // Wait for the clone_handler to finish
-    syscall(SYS_futex, &clone_tid, FUTEX_WAIT, -1, nullptr, nullptr, 0);
-
-    // Wait for the pthread_handler to finish initialization and set this flag
-    while (!__atomic_load_n(&host_clone_args.new_tid, __ATOMIC_SEQ_CST))
-        ;
-
-    // This is finally safe to free
-    free(host_stack);
+    int host_flags = (host_clone_args.guest_flags & (~CLONE_SETTLS));
+    int result = clone(clone_handler, (u8*)host_stack + 1024 * 1024, host_flags, &host_clone_args, nullptr, nullptr, nullptr);
 
     if (result < 0) {
         ERROR("clone failed with %d", errno);
     }
 
+    // The clone_handler is only used to bootstrap the pthread_handler
+    int status;
+    int r = waitpid(result, &status, 0);
+    ASSERT(r == result);
+    ASSERT(WIFEXITED(status));
+    ASSERT(WEXITSTATUS(status) == 0);
+
+    // The clone_handler stack can be free'd
+    free(host_stack);
+
+    // Wait for the pthread_handler to finish initialization and set this flag
+    while (!__atomic_load_n(&host_clone_args.new_tid, __ATOMIC_SEQ_CST))
+        ;
+
     // Return the tid of the new thread that was started inside the clone_handler
-    result = host_clone_args.new_tid;
-
-    return result;
-}
-
-long ForkMe(CloneArgs& host_clone_args) {
-    // If the child_stack argument is NULL, we need to handle it specially. The `clone` function can't take a null child_stack, we have to use
-    // the syscall. Per the clone man page: Another difference for sys_clone is that the child_stack argument may be zero, in which case
-    // copy-on-write semantics ensure that the child gets separate copies of stack pages when either process modifies the stack. In this case,
-    // for correct operation, the CLONE_VM option should not be specified.
-    ASSERT(!(host_clone_args.guest_flags & CLONE_VM));
-    ASSERT(!(host_clone_args.guest_flags & CLONE_VFORK));
-    int parent_pid = getpid();
-    long ret = syscall(SYS_clone, host_clone_args.guest_flags, nullptr, host_clone_args.parent_tid, host_clone_args.child_tid,
-                       nullptr); // args are flipped in syscall
-
-    long result;
-    if (ret == 0) {
-        // Start the child at the instruction after the syscall
-        result = 0;
-        ThreadState* state = ThreadState::Get();
-        // Destroy all states except the current state
-        ASSERT(std::erase(g_process_globals.states, state) == 1);
-        g_process_globals.initialize(); // New memory space, reinitialize the process globals
-        g_process_globals.states.push_back(state);
-
-        if (host_clone_args.new_rsp) {
-            state->gprs[X86_REF_RSP] = host_clone_args.new_rsp;
-        }
-
-        if (host_clone_args.guest_flags & CLONE_SETTLS) {
-            state->SetTLS(host_clone_args.new_tls);
-        }
-
-        // it's fine to just return to felix86_syscall, which will set the result to 0 and continue execution
-        // in this new process
-        SIGLOG("%d forked to %d", parent_pid, getpid());
-    } else {
-        if (ret < 0) {
-            ERROR("clone (probably fork) failed with %d", errno);
-        }
-        result = ret; // This process just continues normally
-    }
-
-    return result;
+    return host_clone_args.new_tid;
 }
 
 long VForkMe(CloneArgs& args) {
@@ -343,8 +320,6 @@ long Threads::Clone(ThreadState* current_state, CloneArgs* args) {
         }
 
         result = VForkMe(*args);
-    } else if (args->new_rsp == 0 || !(args->guest_flags & CLONE_VM)) {
-        result = ForkMe(*args);
     } else {
         result = CloneMe(*args);
     }
