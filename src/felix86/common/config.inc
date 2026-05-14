@@ -7,6 +7,7 @@ X(General, std::string, environment, "", FELIX86_ENVIRONMENT, "Environment varia
 X(General, std::string, host_environment, "", FELIX86_HOST_ENVIRONMENT, "Environment variables, separated by ';', to export in the host")
 X(General, bool, binfmt_misc_installed, false, FELIX86_BINFMT_MISC_INSTALLED, "Whether binfmt_misc is installed, do NOT change this manually unless if you know what you're doing -- install with `felix86 --binfmt-misc` instead")
 X(General, bool, no_rootfs, false, FELIX86_NO_ROOTFS, "Do not use a rootfs, passthrough all filesystem syscalls to the host")
+X(General, bool, mount_home, true, FELIX86_MOUNT_HOME, "Mount the host /home directory inside the rootfs, helps with ease of use for example for running applications from inside ~/Downloads or ~/Desktop without trusting the directory")
 
 X(Logging, bool, verbose, false, FELIX86_VERBOSE, "Enable verbose logging")
 X(Logging, bool, quiet, false, FELIX86_QUIET, "Disable all logging")

@@ -9,10 +9,10 @@ Script::PeekResult Script::Peek(const std::filesystem::path& path) {
     if (!file && path == g_executable_path_absolute) {
         u64 fd = getauxval(AT_EXECFD);
         if (fd == 0 && errno == ENOENT) {
-            WARN("Failed to open ELF at %s and no EXECFD", path.c_str());
             if (!g_config.binfmt_misc_installed) {
                 WARN("If this is an execute-only file you need to install felix86 in binfmt_misc");
             }
+            ERROR("Failed to open ELF at %s and no EXECFD", path.c_str());
         }
 
         file = fdopen(fd, "r");
@@ -60,10 +60,10 @@ Script::Script(const std::filesystem::path& script) {
     if (!file && script == g_executable_path_absolute) {
         u64 fd = getauxval(AT_EXECFD);
         if (fd == 0 && errno == ENOENT) {
-            WARN("Failed to open ELF at %s and no EXECFD", script.c_str());
             if (!g_config.binfmt_misc_installed) {
                 WARN("If this is an execute-only file you need to install felix86 in binfmt_misc");
             }
+            ERROR("Failed to open ELF at %s and no EXECFD", script.c_str());
         }
 
         file = fdopen(fd, "r");

@@ -49,7 +49,6 @@ std::filesystem::path g_executable_path_absolute{};
 std::filesystem::path g_executable_path_guest_override{};
 std::filesystem::path g_mounts_path{};
 std::vector<FakeMountNode> g_fake_mounts{};
-bool g_dont_chdir = false;
 bool g_testing = false;
 
 // g_output_fd should be replaced upon connecting to the server, however if an error occurs before then we should at least log it
@@ -403,6 +402,14 @@ void initialize_globals() {
         ASSERT_MSG(Filesystem::FakeMount("/run", original_rootfs / "run"), "Failed to fake-mount /run");
         ASSERT_MSG(Filesystem::FakeMount("/tmp", original_rootfs / "tmp"), "Failed to fake-mount /tmp");
 
+        if (g_config.mount_home) {
+            // Not as important to succeed, so warn if failed
+            bool done = Filesystem::FakeMount("/home", original_rootfs / "home");
+            if (!done) {
+                WARN("Failed to mount the home directory");
+            }
+        }
+
         if (getenv("__FELIX86_MOUNT_0")) {
             size_t current_mount = 0;
             for (;;) {
@@ -417,7 +424,6 @@ void initialize_globals() {
             g_process_globals.mount_paths.push_back(g_config.rootfs_path);
         }
     } else {
-        g_dont_chdir = true;
         g_rootfs_fd = -1;
     }
 
@@ -501,15 +507,6 @@ void initialize_globals() {
 
     g_fs = std::make_unique<Filesystem>();
     g_mapper = std::make_unique<Mapper>();
-
-    if (!g_execve_process) {
-        // Check if $HOME exists inside the rootfs, and create it if not
-        if (getenv("HOME")) {
-            std::error_code ec;
-            std::filesystem::path home_path = getenv("HOME");
-            std::filesystem::create_directories(g_config.rootfs_path / home_path.relative_path(), ec);
-        }
-    }
 }
 
 bool parse_extensions(const char* arg) {

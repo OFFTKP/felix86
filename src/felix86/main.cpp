@@ -608,17 +608,6 @@ int main(int argc, char* argv[]) {
         g_params.executable_path = std::filesystem::absolute(g_params.executable_path);
         if (is_subpath(g_params.executable_path, g_config.rootfs_path)) {
             // All is good
-            std::string scwd;
-            {
-                char buffer[PATH_MAX];
-                char* cwd = getcwd(buffer, PATH_MAX);
-                ASSERT(cwd == buffer);
-                scwd = cwd;
-            }
-
-            if (is_subpath(scwd, g_config.rootfs_path)) {
-                g_dont_chdir = true; // don't change the dir, cwd is already inside rootfs
-            }
         } else {
             // Executable path might be outside the rootfs but in a fakemount (e.g. in /tmp or in a trusted folder)
             std::error_code ec;
@@ -630,15 +619,6 @@ int main(int argc, char* argv[]) {
 
             for (const auto& fake_mount : g_fake_mounts) {
                 if (is_subpath(canonical_path, fake_mount.src_path)) {
-                    if (!g_execve_process) {
-                        std::filesystem::path parent_path = canonical_path.parent_path();
-                        if (chdir(parent_path.c_str()) != 0) {
-                            WARN("Failed to chdir into %s", parent_path.c_str());
-                        } else {
-                            g_dont_chdir = true;
-                        }
-                    }
-
                     std::filesystem::path cutoff_path = canonical_path.string().substr(fake_mount.src_path.string().size());
                     std::filesystem::path executable = fake_mount.dst_path / cutoff_path.relative_path();
                     if (is_subpath(executable, g_config.rootfs_path)) {
@@ -692,11 +672,6 @@ int main(int argc, char* argv[]) {
                             if (is_subpath(canonical_path, fake_mount.src_path)) {
                                 std::filesystem::path cutoff_path = canonical_path.string().substr(fake_mount.src_path.string().size());
                                 std::filesystem::path executable = fake_mount.dst_path / cutoff_path.relative_path();
-                                if (chdir(executable.parent_path().c_str()) != 0) {
-                                    WARN("Failed to chdir into %s", executable.parent_path().c_str());
-                                } else {
-                                    g_dont_chdir = true;
-                                }
                                 if (is_subpath(executable, g_config.rootfs_path)) {
                                     executable = executable.string().substr(g_config.rootfs_path.string().size());
                                 }
