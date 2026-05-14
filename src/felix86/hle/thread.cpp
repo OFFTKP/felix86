@@ -191,7 +191,7 @@ long CloneMe(CloneArgs& host_clone_args) {
         pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
         pthread_create(&thread, &attr, steal_stack_and_tls_and_exit, &stacktls);
         pthread_attr_destroy(&attr);
-        new_stack = stacktls.stack;
+        new_stack = (u8*)stacktls.stack - 8;
         new_tls = stacktls.tls;
         host_flags |= CLONE_SETTLS;
         SIGLOG("Stolen stack: %lx, tls: %lx", new_stack, new_tls);
