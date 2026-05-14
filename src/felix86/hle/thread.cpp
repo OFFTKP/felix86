@@ -77,7 +77,6 @@ void* pthread_handler(void* args) {
         // Uses the parent stack
         ASSERT(!same_vm);
     }
-    state->thread = clone_args.new_thread;
 
     if (clone_args.guest_flags & CLONE_SETTLS) {
         state->SetTLS(clone_args.new_tls);
