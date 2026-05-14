@@ -188,22 +188,22 @@ long CloneMe(CloneArgs& host_clone_args) {
         ERROR("CLONE_VM and null stack, this is unexpected");
     }
 
-    // We use this "tid" to check that the cloned process has finished
-    pid_t clone_tid = -1;
-
-    int host_flags = (host_clone_args.guest_flags & ~(CLONE_SETTLS | CLONE_CHILD_SETTID)) | CLONE_CHILD_CLEARTID;
-    long result = clone(clone_handler, (u8*)host_stack + host_stack_size, host_flags, &host_clone_args, nullptr, nullptr, &clone_tid);
+    int host_flags = (host_clone_args.guest_flags & ~(CLONE_SETTLS | CLONE_CHILD_SETTID | CLONE_CHILD_CLEARTID | CLONE_PARENT_SETTID));
+    long result = clone(clone_handler, (u8*)host_stack + host_stack_size, host_flags, &host_clone_args, nullptr, nullptr, nullptr);
 
     if (result < 0) {
         ERROR("clone failed with %d", errno);
     }
 
     // Wait for the clone_handler to finish
+    pid_t waited;
+    int status;
     do {
-        result = syscall(SYS_futex, &clone_tid, FUTEX_WAIT, -1, nullptr, nullptr, 0);
-    } while (result == -1 && errno == EINTR);
-    ASSERT(result == 0);
-    ASSERT(clone_tid == 0);
+        waited = waitpid(result, &status, 0);
+    } while (waited == -1 && errno == EINTR);
+    ASSERT(result == waited);
+    ASSERT(WIFEXITED(status));
+    ASSERT(WEXITSTATUS(status) == 0);
 
     // The clone_handler stack can be free'd
     munmap(host_stack, host_stack_size);
