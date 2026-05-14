@@ -403,6 +403,14 @@ void initialize_globals() {
         ASSERT_MSG(Filesystem::FakeMount("/run", original_rootfs / "run"), "Failed to fake-mount /run");
         ASSERT_MSG(Filesystem::FakeMount("/tmp", original_rootfs / "tmp"), "Failed to fake-mount /tmp");
 
+        if (g_config.mount_home) {
+            // Not as important to succeed, so warn if failed
+            bool done = Filesystem::FakeMount("/home", original_rootfs / "home");
+            if (!done) {
+                WARN("Failed to mount the home directory");
+            }
+        }
+
         if (getenv("__FELIX86_MOUNT_0")) {
             size_t current_mount = 0;
             for (;;) {
@@ -501,15 +509,6 @@ void initialize_globals() {
 
     g_fs = std::make_unique<Filesystem>();
     g_mapper = std::make_unique<Mapper>();
-
-    if (!g_execve_process) {
-        // Check if $HOME exists inside the rootfs, and create it if not
-        if (getenv("HOME")) {
-            std::error_code ec;
-            std::filesystem::path home_path = getenv("HOME");
-            std::filesystem::create_directories(g_config.rootfs_path / home_path.relative_path(), ec);
-        }
-    }
 }
 
 bool parse_extensions(const char* arg) {
