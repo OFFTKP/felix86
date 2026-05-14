@@ -174,7 +174,8 @@ static std::string flags_to_string(u64 f) {
 
 long CloneMe(CloneArgs& host_clone_args) {
     ASSERT(!(host_clone_args.guest_flags & CLONE_VFORK)); // should be handled in a vfork handler
-    void* host_stack = malloc(1024 * 1024);
+    size_t host_stack_size = 1024 * 1024;
+    void* host_stack = mmap(nullptr, host_stack_size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 
     if (host_clone_args.guest_flags & CLONE_PIDFD) {
         ERROR("CLONE_PIDFD in CloneMe is not handled");
@@ -187,22 +188,25 @@ long CloneMe(CloneArgs& host_clone_args) {
         ERROR("CLONE_VM and null stack, this is unexpected");
     }
 
-    int host_flags = (host_clone_args.guest_flags & (~CLONE_SETTLS));
-    int result = clone(clone_handler, (u8*)host_stack + 1024 * 1024, host_flags, &host_clone_args, nullptr, nullptr, nullptr);
+    // We use this "tid" to check that the cloned process has finished
+    pid_t clone_tid = -1;
+
+    int host_flags = (host_clone_args.guest_flags & ~(CLONE_SETTLS | CLONE_CHILD_SETTID)) | CLONE_CHILD_CLEARTID;
+    long result = clone(clone_handler, (u8*)host_stack + host_stack_size, host_flags, &host_clone_args, nullptr, nullptr, &clone_tid);
 
     if (result < 0) {
         ERROR("clone failed with %d", errno);
     }
 
-    // The clone_handler is only used to bootstrap the pthread_handler
-    int status;
-    int r = waitpid(result, &status, 0);
-    ASSERT(r == result);
-    ASSERT(WIFEXITED(status));
-    ASSERT(WEXITSTATUS(status) == 0);
+    // Wait for the clone_handler to finish
+    do {
+        result = syscall(SYS_futex, &clone_tid, FUTEX_WAIT, -1, nullptr, nullptr, 0);
+    } while (result == -1 && errno == EINTR);
+    ASSERT(result == 0);
+    ASSERT(clone_tid == 0);
 
     // The clone_handler stack can be free'd
-    free(host_stack);
+    munmap(host_stack, host_stack_size);
 
     // Wait for the pthread_handler to finish initialization and set this flag
     while (!__atomic_load_n(&host_clone_args.new_tid, __ATOMIC_SEQ_CST))
