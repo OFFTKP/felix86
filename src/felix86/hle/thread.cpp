@@ -74,6 +74,7 @@ void* pthread_handler(void* args) {
     if (clone_args.new_rsp) {
         state->gprs[X86_REF_RSP] = clone_args.new_rsp;
     } else {
+        // Uses the parent stack
         ASSERT(!same_vm);
     }
     state->thread = clone_args.new_thread;
