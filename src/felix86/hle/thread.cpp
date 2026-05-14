@@ -195,7 +195,7 @@ long CloneMe(CloneArgs& host_clone_args) {
         pthread_attr_destroy(&attr);
         while (!__atomic_load_n(&stacktls.stack, __ATOMIC_SEQ_CST) || !__atomic_load_n(&stacktls.tls, __ATOMIC_SEQ_CST))
             ;
-        new_stack = (u8*)stacktls.stack - 8;
+        new_stack = stacktls.stack;
         new_tls = stacktls.tls;
         host_flags |= CLONE_SETTLS;
         SIGLOG("Stolen stack: %lx, tls: %lx", new_stack, new_tls);
