@@ -113,8 +113,8 @@ __attribute__((noreturn)) __attribute__((naked)) void* steal_stack_and_tls_and_e
     asm(R"(
         sd tp, 8(a0)
         sd sp, 0(a0)
-        mv a0, 0
-        mv a7, 93
+        li a0, 0
+        li a7, 93
         ecall
     )");
 }
