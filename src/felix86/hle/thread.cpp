@@ -160,6 +160,9 @@ static std::string flags_to_string(u64 f) {
 
 long CloneMe(CloneArgs& host_clone_args) {
     ASSERT(host_clone_args.guest_flags & CLONE_VM);
+    if (!(host_clone_args.guest_flags & CLONE_THREAD)) {
+        WARN("Starting thread with CLONE_VM but without CLONE_THREAD");
+    }
     ASSERT(!(host_clone_args.guest_flags & CLONE_VFORK)); // should be handled in a vfork handler
     void* host_stack = malloc(1024 * 1024);
 
