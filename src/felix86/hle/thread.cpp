@@ -279,6 +279,7 @@ long CloneMe(CloneArgs& host_clone_args) {
         new_stack = stacktls.stack;
         new_tls = stacktls.tls;
         host_flags |= CLONE_SETTLS;
+        SIGLOG("Stolen stack: %lx, tls: %lx", new_stack, new_tls);
     } else {
         // Just use the parent stack/tls, since we are in a new address space there's no issue
     }
