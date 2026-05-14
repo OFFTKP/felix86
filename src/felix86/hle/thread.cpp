@@ -76,7 +76,6 @@ int clone_handler(void* args) {
         state->clear_tid_address = clone_args->child_tid;
     }
 
-    state->rip = clone_args->new_rip; // TODO: move in same_vm?
     if (clone_args->new_rsp) {
         state->gprs[X86_REF_RSP] = clone_args->new_rsp;
     } else {
@@ -102,7 +101,9 @@ int clone_handler(void* args) {
 
     LOG("Process %ld started", tid);
     if (same_vm) {
-        state->gprs[X86_REF_RAX] = 0; // return value for thread
+        ASSERT(clone_args->new_rip);
+        state->rip = clone_args->new_rip; // TODO: move in same_vm?
+        state->gprs[X86_REF_RAX] = 0;     // return value for thread
         Threads::StartThread(state);
         UNREACHABLE();
     } else {
