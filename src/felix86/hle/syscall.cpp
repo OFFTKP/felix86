@@ -1384,7 +1384,6 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
             .new_tls = arg5,
             .new_rsp = arg2,
             .new_rip = state->gprs[X86_REF_RCX],
-            .new_tid = 0,
         };
         result = Threads::Clone(state, &args);
         break;
@@ -2085,7 +2084,6 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                 .new_tls = arg4, // in this case it's a x86_user_desc*
                 .new_rsp = arg2,
                 .new_rip = rip_next,
-                .new_tid = 0,
             };
             result = Threads::Clone(state, &args);
             break;

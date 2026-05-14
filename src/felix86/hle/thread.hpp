@@ -18,8 +18,6 @@ struct CloneArgs {
     u64 new_tls = 0;
     u64 new_rsp = 0;
     u64 new_rip = 0;
-
-    u32 new_tid = 0; // to signal that clone_handler has finished using the pointer and get the tid
 };
 
 struct Threads {
