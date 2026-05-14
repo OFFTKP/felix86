@@ -185,12 +185,16 @@ long CloneMe(CloneArgs& host_clone_args) {
     void* new_tls = nullptr;
     if (same_vm) {
         StackTLS stacktls;
+        stacktls.stack = 0;
+        stacktls.tls = 0;
         pthread_t thread;
         pthread_attr_t attr;
         pthread_attr_init(&attr);
         pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
         pthread_create(&thread, &attr, steal_stack_and_tls_and_exit, &stacktls);
         pthread_attr_destroy(&attr);
+        while (!__atomic_load_n(&stacktls.stack, __ATOMIC_SEQ_CST) || !__atomic_load_n(&stacktls.tls, __ATOMIC_SEQ_CST))
+            ;
         new_stack = (u8*)stacktls.stack - 8;
         new_tls = stacktls.tls;
         host_flags |= CLONE_SETTLS;
