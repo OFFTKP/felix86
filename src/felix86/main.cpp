@@ -267,6 +267,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
 
         if (shell_path.empty()) {
             shell_path = g_config.rootfs_path / "bin/bash";
+            setenv("SHELL", "/bin/bash", 1);
         }
 
         if (!std::filesystem::exists(shell_path, ec) || !std::filesystem::is_regular_file(shell_path, ec)) {

@@ -382,7 +382,7 @@ struct ThreadState {
 
     int SetUserDesc(x86_user_desc* udesc) {
         ASSERT(udesc);
-        int index = udesc->entry_number;
+        u32 index = udesc->entry_number;
         if (index == -1) {
             for (int i = 12; i < 15; i++) {
                 if (gdt[i] == 0) {
