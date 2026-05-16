@@ -185,11 +185,11 @@ bool felix86_xsave_contains_ymms() {
     return is_feature_enabled(x86_feature::AVX) && is_feature_enabled(x86_feature::OSXSAVE);
 }
 
-void felix86_xsave(ThreadState* state, void* address) {
+void felix86_xsave(ThreadState* state, void* address, bool save_all) {
     u64 rfbm = (u64)(u32)state->gprs[X86_REF_RDX] << 32 | (u32)state->gprs[X86_REF_RAX];
-    bool save_x87 = rfbm & 0b001;
-    bool save_xmm = rfbm & 0b010;
-    bool save_avx = rfbm & 0b100;
+    bool save_x87 = (rfbm & 0b001) || save_all;
+    bool save_xmm = (rfbm & 0b010) || save_all;
+    bool save_avx = (rfbm & 0b100) || save_all;
     bool save_mxcsr = save_xmm || save_avx;
     felix86_fxsave(state, address, save_x87, save_xmm, save_mxcsr);
     if (felix86_xsave_contains_ymms() && save_avx) {
@@ -203,11 +203,11 @@ void felix86_xsave(ThreadState* state, void* address) {
     }
 }
 
-void felix86_xrstor(ThreadState* state, void* address) {
+void felix86_xrstor(ThreadState* state, void* address, bool restore_all) {
     u64 rfbm = (u64)(u32)state->gprs[X86_REF_RDX] << 32 | (u32)state->gprs[X86_REF_RAX];
-    bool restore_x87 = rfbm & 0b001;
-    bool restore_xmm = rfbm & 0b010;
-    bool restore_avx = rfbm & 0b100;
+    bool restore_x87 = (rfbm & 0b001) || restore_all;
+    bool restore_xmm = (rfbm & 0b010) || restore_all;
+    bool restore_avx = (rfbm & 0b100) || restore_all;
     bool restore_mxcsr = restore_xmm || restore_avx;
     felix86_fxrstor(state, address, restore_x87, restore_xmm, restore_mxcsr);
     if (felix86_xsave_contains_ymms() && restore_avx) {
