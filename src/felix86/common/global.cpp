@@ -403,11 +403,7 @@ void initialize_globals() {
         ASSERT_MSG(Filesystem::FakeMount("/tmp", original_rootfs / "tmp"), "Failed to fake-mount /tmp");
 
         if (g_config.mount_home) {
-            // Not as important to succeed, so warn if failed
-            bool done = Filesystem::FakeMount("/home", original_rootfs / "home");
-            if (!done) {
-                WARN("Failed to mount the home directory");
-            }
+            ASSERT_MSG(Filesystem::FakeMount("/home", original_rootfs / "home"), "Failed to fake-mount /home");
         }
 
         if (getenv("__FELIX86_MOUNT_0")) {

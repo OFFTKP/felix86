@@ -292,10 +292,18 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
                 exit(1);
             }
         } else {
-            int result = chdir(home_inside_rootfs.c_str());
-            if (result != 0) {
-                printf("Failed to chdir to %s\n", home_inside_rootfs.c_str());
-                exit(1);
+            if (g_config.mount_home) {
+                int result = chdir(home.c_str());
+                if (result != 0) {
+                    printf("Failed to chdir to %s\n", home_inside_rootfs.c_str());
+                    exit(1);
+                }
+            } else {
+                int result = chdir(home_inside_rootfs.c_str());
+                if (result != 0) {
+                    printf("Failed to chdir to %s\n", home_inside_rootfs.c_str());
+                    exit(1);
+                }
             }
         }
 
