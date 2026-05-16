@@ -9042,6 +9042,9 @@ FAST_HANDLE(FXSAVE) {
     rec.writebackState();
     as.MV(a1, address);
     as.MV(a0, rec.threadStatePointer());
+    as.LI(a2, 1);
+    as.LI(a3, 1);
+    as.LI(a4, 1);
     rec.callPointer(offsetof(ThreadState, felix86_fxsave));
     rec.restoreState();
 }
@@ -9051,6 +9054,9 @@ FAST_HANDLE(FXSAVE64) {
     rec.writebackState();
     as.MV(a1, address);
     as.MV(a0, rec.threadStatePointer());
+    as.LI(a2, 1);
+    as.LI(a3, 1);
+    as.LI(a4, 1);
     rec.callPointer(offsetof(ThreadState, felix86_fxsave));
     rec.restoreState();
 }
@@ -9060,7 +9066,9 @@ FAST_HANDLE(FXRSTOR) {
     rec.writebackState();
     as.MV(a1, address);
     as.MV(a0, rec.threadStatePointer());
-    as.LI(a2, 0);
+    as.LI(a2, 1);
+    as.LI(a3, 1);
+    as.LI(a4, 1);
     rec.callPointer(offsetof(ThreadState, felix86_fxrstor));
     rec.restoreState();
 }
@@ -9071,6 +9079,8 @@ FAST_HANDLE(FXRSTOR64) {
     as.MV(a1, address);
     as.MV(a0, rec.threadStatePointer());
     as.LI(a2, 1);
+    as.LI(a3, 1);
+    as.LI(a4, 1);
     rec.callPointer(offsetof(ThreadState, felix86_fxrstor));
     rec.restoreState();
 }
@@ -9081,7 +9091,7 @@ FAST_HANDLE(XSAVE) {
     rec.writebackState();
     as.MV(a1, address);
     as.MV(a0, rec.threadStatePointer());
-    as.LI(a2, 0);
+    as.LI(a2, 0); // don't save all, use rfbm
     rec.callPointer(offsetof(ThreadState, felix86_xsave));
     rec.restoreState();
 }
@@ -9092,7 +9102,7 @@ FAST_HANDLE(XSAVE64) {
     rec.writebackState();
     as.MV(a1, address);
     as.MV(a0, rec.threadStatePointer());
-    as.LI(a2, 1);
+    as.LI(a2, 0); // don't save all, use rfbm
     rec.callPointer(offsetof(ThreadState, felix86_xsave));
     rec.restoreState();
 }
@@ -9103,7 +9113,7 @@ FAST_HANDLE(XRSTOR) {
     rec.writebackState();
     as.MV(a1, address);
     as.MV(a0, rec.threadStatePointer());
-    as.LI(a2, 0);
+    as.LI(a2, 0); // don't restore all, use rfbm
     rec.callPointer(offsetof(ThreadState, felix86_xrstor));
     rec.restoreState();
 }
@@ -9114,7 +9124,7 @@ FAST_HANDLE(XRSTOR64) {
     rec.writebackState();
     as.MV(a1, address);
     as.MV(a0, rec.threadStatePointer());
-    as.LI(a2, 1);
+    as.LI(a2, 0); // don't restore all, use rfbm
     rec.callPointer(offsetof(ThreadState, felix86_xrstor));
     rec.restoreState();
 }
