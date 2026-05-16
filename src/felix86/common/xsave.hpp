@@ -99,7 +99,7 @@ void felix86_fsave_16(ThreadState* state, void* address);
 
 void felix86_fsave_32(ThreadState* state, void* address);
 
-void felix86_fxsave(ThreadState* state, void* address);
+void felix86_fxsave(ThreadState* state, void* address, bool save_x87 = true, bool save_xmm = true, bool save_mxcsr = true);
 
 void felix86_xsave(ThreadState* state, void* address);
 
@@ -107,7 +107,7 @@ void felix86_frstor_16(ThreadState* state, void* address);
 
 void felix86_frstor_32(ThreadState* state, void* address);
 
-void felix86_fxrstor(ThreadState* state, void* address);
+void felix86_fxrstor(ThreadState* state, void* address, bool restore_x87 = true, bool restore_xmm = true, bool restore_mxcsr = true);
 
 void felix86_xrstor(ThreadState* state, void* address);
 
