@@ -8,6 +8,7 @@
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/statfs.h>
+#include <sys/syscall.h>
 #include <sys/xattr.h>
 #include "felix86/common/global.hpp"
 #include "felix86/common/overlay.hpp"

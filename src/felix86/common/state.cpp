@@ -6,10 +6,14 @@
 constexpr size_t trampoline_storage_size = 1024 * 512;
 
 __attribute__((naked)) static void set_thread_state(ThreadState* state) {
+#ifdef __riscv
     asm volatile(R"(
         mv gp, a0
         ret
     )");
+#else
+#warning "Unimplemented"
+#endif
 }
 
 ThreadState* ThreadState::Create(ThreadState* copy_state) {
@@ -81,10 +85,14 @@ ThreadState* ThreadState::Create(ThreadState* copy_state) {
 }
 
 __attribute__((naked)) ThreadState* ThreadState::Get() {
+#ifdef __riscv
     asm volatile(R"(
         mv a0, gp
         ret
     )");
+#else
+#warning "Unimplemented"
+#endif
 }
 static_assert(Recompiler::threadStatePointer() == gp);
 

@@ -1,3 +1,4 @@
+#include <sys/syscall.h>
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/hle/guest_types.hpp"
