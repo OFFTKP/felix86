@@ -13532,7 +13532,7 @@ FAST_HANDLE(VPSADBW) {
     biscuit::Vec src2 = rec.getVec(&operands[2]);
     rec.setVectorState(SEW::E8, is_xmms ? 16 : 32, is_xmms ? LMUL::MF2 : LMUL::M1);
     as.VWSUBU(result, src1, src2);
-    rec.setVectorState(SEW::E16, 16, (is_xmms || Extensions::VLEN > 256) ? LMUL::M1 : LMUL::M2);
+    rec.setVectorState(SEW::E16, is_xmms ? 16 : 32, (is_xmms || Extensions::VLEN > 256) ? LMUL::M1 : LMUL::M2);
     as.VSRA(mask, result, 15);
     as.VXOR(result, result, mask);
     as.VSUB(result, result, mask);
