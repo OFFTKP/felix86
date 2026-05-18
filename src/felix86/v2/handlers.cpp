@@ -13532,12 +13532,12 @@ FAST_HANDLE(VPSADBW) {
     biscuit::Vec src2 = rec.getVec(&operands[2]);
     rec.setVectorState(SEW::E8, is_xmms ? 16 : 32);
     as.VWSUBU(result, src1, src2);
-    rec.setVectorState(SEW::E16, 16, Extensions::VLEN == 256 ? LMUL::M2 : LMUL::M1);
+    rec.setVectorState(SEW::E16, 16, (Extensions::VLEN == 256 && !is_xmms) ? LMUL::M2 : LMUL::M1);
     as.VSRA(mask, result, 15);
     as.VXOR(result, result, mask);
     as.VSUB(result, result, mask);
-    rec.setVectorState(SEW::E16, is_xmms ? 8 : 16);
-    as.LI(scratch, 0xF);
+    rec.setVectorState(SEW::E16, 16);
+    as.LI(scratch, 0xFF);
     as.VMV_SX(v0, scratch);
     rec.v0Modified();
     as.VMV(zero, 0);
@@ -13546,7 +13546,7 @@ FAST_HANDLE(VPSADBW) {
         as.VMNOT(v0, v0);
         as.VREDSUM(zero, result, zero, VecMask::Yes);
         as.VSLIDEUP(zero, mask, 4);
-        rec.setVec(&operands[0], temp);
+        rec.setVec(&operands[0], zero);
     } else {
         as.VMV(temp, 0);
         if (Extensions::VLEN > 256) {
