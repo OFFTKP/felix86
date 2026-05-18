@@ -13550,18 +13550,19 @@ FAST_HANDLE(VPSADBW) {
         rec.setVec(&operands[0], mask);
     } else {
         as.VMV(temp, 0);
+        as.VMV(mask, 0);
         if (Extensions::VLEN > 256) {
-            as.VSLIDEDOWN(result_high, result, 8);
+            as.VSLIDEDOWN(result_high, result, 16);
         }
         as.VREDSUM(temp, result, zero, VecMask::Yes);
         as.VREDSUM(mask, result_high, zero, VecMask::Yes);
-        as.VSLIDEUP(temp, mask, 4);
         as.VMNOT(v0, v0);
         as.VMV(mask_high, 0);
         as.VREDSUM(mask_high, result, zero, VecMask::Yes);
         as.VREDSUM(zero, result_high, zero, VecMask::Yes);
-        as.VSLIDEUP(mask_high, zero, 4);
-        as.VSLIDEUP(temp, zero, 8);
+        as.VSLIDEUP(temp, mask_high, 4);
+        as.VSLIDEUP(mask, zero, 4);
+        as.VSLIDEUP(temp, mask, 8);
         rec.setVec(&operands[0], temp);
     }
 }
