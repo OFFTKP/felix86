@@ -3,6 +3,7 @@
 #include <cstring>
 #include <fstream>
 #include <nlohmann/json.hpp>
+#define XBYAK_NO_EXCEPTION
 #include <xbyak/xbyak.h>
 #include "Zydis/Disassembler.h"
 #include "felix86/v2/handlers.hpp"

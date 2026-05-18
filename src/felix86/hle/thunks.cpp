@@ -1,4 +1,3 @@
-#include <span>
 #include "felix86/hle/thunks.hpp"
 
 // TODO: this file is messy. Split it up to separate files per library once our thunking implementation is more concrete
@@ -36,6 +35,7 @@ void Thunks::runConstructor(const char*, GuestPointers*) {}
 
 #else
 #include <cmath>
+#include <mutex>
 #include <dlfcn.h>
 #include <sys/mman.h>
 #include "felix86/common/overlay.hpp"

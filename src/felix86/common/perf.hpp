@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <sys/syscall.h>
 #include "felix86/common/log.hpp"
 #include "felix86/hle/fd.hpp"
 #include "fmt/format.h"

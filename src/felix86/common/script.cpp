@@ -1,4 +1,5 @@
 #include <cstring>
+#include <linux/limits.h>
 #include <sys/auxv.h>
 #include "felix86/common/log.hpp"
 #include "felix86/common/script.hpp"
