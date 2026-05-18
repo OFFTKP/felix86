@@ -13520,26 +13520,49 @@ FAST_HANDLE(VSTMXCSR) {
 }
 
 FAST_HANDLE(VPSADBW) {
-    bool is_avx = instruction.raw.vex.L;
-    int base = is_avx ? X86_REF_YMM0 : X86_REF_XMM0;
-    rec.writebackState();
-    if (operands[2].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-        as.ADDI(a2, rec.threadStatePointer(), offsetof(ThreadState, xmm) + sizeof(XmmReg) * (rec.zydisToRef(operands[2].reg.value) - base));
-        ASSERT(rec.zydisToRef(operands[2].reg.value) >= base && rec.zydisToRef(operands[2].reg.value) <= base + 15);
+    bool is_xmms = !instruction.raw.vex.L;
+    biscuit::GPR scratch = rec.scratch();
+    biscuit::Vec result = rec.scratchVecM2();
+    biscuit::Vec result_high = biscuit::Vec(result.Index() + 1);
+    biscuit::Vec mask = rec.scratchVec();
+    biscuit::Vec mask_high = rec.scratchVec();
+    biscuit::Vec temp = rec.scratchVec();
+    biscuit::Vec zero = rec.scratchVec();
+    biscuit::Vec src1 = rec.getVec(&operands[1]);
+    biscuit::Vec src2 = rec.getVec(&operands[2]);
+    rec.setVectorState(SEW::E8, is_xmms ? 16 : 32);
+    as.VWSUBU(result, src1, src2);
+    rec.setVectorState(SEW::E16, 16, Extensions::VLEN == 256 ? LMUL::M2 : LMUL::M1);
+    as.VSRA(mask, result, 15);
+    as.VXOR(result, result, mask);
+    as.VSUB(result, result, mask);
+    rec.setVectorState(SEW::E16, is_xmms ? 8 : 16);
+    as.LI(scratch, 0xF);
+    as.VMV_SX(v0, scratch);
+    rec.v0Modified();
+    as.VMV(zero, 0);
+    if (is_xmms) {
+        as.VREDSUM(mask, result, zero, VecMask::Yes);
+        as.VMNOT(v0, v0);
+        as.VREDSUM(zero, result, zero, VecMask::Yes);
+        as.VSLIDEUP(zero, mask, 4);
+        rec.setVec(&operands[0], temp);
     } else {
-        biscuit::GPR address = rec.lea(&operands[2]);
-        as.MV(a2, address);
+        as.VMV(temp, 0);
+        if (Extensions::VLEN > 256) {
+            as.VSLIDEDOWN(result_high, result, 8);
+        }
+        as.VREDSUM(mask, result_high, zero, VecMask::Yes);
+        as.VREDSUM(temp, result, zero, VecMask::Yes);
+        as.VSLIDEUP(temp, mask, 4);
+        as.LI(scratch, 0xF0);
+        as.VMV_SX(v0, scratch);
+        as.VREDSUM(mask_high, result, zero, VecMask::Yes);
+        as.VREDSUM(zero, result_high, zero, VecMask::Yes);
+        as.VSLIDEUP(zero, mask_high, 4);
+        as.VSLIDEUP(temp, zero, 8);
+        rec.setVec(&operands[0], temp);
     }
-    as.ADDI(a1, rec.threadStatePointer(), offsetof(ThreadState, xmm) + sizeof(XmmReg) * (rec.zydisToRef(operands[1].reg.value) - base));
-    as.ADDI(a0, rec.threadStatePointer(), offsetof(ThreadState, xmm) + sizeof(XmmReg) * (rec.zydisToRef(operands[0].reg.value) - base));
-    ASSERT(rec.zydisToRef(operands[0].reg.value) >= base && rec.zydisToRef(operands[0].reg.value) <= base + 15);
-    ASSERT(rec.zydisToRef(operands[1].reg.value) >= base && rec.zydisToRef(operands[1].reg.value) <= base + 15);
-    if (is_avx) {
-        rec.callPointer(offsetof(ThreadState, felix86_vpsadbw256));
-    } else {
-        rec.callPointer(offsetof(ThreadState, felix86_vpsadbw));
-    }
-    rec.restoreState();
 }
 
 FAST_HANDLE(VMOVDDUP) {
