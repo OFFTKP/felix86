@@ -482,3 +482,8 @@ VEX_TEST(vxorpd);
 VEX_TEST(vxorps);
 VEX_TEST(vzeroall);
 VEX_TEST(vzeroupper);
+
+VEX_TEST(fma_fmadd_ss)
+VEX_TEST(fma_fmadd_sd)
+VEX_TEST(fma_fmadd_ps)
+VEX_TEST(fma_fmadd_pd)

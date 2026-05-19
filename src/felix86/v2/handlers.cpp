@@ -15599,6 +15599,84 @@ FAST_HANDLE(VPSRAW) {
     }
 }
 
+void VFMADD(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int length, int order) {
+    bool is_xmms = !instruction.raw.vex.L;
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src2 = rec.getVec(&operands[1]);
+    biscuit::Vec src3 = rec.getVec(&operands[2]);
+    rec.setVectorState(sew, (!is_xmms || length == 1) ? length : length / 2);
+    switch (order) {
+    case 132: {
+        as.VFMADD(dst, src3, src2);
+        break;
+    }
+    case 213: {
+        as.VFMADD(dst, src2, src3);
+        break;
+    }
+    case 231: {
+        as.VFMACC(dst, src2, src3);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+    if (is_xmms) {
+        rec.vzeroTopBits(dst, dst);
+    }
+    rec.setVec(&operands[0], dst);
+}
+
+FAST_HANDLE(VFMADD132SS) {
+    VFMADD(rec, as, instruction, operands, SEW::E32, 1, 132);
+}
+
+FAST_HANDLE(VFMADD213SS) {
+    VFMADD(rec, as, instruction, operands, SEW::E32, 1, 213);
+}
+
+FAST_HANDLE(VFMADD231SS) {
+    VFMADD(rec, as, instruction, operands, SEW::E32, 1, 231);
+}
+
+FAST_HANDLE(VFMADD132SD) {
+    VFMADD(rec, as, instruction, operands, SEW::E64, 1, 132);
+}
+
+FAST_HANDLE(VFMADD213SD) {
+    VFMADD(rec, as, instruction, operands, SEW::E64, 1, 213);
+}
+
+FAST_HANDLE(VFMADD231SD) {
+    VFMADD(rec, as, instruction, operands, SEW::E64, 1, 231);
+}
+
+FAST_HANDLE(VFMADD132PS) {
+    VFMADD(rec, as, instruction, operands, SEW::E32, 8, 132);
+}
+
+FAST_HANDLE(VFMADD213PS) {
+    VFMADD(rec, as, instruction, operands, SEW::E32, 8, 213);
+}
+
+FAST_HANDLE(VFMADD231PS) {
+    VFMADD(rec, as, instruction, operands, SEW::E32, 8, 231);
+}
+
+FAST_HANDLE(VFMADD132PD) {
+    VFMADD(rec, as, instruction, operands, SEW::E64, 4, 132);
+}
+
+FAST_HANDLE(VFMADD213PD) {
+    VFMADD(rec, as, instruction, operands, SEW::E64, 4, 213);
+}
+
+FAST_HANDLE(VFMADD231PD) {
+    VFMADD(rec, as, instruction, operands, SEW::E64, 4, 231);
+}
+
 void Handlers::initialize() {
 #define X(name) Handlers::ptr_##name = fast_##name;
 #define SIMD(name)
