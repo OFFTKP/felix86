@@ -149,6 +149,7 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
         bit_set(result.ecx, 0, is_feature_enabled(x86_feature::SSE3));
         bit_set(result.ecx, 1, is_feature_enabled(x86_feature::PCLMULQDQ));
         bit_set(result.ecx, 9, is_feature_enabled(x86_feature::SSSE3));
+        bit_set(result.ecx, 12, is_feature_enabled(x86_feature::FMA3));
         bit_set(result.ecx, 19, is_feature_enabled(x86_feature::SSE4_1));
         bit_set(result.ecx, 20, is_feature_enabled(x86_feature::SSE4_2));
         bit_set(result.ecx, 23, is_feature_enabled(x86_feature::LZCNT_POPCNT));

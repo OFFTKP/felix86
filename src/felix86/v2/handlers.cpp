@@ -15599,6 +15599,258 @@ FAST_HANDLE(VPSRAW) {
     }
 }
 
+void VFMADD(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int length, int order) {
+    bool is_xmms = !instruction.raw.vex.L;
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src2 = rec.getVec(&operands[1]);
+    biscuit::Vec src3 = rec.getVec(&operands[2]);
+    rec.setVectorState(sew, (!is_xmms || length == 1) ? length : length / 2);
+    switch (order) {
+    case 132: {
+        as.VFMADD(dst, src3, src2);
+        break;
+    }
+    case 213: {
+        as.VFMADD(dst, src2, src3);
+        break;
+    }
+    case 231: {
+        as.VFMACC(dst, src2, src3);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+    if (is_xmms) {
+        rec.vzeroTopBits(dst, dst);
+    }
+    rec.setVec(&operands[0], dst);
+}
+
+void VFNMADD(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int length, int order) {
+    bool is_xmms = !instruction.raw.vex.L;
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src2 = rec.getVec(&operands[1]);
+    biscuit::Vec src3 = rec.getVec(&operands[2]);
+    rec.setVectorState(sew, (!is_xmms || length == 1) ? length : length / 2);
+    switch (order) {
+    case 132: {
+        as.VFNMSUB(dst, src3, src2);
+        break;
+    }
+    case 213: {
+        as.VFNMSUB(dst, src2, src3);
+        break;
+    }
+    case 231: {
+        as.VFNMSAC(dst, src2, src3);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+    if (is_xmms) {
+        rec.vzeroTopBits(dst, dst);
+    }
+    rec.setVec(&operands[0], dst);
+}
+
+void VFMSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int length, int order) {
+    bool is_xmms = !instruction.raw.vex.L;
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src2 = rec.getVec(&operands[1]);
+    biscuit::Vec src3 = rec.getVec(&operands[2]);
+    rec.setVectorState(sew, (!is_xmms || length == 1) ? length : length / 2);
+    switch (order) {
+    case 132: {
+        as.VFMSUB(dst, src3, src2);
+        break;
+    }
+    case 213: {
+        as.VFMSUB(dst, src2, src3);
+        break;
+    }
+    case 231: {
+        as.VFMSAC(dst, src2, src3);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+    if (is_xmms) {
+        rec.vzeroTopBits(dst, dst);
+    }
+    rec.setVec(&operands[0], dst);
+}
+
+void VFNMSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int length, int order) {
+    bool is_xmms = !instruction.raw.vex.L;
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src2 = rec.getVec(&operands[1]);
+    biscuit::Vec src3 = rec.getVec(&operands[2]);
+    rec.setVectorState(sew, (!is_xmms || length == 1) ? length : length / 2);
+    switch (order) {
+    case 132: {
+        as.VFNMADD(dst, src3, src2);
+        break;
+    }
+    case 213: {
+        as.VFNMADD(dst, src2, src3);
+        break;
+    }
+    case 231: {
+        as.VFNMACC(dst, src2, src3);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+    if (is_xmms) {
+        rec.vzeroTopBits(dst, dst);
+    }
+    rec.setVec(&operands[0], dst);
+}
+
+void VFMADDSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int length, int order,
+               bool reverse) {
+    bool is_xmms = !instruction.raw.vex.L;
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src2 = rec.getVec(&operands[1]);
+    biscuit::Vec src3 = rec.getVec(&operands[2]);
+    rec.setVectorState(sew, !is_xmms ? length : length / 2);
+    rec.vsplat(v0, reverse ? 0b01010101 : 0b10101010);
+    rec.v0Modified();
+    switch (order) {
+    case 132: {
+        as.VFMADD(dst, src3, src2, VecMask::Yes);
+        as.VMNOT(v0, v0);
+        as.VFMSUB(dst, src3, src2, VecMask::Yes);
+        break;
+    }
+    case 213: {
+        as.VFMADD(dst, src2, src3, VecMask::Yes);
+        as.VMNOT(v0, v0);
+        as.VFMSUB(dst, src2, src3, VecMask::Yes);
+        break;
+    }
+    case 231: {
+        as.VFMACC(dst, src2, src3, VecMask::Yes);
+        as.VMNOT(v0, v0);
+        as.VFMSAC(dst, src2, src3, VecMask::Yes);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+    if (is_xmms) {
+        rec.vzeroTopBits(dst, dst);
+    }
+    rec.setVec(&operands[0], dst);
+}
+
+#define FMA(name)                                                                                                                                    \
+    FAST_HANDLE(VF##name##132SS) {                                                                                                                   \
+        VF##name(rec, as, instruction, operands, SEW::E32, 1, 132);                                                                                  \
+    }                                                                                                                                                \
+    FAST_HANDLE(VF##name##213SS) {                                                                                                                   \
+        VF##name(rec, as, instruction, operands, SEW::E32, 1, 213);                                                                                  \
+    }                                                                                                                                                \
+    FAST_HANDLE(VF##name##231SS) {                                                                                                                   \
+        VF##name(rec, as, instruction, operands, SEW::E32, 1, 231);                                                                                  \
+    }                                                                                                                                                \
+    FAST_HANDLE(VF##name##132SD) {                                                                                                                   \
+        VF##name(rec, as, instruction, operands, SEW::E64, 1, 132);                                                                                  \
+    }                                                                                                                                                \
+    FAST_HANDLE(VF##name##213SD) {                                                                                                                   \
+        VF##name(rec, as, instruction, operands, SEW::E64, 1, 213);                                                                                  \
+    }                                                                                                                                                \
+    FAST_HANDLE(VF##name##231SD) {                                                                                                                   \
+        VF##name(rec, as, instruction, operands, SEW::E64, 1, 231);                                                                                  \
+    }                                                                                                                                                \
+    FAST_HANDLE(VF##name##132PS) {                                                                                                                   \
+        VF##name(rec, as, instruction, operands, SEW::E32, 8, 132);                                                                                  \
+    }                                                                                                                                                \
+    FAST_HANDLE(VF##name##213PS) {                                                                                                                   \
+        VF##name(rec, as, instruction, operands, SEW::E32, 8, 213);                                                                                  \
+    }                                                                                                                                                \
+    FAST_HANDLE(VF##name##231PS) {                                                                                                                   \
+        VF##name(rec, as, instruction, operands, SEW::E32, 8, 231);                                                                                  \
+    }                                                                                                                                                \
+    FAST_HANDLE(VF##name##132PD) {                                                                                                                   \
+        VF##name(rec, as, instruction, operands, SEW::E64, 4, 132);                                                                                  \
+    }                                                                                                                                                \
+    FAST_HANDLE(VF##name##213PD) {                                                                                                                   \
+        VF##name(rec, as, instruction, operands, SEW::E64, 4, 213);                                                                                  \
+    }                                                                                                                                                \
+    FAST_HANDLE(VF##name##231PD) {                                                                                                                   \
+        VF##name(rec, as, instruction, operands, SEW::E64, 4, 231);                                                                                  \
+    }
+
+FMA(MADD)
+FMA(MSUB)
+FMA(NMADD)
+FMA(NMSUB)
+
+FAST_HANDLE(VFMADDSUB132PS) {
+    VFMADDSUB(rec, as, instruction, operands, SEW::E32, 8, 132, false);
+}
+
+FAST_HANDLE(VFMADDSUB213PS) {
+    VFMADDSUB(rec, as, instruction, operands, SEW::E32, 8, 213, false);
+}
+
+FAST_HANDLE(VFMADDSUB231PS) {
+    VFMADDSUB(rec, as, instruction, operands, SEW::E32, 8, 231, false);
+}
+
+FAST_HANDLE(VFMADDSUB132PD) {
+    VFMADDSUB(rec, as, instruction, operands, SEW::E64, 4, 132, false);
+}
+
+FAST_HANDLE(VFMADDSUB213PD) {
+    VFMADDSUB(rec, as, instruction, operands, SEW::E64, 4, 213, false);
+}
+
+FAST_HANDLE(VFMADDSUB231PD) {
+    VFMADDSUB(rec, as, instruction, operands, SEW::E64, 4, 231, false);
+}
+
+FAST_HANDLE(VFMSUBADD132PS) {
+    VFMADDSUB(rec, as, instruction, operands, SEW::E32, 8, 132, true);
+}
+
+FAST_HANDLE(VFMSUBADD213PS) {
+    VFMADDSUB(rec, as, instruction, operands, SEW::E32, 8, 213, true);
+}
+
+FAST_HANDLE(VFMSUBADD231PS) {
+    VFMADDSUB(rec, as, instruction, operands, SEW::E32, 8, 231, true);
+}
+
+FAST_HANDLE(VFMSUBADD132PD) {
+    VFMADDSUB(rec, as, instruction, operands, SEW::E64, 4, 132, true);
+}
+
+FAST_HANDLE(VFMSUBADD213PD) {
+    VFMADDSUB(rec, as, instruction, operands, SEW::E64, 4, 213, true);
+}
+
+FAST_HANDLE(VFMSUBADD231PD) {
+    VFMADDSUB(rec, as, instruction, operands, SEW::E64, 4, 231, true);
+}
+
+#undef FMA
+
 void Handlers::initialize() {
 #define X(name) Handlers::ptr_##name = fast_##name;
 #define SIMD(name)

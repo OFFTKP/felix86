@@ -77,6 +77,9 @@ bool is_feature_enabled(x86_feature feature) {
     case x86_feature::F16C: {
         return is_feature_enabled(x86_feature::AVX) && Extensions::Zvfhmin;
     }
+    case x86_feature::FMA3: {
+        return is_feature_enabled(x86_feature::AVX) && !g_config.no_fma3;
+    }
     case x86_feature::LZCNT_POPCNT: {
         return true;
     }
