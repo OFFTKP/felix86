@@ -21,6 +21,7 @@ enum class x86_feature {
     PCLMULQDQ,
     VPCLMULQDQ,
     F16C,
+    FMA3,
     LZCNT_POPCNT,
 };
 
