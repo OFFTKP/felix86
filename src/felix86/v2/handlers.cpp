@@ -4096,6 +4096,11 @@ FAST_HANDLE(RDTSC) {
     rec.setGPR(X86_REF_RDX, X86_SIZE_QWORD, tsc);
 }
 
+FAST_HANDLE(RDTSCP) {
+    fast_RDTSC(rec, rip, as, instruction, operands);
+    rec.setGPR(X86_REF_RCX, X86_SIZE_QWORD, x0);
+}
+
 FAST_HANDLE(CPUID) {
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());

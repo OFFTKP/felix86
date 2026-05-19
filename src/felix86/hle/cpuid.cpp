@@ -188,6 +188,7 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
     if (found && leaf == 0x8000'0001) {
         bit_set(result.ecx, 0, true); // LAHF/SAHF
         bit_set(result.ecx, 5, is_feature_enabled(x86_feature::LZCNT_POPCNT));
+        bit_set(result.edx, 27, is_feature_enabled(x86_feature::RDTSCP));
     }
 
     if (found && leaf == 0x8000'0002 && cpu_name_set) {
