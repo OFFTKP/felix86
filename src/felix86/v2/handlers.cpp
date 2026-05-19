@@ -15637,15 +15637,15 @@ void VFNMADD(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instructio
     rec.setVectorState(sew, (!is_xmms || length == 1) ? length : length / 2);
     switch (order) {
     case 132: {
-        as.VFNMADD(dst, src3, src2);
+        as.VFNMSUB(dst, src3, src2);
         break;
     }
     case 213: {
-        as.VFNMADD(dst, src2, src3);
+        as.VFNMSUB(dst, src2, src3);
         break;
     }
     case 231: {
-        as.VFNMACC(dst, src2, src3);
+        as.VFNMSAC(dst, src2, src3);
         break;
     }
     default: {
@@ -15697,15 +15697,15 @@ void VFNMSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instructio
     rec.setVectorState(sew, (!is_xmms || length == 1) ? length : length / 2);
     switch (order) {
     case 132: {
-        as.VFNMSUB(dst, src3, src2);
+        as.VFNMADD(dst, src3, src2);
         break;
     }
     case 213: {
-        as.VFNMSUB(dst, src2, src3);
+        as.VFNMADD(dst, src2, src3);
         break;
     }
     case 231: {
-        as.VFNMSAC(dst, src2, src3);
+        as.VFNMACC(dst, src2, src3);
         break;
     }
     default: {
