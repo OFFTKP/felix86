@@ -83,6 +83,9 @@ bool is_feature_enabled(x86_feature feature) {
     case x86_feature::LZCNT_POPCNT: {
         return true;
     }
+    case x86_feature::RDTSCP: {
+        return true;
+    }
     }
     UNREACHABLE();
     return false;
