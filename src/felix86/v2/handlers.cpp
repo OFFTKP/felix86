@@ -15727,23 +15727,24 @@ void VFMADDSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruct
     biscuit::Vec src3 = rec.getVec(&operands[2]);
     rec.setVectorState(sew, !is_xmms ? length : length / 2);
     rec.vsplat(v0, reverse ? 0b01010101 : 0b10101010);
+    rec.v0Modified();
     switch (order) {
     case 132: {
-        as.VFMADD(dst, src3, src2);
+        as.VFMADD(dst, src3, src2, VecMask::Yes);
         as.VMNOT(v0, v0);
-        as.VFMSUB(dst, src3, src2);
+        as.VFMSUB(dst, src3, src2, VecMask::Yes);
         break;
     }
     case 213: {
-        as.VFMADD(dst, src2, src3);
+        as.VFMADD(dst, src2, src3, VecMask::Yes);
         as.VMNOT(v0, v0);
-        as.VFMSUB(dst, src2, src3);
+        as.VFMSUB(dst, src2, src3, VecMask::Yes);
         break;
     }
     case 231: {
-        as.VFMACC(dst, src2, src3);
+        as.VFMACC(dst, src2, src3, VecMask::Yes);
         as.VMNOT(v0, v0);
-        as.VFMSAC(dst, src2, src3);
+        as.VFMSAC(dst, src2, src3, VecMask::Yes);
         break;
     }
     default: {
