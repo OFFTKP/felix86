@@ -15719,6 +15719,44 @@ void VFNMSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instructio
     rec.setVec(&operands[0], dst);
 }
 
+void VFMADDSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int length, int order,
+               bool reverse) {
+    bool is_xmms = !instruction.raw.vex.L;
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src2 = rec.getVec(&operands[1]);
+    biscuit::Vec src3 = rec.getVec(&operands[2]);
+    rec.setVectorState(sew, !is_xmms ? length : length / 2);
+    rec.vsplat(v0, reverse ? 0b01010101 : 0b10101010);
+    switch (order) {
+    case 132: {
+        as.VFMADD(dst, src3, src2);
+        as.VMNOT(v0, v0);
+        as.VFMSUB(dst, src3, src2);
+        break;
+    }
+    case 213: {
+        as.VFMADD(dst, src2, src3);
+        as.VMNOT(v0, v0);
+        as.VFMSUB(dst, src2, src3);
+        break;
+    }
+    case 231: {
+        as.VFMACC(dst, src2, src3);
+        as.VMNOT(v0, v0);
+        as.VFMSAC(dst, src2, src3);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+    if (is_xmms) {
+        rec.vzeroTopBits(dst, dst);
+    }
+    rec.setVec(&operands[0], dst);
+}
+
 #define FMA(name)                                                                                                                                    \
     FAST_HANDLE(VF##name##132SS) {                                                                                                                   \
         VF##name(rec, as, instruction, operands, SEW::E32, 1, 132);                                                                                  \
@@ -15761,6 +15799,54 @@ FMA(MADD)
 FMA(MSUB)
 FMA(NMADD)
 FMA(NMSUB)
+
+FAST_HANDLE(VFMADDSUB132PS) {
+    VFMADDSUB(rec, as, instruction, operands, SEW::E32, 8, 132, false);
+}
+
+FAST_HANDLE(VFMADDSUB213PS) {
+    VFMADDSUB(rec, as, instruction, operands, SEW::E32, 8, 213, false);
+}
+
+FAST_HANDLE(VFMADDSUB231PS) {
+    VFMADDSUB(rec, as, instruction, operands, SEW::E32, 8, 231, false);
+}
+
+FAST_HANDLE(VFMADDSUB132PD) {
+    VFMADDSUB(rec, as, instruction, operands, SEW::E64, 4, 132, false);
+}
+
+FAST_HANDLE(VFMADDSUB213PD) {
+    VFMADDSUB(rec, as, instruction, operands, SEW::E64, 4, 213, false);
+}
+
+FAST_HANDLE(VFMADDSUB231PD) {
+    VFMADDSUB(rec, as, instruction, operands, SEW::E64, 4, 231, false);
+}
+
+FAST_HANDLE(VFMSUBADD132PS) {
+    VFMADDSUB(rec, as, instruction, operands, SEW::E32, 8, 132, true);
+}
+
+FAST_HANDLE(VFMSUBADD213PS) {
+    VFMADDSUB(rec, as, instruction, operands, SEW::E32, 8, 213, true);
+}
+
+FAST_HANDLE(VFMSUBADD231PS) {
+    VFMADDSUB(rec, as, instruction, operands, SEW::E32, 8, 231, true);
+}
+
+FAST_HANDLE(VFMSUBADD132PD) {
+    VFMADDSUB(rec, as, instruction, operands, SEW::E64, 4, 132, true);
+}
+
+FAST_HANDLE(VFMSUBADD213PD) {
+    VFMADDSUB(rec, as, instruction, operands, SEW::E64, 4, 213, true);
+}
+
+FAST_HANDLE(VFMSUBADD231PD) {
+    VFMADDSUB(rec, as, instruction, operands, SEW::E64, 4, 231, true);
+}
 
 #undef FMA
 
