@@ -42,6 +42,7 @@ set_target_properties(vulkan PROPERTIES
     OUTPUT_NAME "vulkan"
     SOVERSION 1
 )
+target_link_libraries(vulkan PRIVATE X11)
  
 add_library(GLX-asm OBJECT libGLX.asm)
 add_library(GLX SHARED libGLX.c $<TARGET_OBJECTS:GLX-asm>)
