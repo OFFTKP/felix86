@@ -959,9 +959,8 @@ bool handle_safepoint(ThreadState* current_state, siginfo_t* info, ucontext_t* c
         if (node->next == nullptr) {
             current_state->deferred_signals = current_state->deferred_signals & ~(1ull << sig);
             current_state->effective_deferred_signals = current_state->effective_deferred_signals & ~(1ull << sig);
-        } else {
-            current_state->deferred_realtime_info[sig - 31] = node->next;
         }
+        current_state->deferred_realtime_info[sig - 31] = node->next;
         ASSERT(munmap(node, 4096) == 0);
     }
 
