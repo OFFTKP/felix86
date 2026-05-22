@@ -8,17 +8,17 @@ void felix86_fsave_16(ThreadState* state, void* address) {
     for (int i = 0; i < 8; i++) {
         if (is_mmx) {
             u16 ones = 0xFFFF;
-            memcpy(&data->st[i], &state->fp[i], sizeof(double));
+            memcpy(&data->st[i], &state->ctx.fp[i], sizeof(double));
             memcpy(&data->st[i].exponent, &ones, sizeof(u16));
         } else {
-            Float80 f80 = f64_to_80(state->fp[i]);
+            Float80 f80 = f64_to_80(state->ctx.fp[i]);
             memcpy(&data->st[i], &f80, sizeof(Float80));
         }
     }
 
-    data->cw = state->fpu_cw;
-    data->tw = state->fpu_tw;
-    data->sw = (state->fpu_top << 11) | (state->fpu_sw & ~(0b111 << 11));
+    data->cw = state->ctx.fpu_cw;
+    data->tw = state->ctx.fpu_tw;
+    data->sw = (state->fpu_top << 11) | (state->ctx.fpu_sw & ~(0b111 << 11));
 
     // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
     // will not need f80->f64 conversion if loaded with frstor
@@ -33,17 +33,17 @@ void felix86_fsave_32(ThreadState* state, void* address) {
     for (int i = 0; i < 8; i++) {
         if (is_mmx) {
             u16 ones = 0xFFFF;
-            memcpy(&data->st[i], &state->fp[i], sizeof(double));
+            memcpy(&data->st[i], &state->ctx.fp[i], sizeof(double));
             memcpy(&data->st[i].exponent, &ones, sizeof(u16));
         } else {
-            Float80 f80 = f64_to_80(state->fp[i]);
+            Float80 f80 = f64_to_80(state->ctx.fp[i]);
             memcpy(&data->st[i], &f80, sizeof(Float80));
         }
     }
 
-    data->cw = state->fpu_cw;
-    data->tw = state->fpu_tw;
-    data->sw = (state->fpu_top << 11) | (state->fpu_sw & ~(0b111 << 11));
+    data->cw = state->ctx.fpu_cw;
+    data->tw = state->ctx.fpu_tw;
+    data->sw = (state->fpu_top << 11) | (state->ctx.fpu_sw & ~(0b111 << 11));
 
     // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
     // will not need f80->f64 conversion if loaded with frstor
@@ -56,17 +56,17 @@ void felix86_frstor_16(ThreadState* state, void* address) {
     fsave_frame_16* data = (fsave_frame_16*)address;
 
     state->fpu_top = (data->sw >> 11) & 0b111;
-    state->fpu_cw = data->cw;
-    state->fpu_tw = data->tw;
-    state->fpu_sw = data->sw;
-    state->rmode_x87 = rounding_mode(x86RoundingMode((state->fpu_cw >> 10) & 0b11));
+    state->ctx.fpu_cw = data->cw;
+    state->ctx.fpu_tw = data->tw;
+    state->ctx.fpu_sw = data->sw;
+    state->rmode_x87 = rounding_mode(x86RoundingMode((state->ctx.fpu_cw >> 10) & 0b11));
 
     for (int i = 0; i < 8; i++) {
-        if (state->fpu_cw & 0x8000) {
-            memcpy(&state->fp[i], &data->st[i], sizeof(double));
+        if (state->ctx.fpu_cw & 0x8000) {
+            memcpy(&state->ctx.fp[i], &data->st[i], sizeof(double));
         } else {
             double f64 = f80_to_64(&data->st[i]);
-            memcpy(&state->fp[i], &f64, sizeof(double));
+            memcpy(&state->ctx.fp[i], &f64, sizeof(double));
         }
     }
 }
@@ -75,17 +75,17 @@ void felix86_frstor_32(ThreadState* state, void* address) {
     fsave_frame_32* data = (fsave_frame_32*)address;
 
     state->fpu_top = (data->sw >> 11) & 0b111;
-    state->fpu_cw = data->cw;
-    state->fpu_tw = data->tw;
-    state->fpu_sw = data->sw;
-    state->rmode_x87 = rounding_mode(x86RoundingMode((state->fpu_cw >> 10) & 0b11));
+    state->ctx.fpu_cw = data->cw;
+    state->ctx.fpu_tw = data->tw;
+    state->ctx.fpu_sw = data->sw;
+    state->rmode_x87 = rounding_mode(x86RoundingMode((state->ctx.fpu_cw >> 10) & 0b11));
 
     for (int i = 0; i < 8; i++) {
-        if (state->fpu_cw & 0x8000) {
-            memcpy(&state->fp[i], &data->st[i], sizeof(double));
+        if (state->ctx.fpu_cw & 0x8000) {
+            memcpy(&state->ctx.fp[i], &data->st[i], sizeof(double));
         } else {
             double f64 = f80_to_64(&data->st[i]);
-            memcpy(&state->fp[i], &f64, sizeof(double));
+            memcpy(&state->ctx.fp[i], &f64, sizeof(double));
         }
     }
 }
@@ -104,14 +104,14 @@ void felix86_fxsave(ThreadState* state, void* address, bool save_x87, bool save_
     if (save_x87) {
         for (int i = 0; i < 8; i++) {
             if (is_x87) {
-                Float80 f80 = f64_to_80(state->fp[i]);
+                Float80 f80 = f64_to_80(state->ctx.fp[i]);
                 memcpy(&data->st[i].st[0], &f80, sizeof(Float80));
             } else {
                 if (!is_mmx) {
                     WARN("Unknown x87 state during fxsave");
                 }
                 u16 ones = 0xFFFF;
-                memcpy(&data->st[i].st[0], &state->fp[i], sizeof(double));
+                memcpy(&data->st[i].st[0], &state->ctx.fp[i], sizeof(double));
                 memcpy(&data->st[i].st[8], &ones, sizeof(u16));
             }
         }
@@ -120,14 +120,14 @@ void felix86_fxsave(ThreadState* state, void* address, bool save_x87, bool save_
         data->ftw = 0;
         for (int i = 0; i < 8; i++) {
             u16 mask = 0b11 << (i * 2);
-            bool empty = (mask & state->fpu_tw) == mask;
+            bool empty = (mask & state->ctx.fpu_tw) == mask;
             if (!empty) {
                 data->ftw |= 1 << i;
             }
         }
 
-        data->fcw = state->fpu_cw;
-        data->fsw = (state->fpu_top << 11) | (state->fpu_sw & ~(0b111 << 11));
+        data->fcw = state->ctx.fpu_cw;
+        data->fsw = (state->fpu_top << 11) | (state->ctx.fpu_sw & ~(0b111 << 11));
 
         // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
         // will not need f80->f64 conversion if loaded with fxrstor
@@ -137,7 +137,7 @@ void felix86_fxsave(ThreadState* state, void* address, bool save_x87, bool save_
     }
 
     if (save_mxcsr) {
-        data->mxcsr = state->mxcsr;
+        data->mxcsr = state->ctx.mxcsr;
     }
 }
 
@@ -146,38 +146,38 @@ void felix86_fxrstor(ThreadState* state, void* address, bool restore_x87, bool r
 
     if (restore_xmm) {
         for (int i = 0; i < (g_mode32 ? 8 : 16); i++) {
-            state->xmm[i].data[0] = data->xmms[i].val[0];
-            state->xmm[i].data[1] = data->xmms[i].val[1];
+            state->ctx.xmm[i].data[0] = data->xmms[i].val[0];
+            state->ctx.xmm[i].data[1] = data->xmms[i].val[1];
         }
     }
 
     if (restore_x87) {
-        state->fpu_tw = 0;
+        state->ctx.fpu_tw = 0;
         for (int i = 0; i < 8; i++) {
             if (!((data->ftw >> i) & 0b1)) {
-                state->fpu_tw |= 0b11 << (i * 2);
+                state->ctx.fpu_tw |= 0b11 << (i * 2);
             }
         }
 
-        state->fpu_cw = data->fcw;
-        state->fpu_sw = data->fsw;
+        state->ctx.fpu_cw = data->fcw;
+        state->ctx.fpu_sw = data->fsw;
         state->fpu_top = (data->fsw >> 11) & 7;
 
         for (int i = 0; i < 8; i++) {
-            if (state->fpu_cw & 0x8000) {
-                memcpy(&state->fp[i], &data->st[i].st[0], sizeof(double));
+            if (state->ctx.fpu_cw & 0x8000) {
+                memcpy(&state->ctx.fp[i], &data->st[i].st[0], sizeof(double));
             } else {
                 double f64 = f80_to_64((Float80*)&data->st[i].st[0]);
-                memcpy(&state->fp[i], &f64, sizeof(double));
+                memcpy(&state->ctx.fp[i], &f64, sizeof(double));
             }
         }
 
-        state->rmode_x87 = rounding_mode(x86RoundingMode((state->fpu_cw >> 10) & 0b11));
+        state->rmode_x87 = rounding_mode(x86RoundingMode((state->ctx.fpu_cw >> 10) & 0b11));
     }
 
     if (restore_mxcsr) {
-        state->mxcsr = data->mxcsr;
-        state->rmode_sse = rounding_mode(x86RoundingMode((state->mxcsr >> 13) & 0b11));
+        state->ctx.mxcsr = data->mxcsr;
+        state->rmode_sse = rounding_mode(x86RoundingMode((state->ctx.mxcsr >> 13) & 0b11));
     }
 }
 
@@ -186,7 +186,7 @@ bool felix86_xsave_contains_ymms() {
 }
 
 void felix86_xsave(ThreadState* state, void* address, bool save_all) {
-    u64 rfbm = (u64)(u32)state->gprs[X86_REF_RDX] << 32 | (u32)state->gprs[X86_REF_RAX];
+    u64 rfbm = (u64)(u32)state->ctx.gprs[X86_REF_RDX] << 32 | (u32)state->ctx.gprs[X86_REF_RAX];
     bool save_x87 = (rfbm & 0b001) || save_all;
     bool save_xmm = (rfbm & 0b010) || save_all;
     bool save_avx = (rfbm & 0b100) || save_all;
@@ -198,13 +198,13 @@ void felix86_xsave(ThreadState* state, void* address, bool save_all) {
         header->xcomp_bv = 0; // use standard form
         ymm_hi* ymm_storage = (ymm_hi*)((u8*)address + sizeof(fxsave_frame) + sizeof(xsave_header));
         for (int i = 0; i < 16; i++) {
-            memcpy((u8*)ymm_storage->data + 16 * i, &state->xmm[i].data[2], sizeof(u64) * 2);
+            memcpy((u8*)ymm_storage->data + 16 * i, &state->ctx.xmm[i].data[2], sizeof(u64) * 2);
         }
     }
 }
 
 void felix86_xrstor(ThreadState* state, void* address, bool restore_all) {
-    u64 rfbm = (u64)(u32)state->gprs[X86_REF_RDX] << 32 | (u32)state->gprs[X86_REF_RAX];
+    u64 rfbm = (u64)(u32)state->ctx.gprs[X86_REF_RDX] << 32 | (u32)state->ctx.gprs[X86_REF_RAX];
     bool restore_x87 = (rfbm & 0b001) || restore_all;
     bool restore_xmm = (rfbm & 0b010) || restore_all;
     bool restore_avx = (rfbm & 0b100) || restore_all;
@@ -213,7 +213,7 @@ void felix86_xrstor(ThreadState* state, void* address, bool restore_all) {
     if (felix86_xsave_contains_ymms() && restore_avx) {
         ymm_hi* ymm_storage = (ymm_hi*)((u8*)address + sizeof(fxsave_frame) + sizeof(xsave_header));
         for (int i = 0; i < 16; i++) {
-            memcpy(&state->xmm[i].data[2], (u8*)ymm_storage->data + 16 * i, sizeof(u64) * 2);
+            memcpy(&state->ctx.xmm[i].data[2], (u8*)ymm_storage->data + 16 * i, sizeof(u64) * 2);
         }
     }
 }

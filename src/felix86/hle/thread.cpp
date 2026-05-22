@@ -59,9 +59,9 @@ void* pthread_handler(void* args) {
         state->clear_tid_address = clone_args.child_tid;
     }
 
-    state->gprs[X86_REF_RAX] = 0; // return value
-    state->rip = clone_args.new_rip;
-    state->gprs[X86_REF_RSP] = clone_args.new_rsp;
+    state->ctx.gprs[X86_REF_RAX] = 0; // return value
+    state->ctx.rip = clone_args.new_rip;
+    state->ctx.gprs[X86_REF_RSP] = clone_args.new_rsp;
     state->thread = clone_args.new_thread;
 
     if (clone_args.guest_flags & CLONE_SETTLS) {
@@ -218,7 +218,7 @@ long ForkMe(CloneArgs& host_clone_args) {
         g_process_globals.states.push_back(state);
 
         if (host_clone_args.new_rsp) {
-            state->gprs[X86_REF_RSP] = host_clone_args.new_rsp;
+            state->ctx.gprs[X86_REF_RSP] = host_clone_args.new_rsp;
         }
 
         if (host_clone_args.guest_flags & CLONE_SETTLS) {
@@ -255,7 +255,7 @@ long VForkMe(CloneArgs& args) {
         ThreadState* state = ThreadState::Get();
         // TODO: probably clean up states here, but it doesn't matter cus it gets execve'd anyway
         if (args.new_rsp) {
-            state->gprs[X86_REF_RSP] = args.new_rsp;
+            state->ctx.gprs[X86_REF_RSP] = args.new_rsp;
         }
 
         if (args.guest_flags & CLONE_SETTLS) {

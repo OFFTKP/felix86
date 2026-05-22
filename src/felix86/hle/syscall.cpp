@@ -1236,7 +1236,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         VERBOSE("----- sigaltstack was called -----");
         stack_t* new_ss = (stack_t*)arg1;
         stack_t* old_ss = (stack_t*)arg2;
-        u64 current_rsp = state->gprs[X86_REF_RSP];
+        u64 current_rsp = state->ctx.gprs[X86_REF_RSP];
 
         bool on_stack = false;
         if (!(state->alt_stack.ss_flags & SS_DISABLE) && current_rsp >= (u64)state->alt_stack.ss_sp &&
@@ -1384,7 +1384,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
             .child_tid = (pid_t*)child_tid,
             .new_tls = arg5,
             .new_rsp = arg2,
-            .new_rip = state->gprs[X86_REF_RCX],
+            .new_rip = state->ctx.gprs[X86_REF_RCX],
             .new_thread = 0,
             .new_tid = 0,
         };
@@ -1900,21 +1900,21 @@ void felix86_syscall(felix86_frame* frame) {
         case felix86_x86_64_arch_prctl: {
             switch (arg1) {
             case felix86_x86_64_ARCH_SET_GS: {
-                state->gsbase = arg2;
+                state->ctx.gsbase = arg2;
                 result = 0;
                 break;
             }
             case felix86_x86_64_ARCH_SET_FS: {
-                state->fsbase = arg2;
+                state->ctx.fsbase = arg2;
                 result = 0;
                 break;
             }
             case felix86_x86_64_ARCH_GET_FS: {
-                result = state->fsbase;
+                result = state->ctx.fsbase;
                 break;
             }
             case felix86_x86_64_ARCH_GET_GS: {
-                result = state->gsbase;
+                result = state->ctx.gsbase;
                 break;
             }
             default: {
@@ -2446,7 +2446,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                 WARN("SS_AUTODISARM when establishing alt stack");
             }
 
-            u64 current_rsp = state->gprs[X86_REF_RSP];
+            u64 current_rsp = state->ctx.gprs[X86_REF_RSP];
 
             bool on_stack = false;
             if (!(state->alt_stack.ss_flags & SS_DISABLE) && current_rsp >= (u64)state->alt_stack.ss_sp &&

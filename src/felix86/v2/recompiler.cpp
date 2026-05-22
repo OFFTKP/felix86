@@ -357,7 +357,7 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block) {
             state->recompiler->as.SetCursorPointer(link_location);
             // Because there was a writebackState before entering this function, state->rip contains the guest address that we tried
             // to jump to before getting hit by this invalidation. So we can jumpAndLink there.
-            state->recompiler->jumpAndLink(state->rip);
+            state->recompiler->jumpAndLink(state->ctx.rip);
             state->recompiler->as.SetCursorPointer(cursor);
             flush_icache();
         }
@@ -594,7 +594,7 @@ u64 Recompiler::compileSequence(u64 rip) {
         if (is_mmx) {
             if (!ran_mmx_once) {
                 // Set FPU tag word to valid for the first MMX instruction in this block
-                as.SH(x0, offsetof(ThreadState, fpu_tw), threadStatePointer());
+                as.SH(x0, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
             }
             ran_mmx_once = true;
             ASSERT_MSG(Extensions::V, "TODO: Implement MMX for no RVV");
@@ -733,7 +733,7 @@ void Recompiler::flushX87() {
                 top = getTOP();
                 tag_word = scratch();
                 if (x87_reg_cache[i].modify_tag) {
-                    as.LHU(tag_word, offsetof(ThreadState, fpu_tw), threadStatePointer());
+                    as.LHU(tag_word, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
                     tag_dirty = true;
                 }
                 top_got = true;
@@ -743,7 +743,7 @@ void Recompiler::flushX87() {
             as.ADDI(st, top, index);
             as.ANDI(st, st, 0b111);
             as.SH3ADD(address, st, threadStatePointer());
-            as.FSD(x87_reg_cache[i].reg, offsetof(ThreadState, fp), address);
+            as.FSD(x87_reg_cache[i].reg, offsetof(ThreadState, ctx.fp), address);
 
             if (x87_reg_cache[i].modify_tag) {
                 ASSERT(pushed_this_block > 0);
@@ -770,14 +770,14 @@ void Recompiler::flushX87() {
             ASSERT(mmx_reg_cache[i].loaded);
             setVectorState(SEW::E64, 1);
             biscuit::Vec vec = mmx_reg_cache[i].reg;
-            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, fp) + i * 8);
+            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, ctx.fp) + i * 8);
             as.VSE64(vec, address);
         }
     }
 
     if (top_got) {
         if (tag_dirty) {
-            as.SH(tag_word, offsetof(ThreadState, fpu_tw), threadStatePointer());
+            as.SH(tag_word, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
         }
         popScratch();
         popScratch();
@@ -1270,7 +1270,7 @@ biscuit::GPR Recompiler::getElementGPR(ZydisDecodedOperand* operand, x86_size_e 
     if (operand->type == ZYDIS_OPERAND_TYPE_REGISTER) {
         ASSERT(operand->reg.value >= ZYDIS_REGISTER_XMM0 && operand->reg.value <= ZYDIS_REGISTER_XMM15);
         x86_ref_e ref = zydisToRef(operand->reg.value);
-        offset = offsetof(ThreadState, xmm) + (ref - X86_REF_XMM0) * sizeof(XmmReg) + (getBitSize(size) / 8) * element;
+        offset = offsetof(ThreadState, ctx.xmm) + (ref - X86_REF_XMM0) * sizeof(XmmReg) + (getBitSize(size) / 8) * element;
         address = threadStatePointer();
     } else if (operand->type == ZYDIS_OPERAND_TYPE_MEMORY) {
         address = lea(operand, false);
@@ -1322,7 +1322,7 @@ biscuit::FPR Recompiler::getElementFPR(ZydisDecodedOperand* operand, x86_size_e 
     if (operand->type == ZYDIS_OPERAND_TYPE_REGISTER) {
         ASSERT(operand->reg.value >= ZYDIS_REGISTER_XMM0 && operand->reg.value <= ZYDIS_REGISTER_XMM15);
         x86_ref_e ref = zydisToRef(operand->reg.value);
-        offset = offsetof(ThreadState, xmm) + (ref - X86_REF_XMM0) * sizeof(XmmReg) + (getBitSize(size) / 8) * element;
+        offset = offsetof(ThreadState, ctx.xmm) + (ref - X86_REF_XMM0) * sizeof(XmmReg) + (getBitSize(size) / 8) * element;
         address = threadStatePointer();
     } else if (operand->type == ZYDIS_OPERAND_TYPE_MEMORY) {
         address = lea(operand, false);
@@ -1354,7 +1354,7 @@ void Recompiler::setElementGPR(ZydisDecodedOperand* operand, x86_size_e size, in
     if (operand->type == ZYDIS_OPERAND_TYPE_REGISTER) {
         ASSERT(operand->reg.value >= ZYDIS_REGISTER_XMM0 && operand->reg.value <= ZYDIS_REGISTER_XMM15);
         x86_ref_e ref = zydisToRef(operand->reg.value);
-        offset = offsetof(ThreadState, xmm) + (ref - X86_REF_XMM0) * sizeof(XmmReg) + (getBitSize(size) / 8) * element;
+        offset = offsetof(ThreadState, ctx.xmm) + (ref - X86_REF_XMM0) * sizeof(XmmReg) + (getBitSize(size) / 8) * element;
         address = threadStatePointer();
     } else if (operand->type == ZYDIS_OPERAND_TYPE_MEMORY) {
         address = lea(operand, false);
@@ -1392,7 +1392,7 @@ void Recompiler::setElementFPR(ZydisDecodedOperand* operand, x86_size_e size, in
     if (operand->type == ZYDIS_OPERAND_TYPE_REGISTER) {
         ASSERT(operand->reg.value >= ZYDIS_REGISTER_XMM0 && operand->reg.value <= ZYDIS_REGISTER_XMM15);
         x86_ref_e ref = zydisToRef(operand->reg.value);
-        offset = offsetof(ThreadState, xmm) + (ref - X86_REF_XMM0) * sizeof(XmmReg) + (getBitSize(size) / 8) * element;
+        offset = offsetof(ThreadState, ctx.xmm) + (ref - X86_REF_XMM0) * sizeof(XmmReg) + (getBitSize(size) / 8) * element;
         address = threadStatePointer();
     } else if (operand->type == ZYDIS_OPERAND_TYPE_MEMORY) {
         address = lea(operand, false);
@@ -1424,11 +1424,11 @@ u64 Recompiler::getImmediate(ZydisDecodedOperand* operand) {
 biscuit::GPR Recompiler::flag(x86_ref_e ref) {
     if (ref == X86_REF_PF) {
         biscuit::GPR reg = scratch();
-        as.LBU(reg, offsetof(ThreadState, pf), threadStatePointer());
+        as.LBU(reg, offsetof(ThreadState, ctx.pf), threadStatePointer());
         return reg;
     } else if (ref == X86_REF_AF) {
         biscuit::GPR reg = scratch();
-        as.LBU(reg, offsetof(ThreadState, af), threadStatePointer());
+        as.LBU(reg, offsetof(ThreadState, ctx.af), threadStatePointer());
         return reg;
     }
 
@@ -1734,9 +1734,9 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
     // Cover the case of just a segment register
     if (has_segment && !has_base && !has_index && !has_disp) {
         if (operand->mem.segment == ZYDIS_REGISTER_FS) {
-            as.LD(address, offsetof(ThreadState, fsbase), threadStatePointer());
+            as.LD(address, offsetof(ThreadState, ctx.fsbase), threadStatePointer());
         } else if (operand->mem.segment == ZYDIS_REGISTER_GS) {
-            as.LD(address, offsetof(ThreadState, gsbase), threadStatePointer());
+            as.LD(address, offsetof(ThreadState, ctx.gsbase), threadStatePointer());
         } else {
             UNREACHABLE();
         }
@@ -1866,31 +1866,31 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
         int offset;
         switch (operand->mem.segment) {
         case ZYDIS_REGISTER_FS: {
-            offset = offsetof(ThreadState, fsbase);
+            offset = offsetof(ThreadState, ctx.fsbase);
             break;
         }
         case ZYDIS_REGISTER_GS: {
-            offset = offsetof(ThreadState, gsbase);
+            offset = offsetof(ThreadState, ctx.gsbase);
             break;
         }
         case ZYDIS_REGISTER_SS: {
             ASSERT(g_mode32);
-            offset = offsetof(ThreadState, ssbase);
+            offset = offsetof(ThreadState, ctx.ssbase);
             break;
         }
         case ZYDIS_REGISTER_ES: {
             ASSERT(g_mode32);
-            offset = offsetof(ThreadState, esbase);
+            offset = offsetof(ThreadState, ctx.esbase);
             break;
         }
         case ZYDIS_REGISTER_DS: {
             ASSERT(g_mode32);
-            offset = offsetof(ThreadState, dsbase);
+            offset = offsetof(ThreadState, ctx.dsbase);
             break;
         }
         case ZYDIS_REGISTER_CS: {
             ASSERT(g_mode32);
-            offset = offsetof(ThreadState, csbase);
+            offset = offsetof(ThreadState, ctx.csbase);
             break;
         }
         default: {
@@ -1926,11 +1926,11 @@ void Recompiler::writebackState() {
     flushX87();
 
     biscuit::GPR rip = allocatedGPR(X86_REF_RIP);
-    as.SD(rip, offsetof(ThreadState, rip), threadStatePointer());
+    as.SD(rip, offsetof(ThreadState, ctx.rip), threadStatePointer());
 
     for (int i = 0; i < 16; i++) {
         x86_ref_e ref = (x86_ref_e)(X86_REF_RAX + i);
-        as.SD(allocatedGPR(ref), offsetof(ThreadState, gprs) + i * sizeof(u64), threadStatePointer());
+        as.SD(allocatedGPR(ref), offsetof(ThreadState, ctx.gprs) + i * sizeof(u64), threadStatePointer());
     }
 
     biscuit::GPR address = scratch();
@@ -1941,9 +1941,9 @@ void Recompiler::writebackState() {
         as.VSETVLI(address, x0, SEW::E64, LMUL::M8);
         biscuit::Vec xmm0 = allocatedVec(X86_REF_XMM0);
         biscuit::Vec xmm8 = allocatedVec(X86_REF_XMM8);
-        as.ADDI(address, threadStatePointer(), offsetof(ThreadState, xmm) + 0 * sizeof(XmmReg));
+        as.ADDI(address, threadStatePointer(), offsetof(ThreadState, ctx.xmm) + 0 * sizeof(XmmReg));
         as.VSE64(xmm0, address);
-        as.ADDI(address, threadStatePointer(), offsetof(ThreadState, xmm) + 8 * sizeof(XmmReg));
+        as.ADDI(address, threadStatePointer(), offsetof(ThreadState, ctx.xmm) + 8 * sizeof(XmmReg));
         as.VSE64(xmm8, address);
         resetVectorState();
     } else {
@@ -1955,7 +1955,7 @@ void Recompiler::writebackState() {
         }
         for (int i = 0; i < 16; i++) {
             biscuit::Vec vec = allocatedVec((x86_ref_e)(X86_REF_XMM0 + i));
-            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, xmm) + i * sizeof(XmmReg));
+            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, ctx.xmm) + i * sizeof(XmmReg));
             as.VSE64(vec, address);
         }
     }
@@ -1965,10 +1965,10 @@ void Recompiler::writebackState() {
     biscuit::GPR sf = allocatedGPR(X86_REF_SF);
     biscuit::GPR of = allocatedGPR(X86_REF_OF);
 
-    as.SB(cf, offsetof(ThreadState, cf), threadStatePointer());
-    as.SB(zf, offsetof(ThreadState, zf), threadStatePointer());
-    as.SB(sf, offsetof(ThreadState, sf), threadStatePointer());
-    as.SB(of, offsetof(ThreadState, of), threadStatePointer());
+    as.SB(cf, offsetof(ThreadState, ctx.cf), threadStatePointer());
+    as.SB(zf, offsetof(ThreadState, ctx.zf), threadStatePointer());
+    as.SB(sf, offsetof(ThreadState, ctx.sf), threadStatePointer());
+    as.SB(of, offsetof(ThreadState, ctx.of), threadStatePointer());
 
     resetVectorState();
     cached_lea_operand = nullptr;
@@ -1978,11 +1978,11 @@ void Recompiler::restoreState() {
     resetVectorState();
 
     biscuit::GPR rip = allocatedGPR(X86_REF_RIP);
-    as.LD(rip, offsetof(ThreadState, rip), threadStatePointer());
+    as.LD(rip, offsetof(ThreadState, ctx.rip), threadStatePointer());
 
     for (int i = 0; i < 16; i++) {
         x86_ref_e ref = (x86_ref_e)(X86_REF_RAX + i);
-        as.LD(allocatedGPR(ref), offsetof(ThreadState, gprs) + i * sizeof(u64), threadStatePointer());
+        as.LD(allocatedGPR(ref), offsetof(ThreadState, ctx.gprs) + i * sizeof(u64), threadStatePointer());
     }
 
     biscuit::GPR address = scratch();
@@ -1993,9 +1993,9 @@ void Recompiler::restoreState() {
         as.VSETVLI(address, x0, SEW::E64, LMUL::M8);
         biscuit::Vec xmm0 = allocatedVec(X86_REF_XMM0);
         biscuit::Vec xmm8 = allocatedVec(X86_REF_XMM8);
-        as.ADDI(address, threadStatePointer(), offsetof(ThreadState, xmm) + 0 * sizeof(XmmReg));
+        as.ADDI(address, threadStatePointer(), offsetof(ThreadState, ctx.xmm) + 0 * sizeof(XmmReg));
         as.VLE64(xmm0, address);
-        as.ADDI(address, threadStatePointer(), offsetof(ThreadState, xmm) + 8 * sizeof(XmmReg));
+        as.ADDI(address, threadStatePointer(), offsetof(ThreadState, ctx.xmm) + 8 * sizeof(XmmReg));
         as.VLE64(xmm8, address);
         resetVectorState();
     } else {
@@ -2006,7 +2006,7 @@ void Recompiler::restoreState() {
         }
         for (int i = 0; i < 16; i++) {
             biscuit::Vec vec = allocatedVec((x86_ref_e)(X86_REF_XMM0 + i));
-            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, xmm) + sizeof(XmmReg) * i);
+            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, ctx.xmm) + sizeof(XmmReg) * i);
             as.VLE64(vec, address);
         }
     }
@@ -2018,10 +2018,10 @@ void Recompiler::restoreState() {
     biscuit::GPR sf = allocatedGPR(X86_REF_SF);
     biscuit::GPR of = allocatedGPR(X86_REF_OF);
 
-    as.LBU(cf, offsetof(ThreadState, cf), threadStatePointer());
-    as.LBU(zf, offsetof(ThreadState, zf), threadStatePointer());
-    as.LBU(sf, offsetof(ThreadState, sf), threadStatePointer());
-    as.LBU(of, offsetof(ThreadState, of), threadStatePointer());
+    as.LBU(cf, offsetof(ThreadState, ctx.cf), threadStatePointer());
+    as.LBU(zf, offsetof(ThreadState, ctx.zf), threadStatePointer());
+    as.LBU(sf, offsetof(ThreadState, ctx.sf), threadStatePointer());
+    as.LBU(of, offsetof(ThreadState, ctx.of), threadStatePointer());
 
     // Restore the rounding mode
     if (fsrm_sse) {
@@ -2400,7 +2400,7 @@ void Recompiler::updateAuxiliaryAdd(biscuit::GPR lhs, biscuit::GPR result) {
     as.ANDI(af, result, 0xF);
     as.ANDI(temp, lhs, 0xF);
     as.SLTU(af, af, temp);
-    as.SB(af, offsetof(ThreadState, af), threadStatePointer());
+    as.SB(af, offsetof(ThreadState, ctx.af), threadStatePointer());
     popScratch();
     popScratch();
 }
@@ -2411,7 +2411,7 @@ void Recompiler::updateAuxiliarySub(biscuit::GPR lhs, biscuit::GPR rhs) {
     as.ANDI(af, rhs, 0xF);
     as.ANDI(temp, lhs, 0xF);
     as.SLTU(af, temp, af);
-    as.SB(af, offsetof(ThreadState, af), threadStatePointer());
+    as.SB(af, offsetof(ThreadState, ctx.af), threadStatePointer());
     popScratch();
     popScratch();
 }
@@ -2425,7 +2425,7 @@ void Recompiler::updateAuxiliaryAdc(biscuit::GPR lhs, biscuit::GPR result, biscu
     as.ANDI(temp, result_2, 0xF);
     as.SLTU(temp, temp, cf);
     as.OR(af, af, temp);
-    as.SB(af, offsetof(ThreadState, af), threadStatePointer());
+    as.SB(af, offsetof(ThreadState, ctx.af), threadStatePointer());
     popScratch();
     popScratch();
 }
@@ -2439,7 +2439,7 @@ void Recompiler::updateAuxiliarySbb(biscuit::GPR lhs, biscuit::GPR rhs, biscuit:
     as.ANDI(temp, result, 0xF);
     as.SLTU(temp, temp, cf);
     as.OR(af, af, temp);
-    as.SB(af, offsetof(ThreadState, af), threadStatePointer());
+    as.SB(af, offsetof(ThreadState, ctx.af), threadStatePointer());
     popScratch();
     popScratch();
 }
@@ -2470,10 +2470,10 @@ void Recompiler::updateCarryAdc(biscuit::GPR lhs, biscuit::GPR result, biscuit::
 
 void Recompiler::clearFlag(x86_ref_e ref) {
     if (ref == X86_REF_PF) {
-        as.SB(x0, offsetof(ThreadState, pf), threadStatePointer());
+        as.SB(x0, offsetof(ThreadState, ctx.pf), threadStatePointer());
         return;
     } else if (ref == X86_REF_AF) {
-        as.SB(x0, offsetof(ThreadState, af), threadStatePointer());
+        as.SB(x0, offsetof(ThreadState, ctx.af), threadStatePointer());
         return;
     }
 
@@ -2485,12 +2485,12 @@ void Recompiler::setFlag(x86_ref_e ref) {
     if (ref == X86_REF_PF) {
         biscuit::GPR one = scratch();
         as.LI(one, 1);
-        as.SB(one, offsetof(ThreadState, pf), threadStatePointer());
+        as.SB(one, offsetof(ThreadState, ctx.pf), threadStatePointer());
         return;
     } else if (ref == X86_REF_AF) {
         biscuit::GPR one = scratch();
         as.LI(one, 1);
-        as.SB(one, offsetof(ThreadState, af), threadStatePointer());
+        as.SB(one, offsetof(ThreadState, ctx.af), threadStatePointer());
         return;
     }
 
@@ -2555,7 +2555,7 @@ void Recompiler::updateParity(biscuit::GPR result) {
     as.CPOPW(pf, pf);
     as.ANDI(pf, pf, 1);
     as.XORI(pf, pf, 1);
-    as.SB(pf, offsetof(ThreadState, pf), threadStatePointer());
+    as.SB(pf, offsetof(ThreadState, ctx.pf), threadStatePointer());
     popScratch();
 }
 
@@ -3030,7 +3030,7 @@ biscuit::GPR Recompiler::getFlags() {
     biscuit::GPR zf = flag(X86_REF_ZF);
     biscuit::GPR sf = flag(X86_REF_SF);
     biscuit::GPR of = flag(X86_REF_OF);
-    as.LBU(temp, offsetof(ThreadState, df), threadStatePointer());
+    as.LBU(temp, offsetof(ThreadState, ctx.df), threadStatePointer());
     as.SLLI(temp, temp, 10);
     as.SLLI(reg, of, 11);
     as.OR(reg, reg, temp);
@@ -3066,21 +3066,21 @@ void Recompiler::setFlags(biscuit::GPR flags) {
 
     as.SRLI(temp, flags, 2);
     as.ANDI(temp, temp, 1);
-    as.SB(temp, offsetof(ThreadState, pf), threadStatePointer());
+    as.SB(temp, offsetof(ThreadState, ctx.pf), threadStatePointer());
 
     as.SRLI(zf, flags, 6);
     as.ANDI(zf, zf, 1);
 
     as.SRLI(temp, flags, 4);
     as.ANDI(temp, temp, 1);
-    as.SB(temp, offsetof(ThreadState, af), threadStatePointer());
+    as.SB(temp, offsetof(ThreadState, ctx.af), threadStatePointer());
 
     as.SRLI(sf, flags, 7);
     as.ANDI(sf, sf, 1);
 
     as.SRLI(temp, flags, 10);
     as.ANDI(temp, temp, 1);
-    as.SB(temp, offsetof(ThreadState, df), threadStatePointer());
+    as.SB(temp, offsetof(ThreadState, ctx.df), threadStatePointer());
 
     as.SRLI(of, flags, 11);
     as.ANDI(of, of, 1);
@@ -3118,7 +3118,7 @@ biscuit::FPR Recompiler::getST(int index, bool dirty) {
         as.ANDI(top, top, 0b111);
     }
     as.SH3ADD(address, top, threadStatePointer());
-    as.FLD(x87_reg_cache[index].reg, offsetof(ThreadState, fp), address);
+    as.FLD(x87_reg_cache[index].reg, offsetof(ThreadState, ctx.fp), address);
 
     popScratch();
     popScratch();
@@ -3536,9 +3536,9 @@ void Recompiler::popX87() {
         as.ANDI(top, top, 0b111);
         setTOP(top);
 
-        as.LHU(ftw, offsetof(ThreadState, fpu_tw), threadStatePointer());
+        as.LHU(ftw, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
         as.OR(ftw, ftw, mask);
-        as.SH(ftw, offsetof(ThreadState, fpu_tw), threadStatePointer());
+        as.SH(ftw, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
 
         popScratch();
         popScratch();

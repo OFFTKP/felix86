@@ -28,38 +28,7 @@ ThreadState* ThreadState::Create(ThreadState* copy_state) {
     sigemptyset(&state->signal_mask);
 
     if (copy_state) {
-        for (size_t i = 0; i < sizeof(state->gprs) / sizeof(state->gprs[0]); i++) {
-            state->gprs[i] = copy_state->gprs[i];
-        }
-
-        for (size_t i = 0; i < sizeof(state->xmm) / sizeof(state->xmm[0]); i++) {
-            state->xmm[i] = copy_state->xmm[i];
-        }
-
-        for (size_t i = 0; i < sizeof(state->fp) / sizeof(state->fp[0]); i++) {
-            state->fp[i] = copy_state->fp[i];
-        }
-
-        state->cf = copy_state->cf;
-        state->zf = copy_state->zf;
-        state->sf = copy_state->sf;
-        state->of = copy_state->of;
-        state->pf = copy_state->pf;
-        state->af = copy_state->af;
-
-        state->fsbase = copy_state->fsbase;
-        state->gsbase = copy_state->gsbase;
-        state->dsbase = copy_state->dsbase;
-        state->csbase = copy_state->csbase;
-        state->ssbase = copy_state->ssbase;
-        state->esbase = copy_state->esbase;
-
-        state->fs = copy_state->fs;
-        state->gs = copy_state->gs;
-        state->ds = copy_state->ds;
-        state->cs = copy_state->cs;
-        state->ss = copy_state->ss;
-        state->es = copy_state->es;
+        state->ctx = copy_state->ctx;
 
         state->alt_stack = copy_state->alt_stack;
         state->signal_mask = copy_state->signal_mask;

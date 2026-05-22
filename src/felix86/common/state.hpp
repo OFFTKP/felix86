@@ -169,8 +169,7 @@ typedef enum : u8 {
     X(felix86_crash_and_burn)                                                                                                                        \
     X(felix86_exit_dispatcher)
 
-// TODO: Please make me standard layout type? offsetof warnings...
-struct ThreadState {
+struct UserContext {
     u64 gprs[16]{};
     u64 rip{};
     u64 fp[8]{}; // we support 64-bit precision instead of 80-bit for speed and simplicity
@@ -197,14 +196,30 @@ struct ThreadState {
     u64 ssbase{};
     u64 esbase{};
     u32 mxcsr{0x1F80}; // default value
-    biscuit::RMode rmode_sse{biscuit::RMode::RNE};
-    biscuit::RMode rmode_x87{biscuit::RMode::RNE};
     u16 fpu_cw{};
     u16 fpu_tw{};
     u16 fpu_sw{};
-    u8 fpu_top{};
 
+    u64 GetFlags() {
+        u64 flags = 0;
+        flags |= cf;
+        flags |= pf << 2;
+        flags |= af << 4;
+        flags |= zf << 6;
+        flags |= sf << 7;
+        flags |= df << 10;
+        flags |= of << 11;
+        return flags;
+    }
+};
+
+// TODO: Please make me standard layout type? offsetof warnings...
+struct ThreadState {
+    UserContext ctx{};
     u64 first_frame{};
+    biscuit::RMode rmode_sse{biscuit::RMode::RNE};
+    biscuit::RMode rmode_x87{biscuit::RMode::RNE};
+    u8 fpu_top{};
 
     // This is important so that we know whether the current values in the fp array are MMX registers or x87 registers
     // Because if they are x87 registers we need to f64_to_f80 them when saving using fsave or when reading from signal handlers
@@ -267,7 +282,7 @@ struct ThreadState {
             return 0;
         }
 
-        return gprs[ref - X86_REF_RAX];
+        return ctx.gprs[ref - X86_REF_RAX];
     }
 
     void SetGpr(x86_ref_e ref, u64 value) {
@@ -275,25 +290,25 @@ struct ThreadState {
             ERROR("Invalid GPR reference: %d", ref);
         }
 
-        gprs[ref - X86_REF_RAX] = value;
+        ctx.gprs[ref - X86_REF_RAX] = value;
     }
 
     bool GetFlag(x86_ref_e flag) const {
         switch (flag) {
         case X86_REF_CF:
-            return cf;
+            return ctx.cf;
         case X86_REF_PF:
-            return pf;
+            return ctx.pf;
         case X86_REF_AF:
-            return af;
+            return ctx.af;
         case X86_REF_ZF:
-            return zf;
+            return ctx.zf;
         case X86_REF_SF:
-            return sf;
+            return ctx.sf;
         case X86_REF_DF:
-            return df;
+            return ctx.df;
         case X86_REF_OF:
-            return of;
+            return ctx.of;
         default:
             ERROR("Invalid flag reference: %d", flag);
             return false;
@@ -303,25 +318,25 @@ struct ThreadState {
     void SetFlag(x86_ref_e flag, bool value) {
         switch (flag) {
         case X86_REF_CF:
-            cf = value;
+            ctx.cf = value;
             break;
         case X86_REF_PF:
-            pf = value;
+            ctx.pf = value;
             break;
         case X86_REF_AF:
-            af = value;
+            ctx.af = value;
             break;
         case X86_REF_ZF:
-            zf = value;
+            ctx.zf = value;
             break;
         case X86_REF_SF:
-            sf = value;
+            ctx.sf = value;
             break;
         case X86_REF_DF:
-            df = value;
+            ctx.df = value;
             break;
         case X86_REF_OF:
-            of = value;
+            ctx.of = value;
             break;
         default:
             ERROR("Invalid flag reference: %d", flag);
@@ -334,7 +349,7 @@ struct ThreadState {
             return {};
         }
 
-        return xmm[ref - X86_REF_XMM0];
+        return ctx.xmm[ref - X86_REF_XMM0];
     }
 
     void SetXmm(x86_ref_e ref, const XmmReg& value) {
@@ -343,7 +358,7 @@ struct ThreadState {
             return;
         }
 
-        xmm[ref - X86_REF_XMM0] = value;
+        ctx.xmm[ref - X86_REF_XMM0] = value;
     }
 
     u64 GetMm(x86_ref_e ref) const {
@@ -352,7 +367,7 @@ struct ThreadState {
             return {};
         }
 
-        return fp[ref - X86_REF_MM0];
+        return ctx.fp[ref - X86_REF_MM0];
     }
 
     void SetMm(x86_ref_e ref, u64 value) {
@@ -361,22 +376,22 @@ struct ThreadState {
             return;
         }
 
-        fp[ref - X86_REF_MM0] = value;
+        ctx.fp[ref - X86_REF_MM0] = value;
     }
 
     u64 GetRip() const {
-        return rip;
+        return ctx.rip;
     }
 
     void SetRip(u64 value) {
-        rip = value;
+        ctx.rip = value;
     }
 
     void SetTLS(u64 address) {
         if (g_mode32) {
             ASSERT(SetUserDesc((x86_user_desc*)address) == 0);
         } else {
-            fsbase = address;
+            ctx.fsbase = address;
         }
     }
 
@@ -404,27 +419,19 @@ struct ThreadState {
     if ((name >> 3) == index) {                                                                                                                      \
         name##base = udesc->base_addr;                                                                                                               \
     }
-        CHECK_SEG(fs);
-        CHECK_SEG(gs);
-        CHECK_SEG(es);
-        CHECK_SEG(ss);
-        CHECK_SEG(cs);
-        CHECK_SEG(ds);
+        CHECK_SEG(ctx.fs);
+        CHECK_SEG(ctx.gs);
+        CHECK_SEG(ctx.es);
+        CHECK_SEG(ctx.ss);
+        CHECK_SEG(ctx.cs);
+        CHECK_SEG(ctx.ds);
 #undef CHECK_SEG
 
         return 0;
     }
 
     u64 GetFlags() {
-        u64 flags = 0;
-        flags |= cf;
-        flags |= pf << 2;
-        flags |= af << 4;
-        flags |= zf << 6;
-        flags |= sf << 7;
-        flags |= df << 10;
-        flags |= of << 11;
-        return flags;
+        return ctx.GetFlags();
     }
 
     static ThreadState* Create(ThreadState* copy_state = nullptr);
