@@ -216,7 +216,6 @@ struct UserContext {
 // TODO: Please make me standard layout type? offsetof warnings...
 struct ThreadState {
     UserContext ctx{};
-    u64 first_frame{};
     biscuit::RMode rmode_sse{biscuit::RMode::RNE};
     biscuit::RMode rmode_x87{biscuit::RMode::RNE};
     u8 fpu_top{};
