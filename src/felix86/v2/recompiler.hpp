@@ -372,7 +372,7 @@ struct Recompiler {
             // We don't statically allocate MMX registers because they are so rare
             // to justify loading/storing them on every VM enter/exit
             biscuit::GPR address = scratch();
-            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, fp) + index * 8);
+            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, ctx.fp) + index * 8);
             setVectorState(SEW::E64, 1);
             as.VLE64(entry.reg, address);
             popScratch();

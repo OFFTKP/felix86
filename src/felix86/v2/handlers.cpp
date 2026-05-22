@@ -550,27 +550,27 @@ FAST_HANDLE(MOV) {
             int offset = 0;
             switch (operands[1].reg.value) {
             case ZYDIS_REGISTER_CS: {
-                offset = offsetof(ThreadState, cs);
+                offset = offsetof(ThreadState, ctx.cs);
                 break;
             }
             case ZYDIS_REGISTER_DS: {
-                offset = offsetof(ThreadState, ds);
+                offset = offsetof(ThreadState, ctx.ds);
                 break;
             }
             case ZYDIS_REGISTER_SS: {
-                offset = offsetof(ThreadState, ss);
+                offset = offsetof(ThreadState, ctx.ss);
                 break;
             }
             case ZYDIS_REGISTER_ES: {
-                offset = offsetof(ThreadState, es);
+                offset = offsetof(ThreadState, ctx.es);
                 break;
             }
             case ZYDIS_REGISTER_FS: {
-                offset = offsetof(ThreadState, fs);
+                offset = offsetof(ThreadState, ctx.fs);
                 break;
             }
             case ZYDIS_REGISTER_GS: {
-                offset = offsetof(ThreadState, gs);
+                offset = offsetof(ThreadState, ctx.gs);
                 break;
             }
             default: {
@@ -1400,7 +1400,7 @@ FAST_HANDLE(XOR) {
         if (rec.shouldEmitFlag(rip, X86_REF_PF)) {
             biscuit::GPR pf = rec.scratch();
             as.LI(pf, 1);
-            as.SB(pf, offsetof(ThreadState, pf), rec.threadStatePointer());
+            as.SB(pf, offsetof(ThreadState, ctx.pf), rec.threadStatePointer());
             rec.popScratch();
         }
 
@@ -1767,27 +1767,27 @@ FAST_HANDLE(PUSH) {
         int offset = 0;
         switch (operands[0].reg.value) {
         case ZYDIS_REGISTER_CS: {
-            offset = offsetof(ThreadState, cs);
+            offset = offsetof(ThreadState, ctx.cs);
             break;
         }
         case ZYDIS_REGISTER_DS: {
-            offset = offsetof(ThreadState, ds);
+            offset = offsetof(ThreadState, ctx.ds);
             break;
         }
         case ZYDIS_REGISTER_SS: {
-            offset = offsetof(ThreadState, ss);
+            offset = offsetof(ThreadState, ctx.ss);
             break;
         }
         case ZYDIS_REGISTER_ES: {
-            offset = offsetof(ThreadState, es);
+            offset = offsetof(ThreadState, ctx.es);
             break;
         }
         case ZYDIS_REGISTER_FS: {
-            offset = offsetof(ThreadState, fs);
+            offset = offsetof(ThreadState, ctx.fs);
             break;
         }
         case ZYDIS_REGISTER_GS: {
-            offset = offsetof(ThreadState, gs);
+            offset = offsetof(ThreadState, ctx.gs);
             break;
         }
         default: {
@@ -1968,10 +1968,10 @@ FAST_HANDLE(PREFETCHWT1) {}
 
 FAST_HANDLE(FNCLEX) {
     biscuit::GPR sw = rec.scratch();
-    as.LHU(sw, offsetof(ThreadState, fpu_sw), Recompiler::threadStatePointer());
+    as.LHU(sw, offsetof(ThreadState, ctx.fpu_sw), Recompiler::threadStatePointer());
     as.ANDI(sw, sw, ~0xFF);
     as.BCLRI(sw, sw, 15);
-    as.SH(sw, offsetof(ThreadState, fpu_sw), Recompiler::threadStatePointer());
+    as.SH(sw, offsetof(ThreadState, ctx.fpu_sw), Recompiler::threadStatePointer());
 }
 
 FAST_HANDLE(SHL_imm) {
@@ -2548,13 +2548,13 @@ FAST_HANDLE(LEA) {
 
 FAST_HANDLE(RDFSBASE) {
     biscuit::GPR fs = rec.scratch();
-    as.LD(fs, offsetof(ThreadState, fsbase), rec.threadStatePointer());
+    as.LD(fs, offsetof(ThreadState, ctx.fsbase), rec.threadStatePointer());
     rec.setGPR(&operands[0], fs);
 }
 
 FAST_HANDLE(RDGSBASE) {
     biscuit::GPR gs = rec.scratch();
-    as.LD(gs, offsetof(ThreadState, gsbase), rec.threadStatePointer());
+    as.LD(gs, offsetof(ThreadState, ctx.gsbase), rec.threadStatePointer());
     rec.setGPR(&operands[0], gs);
 }
 
@@ -3030,11 +3030,11 @@ FAST_HANDLE(SAHF) {
     biscuit::GPR pf = rec.scratch();
     as.SRLI(pf, ah, 2);
     as.ANDI(pf, pf, 1);
-    as.SB(pf, offsetof(ThreadState, pf), rec.threadStatePointer());
+    as.SB(pf, offsetof(ThreadState, ctx.pf), rec.threadStatePointer());
 
     as.SRLI(af, ah, 4);
     as.ANDI(af, af, 1);
-    as.SB(af, offsetof(ThreadState, af), rec.threadStatePointer());
+    as.SB(af, offsetof(ThreadState, ctx.af), rec.threadStatePointer());
 
     as.SRLI(zf, ah, 6);
     as.ANDI(zf, zf, 1);
@@ -3203,13 +3203,13 @@ FAST_HANDLE(XCHG) {
 }
 
 FAST_HANDLE(CLD) {
-    as.SB(x0, offsetof(ThreadState, df), rec.threadStatePointer());
+    as.SB(x0, offsetof(ThreadState, ctx.df), rec.threadStatePointer());
 }
 
 FAST_HANDLE(STD) {
     biscuit::GPR df = rec.scratch();
     as.LI(df, 1);
-    as.SB(df, offsetof(ThreadState, df), rec.threadStatePointer());
+    as.SB(df, offsetof(ThreadState, ctx.df), rec.threadStatePointer());
 }
 
 FAST_HANDLE(CLC) {
@@ -4887,7 +4887,7 @@ FAST_HANDLE(MOVSB) {
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR data = rec.scratch();
     biscuit::GPR df = rec.scratch();
-    as.LBU(df, offsetof(ThreadState, df), rec.threadStatePointer());
+    as.LBU(df, offsetof(ThreadState, ctx.df), rec.threadStatePointer());
 
     Label end;
     as.LI(temp, -width / 8);
@@ -4967,7 +4967,7 @@ FAST_HANDLE(CMPSB) {
 
     x86_size_e size = rec.zydisToSize(width);
     biscuit::GPR df = rec.scratch();
-    as.LBU(df, offsetof(ThreadState, df), rec.threadStatePointer());
+    as.LBU(df, offsetof(ThreadState, ctx.df), rec.threadStatePointer());
 
     Label end;
     as.LI(temp, -width / 8);
@@ -5026,7 +5026,7 @@ FAST_HANDLE(SCASB) {
     biscuit::GPR src2 = rec.scratch();
     biscuit::GPR result = rec.scratch();
     biscuit::GPR df = rec.scratch();
-    as.LBU(df, offsetof(ThreadState, df), rec.threadStatePointer());
+    as.LBU(df, offsetof(ThreadState, ctx.df), rec.threadStatePointer());
 
     Label end;
     as.LI(temp, -width / 8);
@@ -5081,7 +5081,7 @@ FAST_HANDLE(LODSB) {
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR loaded = rec.scratch();
     biscuit::GPR df = rec.scratch();
-    as.LBU(df, offsetof(ThreadState, df), rec.threadStatePointer());
+    as.LBU(df, offsetof(ThreadState, ctx.df), rec.threadStatePointer());
 
     Label end;
     as.LI(temp, -width / 8);
@@ -5119,7 +5119,7 @@ FAST_HANDLE(STOSB) {
     biscuit::GPR rax = rec.getGPR(X86_REF_RAX, rec.zydisToSize(width));
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR df = rec.scratch();
-    as.LBU(df, offsetof(ThreadState, df), rec.threadStatePointer());
+    as.LBU(df, offsetof(ThreadState, ctx.df), rec.threadStatePointer());
 
     Label end;
     as.LI(temp, -width / 8);
@@ -5497,7 +5497,7 @@ FAST_HANDLE(NEG) {
         biscuit::GPR af = rec.scratch();
         as.ANDI(af, dst, 0xF);
         as.SNEZ(af, af);
-        as.SB(af, offsetof(ThreadState, af), rec.threadStatePointer());
+        as.SB(af, offsetof(ThreadState, ctx.af), rec.threadStatePointer());
         rec.popScratch();
     }
 
@@ -5740,7 +5740,7 @@ FAST_HANDLE(PTEST) {
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_AF)) {
-        as.SB(x0, offsetof(ThreadState, af), rec.threadStatePointer());
+        as.SB(x0, offsetof(ThreadState, ctx.af), rec.threadStatePointer());
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
@@ -5754,7 +5754,7 @@ FAST_HANDLE(PTEST) {
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_PF)) {
-        as.SB(x0, offsetof(ThreadState, pf), rec.threadStatePointer());
+        as.SB(x0, offsetof(ThreadState, ctx.pf), rec.threadStatePointer());
     }
 }
 
@@ -7592,7 +7592,7 @@ void COMIS(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& ins
     biscuit::GPR of = rec.flag(X86_REF_OF);
 
     if (rec.shouldEmitFlag(rip, X86_REF_AF)) {
-        as.SB(x0, offsetof(ThreadState, af), rec.threadStatePointer());
+        as.SB(x0, offsetof(ThreadState, ctx.af), rec.threadStatePointer());
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
@@ -7648,7 +7648,7 @@ void COMIS(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& ins
     as.XORI(nan_bit, nan_bit, 1);
 
     if (rec.shouldEmitFlag(rip, X86_REF_PF)) {
-        as.SB(nan_bit, offsetof(ThreadState, pf), rec.threadStatePointer());
+        as.SB(nan_bit, offsetof(ThreadState, ctx.pf), rec.threadStatePointer());
     }
 
     // If the NaN bit is set we also overwrite the value of cf and zf with 1
@@ -8094,7 +8094,7 @@ FAST_HANDLE(EMMS) {
     // Set FPU tag word to empty
     biscuit::GPR ones = rec.scratch();
     as.LI(ones, -1);
-    as.SH(ones, offsetof(ThreadState, fpu_tw), rec.threadStatePointer());
+    as.SH(ones, offsetof(ThreadState, ctx.fpu_tw), rec.threadStatePointer());
     rec.switchToX87();
 }
 
@@ -8401,12 +8401,12 @@ FAST_HANDLE(XLAT) {
         as.ADD(address, rbx, al);
         switch (seg) {
         case ZYDIS_REGISTER_FS: {
-            rec.readMemory(segment, Recompiler::threadStatePointer(), offsetof(ThreadState, fsbase), X86_SIZE_QWORD);
+            rec.readMemory(segment, Recompiler::threadStatePointer(), offsetof(ThreadState, ctx.fsbase), X86_SIZE_QWORD);
             as.ADD(address, address, segment);
             break;
         }
         case ZYDIS_REGISTER_GS: {
-            rec.readMemory(segment, Recompiler::threadStatePointer(), offsetof(ThreadState, gsbase), X86_SIZE_QWORD);
+            rec.readMemory(segment, Recompiler::threadStatePointer(), offsetof(ThreadState, ctx.gsbase), X86_SIZE_QWORD);
             as.ADD(address, address, segment);
             break;
         }
@@ -8426,27 +8426,27 @@ FAST_HANDLE(XLAT) {
         biscuit::GPR segment = rec.scratch();
         switch (seg) {
         case ZYDIS_REGISTER_FS: {
-            rec.readMemory(segment, Recompiler::threadStatePointer(), offsetof(ThreadState, fsbase), X86_SIZE_QWORD);
+            rec.readMemory(segment, Recompiler::threadStatePointer(), offsetof(ThreadState, ctx.fsbase), X86_SIZE_QWORD);
             break;
         }
         case ZYDIS_REGISTER_GS: {
-            rec.readMemory(segment, Recompiler::threadStatePointer(), offsetof(ThreadState, gsbase), X86_SIZE_QWORD);
+            rec.readMemory(segment, Recompiler::threadStatePointer(), offsetof(ThreadState, ctx.gsbase), X86_SIZE_QWORD);
             break;
         }
         case ZYDIS_REGISTER_DS: {
-            rec.readMemory(segment, Recompiler::threadStatePointer(), offsetof(ThreadState, dsbase), X86_SIZE_QWORD);
+            rec.readMemory(segment, Recompiler::threadStatePointer(), offsetof(ThreadState, ctx.dsbase), X86_SIZE_QWORD);
             break;
         }
         case ZYDIS_REGISTER_ES: {
-            rec.readMemory(segment, Recompiler::threadStatePointer(), offsetof(ThreadState, esbase), X86_SIZE_QWORD);
+            rec.readMemory(segment, Recompiler::threadStatePointer(), offsetof(ThreadState, ctx.esbase), X86_SIZE_QWORD);
             break;
         }
         case ZYDIS_REGISTER_SS: {
-            rec.readMemory(segment, Recompiler::threadStatePointer(), offsetof(ThreadState, ssbase), X86_SIZE_QWORD);
+            rec.readMemory(segment, Recompiler::threadStatePointer(), offsetof(ThreadState, ctx.ssbase), X86_SIZE_QWORD);
             break;
         }
         case ZYDIS_REGISTER_CS: {
-            rec.readMemory(segment, Recompiler::threadStatePointer(), offsetof(ThreadState, csbase), X86_SIZE_QWORD);
+            rec.readMemory(segment, Recompiler::threadStatePointer(), offsetof(ThreadState, ctx.csbase), X86_SIZE_QWORD);
             break;
         }
         default: {
@@ -9138,9 +9138,9 @@ FAST_HANDLE(WRFSBASE) {
     biscuit::GPR reg = rec.getGPR(&operands[0]);
 
     if (instruction.operand_width == 32) {
-        as.SW(reg, offsetof(ThreadState, fsbase), rec.threadStatePointer());
+        as.SW(reg, offsetof(ThreadState, ctx.fsbase), rec.threadStatePointer());
     } else if (instruction.operand_width == 64) {
-        as.SD(reg, offsetof(ThreadState, fsbase), rec.threadStatePointer());
+        as.SD(reg, offsetof(ThreadState, ctx.fsbase), rec.threadStatePointer());
     } else {
         UNREACHABLE();
     }
@@ -9150,9 +9150,9 @@ FAST_HANDLE(WRGSBASE) {
     biscuit::GPR reg = rec.getGPR(&operands[0]);
 
     if (instruction.operand_width == 32) {
-        as.SW(reg, offsetof(ThreadState, gsbase), rec.threadStatePointer());
+        as.SW(reg, offsetof(ThreadState, ctx.gsbase), rec.threadStatePointer());
     } else if (instruction.operand_width == 64) {
-        as.SD(reg, offsetof(ThreadState, gsbase), rec.threadStatePointer());
+        as.SD(reg, offsetof(ThreadState, ctx.gsbase), rec.threadStatePointer());
     } else {
         UNREACHABLE();
     }
@@ -9988,7 +9988,7 @@ FAST_HANDLE(SHRD) {
 void PCMPXSTRX(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, pcmpxstrx type) {
     rec.writebackState();
     if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-        as.ADDI(a3, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (sizeof(XmmReg) * (operands[1].reg.value - ZYDIS_REGISTER_XMM0)));
+        as.ADDI(a3, rec.threadStatePointer(), offsetof(ThreadState, ctx.xmm) + (sizeof(XmmReg) * (operands[1].reg.value - ZYDIS_REGISTER_XMM0)));
     } else {
         biscuit::GPR scratch = rec.lea(&operands[1]);
         ASSERT(scratch != a0 && scratch != a1 && scratch != a2);
@@ -9997,7 +9997,7 @@ void PCMPXSTRX(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction&
     as.MV(a0, rec.threadStatePointer());
     as.LI(a1, (int)type);
     ASSERT(operands[0].reg.value >= ZYDIS_REGISTER_XMM0 && operands[0].reg.value <= ZYDIS_REGISTER_XMM15);
-    as.ADDI(a2, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (sizeof(XmmReg) * (operands[0].reg.value - ZYDIS_REGISTER_XMM0)));
+    as.ADDI(a2, rec.threadStatePointer(), offsetof(ThreadState, ctx.xmm) + (sizeof(XmmReg) * (operands[0].reg.value - ZYDIS_REGISTER_XMM0)));
     as.LI(a4, operands[2].imm.value.u);
 
     rec.callPointer(offsetof(ThreadState, felix86_pcmpxstrx));
@@ -10023,7 +10023,7 @@ FAST_HANDLE(PCMPESTRM) {
 FAST_HANDLE(STMXCSR) {
     biscuit::GPR mxcsr = rec.scratch();
     // TODO: are overflow/inexact/underflow etc flags set in fcsr? if then we need to copy them over
-    as.LWU(mxcsr, offsetof(ThreadState, mxcsr), rec.threadStatePointer());
+    as.LWU(mxcsr, offsetof(ThreadState, ctx.mxcsr), rec.threadStatePointer());
     rec.setGPR(&operands[0], mxcsr);
 }
 
@@ -10052,7 +10052,7 @@ FAST_HANDLE(LDMXCSR) {
 
     // Also save the converted rounding mode for quick access
     as.ANDI(masked, src, 0xFFC0); // ignore low bits
-    as.SW(masked, offsetof(ThreadState, mxcsr), rec.threadStatePointer());
+    as.SW(masked, offsetof(ThreadState, ctx.mxcsr), rec.threadStatePointer());
     as.SB(temp, offsetof(ThreadState, rmode_sse), rec.threadStatePointer());
 
     rec.setFsrmSSE(true);
@@ -10233,12 +10233,13 @@ FAST_HANDLE(MPSADBW) {
         rec.writebackState();
         if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
             as.ADDI(a1, rec.threadStatePointer(),
-                    offsetof(ThreadState, xmm) + sizeof(XmmReg) * (rec.zydisToRef(operands[1].reg.value) - X86_REF_XMM0));
+                    offsetof(ThreadState, ctx.xmm) + sizeof(XmmReg) * (rec.zydisToRef(operands[1].reg.value) - X86_REF_XMM0));
         } else {
             biscuit::GPR address = rec.lea(&operands[1]);
             as.MV(a1, address);
         }
-        as.ADDI(a0, rec.threadStatePointer(), offsetof(ThreadState, xmm) + sizeof(XmmReg) * (rec.zydisToRef(operands[0].reg.value) - X86_REF_XMM0));
+        as.ADDI(a0, rec.threadStatePointer(),
+                offsetof(ThreadState, ctx.xmm) + sizeof(XmmReg) * (rec.zydisToRef(operands[0].reg.value) - X86_REF_XMM0));
         as.LI(a2, rec.getImmediate(&operands[2]));
         rec.callPointer(offsetof(ThreadState, felix86_mpsadbw));
         rec.restoreState();
@@ -10473,12 +10474,12 @@ FAST_HANDLE(AESKEYGENASSIST) {
     rec.writebackState();
     if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
         x86_ref_e src = rec.zydisToRef(operands[0].reg.value);
-        as.ADDI(a1, Recompiler::threadStatePointer(), offsetof(ThreadState, xmm) + (src - X86_REF_XMM0) * sizeof(XmmReg));
+        as.ADDI(a1, Recompiler::threadStatePointer(), offsetof(ThreadState, ctx.xmm) + (src - X86_REF_XMM0) * sizeof(XmmReg));
     } else {
         biscuit::GPR address = rec.lea(&operands[1]);
         as.MV(a1, address);
     }
-    as.ADDI(a0, Recompiler::threadStatePointer(), offsetof(ThreadState, xmm) + (reg - X86_REF_XMM0) * sizeof(XmmReg));
+    as.ADDI(a0, Recompiler::threadStatePointer(), offsetof(ThreadState, ctx.xmm) + (reg - X86_REF_XMM0) * sizeof(XmmReg));
     as.LI(a2, imm);
     rec.callPointer(offsetof(ThreadState, felix86_aeskeygenassist));
     rec.restoreState();
@@ -10929,7 +10930,7 @@ FAST_HANDLE(FTST) {
     biscuit::GPR nan_bit = rec.scratch();
     as.LI(rmask, mask);
     biscuit::GPR fsw = rec.scratch();
-    as.LHU(fsw, offsetof(ThreadState, fpu_sw), rec.threadStatePointer());
+    as.LHU(fsw, offsetof(ThreadState, ctx.fpu_sw), rec.threadStatePointer());
     as.FCLASS_D(class_bits, st0);
     as.AND(fsw, fsw, rmask);
 
@@ -10955,7 +10956,7 @@ FAST_HANDLE(FTST) {
     as.OR(fsw, fsw, negative_bit);
     as.OR(fsw, fsw, equal_bit);
 
-    as.SH(fsw, offsetof(ThreadState, fpu_sw), rec.threadStatePointer());
+    as.SH(fsw, offsetof(ThreadState, ctx.fpu_sw), rec.threadStatePointer());
 }
 
 FAST_HANDLE(FPATAN) {
@@ -11052,7 +11053,7 @@ FAST_HANDLE(FNSTENV) {
 
 FAST_HANDLE(FNSTSW) {
     biscuit::GPR temp = rec.scratch();
-    as.LHU(temp, offsetof(ThreadState, fpu_sw), rec.threadStatePointer());
+    as.LHU(temp, offsetof(ThreadState, ctx.fpu_sw), rec.threadStatePointer());
     rec.setGPR(&operands[0], temp);
 }
 
@@ -11116,7 +11117,7 @@ void FCOMI(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, bool p
     Label less_than, equal, greater_than, unordered, end;
 
     // Most likely result - not unordered
-    as.SB(x0, offsetof(ThreadState, pf), rec.threadStatePointer());
+    as.SB(x0, offsetof(ThreadState, ctx.pf), rec.threadStatePointer());
 
     as.FEQ_D(cond, st0, st0);
     as.FEQ_D(cond2, sti, sti);
@@ -11142,7 +11143,7 @@ void FCOMI(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, bool p
     as.Bind(&unordered);
     as.LI(zf, 1);
     as.LI(cf, 1);
-    as.SB(cf, offsetof(ThreadState, pf), rec.threadStatePointer());
+    as.SB(cf, offsetof(ThreadState, ctx.pf), rec.threadStatePointer());
     as.J(&end);
 
     as.Bind(&less_than);
@@ -11212,7 +11213,7 @@ void FCOM(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, int pop
     as.OR(c0, c0, c2);
     as.OR(c0, c0, c3);
 
-    as.SH(c0, offsetof(ThreadState, fpu_sw), rec.threadStatePointer());
+    as.SH(c0, offsetof(ThreadState, ctx.fpu_sw), rec.threadStatePointer());
 
     rec.resetScratch();
     if (pop_count == 1) {
@@ -11328,7 +11329,7 @@ FAST_HANDLE(FABS) {
 FAST_HANDLE(FNSTCW) {
     biscuit::GPR address = rec.lea(&operands[0]);
     biscuit::GPR temp = rec.scratch();
-    as.LHU(temp, offsetof(ThreadState, fpu_cw), Recompiler::threadStatePointer());
+    as.LHU(temp, offsetof(ThreadState, ctx.fpu_cw), Recompiler::threadStatePointer());
     as.SH(temp, 0, address);
 }
 
@@ -11336,7 +11337,7 @@ FAST_HANDLE(FLDCW) {
     biscuit::GPR address = rec.lea(&operands[0]);
     biscuit::GPR temp = rec.scratch();
     as.LHU(temp, 0, address);
-    as.SH(temp, offsetof(ThreadState, fpu_cw), Recompiler::threadStatePointer());
+    as.SH(temp, offsetof(ThreadState, ctx.fpu_cw), Recompiler::threadStatePointer());
 
     biscuit::GPR rc = rec.scratch();
     // Extract rounding mode from FPU control word
@@ -11364,10 +11365,10 @@ FAST_HANDLE(FLDCW) {
 FAST_HANDLE(FNINIT) {
     biscuit::GPR temp = rec.scratch();
     as.LI(temp, 0x037F);
-    as.SH(temp, offsetof(ThreadState, fpu_cw), Recompiler::threadStatePointer());
+    as.SH(temp, offsetof(ThreadState, ctx.fpu_cw), Recompiler::threadStatePointer());
 
     as.LI(temp, -1);
-    as.SH(temp, offsetof(ThreadState, fpu_tw), Recompiler::threadStatePointer());
+    as.SH(temp, offsetof(ThreadState, ctx.fpu_tw), Recompiler::threadStatePointer());
 
     as.SB(x0, offsetof(ThreadState, fpu_top), Recompiler::threadStatePointer());
 
@@ -15227,7 +15228,7 @@ FAST_HANDLE(VPTEST) {
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_AF)) {
-        as.SB(x0, offsetof(ThreadState, af), rec.threadStatePointer());
+        as.SB(x0, offsetof(ThreadState, ctx.af), rec.threadStatePointer());
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
@@ -15241,7 +15242,7 @@ FAST_HANDLE(VPTEST) {
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_PF)) {
-        as.SB(x0, offsetof(ThreadState, pf), rec.threadStatePointer());
+        as.SB(x0, offsetof(ThreadState, ctx.pf), rec.threadStatePointer());
     }
 }
 
@@ -15279,7 +15280,7 @@ void VTEST(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& ins
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_AF)) {
-        as.SB(x0, offsetof(ThreadState, af), rec.threadStatePointer());
+        as.SB(x0, offsetof(ThreadState, ctx.af), rec.threadStatePointer());
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
@@ -15293,7 +15294,7 @@ void VTEST(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& ins
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_PF)) {
-        as.SB(x0, offsetof(ThreadState, pf), rec.threadStatePointer());
+        as.SB(x0, offsetof(ThreadState, ctx.pf), rec.threadStatePointer());
     }
 }
 

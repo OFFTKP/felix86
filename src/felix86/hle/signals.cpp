@@ -482,12 +482,12 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, si
     frame->uc.uc_mcontext.sp_at_signal = state->GetGpr(X86_REF_RSP);
     frame->uc.uc_mcontext.ip = state->GetRip();
     frame->uc.uc_mcontext.flags = state->GetFlags();
-    frame->uc.uc_mcontext.fs = state->fs;
-    frame->uc.uc_mcontext.gs = state->gs;
-    frame->uc.uc_mcontext.cs = state->cs;
-    frame->uc.uc_mcontext.ds = state->ds;
-    frame->uc.uc_mcontext.ss = state->ss;
-    frame->uc.uc_mcontext.es = state->es;
+    frame->uc.uc_mcontext.fs = state->ctx.fs;
+    frame->uc.uc_mcontext.gs = state->ctx.gs;
+    frame->uc.uc_mcontext.cs = state->ctx.cs;
+    frame->uc.uc_mcontext.ds = state->ctx.ds;
+    frame->uc.uc_mcontext.ss = state->ctx.ss;
+    frame->uc.uc_mcontext.es = state->ctx.es;
     frame->uc.uc_mcontext.__fsh = 0;
     frame->uc.uc_mcontext.__gsh = 0;
     frame->uc.uc_mcontext.__csh = 0;
@@ -542,7 +542,7 @@ void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state, sigin
     };
 
     // Kernel mentions some legacy altstack switching method, ensure it's not used until we find a program that does
-    ASSERT(!(state->ss != state->ds && !(signal.flags & SA_RESTORER) && signal.restorer));
+    ASSERT(!(state->ctx.ss != state->ctx.ds && !(signal.flags & SA_RESTORER) && signal.restorer));
     u64 rsp = state->GetGpr(X86_REF_RSP);
     bool use_altstack = signal.flags & SA_ONSTACK;
     if (use_altstack) {
@@ -580,12 +580,12 @@ void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state, sigin
     frame->sc.sp_at_signal = state->GetGpr(X86_REF_RSP);
     frame->sc.ip = state->GetRip();
     frame->sc.flags = state->GetFlags();
-    frame->sc.fs = state->fs;
-    frame->sc.gs = state->gs;
-    frame->sc.cs = state->cs;
-    frame->sc.ds = state->ds;
-    frame->sc.ss = state->ss;
-    frame->sc.es = state->es;
+    frame->sc.fs = state->ctx.fs;
+    frame->sc.gs = state->ctx.gs;
+    frame->sc.cs = state->ctx.cs;
+    frame->sc.ds = state->ctx.ds;
+    frame->sc.ss = state->ctx.ss;
+    frame->sc.es = state->ctx.es;
     frame->sc.__fsh = 0;
     frame->sc.__gsh = 0;
     frame->sc.__csh = 0;
@@ -663,12 +663,12 @@ void restore_sigcontext_32(ThreadState* state, x86_sigcontext_32* ctx) {
     state->SetFlag(X86_REF_OF, of);
     state->SetFlag(X86_REF_DF, df);
 
-    state->cs = ctx->cs;
-    state->ss = ctx->ss;
-    state->ds = ctx->ds;
-    state->es = ctx->es;
-    state->fs = ctx->fs;
-    state->gs = ctx->gs;
+    state->ctx.cs = ctx->cs;
+    state->ctx.ss = ctx->ss;
+    state->ctx.ds = ctx->ds;
+    state->ctx.es = ctx->es;
+    state->ctx.fs = ctx->fs;
+    state->ctx.gs = ctx->gs;
 }
 
 void Signals::sigreturn(ThreadState* state, bool rt) {
@@ -871,7 +871,8 @@ void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uctx) {
     sigandset(&host_new_mask, &state->signal_mask, Signals::hostSignalMask());
     uctx->uc_sigmask = host_new_mask;
 
-    SIGLOG("Preparing signal %s (%d) during RIP=%lx, RSP=%lx, handler at %lx", sigdescr_np(sig), sig, rip, state->gprs[X86_REF_RSP], handler->func);
+    SIGLOG("Preparing signal %s (%d) during RIP=%lx, RSP=%lx, handler at %lx", sigdescr_np(sig), sig, rip, state->ctx.gprs[X86_REF_RSP],
+           handler->func);
 
     if (handler->flags & SA_RESETHAND) {
         Signals::registerSignalHandler(state, sig, (u64)SIG_DFL, handler->mask, handler->flags, handler->restorer);
@@ -1049,7 +1050,7 @@ bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, ucontext_t
 #endif
                 }
             } else {
-                print_address(current_state->rip);
+                print_address(current_state->ctx.rip);
             }
         }
 
@@ -1103,7 +1104,7 @@ bool handle_wild_sigabrt(ThreadState* current_state, siginfo_t* info, ucontext_t
 #endif
                 }
             } else {
-                print_address(current_state->rip);
+                print_address(current_state->ctx.rip);
             }
         }
 
@@ -1153,7 +1154,7 @@ bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucontext_t*
     }
 
     BlockMetadata* current_block = get_block_metadata(current_state, pc);
-    ASSERT_MSG(current_block, "Failed to get current block during synchronous signal with PC=%lx, RIP=%lx", pc, current_state->rip);
+    ASSERT_MSG(current_block, "Failed to get current block during synchronous signal with PC=%lx, RIP=%lx", pc, current_state->ctx.rip);
     u64 actual_rip = get_actual_rip(*current_block, pc);
 
     int sig;
@@ -1230,11 +1231,12 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         // Synchronous signal, handle immediately
         if (is_in_jit_code(state, (u8*)pc)) {
             BlockMetadata* current_block = get_block_metadata(state, pc);
-            ASSERT_MSG(current_block, "Failed to get current block during synchronous signal with PC=%lx, RIP=%lx", pc, state->rip);
+            ASSERT_MSG(current_block, "Failed to get current block during synchronous signal with PC=%lx, RIP=%lx", pc, state->ctx.rip);
             u64 actual_rip = get_actual_rip(*current_block, pc);
             return prepare_synchronous_signal(state, sig, info, ctx, actual_rip);
         } else {
-            ERROR("Synchronous signal %s with code %d but not in JIT code during RIP=%lx, PC=%lx", sigdescr_np(sig), info->si_code, state->rip, pc);
+            ERROR("Synchronous signal %s with code %d but not in JIT code during RIP=%lx, PC=%lx", sigdescr_np(sig), info->si_code, state->ctx.rip,
+                  pc);
         }
     } else {
         // Asynchronous signal, defer

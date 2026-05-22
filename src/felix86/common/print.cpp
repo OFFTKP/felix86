@@ -109,27 +109,27 @@ const char* print_guest_register(x86_ref_e guest) {
 extern "C" __attribute__((visibility("default"))) void print_gprs(ThreadState* state) {
     for (int i = 0; i < 16; i++) {
         const char* guest = print_guest_register((x86_ref_e)(X86_REF_RAX + i));
-        PLAIN("%s = %lx", guest, state->gprs[i]);
+        PLAIN("%s = %lx", guest, state->ctx.gprs[i]);
     }
 
-    PLAIN("rip = %lx", state->rip);
-    PLAIN("cf = %d", state->cf);
-    PLAIN("pf = %d", state->pf);
-    PLAIN("af = %d", state->af);
-    PLAIN("zf = %d", state->zf);
-    PLAIN("sf = %d", state->sf);
-    PLAIN("df = %d", state->df);
-    PLAIN("of = %d", state->of);
+    PLAIN("rip = %lx", state->ctx.rip);
+    PLAIN("cf = %d", state->ctx.cf);
+    PLAIN("pf = %d", state->ctx.pf);
+    PLAIN("af = %d", state->ctx.af);
+    PLAIN("zf = %d", state->ctx.zf);
+    PLAIN("sf = %d", state->ctx.sf);
+    PLAIN("df = %d", state->ctx.df);
+    PLAIN("of = %d", state->ctx.of);
 }
 
 extern "C" __attribute__((visibility("default"))) void print_state(ThreadState* state) {
     print_gprs(state);
 
     for (int i = 0; i < 16; i++) {
-        if (state->xmm[i].data[1] == 0) {
-            PLAIN("xmm%d = %lx", i, state->xmm[i].data[0]);
+        if (state->ctx.xmm[i].data[1] == 0) {
+            PLAIN("xmm%d = %lx", i, state->ctx.xmm[i].data[0]);
         } else {
-            PLAIN("xmm%d = %lx%lx", i, state->xmm[i].data[1], state->xmm[i].data[0]);
+            PLAIN("xmm%d = %lx%lx", i, state->ctx.xmm[i].data[1], state->ctx.xmm[i].data[0]);
         }
     }
 

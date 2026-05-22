@@ -173,19 +173,20 @@ static inline uint64_t libdivide_128_div_64_to_64(uint64_t numhi, uint64_t numlo
 void felix86_div128(ThreadState* state, u64 divisor) {
     // TODO: make this use the above function too, see __divti4
     ASSERT(divisor != 0);
-    __int128_t dividend = ((__int128_t)state->gprs[X86_REF_RDX - X86_REF_RAX] << 64) | state->gprs[X86_REF_RAX - X86_REF_RAX];
+    __int128_t dividend = ((__int128_t)state->ctx.gprs[X86_REF_RDX - X86_REF_RAX] << 64) | state->ctx.gprs[X86_REF_RAX - X86_REF_RAX];
     u64 quotient = dividend / (i64)divisor;
     u64 remainder = dividend % (i64)divisor;
-    state->gprs[X86_REF_RAX - X86_REF_RAX] = quotient;
-    state->gprs[X86_REF_RDX - X86_REF_RAX] = remainder;
+    state->ctx.gprs[X86_REF_RAX - X86_REF_RAX] = quotient;
+    state->ctx.gprs[X86_REF_RDX - X86_REF_RAX] = remainder;
 }
 
 void felix86_divu128(ThreadState* state, u64 divisor) {
     ASSERT(divisor != 0);
     u64 remainder;
-    u64 quotient = libdivide_128_div_64_to_64(state->gprs[X86_REF_RDX - X86_REF_RAX], state->gprs[X86_REF_RAX - X86_REF_RAX], divisor, &remainder);
-    state->gprs[X86_REF_RAX - X86_REF_RAX] = quotient;
-    state->gprs[X86_REF_RDX - X86_REF_RAX] = remainder;
+    u64 quotient =
+        libdivide_128_div_64_to_64(state->ctx.gprs[X86_REF_RDX - X86_REF_RAX], state->ctx.gprs[X86_REF_RAX - X86_REF_RAX], divisor, &remainder);
+    state->ctx.gprs[X86_REF_RAX - X86_REF_RAX] = quotient;
+    state->ctx.gprs[X86_REF_RDX - X86_REF_RAX] = remainder;
 }
 
 u64 sext(u64 value, u8 size) {
@@ -306,7 +307,7 @@ int clear_breakpoints() {
 
 void felix86_iret(struct ThreadState* state) {
     int size = g_mode32 ? 4 : 8;
-    u64 rsp = state->gprs[X86_REF_RSP];
+    u64 rsp = state->ctx.gprs[X86_REF_RSP];
     u8* rsp_ptr = (u8*)rsp;
     u64 rip = 0, rflags = 0, cs = 0, ss = 0, new_rsp = 0;
     memcpy(&rip, rsp_ptr, size);
@@ -334,34 +335,34 @@ void felix86_iret(struct ThreadState* state) {
 
 void felix86_fstenv_16(ThreadState* state, u64 address) {
     fenv_data_16* env = (fenv_data_16*)address;
-    env->cw = state->fpu_cw;
-    env->tw = state->fpu_tw;
-    env->sw = (state->fpu_top << 11) | (state->fpu_sw & ~(0b111 << 11));
+    env->cw = state->ctx.fpu_cw;
+    env->tw = state->ctx.fpu_tw;
+    env->sw = (state->fpu_top << 11) | (state->ctx.fpu_sw & ~(0b111 << 11));
 }
 
 void felix86_fstenv_32(ThreadState* state, u64 address) {
     fenv_data_32* env = (fenv_data_32*)address;
-    env->cw = state->fpu_cw;
-    env->tw = state->fpu_tw;
-    env->sw = (state->fpu_top << 11) | (state->fpu_sw & ~(0b111 << 11));
+    env->cw = state->ctx.fpu_cw;
+    env->tw = state->ctx.fpu_tw;
+    env->sw = (state->fpu_top << 11) | (state->ctx.fpu_sw & ~(0b111 << 11));
 }
 
 void felix86_fldenv_16(struct ThreadState* state, u64 address) {
     fenv_data_16* env = (fenv_data_16*)address;
-    state->fpu_cw = env->cw;
-    state->fpu_tw = env->tw;
-    state->fpu_sw = env->sw;
+    state->ctx.fpu_cw = env->cw;
+    state->ctx.fpu_tw = env->tw;
+    state->ctx.fpu_sw = env->sw;
     state->fpu_top = (env->sw >> 11) & 0b111;
-    state->rmode_x87 = rounding_mode(x86RoundingMode((state->fpu_cw >> 10) & 0b11));
+    state->rmode_x87 = rounding_mode(x86RoundingMode((state->ctx.fpu_cw >> 10) & 0b11));
 }
 
 void felix86_fldenv_32(struct ThreadState* state, u64 address) {
     fenv_data_32* env = (fenv_data_32*)address;
-    state->fpu_cw = env->cw;
-    state->fpu_tw = env->tw;
-    state->fpu_sw = env->sw;
+    state->ctx.fpu_cw = env->cw;
+    state->ctx.fpu_tw = env->tw;
+    state->ctx.fpu_sw = env->sw;
     state->fpu_top = (env->sw >> 11) & 0b111;
-    state->rmode_x87 = rounding_mode(x86RoundingMode((state->fpu_cw >> 10) & 0b11));
+    state->rmode_x87 = rounding_mode(x86RoundingMode((state->ctx.fpu_cw >> 10) & 0b11));
 }
 
 void felix86_pmaddwd(i16* dst, i16* src) {
@@ -798,7 +799,7 @@ void push_calltrace(ThreadState* state, u64 address) {
 
     if (g_print_all_calls) {
         dprintf(g_output_fd, "Thread %d calling: ", gettid());
-        print_address(state->rip);
+        print_address(state->ctx.rip);
     }
 }
 
@@ -809,7 +810,7 @@ void pop_calltrace(ThreadState* state) {
 
     if (g_print_all_calls) {
         dprintf(g_output_fd, "Thread %d returning: ", gettid());
-        print_address(state->rip);
+        print_address(state->ctx.rip);
     }
 
     state->recompiler->getCalltrace().pop_back();
@@ -919,78 +920,78 @@ bool felix86_btc(u64 address, i64 offset) {
 
 void felix86_fsin(ThreadState* state) {
     double boop;
-    memcpy(&boop, &state->fp[TOP(0)], sizeof(double));
+    memcpy(&boop, &state->ctx.fp[TOP(0)], sizeof(double));
     double result = ::sin(boop);
-    memcpy(&state->fp[TOP(0)], &result, sizeof(double));
-    state->fpu_sw &= ~C2_BIT;
+    memcpy(&state->ctx.fp[TOP(0)], &result, sizeof(double));
+    state->ctx.fpu_sw &= ~C2_BIT;
 }
 
 void felix86_fcos(ThreadState* state) {
     double boop;
-    memcpy(&boop, &state->fp[TOP(0)], sizeof(double));
+    memcpy(&boop, &state->ctx.fp[TOP(0)], sizeof(double));
     double result = ::cos(boop);
-    memcpy(&state->fp[TOP(0)], &result, sizeof(double));
-    state->fpu_sw &= ~C2_BIT;
+    memcpy(&state->ctx.fp[TOP(0)], &result, sizeof(double));
+    state->ctx.fpu_sw &= ~C2_BIT;
 }
 
 void felix86_fsincos(ThreadState* state) {
     double boop;
-    memcpy(&boop, &state->fp[TOP(0)], sizeof(double));
+    memcpy(&boop, &state->ctx.fp[TOP(0)], sizeof(double));
     state->fpu_top -= 1;
-    state->fpu_tw &= ~(0b11 << (state->fpu_top * 2));
-    sincos(boop, (double*)&state->fp[TOP(1)], (double*)&state->fp[TOP(0)]);
-    state->fpu_sw &= ~C2_BIT;
+    state->ctx.fpu_tw &= ~(0b11 << (state->fpu_top * 2));
+    sincos(boop, (double*)&state->ctx.fp[TOP(1)], (double*)&state->ctx.fp[TOP(0)]);
+    state->ctx.fpu_sw &= ~C2_BIT;
 }
 
 void felix86_fptan(ThreadState* state) {
     double st0;
-    memcpy(&st0, &state->fp[TOP(0)], sizeof(double));
+    memcpy(&st0, &state->ctx.fp[TOP(0)], sizeof(double));
     double result = ::tan(st0);
-    memcpy(&state->fp[TOP(0)], &result, sizeof(double));
-    state->fpu_sw &= ~C2_BIT;
+    memcpy(&state->ctx.fp[TOP(0)], &result, sizeof(double));
+    state->ctx.fpu_sw &= ~C2_BIT;
 }
 
 void felix86_fpatan(ThreadState* state) {
     double st0, st1;
-    memcpy(&st0, &state->fp[TOP(0)], sizeof(double));
-    memcpy(&st1, &state->fp[TOP(1)], sizeof(double));
+    memcpy(&st0, &state->ctx.fp[TOP(0)], sizeof(double));
+    memcpy(&st1, &state->ctx.fp[TOP(1)], sizeof(double));
     double result = ::atan2(st1, st0);
-    memcpy(&state->fp[TOP(1)], &result, sizeof(double));
+    memcpy(&state->ctx.fp[TOP(1)], &result, sizeof(double));
 }
 
 void felix86_f2xm1(ThreadState* state) {
     double st0;
-    memcpy(&st0, &state->fp[TOP(0)], sizeof(double));
+    memcpy(&st0, &state->ctx.fp[TOP(0)], sizeof(double));
     double result = ::expm1(M_LN2 * st0);
-    memcpy(&state->fp[TOP(0)], &result, sizeof(double));
+    memcpy(&state->ctx.fp[TOP(0)], &result, sizeof(double));
 }
 
 void felix86_fscale(ThreadState* state) {
     double st0, st1, result;
-    memcpy(&st0, &state->fp[TOP(0)], sizeof(double));
+    memcpy(&st0, &state->ctx.fp[TOP(0)], sizeof(double));
     if (st0 == 0) {
         result = 0.0;
     } else {
-        memcpy(&st1, &state->fp[TOP(1)], sizeof(double));
+        memcpy(&st1, &state->ctx.fp[TOP(1)], sizeof(double));
         result = st0 * ::exp2(trunc(st1));
     }
-    memcpy(&state->fp[TOP(0)], &result, sizeof(double));
+    memcpy(&state->ctx.fp[TOP(0)], &result, sizeof(double));
 }
 
 void felix86_fyl2x(ThreadState* state) {
     double st0, st1;
-    memcpy(&st0, &state->fp[TOP(0)], sizeof(double));
-    memcpy(&st1, &state->fp[TOP(1)], sizeof(double));
+    memcpy(&st0, &state->ctx.fp[TOP(0)], sizeof(double));
+    memcpy(&st1, &state->ctx.fp[TOP(1)], sizeof(double));
     double result = st1 * log2(st0);
-    memcpy(&state->fp[TOP(1)], &result, sizeof(double));
+    memcpy(&state->ctx.fp[TOP(1)], &result, sizeof(double));
 }
 
 void felix86_fyl2xp1(ThreadState* state) {
     double st0, st1;
-    memcpy(&st0, &state->fp[TOP(0)], sizeof(double));
-    memcpy(&st1, &state->fp[TOP(1)], sizeof(double));
+    memcpy(&st0, &state->ctx.fp[TOP(0)], sizeof(double));
+    memcpy(&st1, &state->ctx.fp[TOP(1)], sizeof(double));
     double result = (st1 * log1p(st0)) / M_LN2;
-    memcpy(&state->fp[TOP(1)], &result, sizeof(double));
+    memcpy(&state->ctx.fp[TOP(1)], &result, sizeof(double));
 }
 
 template <class Int, int Count = 128 / (sizeof(Int) * 8), int UpperBound = Count - 1 /* 7 or 15 */, u32 Mask = (1u << Count) - 1u>
@@ -1043,8 +1044,8 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
             }
         }
     } else {
-        dst_length = (i64)state->gprs[0]; // eax
-        src_length = (i64)state->gprs[2]; // edx
+        dst_length = (i64)state->ctx.gprs[0]; // eax
+        src_length = (i64)state->ctx.gprs[2]; // edx
 
         if (std::abs(dst_length) > Count) {
             dst_length = Count;
@@ -1176,24 +1177,24 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
         // pcmpxstri instructions
         static_assert(X86_REF_RCX == 1);
         if (intres2 == 0) {
-            state->gprs[1] = Count;
+            state->ctx.gprs[1] = Count;
         } else {
             if (!output_selection) {
-                state->gprs[1] = __builtin_ctz(intres2);
+                state->ctx.gprs[1] = __builtin_ctz(intres2);
             } else {
                 u32 shifted = intres2 << (32 - Count);
-                state->gprs[1] = (Count - 1) - __builtin_clz(shifted);
+                state->ctx.gprs[1] = (Count - 1) - __builtin_clz(shifted);
             }
         }
     } else {
         // pcmpxstrm instructions
         if (!output_selection) {
-            state->xmm[0].data[1] = 0;
-            state->xmm[0].data[0] = intres2;
+            state->ctx.xmm[0].data[1] = 0;
+            state->ctx.xmm[0].data[0] = intres2;
         } else {
             static_assert(Count == 8 || Count == 16);
             if (Count == 16) {
-                u8* xmm0 = (u8*)&state->xmm[0].data[0];
+                u8* xmm0 = (u8*)&state->ctx.xmm[0].data[0];
                 for (int i = 0; i < 16; i++) {
                     u32 bit = (intres2 >> i) & 1;
                     if (bit) {
@@ -1203,7 +1204,7 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
                     }
                 }
             } else {
-                u16* xmm0 = (u16*)&state->xmm[0].data[0];
+                u16* xmm0 = (u16*)&state->ctx.xmm[0].data[0];
                 for (int i = 0; i < 8; i++) {
                     u32 bit = (intres2 >> i) & 1;
                     if (bit) {
@@ -1216,13 +1217,13 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
         }
     }
 
-    state->cf = intres2 != 0;
+    state->ctx.cf = intres2 != 0;
     // Works for both implicit and explicit variants
-    state->zf = src_length < Count;
-    state->sf = dst_length < Count;
-    state->of = intres2 & 1;
-    state->af = 0;
-    state->pf = 0;
+    state->ctx.zf = src_length < Count;
+    state->ctx.sf = dst_length < Count;
+    state->ctx.of = intres2 & 1;
+    state->ctx.af = 0;
+    state->ctx.pf = 0;
 }
 
 void felix86_pcmpxstrx(ThreadState* state, pcmpxstrx type, u8* dst, u8* src, u8 control) {
@@ -1280,33 +1281,33 @@ void felix86_set_segment(ThreadState* state, u64 value, int segment) {
 
     switch (segment) {
     case ZYDIS_REGISTER_CS: {
-        state->cs = value;
-        state->csbase = base;
+        state->ctx.cs = value;
+        state->ctx.csbase = base;
         break;
     }
     case ZYDIS_REGISTER_DS: {
-        state->ds = value;
-        state->dsbase = base;
+        state->ctx.ds = value;
+        state->ctx.dsbase = base;
         break;
     }
     case ZYDIS_REGISTER_SS: {
-        state->ss = value;
-        state->ssbase = base;
+        state->ctx.ss = value;
+        state->ctx.ssbase = base;
         break;
     }
     case ZYDIS_REGISTER_ES: {
-        state->es = value;
-        state->esbase = base;
+        state->ctx.es = value;
+        state->ctx.esbase = base;
         break;
     }
     case ZYDIS_REGISTER_FS: {
-        state->fs = value;
-        state->fsbase = base;
+        state->ctx.fs = value;
+        state->ctx.fsbase = base;
         break;
     }
     case ZYDIS_REGISTER_GS: {
-        state->gs = value;
-        state->gsbase = base;
+        state->ctx.gs = value;
+        state->ctx.gsbase = base;
         break;
     }
     default: {
@@ -1317,8 +1318,8 @@ void felix86_set_segment(ThreadState* state, u64 value, int segment) {
 }
 
 void felix86_fprem(ThreadState* state) {
-    const u64 st0 = state->fp[TOP(0)];
-    const u64 st1 = state->fp[TOP(1)];
+    const u64 st0 = state->ctx.fp[TOP(0)];
+    const u64 st1 = state->ctx.fp[TOP(1)];
     double st0d, st1d;
     memcpy(&st0d, &st0, 8);
     memcpy(&st1d, &st1, 8);
@@ -1328,23 +1329,23 @@ void felix86_fprem(ThreadState* state) {
     if (D < 64) {
         const i64 Q = (i64)(trunc(st0d / st1d));
         st0d -= st1d * Q;
-        state->fpu_sw &= ~(C0_BIT | C1_BIT | C2_BIT | C3_BIT);
-        state->fpu_sw |= (Q & 1) ? C1_BIT : 0;
-        state->fpu_sw |= (Q & 2) ? C3_BIT : 0;
-        state->fpu_sw |= (Q & 4) ? C0_BIT : 0;
+        state->ctx.fpu_sw &= ~(C0_BIT | C1_BIT | C2_BIT | C3_BIT);
+        state->ctx.fpu_sw |= (Q & 1) ? C1_BIT : 0;
+        state->ctx.fpu_sw |= (Q & 2) ? C3_BIT : 0;
+        state->ctx.fpu_sw |= (Q & 4) ? C0_BIT : 0;
     } else {
         const double p2 = exp2(D - 32);
         const i64 Q = trunc((st0d / st1d) / p2);
         st0d -= st1d * Q * p2;
-        state->fpu_sw |= C2_BIT;
+        state->ctx.fpu_sw |= C2_BIT;
     }
 
     // Writeback the new ST(0) value
-    memcpy(&state->fp[TOP(0)], &st0d, 8);
+    memcpy(&state->ctx.fp[TOP(0)], &st0d, 8);
 }
 
 void felix86_fxam(ThreadState* state) {
-    u64 st0 = state->fp[TOP(0)];
+    u64 st0 = state->ctx.fp[TOP(0)];
     bool sign = st0 >> 63;
     double st0d;
     memcpy(&st0d, &st0, 8);
@@ -1352,7 +1353,7 @@ void felix86_fxam(ThreadState* state) {
     u16 mask = 0b11 << state->fpu_top;
 
     u8 c3c2c0;
-    if ((state->fpu_tw & mask) == mask) {
+    if ((state->ctx.fpu_tw & mask) == mask) {
         c3c2c0 = 0b101;
     } else if (st0d == 0.0) {
         c3c2c0 = 0b100;
@@ -1367,11 +1368,11 @@ void felix86_fxam(ThreadState* state) {
     bool c2 = (c3c2c0 >> 1) & 1;
     bool c3 = (c3c2c0 >> 2) & 1;
 
-    state->fpu_sw &= ~(C0_BIT | C1_BIT | C2_BIT | C3_BIT);
-    state->fpu_sw |= c0 ? C0_BIT : 0;
-    state->fpu_sw |= c1 ? C1_BIT : 0;
-    state->fpu_sw |= c2 ? C2_BIT : 0;
-    state->fpu_sw |= c3 ? C3_BIT : 0;
+    state->ctx.fpu_sw &= ~(C0_BIT | C1_BIT | C2_BIT | C3_BIT);
+    state->ctx.fpu_sw |= c0 ? C0_BIT : 0;
+    state->ctx.fpu_sw |= c1 ? C1_BIT : 0;
+    state->ctx.fpu_sw |= c2 ? C2_BIT : 0;
+    state->ctx.fpu_sw |= c3 ? C3_BIT : 0;
 }
 
 // TODO: One day we need to make this better. It serves to hide some felix86 related files from /proc/self/maps

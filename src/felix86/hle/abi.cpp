@@ -140,7 +140,7 @@ void my_printer(ThreadState* state, const char* name) {
             break;
         }
         x86_ref_e ref = x86arg(i - 2);
-        u64 gpr = state->gprs[ref];
+        u64 gpr = state->ctx.gprs[ref];
         size += sprintf(buffer + size, "arg%d = %lx, ", i - 2, gpr);
     }
     size += sprintf(buffer + size, "}");
@@ -282,9 +282,9 @@ void GuestToHostMarshaller::emitPrologue(biscuit::Assembler& as) {
         } else {
             address_reg = Recompiler::threadStatePointer();
             if (marshalling.x86.value.reg >= X86_REF_RAX && marshalling.x86.value.reg <= X86_REF_R15) {
-                offset = offsetof(ThreadState, gprs) + (marshalling.x86.value.reg - X86_REF_RAX) * 8;
+                offset = offsetof(ThreadState, ctx.gprs) + (marshalling.x86.value.reg - X86_REF_RAX) * 8;
             } else if (marshalling.x86.value.reg >= X86_REF_XMM0 && marshalling.x86.value.reg <= X86_REF_XMM15) {
-                offset = offsetof(ThreadState, xmm) + (marshalling.x86.value.reg - X86_REF_XMM0) * sizeof(XmmReg);
+                offset = offsetof(ThreadState, ctx.xmm) + (marshalling.x86.value.reg - X86_REF_XMM0) * sizeof(XmmReg);
             } else {
                 UNREACHABLE();
             }
@@ -384,31 +384,31 @@ void GuestToHostMarshaller::emitEpilogue(biscuit::Assembler& as) {
         switch (return_type) {
         case 'b':
             // Preserves top bits in x86-64
-            as.SB(a0, offsetof(ThreadState, gprs) + 0, Recompiler::threadStatePointer());
+            as.SB(a0, offsetof(ThreadState, ctx.gprs) + 0, Recompiler::threadStatePointer());
             break;
         case 'w':
             // Preserves top bits in x86-64
-            as.SH(a0, offsetof(ThreadState, gprs) + 0, Recompiler::threadStatePointer());
+            as.SH(a0, offsetof(ThreadState, ctx.gprs) + 0, Recompiler::threadStatePointer());
             break;
         case 'd':
-            as.SW(a0, offsetof(ThreadState, gprs) + 0, Recompiler::threadStatePointer());
-            as.SW(x0, offsetof(ThreadState, gprs) + 4, Recompiler::threadStatePointer()); // store 0 into bits 32-63
+            as.SW(a0, offsetof(ThreadState, ctx.gprs) + 0, Recompiler::threadStatePointer());
+            as.SW(x0, offsetof(ThreadState, ctx.gprs) + 4, Recompiler::threadStatePointer()); // store 0 into bits 32-63
             break;
         case 'q':
-            as.SD(a0, offsetof(ThreadState, gprs) + 0, Recompiler::threadStatePointer());
+            as.SD(a0, offsetof(ThreadState, ctx.gprs) + 0, Recompiler::threadStatePointer());
             break;
         case 'F': {
-            as.FSW(fa0, offsetof(ThreadState, xmm) + 0, Recompiler::threadStatePointer());
-            as.SW(x0, offsetof(ThreadState, xmm) + 4, Recompiler::threadStatePointer()); // store 0 into bits 32-63
+            as.FSW(fa0, offsetof(ThreadState, ctx.xmm) + 0, Recompiler::threadStatePointer());
+            as.SW(x0, offsetof(ThreadState, ctx.xmm) + 4, Recompiler::threadStatePointer()); // store 0 into bits 32-63
             for (u32 i = 1; i < sizeof(XmmReg) / 8; i++) {
-                as.SD(x0, offsetof(ThreadState, xmm) + (i * 8), Recompiler::threadStatePointer());
+                as.SD(x0, offsetof(ThreadState, ctx.xmm) + (i * 8), Recompiler::threadStatePointer());
             }
             break;
         }
         case 'D': {
-            as.FSD(fa0, offsetof(ThreadState, xmm) + 0, Recompiler::threadStatePointer());
+            as.FSD(fa0, offsetof(ThreadState, ctx.xmm) + 0, Recompiler::threadStatePointer());
             for (u32 i = 1; i < sizeof(XmmReg) / 8; i++) {
-                as.SD(x0, offsetof(ThreadState, xmm) + (i * 8), Recompiler::threadStatePointer());
+                as.SD(x0, offsetof(ThreadState, ctx.xmm) + (i * 8), Recompiler::threadStatePointer());
             }
             break;
         }
@@ -425,7 +425,7 @@ void GuestToHostMarshaller::emitEpilogue(biscuit::Assembler& as) {
 }
 
 void enter_dispatcher_for_callback(ThreadState* state) {
-    u64 rip = state->rip;
+    u64 rip = state->ctx.rip;
     VERBOSE("Entering dispatcher for callback at %p", rip);
     state->recompiler->enterDispatcher(state);
     VERBOSE("Finished callback %p", rip);
@@ -475,7 +475,7 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, const void* guest
     biscuit::GPR thread_state_pointer = Recompiler::threadStatePointer();
     biscuit::GPR guest_stack_pointer = t1;
 
-    as.LD(guest_stack_pointer, offsetof(ThreadState, gprs) + (X86_REF_RSP - X86_REF_RAX) * 8, thread_state_pointer);
+    as.LD(guest_stack_pointer, offsetof(ThreadState, ctx.gprs) + (X86_REF_RSP - X86_REF_RAX) * 8, thread_state_pointer);
 
     // Marshal host arguments to guest arguments
     size_t size = strlen(signature);
@@ -522,7 +522,7 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, const void* guest
     int riscv_stack_offset = 32; // we decremented sp to push arguments, add it back here when pulling stack args
     if (x86_stack_size > 0) {
         as.ADDI(guest_stack_pointer, guest_stack_pointer, -x86_stack_size);
-        as.SD(guest_stack_pointer, offsetof(ThreadState, gprs) + (X86_REF_RSP - X86_REF_RAX) * 8, thread_state_pointer);
+        as.SD(guest_stack_pointer, offsetof(ThreadState, ctx.gprs) + (X86_REF_RSP - X86_REF_RAX) * 8, thread_state_pointer);
     }
 
     for (size_t i = 2; i < size; i++) {
@@ -555,7 +555,7 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, const void* guest
                     as.SRLI(riscv_reg, riscv_reg, 32);
                 }
                 x86_ref_e arg = x86arg(gpr_count);
-                as.SD(riscv_reg, offsetof(ThreadState, gprs) + (arg - X86_REF_RAX) * 8, thread_state_pointer);
+                as.SD(riscv_reg, offsetof(ThreadState, ctx.gprs) + (arg - X86_REF_RAX) * 8, thread_state_pointer);
             }
             gpr_count++;
             break;
@@ -577,9 +577,9 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, const void* guest
     ASSERT(x86_stack_size == x86_stack_offset);
 
     // Save old RIP, set new RIP -- TODO: why do we even save the old rip? delete this
-    as.LD(s10, offsetof(ThreadState, rip), thread_state_pointer);
+    as.LD(s10, offsetof(ThreadState, ctx.rip), thread_state_pointer);
     as.LI(t0, (u64)x86_code);
-    as.SD(t0, offsetof(ThreadState, rip), thread_state_pointer);
+    as.SD(t0, offsetof(ThreadState, ctx.rip), thread_state_pointer);
 
     as.MV(a0, thread_state_pointer);
     as.LI(t2, (u64)enter_dispatcher_for_callback);
@@ -590,13 +590,13 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, const void* guest
 
     // Eventually we will return here when ExitDispatcher is called due to invlpg [rdx]
     // Restore old RIP (is this saving/restoring even necessary?)
-    as.SD(s10, offsetof(ThreadState, rip), thread_state_pointer);
+    as.SD(s10, offsetof(ThreadState, ctx.rip), thread_state_pointer);
 
     if (x86_stack_size > 0) {
         // Restore the old stack
-        as.LD(guest_stack_pointer, offsetof(ThreadState, gprs) + (X86_REF_RSP - X86_REF_RAX) * 8, thread_state_pointer);
+        as.LD(guest_stack_pointer, offsetof(ThreadState, ctx.gprs) + (X86_REF_RSP - X86_REF_RAX) * 8, thread_state_pointer);
         as.ADDI(guest_stack_pointer, guest_stack_pointer, x86_stack_size);
-        as.SD(guest_stack_pointer, offsetof(ThreadState, gprs) + (X86_REF_RSP - X86_REF_RAX) * 8, thread_state_pointer);
+        as.SD(guest_stack_pointer, offsetof(ThreadState, ctx.gprs) + (X86_REF_RSP - X86_REF_RAX) * 8, thread_state_pointer);
     }
 
     // Load the return value from the state struct to a RISC-V register
@@ -604,17 +604,17 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, const void* guest
     switch (return_type) {
     case 'd': {
         // RAX
-        as.LW(a0, offsetof(ThreadState, gprs), thread_state_pointer);
+        as.LW(a0, offsetof(ThreadState, ctx.gprs), thread_state_pointer);
         break;
     }
     case 'q': {
         // RAX
-        as.LD(a0, offsetof(ThreadState, gprs), thread_state_pointer);
+        as.LD(a0, offsetof(ThreadState, ctx.gprs), thread_state_pointer);
         break;
     }
     case 'D': {
         // XMM0
-        as.FLD(fa0, offsetof(ThreadState, xmm), thread_state_pointer);
+        as.FLD(fa0, offsetof(ThreadState, ctx.xmm), thread_state_pointer);
         break;
     }
     case 'v': {
