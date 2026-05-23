@@ -6620,7 +6620,7 @@ FAST_HANDLE(BT) {
         biscuit::GPR temp = rec.scratch();
         biscuit::GPR address = rec.lea(&operands[0]);
         if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-            u64 imm = operands[1].imm.value.u & (operands[1].size - 1);
+            u64 imm = operands[1].imm.value.u & (operands[0].size - 1);
             u64 offset = imm >> 3;
             if (IsValidSigned12BitImm(offset)) {
                 as.LBU(temp, offset, address);
@@ -6634,7 +6634,7 @@ FAST_HANDLE(BT) {
             }
 
             biscuit::GPR cf = rec.flag(X86_REF_CF);
-            as.BEXTI(cf, temp, (u64)imm & 7);
+            as.BEXTI(cf, temp, imm & 7);
         } else {
             ASSERT(operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER);
             biscuit::GPR offset = rec.getGPR(&operands[1], X86_SIZE_QWORD);
