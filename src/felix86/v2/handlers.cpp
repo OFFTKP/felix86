@@ -9891,7 +9891,7 @@ FAST_HANDLE(CLFLUSH) {
     WARN("clflush encountered");
     as.FENCETSO();
     if (Extensions::Zicbom) {
-        biscuit::GPR address = rec.getGPR(&operands[0]);
+        biscuit::GPR address = rec.lea(&operands[0]);
         as.CBO_FLUSH(address);
     }
 }
