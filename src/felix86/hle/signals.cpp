@@ -1232,6 +1232,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             BlockMetadata* current_block = get_block_metadata(state, pc);
             ASSERT_MSG(current_block, "Failed to get current block during synchronous signal with PC=%lx, RIP=%lx", pc, state->ctx.rip);
             u64 actual_rip = get_actual_rip(*current_block, pc);
+            VERBOSE("Synchronous signal block: %lx, actual rip: %lx", current_block->guest_address, actual_rip);
             return prepare_synchronous_signal(state, sig, info, ctx, actual_rip);
         } else {
             ERROR("Synchronous signal %s with code %d but not in JIT code during RIP=%lx, PC=%lx", sigdescr_np(sig), info->si_code, state->ctx.rip,
