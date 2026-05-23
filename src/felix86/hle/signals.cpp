@@ -625,6 +625,7 @@ void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state, sigin
 }
 
 void setupFrame(RegisteredSignal& signal, int sig, ThreadState* state, siginfo_t* guest_info, ucontext_t* host_context) {
+    VERBOSE("Preparing frame for sig %d with si_code=%d", sig, guest_info->si_code);
     if (!g_mode32) {
         return setupFrame_x64(signal, sig, state, guest_info, host_context);
     } else {
@@ -843,7 +844,6 @@ void pull_registers_from_context(ThreadState* state, ucontext_t* uctx) {
 // dispatcher and the x86 RIP to the signal handler.
 void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uctx) {
     ThreadState* state = ThreadState::Get();
-    u64 rip = state->GetRip();
     set_pc(uctx, state->recompiler->getCompileNext());
 
     RegisteredSignal* handler = state->signal_table->getRegisteredSignal(sig);
@@ -852,6 +852,8 @@ void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uctx) {
     // we pull them to ThreadState so we can construct the signal context using ThreadState instead of ucontext_t
     // as it makes the code cleaner
     pull_registers_from_context(state, uctx);
+
+    u64 rip = state->GetRip();
 
     setupFrame(*handler, sig, state, guest_info, uctx);
 
@@ -882,7 +884,6 @@ void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uctx) {
 void prepare_synchronous_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx, u64 rip) {
     // Set the RIP register to actual instruction that faulted so that prepare_guest_signal picks it up for the context
     get_regs(ctx)[Recompiler::allocatedGPR(X86_REF_RIP).Index()] = rip;
-    state->SetRip(rip);
     prepare_guest_signal(sig, info, (ucontext_t*)ctx);
 }
 
