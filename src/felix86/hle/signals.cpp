@@ -843,7 +843,7 @@ void pull_registers_from_context(ThreadState* state, ucontext_t* uctx) {
 // dispatcher and the x86 RIP to the signal handler.
 void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uctx) {
     ThreadState* state = ThreadState::Get();
-    u64 rip = state->GetRip();
+    u64 rip = get_regs(uctx)[Recompiler::allocatedGPR(X86_REF_RIP).Index()];
     set_pc(uctx, state->recompiler->getCompileNext());
 
     RegisteredSignal* handler = state->signal_table->getRegisteredSignal(sig);
