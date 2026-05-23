@@ -6617,7 +6617,43 @@ FAST_HANDLE(BTC) {
 
 FAST_HANDLE(BT) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        BITSTRING_func(rec, rip, as, instruction, operands, (u64)&felix86_bt);
+        biscuit::GPR temp = rec.scratch();
+        biscuit::GPR address = rec.lea(&operands[0]);
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+            u64 imm = operands[1].imm.value.u & (operands[0].size - 1);
+            u64 offset = imm >> 3;
+            if (IsValidSigned12BitImm(offset)) {
+                as.LBU(temp, offset, address);
+            } else {
+                rec.addi(address, address, offset);
+                as.LBU(temp, 0, address);
+            }
+
+            if (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK) {
+                as.FENCE(FenceOrder::R, FenceOrder::RW);
+            }
+
+            biscuit::GPR cf = rec.flag(X86_REF_CF);
+            as.BEXTI(cf, temp, imm & 7);
+        } else {
+            ASSERT(operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER);
+            biscuit::GPR offset = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+            biscuit::GPR shifted = rec.scratch();
+            biscuit::GPR masked = rec.scratch();
+            rec.sext(shifted, offset, rec.zydisToSize(operands[1].size));
+            as.SRAI(shifted, shifted, 3);
+            as.ANDI(masked, offset, 7);
+            as.ADD(address, address, shifted);
+
+            as.LBU(temp, 0, address);
+
+            if (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK) {
+                as.FENCE(FenceOrder::R, FenceOrder::RW);
+            }
+
+            biscuit::GPR cf = rec.flag(X86_REF_CF);
+            as.BEXT(cf, temp, masked);
+        }
         rec.setLockHandled();
         return;
     }
@@ -6629,9 +6665,7 @@ FAST_HANDLE(BT) {
 
     u8 bit_size = operands[0].size;
     as.ANDI(shift, bit, bit_size - 1);
-
-    as.SRL(cf, dst, shift);
-    as.ANDI(cf, cf, 1);
+    as.BEXT(cf, dst, shift);
 }
 
 FAST_HANDLE(BTS) {
