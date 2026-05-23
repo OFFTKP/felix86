@@ -300,6 +300,65 @@ bool sa_ss_flags(ThreadState* state) {
     return is_on_altstack ? SS_ONSTACK : 0;
 }
 
+u64 get_pc(void* ctx) {
+#ifdef __riscv
+    return (u64)((ucontext_t*)ctx)->uc_mcontext.__gregs[REG_PC];
+#else
+    UNREACHABLE();
+    return 0;
+#endif
+}
+
+void set_pc(void* ctx, u64 new_pc) {
+#ifdef __riscv
+    ((ucontext_t*)ctx)->uc_mcontext.__gregs[REG_PC] = new_pc;
+#else
+    UNREACHABLE();
+#endif
+}
+
+static u32 get_reg_err(int sig, siginfo_t* info, ucontext_t* uctx) {
+    if (sig != SIGSEGV) {
+        return 0;
+    }
+
+    if (info->si_code != SEGV_MAPERR && info->si_code != SEGV_ACCERR) {
+        return 0;
+    }
+
+    VERBOSE("Preparing REG_ERR for signal");
+    u32 err = 0;
+    err |= 1 << 2; // user error
+
+    if ((u64)info->si_addr == get_pc(uctx)) {
+        // Faulting address is the PC, can't read instruction there...
+        VERBOSE("Couldn't fetch instruction to create REG_ERR");
+        return err;
+    }
+
+    // TODO: This only covers SB/SH/SW/SD... Unfortunately unlike ARM/x86 we don't get any info
+    // to tell us if this was a faulting write
+    u32 faulting_instruction = *(u32*)get_pc(uctx);
+    if ((faulting_instruction & 0x7F) == 0x23) {
+        err |= 1 << 1; // is write
+    }
+
+    return err;
+}
+
+// TODO: for synchronous signals like hlt/int3 etc. we need custom trapno/err
+static u32 get_reg_trapno(int sig, siginfo_t* info, ucontext_t* uctx) {
+    if (sig != SIGSEGV) {
+        return 0;
+    }
+
+    if (info->si_code != SEGV_MAPERR && info->si_code != SEGV_ACCERR) {
+        return 0;
+    }
+
+    return 14; // Page fault
+}
+
 // arch/x86/kernel/signal.c, get_sigframe function prepares the signal frame
 void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state, siginfo_t* guest_info, ucontext_t* host_context) {
     u64 rsp = state->GetGpr(X86_REF_RSP);
@@ -385,6 +444,10 @@ void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state, sigin
     frame->uc.uc_mcontext.gregs[REG_R15] = state->GetGpr(X86_REF_R15);
     frame->uc.uc_mcontext.gregs[REG_RIP] = state->GetRip();
     frame->uc.uc_mcontext.gregs[REG_EFL] = state->GetFlags();
+    frame->uc.uc_mcontext.gregs[REG_TRAPNO] = get_reg_trapno(sig, guest_info, host_context);
+    frame->uc.uc_mcontext.gregs[REG_ERR] = get_reg_err(sig, guest_info, host_context);
+    frame->uc.uc_mcontext.gregs[REG_OLDMASK] = 0;
+    frame->uc.uc_mcontext.gregs[REG_CR2] = 0;
 
     felix86_xsave(state, &frame->uc.uc_mcontext.fpregs->fxsave, true);
 
@@ -494,6 +557,8 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, si
     frame->uc.uc_mcontext.__dsh = 0;
     frame->uc.uc_mcontext.__ssh = 0;
     frame->uc.uc_mcontext.__esh = 0;
+    frame->uc.uc_mcontext.trapno = get_reg_trapno(sig, guest_info, host_context);
+    frame->uc.uc_mcontext.err = get_reg_err(sig, guest_info, host_context);
     if (use_altstack) {
         frame->uc.uc_stack.ss_sp = (u32)(u64)state->alt_stack.ss_sp;
         frame->uc.uc_stack.ss_size = state->alt_stack.ss_size;
@@ -592,6 +657,8 @@ void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state, sigin
     frame->sc.__dsh = 0;
     frame->sc.__ssh = 0;
     frame->sc.__esh = 0;
+    frame->sc.trapno = get_reg_trapno(sig, guest_info, host_context);
+    frame->sc.err = get_reg_err(sig, guest_info, host_context);
     sigset_t old_mask;
     Signals::sigprocmask(state, SIG_SETMASK, nullptr, &old_mask);
     frame->sc.oldmask = old_mask.__val[0];
@@ -760,23 +827,6 @@ struct riscv_v_state {
     unsigned long vlenb;
     void* datap;
 };
-
-u64 get_pc(void* ctx) {
-#ifdef __riscv
-    return (u64)((ucontext_t*)ctx)->uc_mcontext.__gregs[REG_PC];
-#else
-    UNREACHABLE();
-    return 0;
-#endif
-}
-
-void set_pc(void* ctx, u64 new_pc) {
-#ifdef __riscv
-    ((ucontext_t*)ctx)->uc_mcontext.__gregs[REG_PC] = new_pc;
-#else
-    UNREACHABLE();
-#endif
-}
 
 u64* get_fprs(void* ctx) {
 #ifdef __riscv
