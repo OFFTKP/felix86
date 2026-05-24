@@ -738,6 +738,7 @@ private:
     u64 current_ripreg_value;
     u64 current_instruction_index = 0;
     bool current_instruction_on_stack = false;
+    bool current_block_big = false;
 
     void (*enter_dispatcher)(ThreadState*){};
 

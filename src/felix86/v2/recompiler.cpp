@@ -661,6 +661,17 @@ u64 Recompiler::compileSequence(u64 rip) {
             current_instruction_index += 1;
             skip_next = false;
         }
+
+        if (current_instruction_index == instructions.size()) {
+            break;
+        }
+    }
+
+    if (current_block_big) {
+        VERBOSE("Block at %lx exceeded max instruction count", current_block_metadata->guest_address);
+        biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
+        as.LI(ripreg, rip);
+        jumpAndLink(rip);
     }
 
     resetScratch();
@@ -2068,12 +2079,15 @@ void Recompiler::scanAhead(u64 rip) {
         flag_access_cpazso[i].clear();
     }
 
+    current_block_big = false;
+
     u64 initial_rip = rip;
     instructions.clear();
     while (true) {
         instructions.push_back({});
         auto& [instruction, operands] = instructions.back();
         ZydisMnemonic mnemonic = decode(rip, instruction, operands);
+        bool too_big = instructions.size() > g_config.max_block_size;
         bool is_jump = instruction.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
         bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET || mnemonic == ZYDIS_MNEMONIC_IRETD || mnemonic == ZYDIS_MNEMONIC_IRETQ;
         bool is_call = mnemonic == ZYDIS_MNEMONIC_CALL;
@@ -2169,8 +2183,11 @@ void Recompiler::scanAhead(u64 rip) {
             }
         }
 
-        if (is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3) {
-            if (g_config.scan_ahead_multi && !g_config.paranoid) {
+        if (is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3 || too_big) {
+            if (too_big) {
+                current_block_big = true;
+            }
+            if (g_config.scan_ahead_multi && !g_config.paranoid && !too_big) {
                 // We need to see where the jump will land, and scan some of its instructions
                 // If all the landing places overwrite the flags (1 landing spot for jmp, 2 for jcc)
                 // then we can skip those flag calculations
