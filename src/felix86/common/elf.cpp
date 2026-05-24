@@ -457,7 +457,22 @@ void Elf::Load(const std::filesystem::path& path) {
         if (base_hint) {
             base_ptr = (u8*)g_mapper->map((u8*)base_hint, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
         } else {
-            base_ptr = (u8*)g_mapper->map(nullptr, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            u64 hint = 0;
+            if (g_mode32) {
+                // We don't want to load the executable in the low memory area, because if a non-relocatable executable wants to be loaded
+                // there, it won't be able to. Example is wine + an older 32-bit game with no relocation tables
+                if (is_interpreter) {
+                    if (g_executable_end) {
+                        hint = g_executable_end;
+                    } else {
+                        WARN("Interpreter loaded after executable?");
+                        hint = 0xA000'0000;
+                    }
+                } else {
+                    hint = 0x9000'0000;
+                }
+            }
+            base_ptr = (u8*)g_mapper->map((void*)hint, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         }
 
         unmap_me.push_back({base_ptr, highest_vaddr});
