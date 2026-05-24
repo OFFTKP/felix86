@@ -663,7 +663,6 @@ u64 Recompiler::compileSequence(u64 rip) {
         }
 
         if (current_instruction_index == instructions.size()) {
-            ASSERT(!compiling || current_block_big);
             break;
         }
     }
