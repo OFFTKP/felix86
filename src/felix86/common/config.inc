@@ -55,6 +55,7 @@ X(Debugging, bool, dump_seccomp, false, FELIX86_DUMP_SECCOMP, "Dump installed se
 X(Debugging, bool, seccomp_always_allow, false, FELIX86_SECCOMP_ALWAYS_ALLOW, "Don't run seccomp programs at all, allow all syscalls")
 
 X(Performance, bool, link, true, FELIX86_LINK, "Enable basic block linking, important for performance")
+X(Performance, u64, max_block_size, 300, FELIX86_MAX_BLOCK_SIZE, "Maximum x86 instructions per block")
 X(Performance, bool, address_cache, true, FELIX86_ADDRESS_CACHE, "Use lower address bits to speed up block lookup")
 X(Performance, bool, unsafe_flags, false, FELIX86_UNSAFE_FLAGS, "Assume flags are thrashed on every call/ret to avoid some calculations")
 X(Performance, bool, opcode_fusing, false, FELIX86_FUSE_OPCODES, "Try to fuse some x86 opcodes together if possible")
