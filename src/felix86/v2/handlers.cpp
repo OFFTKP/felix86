@@ -3168,13 +3168,37 @@ FAST_HANDLE(XCHG_lock) {
         as.SW(src, 0, address);
         as.FENCETSO();
 
+        as.ADDI(masked, rec.threadStatePointer(), offsetof(ThreadState, unaligned_atomics_counter));
+        as.LI(scratch, 1);
+        as.AMOADD_D(Ordering::AQRL, x0, scratch, masked);
+
         as.Bind(&end);
         rec.setLockHandled();
         break;
     }
     case X86_SIZE_QWORD: {
+        biscuit::Label unaligned, end;
+        biscuit::GPR masked = rec.scratch();
+
+        as.ANDI(masked, address, 0b111);
+        as.BNEZ(masked, &unaligned);
+
         as.MV(scratch, src);
         as.AMOSWAP_D(Ordering::AQRL, dst, scratch, address);
+        as.J(&end);
+
+        as.Bind(&unaligned);
+
+        as.FENCETSO();
+        as.LD(dst, 0, address);
+        as.SD(src, 0, address);
+        as.FENCETSO();
+
+        as.ADDI(masked, rec.threadStatePointer(), offsetof(ThreadState, unaligned_atomics_counter));
+        as.LI(scratch, 1);
+        as.AMOADD_D(Ordering::AQRL, x0, scratch, masked);
+
+        as.Bind(&end);
         rec.setLockHandled();
         break;
     }
