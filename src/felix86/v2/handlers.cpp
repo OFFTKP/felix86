@@ -9231,8 +9231,8 @@ FAST_HANDLE(XADD_lock_32) {
     biscuit::Label ok;
     biscuit::Label after;
     biscuit::Label loop;
-    biscuit::GPR masked_address = rec.scratch();
     biscuit::GPR result = rec.scratch();
+    biscuit::GPR masked_address = rec.scratch();
     biscuit::GPR temp = rec.scratch();
     as.ANDI(masked_address, address, 0b11);
     as.BEQZ(masked_address, &ok);
@@ -9248,6 +9248,9 @@ FAST_HANDLE(XADD_lock_32) {
     as.SW(result, 0, address);
     as.FENCETSO();
     as.J(&after);
+
+    rec.popScratch();
+    rec.popScratch();
 
     as.Bind(&ok);
     as.AMOADD_W(Ordering::AQRL, dst, src, address);
