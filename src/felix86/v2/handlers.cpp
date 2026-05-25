@@ -9228,10 +9228,33 @@ FAST_HANDLE(XADD_lock_32) {
     biscuit::GPR dst = rec.scratch();
     biscuit::GPR src = rec.getGPR(&operands[1]);
     biscuit::GPR address = rec.lea(&operands[0]);
+    biscuit::Label ok;
+    biscuit::Label after;
+    biscuit::Label loop;
+    biscuit::GPR masked_address = rec.scratch();
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR temp = rec.scratch();
+    as.ANDI(masked_address, address, 0b11);
+    as.BEQZ(masked_address, &ok);
+
+    as.ANDI(masked_address, address, ~0b11);
+    as.Bind(&loop);
+    as.FENCETSO();
+    as.LW(dst, 0, address);
+    as.LR_W(Ordering::AQRL, temp, masked_address);
+    as.ADDW(result, dst, src);
+    as.SC_W(Ordering::AQRL, temp, temp, masked_address);
+    as.BNEZ(temp, &loop);
+    as.SW(result, 0, address);
+    as.FENCETSO();
+    as.J(&after);
+
+    as.Bind(&ok);
     as.AMOADD_W(Ordering::AQRL, dst, src, address);
     rec.setLockHandled();
-    rec.zext(dst, dst, X86_SIZE_DWORD); // amoadd sign extends
 
+    as.Bind(&after);
+    rec.zext(dst, dst, X86_SIZE_DWORD); // amoadd sign extends
     if (!g_config.noflag_opts || update_any) {
         biscuit::GPR result = rec.scratch();
         as.ADD(result, dst, src);
@@ -9301,7 +9324,6 @@ FAST_HANDLE(XADD_lock_64) {
 
     as.Bind(&ok);
     as.AMOADD_D(Ordering::AQRL, dst, src, address);
-
     rec.setLockHandled();
 
     as.Bind(&after);
