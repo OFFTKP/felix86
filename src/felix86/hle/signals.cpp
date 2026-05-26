@@ -359,7 +359,8 @@ static u32 get_reg_trapno(u64 host_pc, int sig, siginfo_t* info, ucontext_t* uct
             tas2.SLTIU(x0, x0, FELIX86_HINT_GP);
         }
 
-        if (*(u32*)host_pc == expected_gp) {
+        u32 next_instruction = *(((u32*)host_pc) + 1);
+        if (next_instruction == expected_gp) {
             return 13; // General protection
         } else {
             WARN("SI_KERNEL but pc != hint_gp?");
