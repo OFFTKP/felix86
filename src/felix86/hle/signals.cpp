@@ -1447,7 +1447,7 @@ bool handle_unaligned_tso_atomic(ThreadState* current_state, siginfo_t* info, uc
     bool is_amoswap = (current_instruction & mask_swap) == expected_swap;
     bool is_amoadd = (current_instruction & mask_add) == expected_add;
     if (!is_amoswap && !is_amoadd) {
-        WARN("BUS_ADRALN caused but not by AMOSWAP or AMOADD: %lx", current_instruction);
+        WARN("SEGV_ACCERR caused but not by AMOSWAP or AMOADD: %x", current_instruction);
         return false;
     }
 
@@ -1456,13 +1456,13 @@ bool handle_unaligned_tso_atomic(ThreadState* current_state, siginfo_t* info, uc
 
     u32 rd = (current_instruction >> 7) & 0b11111;
     if (is_amoswap && rd != 0) {
-        WARN("AMOSWAP caused BUS_ADRALN but rd isn't x0: %lx", current_instruction);
+        WARN("AMOSWAP caused SEGV_ACCERR but rd isn't x0: %x", current_instruction);
         return false;
     }
 
     u32 rs = (current_instruction >> 20) & 0b11111;
     if (is_amoadd && rs != 0) {
-        WARN("AMOADD caused BUS_ADRALN but rs isn't x0");
+        WARN("AMOADD caused SEGV_ACCERR but rs isn't x0");
         return false;
     }
 
@@ -1515,7 +1515,7 @@ bool handle_unaligned_tso_atomic(ThreadState* current_state, siginfo_t* info, uc
         pas.FENCE(FenceOrder::RW, FenceOrder::W);
     }
 
-    flush_icache_global(pc, pc + 4);
+    flush_icache_global(pc, pc + 8);
     return true;
 }
 
@@ -1667,8 +1667,8 @@ static bool handle_sigptrace(ThreadState* current_state, siginfo_t* info, uconte
 }
 
 constexpr static std::array<RegisteredHostSignal, 8> host_signals = {{
-    {SIGSEGV, SEGV_ACCERR, handle_unaligned_tso_atomic},
     {SIGSEGV, SEGV_ACCERR, handle_safepoint},
+    {SIGSEGV, SEGV_ACCERR, handle_unaligned_tso_atomic},
     {SIGSEGV, SEGV_ACCERR, handle_smc},
     {SIGSEGV, SEGV_MAPERR, handle_synchronous},
     {FELIX86_PTRACE_SIGNAL, 0, handle_sigptrace},
