@@ -514,7 +514,7 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, si
     x86_fpstate* fpstate = (x86_fpstate*)rsp;
     ASSERT((u64)fpstate < UINT32_MAX);
 
-    felix86_fsave_32(state, &fpstate->fsave);
+    felix86_fsave_32(state->ctx, &fpstate->fsave);
 
     fpstate->magic = 0; // extended state
 
@@ -670,7 +670,7 @@ void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state, sigin
     }
     frame->sig = sig;
     frame->extramask = old_mask.__val[1];
-    felix86_fsave_32(state, &fpstate->fsave);
+    felix86_fsave_32(state->ctx, &fpstate->fsave);
     frame->fpstate_unused.magic = 0; // extended state
     felix86_xsave(state->ctx, &fpstate->fxsave, true);
     frame->sc.fpstate = (u32)(u64)fpstate;
@@ -756,7 +756,7 @@ void Signals::sigreturn(ThreadState* state, bool rt) {
             ctx = &legacy_frame->sc;
         }
         restore_sigcontext_32(state, ctx);
-        felix86_xrstor(state, &((x86_fpstate*)(u64)ctx->fpstate)->fxsave, true);
+        felix86_xrstor(state->ctx, &((x86_fpstate*)(u64)ctx->fpstate)->fxsave, true);
 
         // Restore signal mask to what it was supposed to be outside of signal handler
         sigset_t new_set;
@@ -812,7 +812,7 @@ void Signals::sigreturn(ThreadState* state, bool rt) {
         state->SetFlag(X86_REF_OF, of);
         state->SetFlag(X86_REF_DF, df);
 
-        felix86_xrstor(state, &frame->uc.uc_mcontext.fpregs->fxsave, true);
+        felix86_xrstor(state->ctx, &frame->uc.uc_mcontext.fpregs->fxsave, true);
 
         // Restore signal mask to what it was supposed to be outside of signal handler
         Signals::sigprocmask(state, SIG_SETMASK, &frame->uc.uc_sigmask, nullptr);
