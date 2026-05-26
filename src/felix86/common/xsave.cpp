@@ -3,7 +3,7 @@
 #include "felix86/common/xsave.hpp"
 
 void felix86_fsave_16(ThreadState* state, void* address) {
-    bool is_mmx = (x87State)state->x87_state == x87State::MMX;
+    bool is_mmx = (x87State)state->ctx.x87_state == x87State::MMX;
     fsave_frame_16* data = (fsave_frame_16*)address;
     for (int i = 0; i < 8; i++) {
         if (is_mmx) {
@@ -18,7 +18,7 @@ void felix86_fsave_16(ThreadState* state, void* address) {
 
     data->cw = state->ctx.fpu_cw;
     data->tw = state->ctx.fpu_tw;
-    data->sw = (state->fpu_top << 11) | (state->ctx.fpu_sw & ~(0b111 << 11));
+    data->sw = (state->ctx.fpu_top << 11) | (state->ctx.fpu_sw & ~(0b111 << 11));
 
     // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
     // will not need f80->f64 conversion if loaded with frstor
@@ -28,7 +28,7 @@ void felix86_fsave_16(ThreadState* state, void* address) {
 }
 
 void felix86_fsave_32(ThreadState* state, void* address) {
-    bool is_mmx = (x87State)state->x87_state == x87State::MMX;
+    bool is_mmx = (x87State)state->ctx.x87_state == x87State::MMX;
     fsave_frame_32* data = (fsave_frame_32*)address;
     for (int i = 0; i < 8; i++) {
         if (is_mmx) {
@@ -43,7 +43,7 @@ void felix86_fsave_32(ThreadState* state, void* address) {
 
     data->cw = state->ctx.fpu_cw;
     data->tw = state->ctx.fpu_tw;
-    data->sw = (state->fpu_top << 11) | (state->ctx.fpu_sw & ~(0b111 << 11));
+    data->sw = (state->ctx.fpu_top << 11) | (state->ctx.fpu_sw & ~(0b111 << 11));
 
     // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
     // will not need f80->f64 conversion if loaded with frstor
@@ -55,7 +55,7 @@ void felix86_fsave_32(ThreadState* state, void* address) {
 void felix86_frstor_16(ThreadState* state, void* address) {
     fsave_frame_16* data = (fsave_frame_16*)address;
 
-    state->fpu_top = (data->sw >> 11) & 0b111;
+    state->ctx.fpu_top = (data->sw >> 11) & 0b111;
     state->ctx.fpu_cw = data->cw;
     state->ctx.fpu_tw = data->tw;
     state->ctx.fpu_sw = data->sw;
@@ -74,7 +74,7 @@ void felix86_frstor_16(ThreadState* state, void* address) {
 void felix86_frstor_32(ThreadState* state, void* address) {
     fsave_frame_32* data = (fsave_frame_32*)address;
 
-    state->fpu_top = (data->sw >> 11) & 0b111;
+    state->ctx.fpu_top = (data->sw >> 11) & 0b111;
     state->ctx.fpu_cw = data->cw;
     state->ctx.fpu_tw = data->tw;
     state->ctx.fpu_sw = data->sw;
@@ -90,28 +90,28 @@ void felix86_frstor_32(ThreadState* state, void* address) {
     }
 }
 
-void felix86_fxsave(ThreadState* state, void* address, bool save_x87, bool save_xmm, bool save_mxcsr) {
-    bool is_mmx = (x87State)state->x87_state == x87State::MMX;
-    bool is_x87 = (x87State)state->x87_state == x87State::x87;
+void felix86_fxsave(UserContext& ctx, void* address, bool save_x87, bool save_xmm, bool save_mxcsr) {
+    bool is_mmx = (x87State)ctx.x87_state == x87State::MMX;
+    bool is_x87 = (x87State)ctx.x87_state == x87State::x87;
     fxsave_frame* data = (fxsave_frame*)address;
 
     if (save_xmm) {
         for (int i = 0; i < (g_mode32 ? 8 : 16); i++) {
-            data->xmms[i] = state->GetXmm(x86_ref_e(X86_REF_XMM0 + i));
+            data->xmms[i] = ctx.xmm[i];
         }
     }
 
     if (save_x87) {
         for (int i = 0; i < 8; i++) {
             if (is_x87) {
-                Float80 f80 = f64_to_80(state->ctx.fp[i]);
+                Float80 f80 = f64_to_80(ctx.fp[i]);
                 memcpy(&data->st[i].st[0], &f80, sizeof(Float80));
             } else {
                 if (!is_mmx) {
                     WARN("Unknown x87 state during fxsave");
                 }
                 u16 ones = 0xFFFF;
-                memcpy(&data->st[i].st[0], &state->ctx.fp[i], sizeof(double));
+                memcpy(&data->st[i].st[0], &ctx.fp[i], sizeof(double));
                 memcpy(&data->st[i].st[8], &ones, sizeof(u16));
             }
         }
@@ -120,14 +120,14 @@ void felix86_fxsave(ThreadState* state, void* address, bool save_x87, bool save_
         data->ftw = 0;
         for (int i = 0; i < 8; i++) {
             u16 mask = 0b11 << (i * 2);
-            bool empty = (mask & state->ctx.fpu_tw) == mask;
+            bool empty = (mask & ctx.fpu_tw) == mask;
             if (!empty) {
                 data->ftw |= 1 << i;
             }
         }
 
-        data->fcw = state->ctx.fpu_cw;
-        data->fsw = (state->fpu_top << 11) | (state->ctx.fpu_sw & ~(0b111 << 11));
+        data->fcw = ctx.fpu_cw;
+        data->fsw = (ctx.fpu_top << 11) | (ctx.fpu_sw & ~(0b111 << 11));
 
         // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
         // will not need f80->f64 conversion if loaded with fxrstor
@@ -137,7 +137,7 @@ void felix86_fxsave(ThreadState* state, void* address, bool save_x87, bool save_
     }
 
     if (save_mxcsr) {
-        data->mxcsr = state->ctx.mxcsr;
+        data->mxcsr = ctx.mxcsr;
     }
 }
 
@@ -161,7 +161,7 @@ void felix86_fxrstor(ThreadState* state, void* address, bool restore_x87, bool r
 
         state->ctx.fpu_cw = data->fcw;
         state->ctx.fpu_sw = data->fsw;
-        state->fpu_top = (data->fsw >> 11) & 7;
+        state->ctx.fpu_top = (data->fsw >> 11) & 7;
 
         for (int i = 0; i < 8; i++) {
             if (state->ctx.fpu_cw & 0x8000) {
@@ -185,20 +185,20 @@ bool felix86_xsave_contains_ymms() {
     return is_feature_enabled(x86_feature::AVX) && is_feature_enabled(x86_feature::OSXSAVE);
 }
 
-void felix86_xsave(ThreadState* state, void* address, bool save_all) {
-    u64 rfbm = (u64)(u32)state->ctx.gprs[X86_REF_RDX] << 32 | (u32)state->ctx.gprs[X86_REF_RAX];
+void felix86_xsave(UserContext& ctx, void* address, bool save_all) {
+    u64 rfbm = (u64)(u32)ctx.gprs[X86_REF_RDX] << 32 | (u32)ctx.gprs[X86_REF_RAX];
     bool save_x87 = (rfbm & 0b001) || save_all;
     bool save_xmm = (rfbm & 0b010) || save_all;
     bool save_avx = (rfbm & 0b100) || save_all;
     bool save_mxcsr = save_xmm || save_avx;
-    felix86_fxsave(state, address, save_x87, save_xmm, save_mxcsr);
+    felix86_fxsave(ctx, address, save_x87, save_xmm, save_mxcsr);
     if (felix86_xsave_contains_ymms() && save_avx) {
         xsave_header* header = (xsave_header*)((u8*)address + sizeof(fxsave_frame));
         header->xstate_bv = get_xfeature_enabled_mask();
         header->xcomp_bv = 0; // use standard form
         ymm_hi* ymm_storage = (ymm_hi*)((u8*)address + sizeof(fxsave_frame) + sizeof(xsave_header));
         for (int i = 0; i < 16; i++) {
-            memcpy((u8*)ymm_storage->data + 16 * i, &state->ctx.xmm[i].data[2], sizeof(u64) * 2);
+            memcpy((u8*)ymm_storage->data + 16 * i, &ctx.xmm[i].data[2], sizeof(u64) * 2);
         }
     }
 }

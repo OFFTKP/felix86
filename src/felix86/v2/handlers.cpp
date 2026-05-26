@@ -9105,6 +9105,7 @@ FAST_HANDLE(FXSAVE) {
     rec.writebackState();
     as.MV(a1, address);
     as.MV(a0, rec.threadStatePointer());
+    static_assert(offsetof(ThreadState, ctx) == 0);
     as.LI(a2, 1);
     as.LI(a3, 1);
     as.LI(a4, 1);
@@ -9117,6 +9118,7 @@ FAST_HANDLE(FXSAVE64) {
     rec.writebackState();
     as.MV(a1, address);
     as.MV(a0, rec.threadStatePointer());
+    static_assert(offsetof(ThreadState, ctx) == 0);
     as.LI(a2, 1);
     as.LI(a3, 1);
     as.LI(a4, 1);
@@ -11453,7 +11455,7 @@ FAST_HANDLE(FNINIT) {
     as.LI(temp, -1);
     as.SH(temp, offsetof(ThreadState, ctx.fpu_tw), Recompiler::threadStatePointer());
 
-    as.SB(x0, offsetof(ThreadState, fpu_top), Recompiler::threadStatePointer());
+    as.SB(x0, offsetof(ThreadState, ctx.fpu_top), Recompiler::threadStatePointer());
 
     // FINIT sets it to nearest neighbor which happens to be 0 in both x86 and RISC-V
     as.FSRM(x0);

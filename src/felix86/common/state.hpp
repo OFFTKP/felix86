@@ -199,6 +199,11 @@ struct UserContext {
     u16 fpu_cw{};
     u16 fpu_tw{};
     u16 fpu_sw{};
+    u8 fpu_top{};
+
+    // This is important so that we know whether the current values in the fp array are MMX registers or x87 registers
+    // Because if they are x87 registers we need to f64_to_f80 them when saving using fsave or when reading from signal handlers
+    x87State x87_state = x87State::MMX;
 
     u64 GetFlags() {
         u64 flags = 0;
@@ -218,11 +223,6 @@ struct ThreadState {
     UserContext ctx{};
     biscuit::RMode rmode_sse{biscuit::RMode::RNE};
     biscuit::RMode rmode_x87{biscuit::RMode::RNE};
-    u8 fpu_top{};
-
-    // This is important so that we know whether the current values in the fp array are MMX registers or x87 registers
-    // Because if they are x87 registers we need to f64_to_f80 them when saving using fsave or when reading from signal handlers
-    x87State x87_state = x87State::MMX;
 
     pid_t* clear_tid_address = nullptr;
     pthread_t thread{}; // The pthread this state belongs to

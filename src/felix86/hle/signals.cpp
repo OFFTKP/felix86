@@ -449,7 +449,7 @@ void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state, sigin
     frame->uc.uc_mcontext.gregs[REG_OLDMASK] = 0;
     frame->uc.uc_mcontext.gregs[REG_CR2] = 0;
 
-    felix86_xsave(state, &frame->uc.uc_mcontext.fpregs->fxsave, true);
+    felix86_xsave(state->ctx, &frame->uc.uc_mcontext.fpregs->fxsave, true);
 
     state->SetGpr(X86_REF_RSP, (u64)frame);        // set the new stack pointer
     state->SetGpr(X86_REF_RDI, sig);               // set the signal
@@ -518,7 +518,7 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, si
 
     fpstate->magic = 0; // extended state
 
-    felix86_xsave(state, &fpstate->fxsave, true);
+    felix86_xsave(state->ctx, &fpstate->fxsave, true);
 
     rsp -= sizeof(x86_rt_sigframe);
 
@@ -672,7 +672,7 @@ void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state, sigin
     frame->extramask = old_mask.__val[1];
     felix86_fsave_32(state, &fpstate->fsave);
     frame->fpstate_unused.magic = 0; // extended state
-    felix86_xsave(state, &fpstate->fxsave, true);
+    felix86_xsave(state->ctx, &fpstate->fxsave, true);
     frame->sc.fpstate = (u32)(u64)fpstate;
 
     state->SetGpr(X86_REF_RSP, (u64)frame); // set the new stack pointer

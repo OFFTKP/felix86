@@ -19,7 +19,7 @@
 #include <sys/cachectl.h>
 #endif
 
-#define TOP(x) ((state->fpu_top + x) & 0b111)
+#define TOP(x) ((state->ctx.fpu_top + x) & 0b111)
 
 struct fenv_data_16 {
     u16 cw;
@@ -337,14 +337,14 @@ void felix86_fstenv_16(ThreadState* state, u64 address) {
     fenv_data_16* env = (fenv_data_16*)address;
     env->cw = state->ctx.fpu_cw;
     env->tw = state->ctx.fpu_tw;
-    env->sw = (state->fpu_top << 11) | (state->ctx.fpu_sw & ~(0b111 << 11));
+    env->sw = (state->ctx.fpu_top << 11) | (state->ctx.fpu_sw & ~(0b111 << 11));
 }
 
 void felix86_fstenv_32(ThreadState* state, u64 address) {
     fenv_data_32* env = (fenv_data_32*)address;
     env->cw = state->ctx.fpu_cw;
     env->tw = state->ctx.fpu_tw;
-    env->sw = (state->fpu_top << 11) | (state->ctx.fpu_sw & ~(0b111 << 11));
+    env->sw = (state->ctx.fpu_top << 11) | (state->ctx.fpu_sw & ~(0b111 << 11));
 }
 
 void felix86_fldenv_16(struct ThreadState* state, u64 address) {
@@ -352,7 +352,7 @@ void felix86_fldenv_16(struct ThreadState* state, u64 address) {
     state->ctx.fpu_cw = env->cw;
     state->ctx.fpu_tw = env->tw;
     state->ctx.fpu_sw = env->sw;
-    state->fpu_top = (env->sw >> 11) & 0b111;
+    state->ctx.fpu_top = (env->sw >> 11) & 0b111;
     state->rmode_x87 = rounding_mode(x86RoundingMode((state->ctx.fpu_cw >> 10) & 0b11));
 }
 
@@ -361,7 +361,7 @@ void felix86_fldenv_32(struct ThreadState* state, u64 address) {
     state->ctx.fpu_cw = env->cw;
     state->ctx.fpu_tw = env->tw;
     state->ctx.fpu_sw = env->sw;
-    state->fpu_top = (env->sw >> 11) & 0b111;
+    state->ctx.fpu_top = (env->sw >> 11) & 0b111;
     state->rmode_x87 = rounding_mode(x86RoundingMode((state->ctx.fpu_cw >> 10) & 0b11));
 }
 
@@ -937,8 +937,8 @@ void felix86_fcos(ThreadState* state) {
 void felix86_fsincos(ThreadState* state) {
     double boop;
     memcpy(&boop, &state->ctx.fp[TOP(0)], sizeof(double));
-    state->fpu_top -= 1;
-    state->ctx.fpu_tw &= ~(0b11 << (state->fpu_top * 2));
+    state->ctx.fpu_top -= 1;
+    state->ctx.fpu_tw &= ~(0b11 << (state->ctx.fpu_top * 2));
     sincos(boop, (double*)&state->ctx.fp[TOP(1)], (double*)&state->ctx.fp[TOP(0)]);
     state->ctx.fpu_sw &= ~C2_BIT;
 }
@@ -1350,7 +1350,7 @@ void felix86_fxam(ThreadState* state) {
     double st0d;
     memcpy(&st0d, &st0, 8);
 
-    u16 mask = 0b11 << state->fpu_top;
+    u16 mask = 0b11 << state->ctx.fpu_top;
 
     u8 c3c2c0;
     if ((state->ctx.fpu_tw & mask) == mask) {

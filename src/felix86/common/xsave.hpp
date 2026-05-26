@@ -3,6 +3,7 @@
 #include "felix86/common/types.hpp"
 
 struct ThreadState;
+struct UserContext;
 
 struct XmmReg {
     u64 data[4] = {0, 0, 0, 0};
@@ -99,9 +100,9 @@ void felix86_fsave_16(ThreadState* state, void* address);
 
 void felix86_fsave_32(ThreadState* state, void* address);
 
-void felix86_fxsave(ThreadState* state, void* address, bool save_x87 = true, bool save_xmm = true, bool save_mxcsr = true);
+void felix86_fxsave(UserContext& ctx, void* address, bool save_x87 = true, bool save_xmm = true, bool save_mxcsr = true);
 
-void felix86_xsave(ThreadState* state, void* address, bool save_all);
+void felix86_xsave(UserContext& ctx, void* address, bool save_all);
 
 void felix86_frstor_16(ThreadState* state, void* address);
 
