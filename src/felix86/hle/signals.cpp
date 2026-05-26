@@ -1455,34 +1455,33 @@ bool handle_unaligned_tso_atomic(ThreadState* current_state, siginfo_t* info, uc
     ASSERT(size == 0b001 || size == 0b010 || size == 0b011);
 
     u32 rd = (current_instruction >> 7) & 0b11111;
-    if (rd != 0) {
-        WARN("AMOSWAP or AMOADD caused BUS_ADRALN but rd isn't x0");
+    if (is_amoswap && rd != 0) {
+        WARN("AMOSWAP caused BUS_ADRALN but rd isn't x0");
         return false;
     }
 
-    u32 nop;
-    {
-        Assembler tas((u8*)&nop, sizeof(u32));
-        tas.NOP();
+    u32 rs = (current_instruction >> 20) & 0b11111;
+    if (is_amoadd && rs != 0) {
+        WARN("AMOADD caused BUS_ADRALN but rs isn't x0");
+        return false;
     }
 
     // It's an unaligned AMOSWAP used for TSO emulation, replace it with store instruction + fence
-    u32 rs = (current_instruction >> 20) & 0b11111;
     u32 address = (current_instruction >> 15) & 0b11111;
     if (is_amoadd) {
         Assembler cas((u8*)pc + 4, sizeof(u32));
         switch (size) {
         case 0b001: {
             ASSERT(Extensions::Zabha);
-            cas.LH(biscuit::GPR(rs), 0, biscuit::GPR(address));
+            cas.LH(biscuit::GPR(rd), 0, biscuit::GPR(address));
             break;
         }
         case 0b010: {
-            cas.LW(biscuit::GPR(rs), 0, biscuit::GPR(address));
+            cas.LW(biscuit::GPR(rd), 0, biscuit::GPR(address));
             break;
         }
         case 0b011: {
-            cas.LD(biscuit::GPR(rs), 0, biscuit::GPR(address));
+            cas.LD(biscuit::GPR(rd), 0, biscuit::GPR(address));
             break;
         }
         default: {
