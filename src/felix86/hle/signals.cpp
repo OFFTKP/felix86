@@ -1473,11 +1473,11 @@ bool handle_unaligned_tso_atomic(ThreadState* current_state, siginfo_t* info, uc
         switch (size) {
         case 0b001: {
             ASSERT(Extensions::Zabha);
-            cas.LH(biscuit::GPR(rd), 0, biscuit::GPR(address));
+            cas.LHU(biscuit::GPR(rd), 0, biscuit::GPR(address));
             break;
         }
         case 0b010: {
-            cas.LW(biscuit::GPR(rd), 0, biscuit::GPR(address));
+            cas.LWU(biscuit::GPR(rd), 0, biscuit::GPR(address));
             break;
         }
         case 0b011: {
