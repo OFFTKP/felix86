@@ -1447,7 +1447,6 @@ bool handle_unaligned_tso_atomic(ThreadState* current_state, siginfo_t* info, uc
     bool is_amoswap = (current_instruction & mask_swap) == expected_swap;
     bool is_amoadd = (current_instruction & mask_add) == expected_add;
     if (!is_amoswap && !is_amoadd) {
-        WARN("SEGV_ACCERR caused but not by AMOSWAP or AMOADD: %x", current_instruction);
         return false;
     }
 
@@ -1456,13 +1455,11 @@ bool handle_unaligned_tso_atomic(ThreadState* current_state, siginfo_t* info, uc
 
     u32 rd = (current_instruction >> 7) & 0b11111;
     if (is_amoswap && rd != 0) {
-        WARN("AMOSWAP caused SEGV_ACCERR but rd isn't x0: %x", current_instruction);
         return false;
     }
 
     u32 rs = (current_instruction >> 20) & 0b11111;
     if (is_amoadd && rs != 0) {
-        WARN("AMOADD caused SEGV_ACCERR but rs isn't x0");
         return false;
     }
 
@@ -1668,6 +1665,8 @@ static bool handle_sigptrace(ThreadState* current_state, siginfo_t* info, uconte
 
 constexpr static std::array<RegisteredHostSignal, 8> host_signals = {{
     {SIGSEGV, SEGV_ACCERR, handle_safepoint},
+    // Note: Regrettably this causes the same fault as the SMC handling fault with no way to detect
+    // However, since we patch the atomics, if a fault happens again it will be properly handled by handle_smc
     {SIGSEGV, SEGV_ACCERR, handle_unaligned_tso_atomic},
     {SIGSEGV, SEGV_ACCERR, handle_smc},
     {SIGSEGV, SEGV_MAPERR, handle_synchronous},
