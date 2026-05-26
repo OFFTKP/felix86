@@ -526,7 +526,7 @@ u64 Recompiler::compileSequence(u64 rip) {
     }
 
     if (all_zeroes) {
-        ERROR("Jumped to address %lx which has a sequence of zeroes -- probably a bad jump?", rip);
+        WARN("Jumped to address %lx which has a sequence of zeroes -- probably a bad jump?", rip);
     }
 
     scanAhead(rip);
