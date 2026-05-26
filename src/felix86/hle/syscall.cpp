@@ -1407,6 +1407,14 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         result = Filesystem::FChownAt(arg1, (const char*)arg2, arg3, arg4, arg5);
         break;
     }
+    case felix86_riscv64_ioprio_get: {
+        result = SYSCALL(ioprio_get, arg1, arg2, arg3, arg4, arg5, arg6);
+        break;
+    }
+    case felix86_riscv64_ioprio_set: {
+        result = SYSCALL(ioprio_set, arg1, arg2, arg3, arg4, arg5, arg6);
+        break;
+    }
     case felix86_riscv64_sync_file_range: {
         result = SYSCALL(sync_file_range, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
