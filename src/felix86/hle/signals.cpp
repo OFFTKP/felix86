@@ -909,8 +909,6 @@ void pull_registers_from_context(ThreadState* state, ucontext_t* uctx) {
 // dispatcher and the x86 RIP to the signal handler.
 void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uctx) {
     ThreadState* state = ThreadState::Get();
-    set_pc(uctx, state->recompiler->getCompileNext());
-
     RegisteredSignal* handler = state->signal_table->getRegisteredSignal(sig);
 
     // While we *could* just jump to the handler and let the registers be
@@ -944,6 +942,7 @@ void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uctx) {
     if (handler->flags & SA_RESETHAND) {
         Signals::registerSignalHandler(state, sig, (u64)SIG_DFL, handler->mask, handler->flags, handler->restorer);
     }
+    set_pc(uctx, state->recompiler->getCompileNext());
 }
 
 void prepare_synchronous_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx, u64 rip) {
