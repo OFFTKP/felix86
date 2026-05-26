@@ -289,7 +289,7 @@ __attribute__((visibility("default"))) void disassemble(u64 host_address) {
         ZydisDisassembledInstruction instr;
         ZydisDisassembleIntel(mode, cur, (void*)cur, 15, &instr);
 
-        printf("%lx: %s\n", cur, instr.text);
+        PLAIN("%lx: %s\n", cur, instr.text);
 
         if (stop) {
             break;

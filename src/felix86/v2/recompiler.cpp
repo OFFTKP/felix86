@@ -669,6 +669,8 @@ u64 Recompiler::compileSequence(u64 rip) {
 
     if (current_block_big) {
         VERBOSE("Block at %lx exceeded max instruction count", current_block_metadata->guest_address);
+        resetScratch();
+        flushX87();
         biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
         as.LI(ripreg, rip);
         jumpAndLink(rip);
@@ -2183,11 +2185,14 @@ void Recompiler::scanAhead(u64 rip) {
             }
         }
 
-        if (is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3 || too_big) {
-            if (too_big) {
-                current_block_big = true;
-            }
-            if (g_config.scan_ahead_multi && !g_config.paranoid && !too_big) {
+        if (too_big) {
+            current_block_big = true;
+            // Similar to jumps, all flags will be calculated as the flag_access_cpazso array ends
+            break;
+        }
+
+        if (is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3) {
+            if (g_config.scan_ahead_multi && !g_config.paranoid) {
                 // We need to see where the jump will land, and scan some of its instructions
                 // If all the landing places overwrite the flags (1 landing spot for jmp, 2 for jcc)
                 // then we can skip those flag calculations
