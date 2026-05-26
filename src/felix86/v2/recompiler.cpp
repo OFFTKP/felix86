@@ -613,13 +613,13 @@ u64 Recompiler::compileSequence(u64 rip) {
         if (is_x87 && isFsrmSSE()) {
             // An x87 instruction, load the x87 rounding mode
             biscuit::GPR rm = scratch();
-            as.LBU(rm, offsetof(ThreadState, rmode_x87), threadStatePointer());
+            as.LBU(rm, offsetof(ThreadState, ctx.rmode_x87), threadStatePointer());
             as.FSRM(x0, rm);
             popScratch();
             setFsrmSSE(false);
         } else if (is_sse && !isFsrmSSE()) {
             biscuit::GPR rm = scratch();
-            as.LBU(rm, offsetof(ThreadState, rmode_sse), threadStatePointer());
+            as.LBU(rm, offsetof(ThreadState, ctx.rmode_sse), threadStatePointer());
             as.FSRM(x0, rm);
             popScratch();
             setFsrmSSE(true);
@@ -2030,12 +2030,12 @@ void Recompiler::restoreState() {
     // Restore the rounding mode
     if (fsrm_sse) {
         biscuit::GPR rm = scratch();
-        as.LBU(rm, offsetof(ThreadState, rmode_sse), threadStatePointer());
+        as.LBU(rm, offsetof(ThreadState, ctx.rmode_sse), threadStatePointer());
         as.FSRM(x0, rm);
         popScratch();
     } else {
         biscuit::GPR rm = scratch();
-        as.LBU(rm, offsetof(ThreadState, rmode_x87), threadStatePointer());
+        as.LBU(rm, offsetof(ThreadState, ctx.rmode_x87), threadStatePointer());
         as.FSRM(x0, rm);
         popScratch();
     }
