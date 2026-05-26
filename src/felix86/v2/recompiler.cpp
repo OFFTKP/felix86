@@ -2074,6 +2074,8 @@ void Recompiler::exitDispatcher(felix86_frame* frame) {
     __builtin_unreachable();
 }
 
+void disassemble(u64);
+
 void Recompiler::scanAhead(u64 rip) {
     for (int i = 0; i < 6; i++) {
         flag_access_cpazso[i].clear();
@@ -2186,6 +2188,8 @@ void Recompiler::scanAhead(u64 rip) {
         if (is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3 || too_big) {
             if (too_big) {
                 current_block_big = true;
+                WARN("Splitting block at %lx", initial_rip);
+                disassemble(initial_rip);
             }
             if (g_config.scan_ahead_multi && !g_config.paranoid && !too_big) {
                 // We need to see where the jump will land, and scan some of its instructions
