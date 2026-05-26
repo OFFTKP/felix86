@@ -1642,11 +1642,71 @@ FAST_HANDLE(HLT) {
         as.SD(x0, 0, x0);
         // This hint will tell the handle_synchronous signal handler to change si_code from SEGV_MAPERR to SI_KERNEL
         // which is the behavior on x86
-        as.SLTIU(x0, x0, FELIX86_HINT_HLT);
+        as.SLTIU(x0, x0, FELIX86_HINT_GP);
         // Unreachable
         as.C_UNDEF();
         as.C_UNDEF();
     }
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(OUTSB) {
+    WARN("Compiling OUTSB instruction");
+    as.SD(x0, 0, x0);
+    as.SLTIU(x0, x0, FELIX86_HINT_GP);
+    // Unreachable
+    as.C_UNDEF();
+    as.C_UNDEF();
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(OUTSW) {
+    WARN("Compiling OUTSW instruction");
+    as.SD(x0, 0, x0);
+    as.SLTIU(x0, x0, FELIX86_HINT_GP);
+    // Unreachable
+    as.C_UNDEF();
+    as.C_UNDEF();
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(OUTSD) {
+    WARN("Compiling OUTSD instruction");
+    as.SD(x0, 0, x0);
+    as.SLTIU(x0, x0, FELIX86_HINT_GP);
+    // Unreachable
+    as.C_UNDEF();
+    as.C_UNDEF();
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(INSB) {
+    WARN("Compiling INSB instruction");
+    as.SD(x0, 0, x0);
+    as.SLTIU(x0, x0, FELIX86_HINT_GP);
+    // Unreachable
+    as.C_UNDEF();
+    as.C_UNDEF();
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(INSW) {
+    WARN("Compiling INSW instruction");
+    as.SD(x0, 0, x0);
+    as.SLTIU(x0, x0, FELIX86_HINT_GP);
+    // Unreachable
+    as.C_UNDEF();
+    as.C_UNDEF();
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(INSD) {
+    WARN("Compiling INSD instruction");
+    as.SD(x0, 0, x0);
+    as.SLTIU(x0, x0, FELIX86_HINT_GP);
+    // Unreachable
+    as.C_UNDEF();
+    as.C_UNDEF();
     rec.stopCompiling();
 }
 

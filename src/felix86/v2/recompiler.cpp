@@ -2093,7 +2093,9 @@ void Recompiler::scanAhead(u64 rip) {
         bool is_jump = instruction.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
         bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET || mnemonic == ZYDIS_MNEMONIC_IRETD || mnemonic == ZYDIS_MNEMONIC_IRETQ;
         bool is_call = mnemonic == ZYDIS_MNEMONIC_CALL;
-        bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2;
+        bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2 || mnemonic == ZYDIS_MNEMONIC_OUTSB || mnemonic == ZYDIS_MNEMONIC_OUTSW ||
+                          mnemonic == ZYDIS_MNEMONIC_OUTSD || mnemonic == ZYDIS_MNEMONIC_INSB || mnemonic == ZYDIS_MNEMONIC_INSW ||
+                          mnemonic == ZYDIS_MNEMONIC_INSD;
         bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
         bool is_int3 = mnemonic == ZYDIS_MNEMONIC_INT3;
 
@@ -2220,7 +2222,9 @@ void Recompiler::scanAhead(u64 rip) {
                             bool is_jump = instruction_ahead.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
                             bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET || mnemonic == ZYDIS_MNEMONIC_IRETD || mnemonic == ZYDIS_MNEMONIC_IRETQ;
                             bool is_call = mnemonic == ZYDIS_MNEMONIC_CALL;
-                            bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2;
+                            bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2 || mnemonic == ZYDIS_MNEMONIC_OUTSB ||
+                                              mnemonic == ZYDIS_MNEMONIC_OUTSW || mnemonic == ZYDIS_MNEMONIC_OUTSD ||
+                                              mnemonic == ZYDIS_MNEMONIC_INSB || mnemonic == ZYDIS_MNEMONIC_INSW || mnemonic == ZYDIS_MNEMONIC_INSD;
                             bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
                             bool is_int3 = mnemonic == ZYDIS_MNEMONIC_INT3;
 
