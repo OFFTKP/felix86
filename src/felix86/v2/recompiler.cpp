@@ -613,13 +613,13 @@ u64 Recompiler::compileSequence(u64 rip) {
         if (is_x87 && isFsrmSSE()) {
             // An x87 instruction, load the x87 rounding mode
             biscuit::GPR rm = scratch();
-            as.LBU(rm, offsetof(ThreadState, rmode_x87), threadStatePointer());
+            as.LBU(rm, offsetof(ThreadState, ctx.rmode_x87), threadStatePointer());
             as.FSRM(x0, rm);
             popScratch();
             setFsrmSSE(false);
         } else if (is_sse && !isFsrmSSE()) {
             biscuit::GPR rm = scratch();
-            as.LBU(rm, offsetof(ThreadState, rmode_sse), threadStatePointer());
+            as.LBU(rm, offsetof(ThreadState, ctx.rmode_sse), threadStatePointer());
             as.FSRM(x0, rm);
             popScratch();
             setFsrmSSE(true);
@@ -765,7 +765,7 @@ void Recompiler::flushX87() {
         ASSERT(top_got);
         as.ADDI(top, top, -pushed_this_block);
         as.ANDI(top, top, 0b111);
-        as.SB(top, offsetof(ThreadState, fpu_top), threadStatePointer());
+        as.SB(top, offsetof(ThreadState, ctx.fpu_top), threadStatePointer());
     }
 
     for (int i = 0; i < 8; i++) {
@@ -2030,12 +2030,12 @@ void Recompiler::restoreState() {
     // Restore the rounding mode
     if (fsrm_sse) {
         biscuit::GPR rm = scratch();
-        as.LBU(rm, offsetof(ThreadState, rmode_sse), threadStatePointer());
+        as.LBU(rm, offsetof(ThreadState, ctx.rmode_sse), threadStatePointer());
         as.FSRM(x0, rm);
         popScratch();
     } else {
         biscuit::GPR rm = scratch();
-        as.LBU(rm, offsetof(ThreadState, rmode_x87), threadStatePointer());
+        as.LBU(rm, offsetof(ThreadState, ctx.rmode_x87), threadStatePointer());
         as.FSRM(x0, rm);
         popScratch();
     }
@@ -3107,7 +3107,7 @@ void Recompiler::setFlags(biscuit::GPR flags) {
 
 biscuit::GPR Recompiler::getTOP() {
     biscuit::GPR top = scratch();
-    as.LBU(top, offsetof(ThreadState, fpu_top), threadStatePointer());
+    as.LBU(top, offsetof(ThreadState, ctx.fpu_top), threadStatePointer());
     return top;
 }
 
@@ -3256,7 +3256,7 @@ void Recompiler::setST(ZydisDecodedOperand* operand, biscuit::FPR value) {
 }
 
 void Recompiler::setTOP(biscuit::GPR new_top) {
-    as.SB(new_top, offsetof(ThreadState, fpu_top), threadStatePointer());
+    as.SB(new_top, offsetof(ThreadState, ctx.fpu_top), threadStatePointer());
 }
 
 void Recompiler::invalidateBlock(BlockMetadata* block) {
@@ -3577,7 +3577,7 @@ void Recompiler::switchToMMX() {
 
     biscuit::GPR val = scratch();
     as.LI(val, (int)x87State::MMX);
-    as.SB(val, offsetof(ThreadState, x87_state), threadStatePointer());
+    as.SB(val, offsetof(ThreadState, ctx.x87_state), threadStatePointer());
     popScratch();
 
     local_x87_state = x87State::MMX;
@@ -3586,7 +3586,7 @@ void Recompiler::switchToMMX() {
 void Recompiler::switchToX87() {
     biscuit::GPR val = scratch();
     as.LI(val, (int)x87State::x87);
-    as.SB(val, offsetof(ThreadState, x87_state), threadStatePointer());
+    as.SB(val, offsetof(ThreadState, ctx.x87_state), threadStatePointer());
     popScratch();
 
     local_x87_state = x87State::x87;
