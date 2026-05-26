@@ -1447,7 +1447,7 @@ bool handle_unaligned_tso_atomic(ThreadState* current_state, siginfo_t* info, uc
     bool is_amoswap = (current_instruction & mask_swap) == expected_swap;
     bool is_amoadd = (current_instruction & mask_add) == expected_add;
     if (!is_amoswap && !is_amoadd) {
-        WARN("BUS_ADRALN caused but not by AMOSWAP or AMOADD");
+        WARN("BUS_ADRALN caused but not by AMOSWAP or AMOADD: %lx", current_instruction);
         return false;
     }
 
@@ -1456,7 +1456,7 @@ bool handle_unaligned_tso_atomic(ThreadState* current_state, siginfo_t* info, uc
 
     u32 rd = (current_instruction >> 7) & 0b11111;
     if (is_amoswap && rd != 0) {
-        WARN("AMOSWAP caused BUS_ADRALN but rd isn't x0");
+        WARN("AMOSWAP caused BUS_ADRALN but rd isn't x0: %lx", current_instruction);
         return false;
     }
 
