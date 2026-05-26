@@ -1428,7 +1428,99 @@ static bool handle_wild_sigabrt(ThreadState* current_state, siginfo_t* info, uco
     }
 }
 
-static bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
+bool handle_unaligned_tso_atomic(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
+    if (!is_in_jit_code(current_state, (u8*)pc)) {
+        return false;
+    }
+
+    if (!g_config.aligned_tso_optimizations) {
+        return false;
+    }
+
+    u32 current_instruction;
+    current_instruction = *(u32*)pc;
+
+    u32 mask_swap = (0b11111 << 27) | 0b1111111;
+    u32 expected_swap = (0b00001 << 27) | 0b0101111;
+    u32 mask_add = (0b11111 << 27) | 0b1111111;
+    u32 expected_add = (0b00000 << 27) | 0b0101111;
+    bool is_amoswap = (current_instruction & mask_swap) == expected_swap;
+    bool is_amoadd = (current_instruction & mask_add) != expected_add;
+    if (!is_amoswap && !is_amoadd) {
+        WARN("BUS_ADRALN caused but not by AMOSWAP or AMOADD");
+        return false;
+    }
+
+    u32 size = (current_instruction >> 12) & 0b111;
+    ASSERT(size == 0b001 || size == 0b010 || size == 0b011);
+
+    u32 rd = (current_instruction >> 7) & 0b11111;
+    if (rd != 0) {
+        WARN("AMOSWAP or AMOADD caused BUS_ADRALN but rd isn't x0");
+        return false;
+    }
+
+    u32 nop;
+    {
+        Assembler tas((u8*)&nop, sizeof(u32));
+        tas.NOP();
+    }
+
+    // It's an unaligned AMOSWAP used for TSO emulation, replace it with store instruction + fence
+    u32 rs = (current_instruction >> 20) & 0b11111;
+    u32 address = (current_instruction >> 15) & 0b11111;
+    if (is_amoadd) {
+        Assembler cas((u8*)pc + 4, sizeof(u32));
+        switch (size) {
+        case 0b001: {
+            ASSERT(Extensions::Zabha);
+            cas.LH(biscuit::GPR(rs), 0, biscuit::GPR(address));
+            break;
+        }
+        case 0b010: {
+            cas.LW(biscuit::GPR(rs), 0, biscuit::GPR(address));
+            break;
+        }
+        case 0b011: {
+            cas.LD(biscuit::GPR(rs), 0, biscuit::GPR(address));
+            break;
+        }
+        default: {
+            UNREACHABLE();
+        }
+        }
+        Assembler pas((u8*)(pc), sizeof(u32));
+        pas.FENCE(FenceOrder::RW, FenceOrder::W);
+    } else {
+        ASSERT(is_amoswap);
+        Assembler cas((u8*)pc, sizeof(u32));
+        switch (size) {
+        case 0b001: {
+            ASSERT(Extensions::Zabha);
+            cas.SH(biscuit::GPR(rs), 0, biscuit::GPR(address));
+            break;
+        }
+        case 0b010: {
+            cas.SW(biscuit::GPR(rs), 0, biscuit::GPR(address));
+            break;
+        }
+        case 0b011: {
+            cas.SD(biscuit::GPR(rs), 0, biscuit::GPR(address));
+            break;
+        }
+        default: {
+            UNREACHABLE();
+        }
+        }
+        Assembler pas((u8*)(pc + 4), sizeof(u32));
+        pas.FENCE(FenceOrder::RW, FenceOrder::W);
+    }
+
+    flush_icache_global(pc, pc + 4);
+    return true;
+}
+
+bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
     // We can't cause a SIGSEGV SI_KERNEL from RISC-V, so fix up info->si_code to match x86 behavior
     if (!is_in_jit_code(current_state, (u8*)pc)) {
         return false;
@@ -1575,7 +1667,8 @@ static bool handle_sigptrace(ThreadState* current_state, siginfo_t* info, uconte
     }
 }
 
-constexpr static std::array<RegisteredHostSignal, 7> host_signals = {{
+constexpr static std::array<RegisteredHostSignal, 8> host_signals = {{
+    {SIGSEGV, SEGV_ACCERR, handle_unaligned_tso_atomic},
     {SIGSEGV, SEGV_ACCERR, handle_safepoint},
     {SIGSEGV, SEGV_ACCERR, handle_smc},
     {SIGSEGV, SEGV_MAPERR, handle_synchronous},

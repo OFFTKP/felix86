@@ -2940,32 +2940,63 @@ biscuit::GPR Recompiler::getCond(int cond) {
 }
 
 void Recompiler::readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size) {
-    // Warning: Don't change the LBU->LB etc. here, they must zero extend
+    bool emulate_tso = g_config.always_tso && !Extensions::TSO && !(g_config.no_tso_stack && current_instruction_on_stack && !g_config.paranoid);
+    bool use_atomics = g_config.aligned_tso_optimizations && offset == 0;
     switch (size) {
     case X86_SIZE_BYTE: {
-        as.LBU(dest, offset, address);
+        use_atomics &= Extensions::Zabha;
+        if (emulate_tso && use_atomics) {
+            as.AMOADD_B(Ordering::AQ, dest, x0, address);
+            as.ANDI(dest, dest, 0xFF);
+        } else {
+            as.LBU(dest, offset, address);
+            if (emulate_tso) {
+                as.FENCE(FenceOrder::R, FenceOrder::RW);
+            }
+        }
         break;
     }
     case X86_SIZE_WORD: {
-        as.LHU(dest, offset, address);
+        use_atomics &= Extensions::Zabha;
+        if (emulate_tso && use_atomics) {
+            as.AMOADD_H(Ordering::AQ, dest, x0, address);
+            as.ZEXTH(dest, dest);
+        } else {
+            as.LHU(dest, offset, address);
+            if (emulate_tso) {
+                as.FENCE(FenceOrder::R, FenceOrder::RW);
+            }
+        }
         break;
     }
     case X86_SIZE_DWORD: {
-        as.LWU(dest, offset, address);
+        if (emulate_tso && use_atomics) {
+            as.AMOADD_W(Ordering::AQ, dest, x0, address);
+            as.ZEXTW(dest, dest);
+        } else {
+            as.LWU(dest, offset, address);
+            if (emulate_tso) {
+                as.FENCE(FenceOrder::R, FenceOrder::RW);
+            }
+        }
         break;
     }
     case X86_SIZE_QWORD: {
-        as.LD(dest, offset, address);
+        if (emulate_tso && use_atomics) {
+            as.AMOADD_D(Ordering::AQ, dest, x0, address);
+            as.NOP();
+        } else {
+            as.LD(dest, offset, address);
+            if (emulate_tso) {
+                as.FENCE(FenceOrder::R, FenceOrder::RW);
+            }
+        }
         break;
     }
     default: {
         UNREACHABLE();
         break;
     }
-    }
-
-    if (g_config.always_tso && !Extensions::TSO && !(g_config.no_tso_stack && current_instruction_on_stack && !g_config.paranoid)) {
-        as.FENCE(FenceOrder::R, FenceOrder::RW);
     }
 }
 
@@ -3009,25 +3040,56 @@ void Recompiler::readMemory(biscuit::Vec vec, biscuit::GPR address, int size) {
 }
 
 void Recompiler::writeMemory(biscuit::GPR src, biscuit::GPR address, i64 offset, x86_size_e size) {
-    if (g_config.always_tso && !Extensions::TSO && !(g_config.no_tso_stack && current_instruction_on_stack && !g_config.paranoid)) {
-        as.FENCE(FenceOrder::RW, FenceOrder::W);
-    }
-
+    bool emulate_tso = g_config.always_tso && !Extensions::TSO && !(g_config.no_tso_stack && current_instruction_on_stack && !g_config.paranoid);
+    bool use_atomics = g_config.aligned_tso_optimizations && offset == 0;
     switch (size) {
     case X86_SIZE_BYTE: {
-        as.SB(src, offset, address);
+        use_atomics &= Extensions::Zabha;
+        if (emulate_tso && use_atomics) {
+            as.AMOSWAP_B(Ordering::RL, x0, src, address);
+        } else {
+            if (emulate_tso) {
+                as.FENCE(FenceOrder::RW, FenceOrder::W);
+            }
+            as.SB(src, offset, address);
+        }
         break;
     }
     case X86_SIZE_WORD: {
-        as.SH(src, offset, address);
+        use_atomics &= Extensions::Zabha;
+        if (emulate_tso && use_atomics) {
+            as.AMOSWAP_H(Ordering::RL, x0, src, address);
+            as.NOP();
+        } else {
+            if (emulate_tso) {
+                as.FENCE(FenceOrder::RW, FenceOrder::W);
+            }
+            as.SH(src, offset, address);
+        }
         break;
     }
     case X86_SIZE_DWORD: {
-        as.SW(src, offset, address);
+        if (emulate_tso && use_atomics) {
+            as.AMOSWAP_W(Ordering::RL, x0, src, address);
+            as.NOP();
+        } else {
+            if (emulate_tso) {
+                as.FENCE(FenceOrder::RW, FenceOrder::W);
+            }
+            as.SW(src, offset, address);
+        }
         break;
     }
     case X86_SIZE_QWORD: {
-        as.SD(src, offset, address);
+        if (emulate_tso && use_atomics) {
+            as.AMOSWAP_D(Ordering::RL, x0, src, address);
+            as.NOP();
+        } else {
+            if (emulate_tso) {
+                as.FENCE(FenceOrder::RW, FenceOrder::W);
+            }
+            as.SD(src, offset, address);
+        }
         break;
     }
     default: {
