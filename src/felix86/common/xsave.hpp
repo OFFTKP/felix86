@@ -2,7 +2,6 @@
 
 #include "felix86/common/types.hpp"
 
-struct ThreadState;
 struct UserContext;
 
 struct XmmReg {
