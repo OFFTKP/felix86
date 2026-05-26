@@ -669,6 +669,8 @@ u64 Recompiler::compileSequence(u64 rip) {
 
     if (current_block_big) {
         VERBOSE("Block at %lx exceeded max instruction count", current_block_metadata->guest_address);
+        resetScratch();
+        flushX87();
         biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
         as.LI(ripreg, rip);
         jumpAndLink(rip);
@@ -2185,13 +2187,7 @@ void Recompiler::scanAhead(u64 rip) {
 
         if (too_big) {
             current_block_big = true;
-            // Calculate all flags at the end, because we won't scan ahead further to see if they are used
-            flag_access_cpazso[0].push_back({false, rip + 1});
-            flag_access_cpazso[1].push_back({false, rip + 1});
-            flag_access_cpazso[2].push_back({false, rip + 1});
-            flag_access_cpazso[3].push_back({false, rip + 1});
-            flag_access_cpazso[4].push_back({false, rip + 1});
-            flag_access_cpazso[5].push_back({false, rip + 1});
+            // Similar to jumps, all flags will be calculated as the flag_access_cpazso array ends
             break;
         }
 
