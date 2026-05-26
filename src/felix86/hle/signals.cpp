@@ -347,9 +347,23 @@ static u32 get_reg_err(int sig, siginfo_t* info, ucontext_t* uctx) {
 }
 
 // TODO: for synchronous signals like hlt/int3 etc. we need custom trapno/err
-static u32 get_reg_trapno(int sig, siginfo_t* info, ucontext_t* uctx) {
+static u32 get_reg_trapno(u64 host_pc, int sig, siginfo_t* info, ucontext_t* uctx) {
     if (sig != SIGSEGV) {
         return 0;
+    }
+
+    if (info->si_code == SI_KERNEL) {
+        u32 expected_gp;
+        {
+            Assembler tas2((u8*)&expected_gp, sizeof(u32));
+            tas2.SLTIU(x0, x0, FELIX86_HINT_GP);
+        }
+
+        if (*(u32*)host_pc == expected_gp) {
+            return 13; // General protection
+        } else {
+            WARN("SI_KERNEL but pc != hint_gp?");
+        }
     }
 
     if (info->si_code != SEGV_MAPERR && info->si_code != SEGV_ACCERR) {
@@ -444,7 +458,7 @@ void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state, sigin
     frame->uc.uc_mcontext.gregs[REG_R15] = state->GetGpr(X86_REF_R15);
     frame->uc.uc_mcontext.gregs[REG_RIP] = state->GetRip();
     frame->uc.uc_mcontext.gregs[REG_EFL] = state->GetFlags();
-    frame->uc.uc_mcontext.gregs[REG_TRAPNO] = get_reg_trapno(sig, guest_info, host_context);
+    frame->uc.uc_mcontext.gregs[REG_TRAPNO] = get_reg_trapno(get_pc(host_context), sig, guest_info, host_context);
     frame->uc.uc_mcontext.gregs[REG_ERR] = get_reg_err(sig, guest_info, host_context);
     frame->uc.uc_mcontext.gregs[REG_OLDMASK] = 0;
     frame->uc.uc_mcontext.gregs[REG_CR2] = 0;
@@ -557,7 +571,7 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, si
     frame->uc.uc_mcontext.__dsh = 0;
     frame->uc.uc_mcontext.__ssh = 0;
     frame->uc.uc_mcontext.__esh = 0;
-    frame->uc.uc_mcontext.trapno = get_reg_trapno(sig, guest_info, host_context);
+    frame->uc.uc_mcontext.trapno = get_reg_trapno(get_pc(host_context), sig, guest_info, host_context);
     frame->uc.uc_mcontext.err = get_reg_err(sig, guest_info, host_context);
     if (use_altstack) {
         frame->uc.uc_stack.ss_sp = (u32)(u64)state->alt_stack.ss_sp;
@@ -657,7 +671,7 @@ void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state, sigin
     frame->sc.__dsh = 0;
     frame->sc.__ssh = 0;
     frame->sc.__esh = 0;
-    frame->sc.trapno = get_reg_trapno(sig, guest_info, host_context);
+    frame->sc.trapno = get_reg_trapno(get_pc(host_context), sig, guest_info, host_context);
     frame->sc.err = get_reg_err(sig, guest_info, host_context);
     sigset_t old_mask;
     Signals::sigprocmask(state, SIG_SETMASK, nullptr, &old_mask);
@@ -1186,11 +1200,7 @@ bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucontext_t*
     // Check the hint right after to make sure this is a hlt
     u32 next_instruction = *(((u32*)pc) + 1);
 
-    u32 expected_hlt, expected_divzero, expected_int3, expected_ud2;
-    {
-        Assembler tas2((u8*)&expected_hlt, sizeof(u32));
-        tas2.SLTIU(x0, x0, FELIX86_HINT_HLT);
-    }
+    u32 expected_divzero, expected_int3, expected_ud2, expected_gp;
     {
         Assembler tas2((u8*)&expected_divzero, sizeof(u32));
         tas2.SLTIU(x0, x0, FELIX86_HINT_DIVZERO);
@@ -1203,17 +1213,17 @@ bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucontext_t*
         Assembler tas2((u8*)&expected_ud2, sizeof(u32));
         tas2.SLTIU(x0, x0, FELIX86_HINT_UD2);
     }
+    {
+        Assembler tas2((u8*)&expected_gp, sizeof(u32));
+        tas2.SLTIU(x0, x0, FELIX86_HINT_GP);
+    }
 
     BlockMetadata* current_block = get_block_metadata(current_state, pc);
     ASSERT_MSG(current_block, "Failed to get current block during synchronous signal with PC=%lx, RIP=%lx", pc, current_state->ctx.rip);
     u64 actual_rip = get_actual_rip(*current_block, pc);
 
     int sig;
-    if (next_instruction == expected_hlt) {
-        sig = SIGSEGV;
-        info->si_code = SI_KERNEL;
-        info->si_addr = nullptr;
-    } else if (next_instruction == expected_divzero) {
+    if (next_instruction == expected_divzero) {
         sig = SIGFPE;
         info->si_code = FPE_INTDIV;
         info->si_addr = (void*)actual_rip;
@@ -1225,6 +1235,10 @@ bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucontext_t*
         sig = SIGILL;
         info->si_code = ILL_ILLOPN;
         info->si_addr = (void*)actual_rip;
+    } else if (next_instruction == expected_gp) {
+        sig = SIGSEGV;
+        info->si_code = SI_KERNEL;
+        info->si_addr = nullptr;
     } else {
         return false;
     }
