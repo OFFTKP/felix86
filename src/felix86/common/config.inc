@@ -70,4 +70,3 @@ X(Performance, bool, auto_compress, false, FELIX86_AUTO_COMPRESS, "Automatically
 X(Performance, bool, scan_ahead_multi, true, FELIX86_SCAN_AHEAD_MULTI, "Scan ahead to multiple blocks when possible, avoiding even more flag calculations")
 X(Performance, bool, no_address_overflow, true, FELIX86_NO_ADDRESS_OVERFLOW, "Assume addresses won't overflow in 32-bit apps, which allows for some optimizations")
 X(Performance, bool, group_loadstore, true, FELIX86_GROUP_LOADSTORE, "Load/store SIMD state in groups of eight, may improve performance")
-X(Performance, bool, cas128_global, false, FELIX86_CAS128_GLOBAL, "Use a global lock for emulating CMPXCHG16B, may improve stability but worsen performance in some games")
