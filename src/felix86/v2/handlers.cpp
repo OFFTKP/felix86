@@ -10687,7 +10687,7 @@ FAST_HANDLE(CMPXCHG16B) {
         as.LI(lock_address, (u64)&g_process_globals.cas128_locks);
         // We will pick one of 256 different spinlocks based on a hash created by our address
         // This means that if two cmpxchg16b target the same address they will spin on the same lock
-        // but if they get a different one they will likely get a different one, which should decrease
+        // but if they target a different address they will likely get a different lock, which should decrease
         // lock contention
         constexpr u32 knuth_hash = 2654435761u;
         as.LI(mem1, knuth_hash);
