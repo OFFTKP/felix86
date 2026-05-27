@@ -10698,8 +10698,8 @@ FAST_HANDLE(CMPXCHG16B) {
         static_assert(sizeof(g_process_globals.cas128_locks) == 256 * sizeof(u32));
         as.ADD(lock_address, lock_address, mem0);
 
-        as.Bind(&spinloop);
         as.LI(lock, 1);
+        as.Bind(&spinloop);
         as.AMOSWAP_W(Ordering::AQRL, lock, lock, lock_address);
         as.BNEZ(lock, &spinloop);
 
