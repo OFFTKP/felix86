@@ -10684,7 +10684,21 @@ FAST_HANDLE(CMPXCHG16B) {
         biscuit::Label spinloop, writeloop;
         biscuit::GPR lock_address = rec.scratch();
         biscuit::GPR lock = rec.scratch();
-        as.LI(lock_address, (u64)&g_process_globals.cas128_lock);
+        as.LI(lock_address, (u64)&g_process_globals.cas128_locks);
+        if (g_config.cas128_global) {
+            // Do nothing, use the first lock in the array
+        } else {
+            // We will pick one of 256 different spinlocks based on a hash created by our address
+            // This means that if two cmpxchg16b target the same address they will spin on the same lock
+            // but if they get a different one they will likely get a different one, which should decrease
+            // lock contention
+            constexpr u32 knuth_hash = 2654435761u;
+            as.LI(mem1, knuth_hash);
+            as.SRLI(mem0, address, 4); // shift out low bits since they are 0 to get a better hash
+            as.MULW(mem0, mem0, mem1);
+            as.ANDI(mem0, mem0, (sizeof(g_process_globals.cas128_locks) / sizeof(u32)) - 1);
+            as.ADD(lock_address, lock_address, mem0);
+        }
 
         as.Bind(&spinloop);
         as.LI(lock, 1);

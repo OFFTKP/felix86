@@ -98,7 +98,7 @@ void ProcessGlobals::initialize() {
 
     perf = std::make_unique<Perf>();
 
-    cas128_lock = 0;
+    memset(cas128_locks, 0, sizeof(cas128_locks));
 
     // HACK: Don't clear as they get shared per mount namespace
     // TODO: proper mount namespacing when we need it

@@ -49,7 +49,7 @@ struct ProcessGlobals {
     std::unique_ptr<Perf> perf;
 
     // For cmpxchg16b
-    u32 cas128_lock = 0;
+    u32 cas128_locks[256];
 
     // TODO: this isn't per CLONE_VM but per mount namespace
     // But we don't care for now
