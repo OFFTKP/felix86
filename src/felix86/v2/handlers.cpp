@@ -10694,9 +10694,8 @@ FAST_HANDLE(CMPXCHG16B) {
         as.SRLI(mem0, address, 4); // shift out low bits since they are 0 to get a better hash
         as.MULW(mem0, mem0, mem1);
         as.ANDI(mem0, mem0, 0xFF);
-        as.SLLI(mem0, mem0, 2);
         static_assert(sizeof(g_process_globals.cas128_locks) == 256 * sizeof(u32));
-        as.ADD(lock_address, lock_address, mem0);
+        as.SH2ADD(lock_address, mem0, lock_address);
 
         as.LI(lock, 1);
         as.Bind(&spinloop);
