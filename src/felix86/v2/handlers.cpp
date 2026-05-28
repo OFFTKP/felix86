@@ -7017,12 +7017,12 @@ FAST_HANDLE(MULX) {
 
 FAST_HANDLE(BZHI) {
     biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
-    biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    biscuit::GPR src = rec.getGPR(&operands[1]);
     biscuit::GPR index = rec.getGPR(&operands[2], X86_SIZE_QWORD);
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR max = rec.scratch();
-    biscuit::GPR neg_shift = rec.scratch();
     biscuit::GPR result = rec.scratch();
+    biscuit::GPR neg_shift = rec.scratch();
     biscuit::Label no_zero;
     as.MV(result, src);
     as.ANDI(temp, index, 0xFF);
@@ -7034,6 +7034,7 @@ FAST_HANDLE(BZHI) {
     as.SRL(result, result, neg_shift);
     as.CZERO_EQZ(result, result, temp); // if it's 0 we just clear the register
     as.Bind(&no_zero);
+    rec.popScratch();
     if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
         biscuit::GPR cf = rec.flag(X86_REF_CF);
         as.LI(max, operands[0].size - 1);
