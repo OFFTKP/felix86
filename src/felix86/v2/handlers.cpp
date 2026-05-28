@@ -6933,7 +6933,7 @@ FAST_HANDLE(BEXTR) {
 
 FAST_HANDLE(SHLX) {
     biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
-    biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    biscuit::GPR src = rec.getGPR(&operands[1]);
     biscuit::GPR shift = rec.getGPR(&operands[2], X86_SIZE_QWORD);
     if (operands[0].size == 64) {
         as.SLL(dst, src, shift);
@@ -6947,7 +6947,7 @@ FAST_HANDLE(SHLX) {
 
 FAST_HANDLE(SHRX) {
     biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
-    biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    biscuit::GPR src = rec.getGPR(&operands[1]);
     biscuit::GPR shift = rec.getGPR(&operands[2], X86_SIZE_QWORD);
     if (operands[0].size == 64) {
         as.SRL(dst, src, shift);
@@ -6961,7 +6961,7 @@ FAST_HANDLE(SHRX) {
 
 FAST_HANDLE(SARX) {
     biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
-    biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    biscuit::GPR src = rec.getGPR(&operands[1]);
     biscuit::GPR shift = rec.getGPR(&operands[2], X86_SIZE_QWORD);
     if (operands[0].size == 64) {
         as.SRA(dst, src, shift);
@@ -6975,7 +6975,7 @@ FAST_HANDLE(SARX) {
 
 FAST_HANDLE(RORX) {
     biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
-    biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    biscuit::GPR src = rec.getGPR(&operands[1]);
     u8 shift = rec.getImmediate(&operands[2]);
     if (operands[0].size == 64) {
         shift &= 0x3F;
@@ -6993,15 +6993,15 @@ FAST_HANDLE(MULX) {
     biscuit::GPR hi_dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
     biscuit::GPR lo_dst = rec.getGPR(&operands[1], X86_SIZE_QWORD);
     if (operands[0].size == 64) {
-        biscuit::GPR src = rec.getGPR(&operands[2], X86_SIZE_QWORD);
+        biscuit::GPR src = rec.getGPR(&operands[2]);
         biscuit::GPR rdx = rec.getGPR(X86_REF_RDX, X86_SIZE_QWORD);
         as.MUL(lo_dst, src, rdx);
         as.MULHU(hi_dst, src, rdx);
         rec.setGPR(&operands[0], hi_dst);
         rec.setGPR(&operands[1], lo_dst);
     } else if (operands[0].size == 32) {
-        biscuit::GPR src = rec.getGPR(&operands[2], X86_SIZE_QWORD);
-        biscuit::GPR rdx = rec.getGPR(X86_REF_RDX, X86_SIZE_QWORD);
+        biscuit::GPR src = rec.getGPR(&operands[2]);
+        biscuit::GPR rdx = rec.getGPR(X86_REF_RDX, X86_SIZE_DWORD);
         as.MUL(lo_dst, src, rdx);
         as.SRLI(hi_dst, lo_dst, 32);
         as.ZEXTW(lo_dst, lo_dst);
