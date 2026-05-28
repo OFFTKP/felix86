@@ -10628,7 +10628,7 @@ FAST_HANDLE(AESKEYGENASSIST) {
     x86_ref_e reg = rec.zydisToRef(operands[0].reg.value);
     rec.writebackState();
     if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-        x86_ref_e src = rec.zydisToRef(operands[0].reg.value);
+        x86_ref_e src = rec.zydisToRef(operands[1].reg.value);
         as.ADDI(a1, Recompiler::threadStatePointer(), offsetof(ThreadState, ctx.xmm) + (src - X86_REF_XMM0) * sizeof(XmmReg));
     } else {
         biscuit::GPR address = rec.lea(&operands[1]);
