@@ -6916,6 +6916,9 @@ FAST_HANDLE(BEXTR) {
     as.SLTIU(condition, start, operands[0].size);
     as.CZERO_EQZ(result, result, condition);
 
+    rec.popScratch();
+    rec.popScratch();
+
     if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
         rec.clearFlag(X86_REF_CF);
     }
