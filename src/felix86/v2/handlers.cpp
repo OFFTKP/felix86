@@ -13996,8 +13996,12 @@ FAST_HANDLE(VPMOVSXDQ) {
 
 void VGATHER(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int elements,
              bool sign_extend_index) {
-    ASSERT(operands[1].mem.base != ZYDIS_REGISTER_NONE);
-    ASSERT(operands[1].mem.index != ZYDIS_REGISTER_NONE);
+    if (operands[1].mem.base == ZYDIS_REGISTER_NONE) {
+        WARN("VGATHER with base == x0 at %lx", rec.getCurrentMetadata().guest_address);
+    }
+    if (operands[1].mem.index == ZYDIS_REGISTER_NONE) {
+        WARN("VGATHER with index == x0 at %lx", rec.getCurrentMetadata().guest_address);
+    }
     ASSERT(operands[0].reg.value != operands[1].mem.index);
     ASSERT(operands[0].reg.value != operands[2].reg.value);
     ASSERT(operands[1].mem.index != operands[2].reg.value);
@@ -14007,7 +14011,8 @@ void VGATHER(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instructio
     biscuit::Vec shifted_index = rec.scratchVecM2();
     biscuit::Vec sexted_index = rec.scratchVecM2();
     biscuit::Vec result = rec.scratchVecM2();
-    biscuit::GPR base = rec.getGPR(rec.zydisToRef(operands[1].mem.base), rec.zydisToSize(operands[1].mem.base));
+    biscuit::GPR base =
+        operands[1].mem.base != ZYDIS_REGISTER_NONE ? rec.getGPR(rec.zydisToRef(operands[1].mem.base), rec.zydisToSize(operands[1].mem.base)) : x0;
     biscuit::Vec index = rec.getVec(operands[1].mem.index);
     biscuit::Vec mask = rec.getVec(&operands[2]);
     u64 disp = operands[1].mem.disp.value;
