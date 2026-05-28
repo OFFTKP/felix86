@@ -6889,7 +6889,7 @@ FAST_HANDLE(BLSMSK) {
 
 FAST_HANDLE(BEXTR) {
     biscuit::GPR src = rec.getGPR(&operands[1]);
-    biscuit::GPR control = rec.getGPR(&operands[2]);
+    biscuit::GPR control = rec.getGPR(&operands[2], X86_SIZE_QWORD);
     biscuit::GPR result = rec.scratch();
     biscuit::GPR start = rec.scratch();
     biscuit::GPR len = rec.scratch();
