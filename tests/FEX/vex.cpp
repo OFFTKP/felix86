@@ -296,6 +296,7 @@ VEX_TEST(vpermilps_reg);
 VEX_TEST(vpermpd);
 VEX_TEST(vpermps);
 VEX_TEST(vpermq);
+VEX_TEST(full_vpermq_imm);
 VEX_TEST(vpextrb);
 VEX_TEST(vpextrd);
 VEX_TEST(vpextrq);

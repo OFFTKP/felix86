@@ -1231,6 +1231,7 @@ bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucontext_t*
         sig = SIGTRAP;
         info->si_code = SI_KERNEL;
         info->si_addr = nullptr;
+        actual_rip += 1;
     } else if (next_instruction == expected_ud2) {
         sig = SIGILL;
         info->si_code = ILL_ILLOPN;

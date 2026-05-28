@@ -6889,7 +6889,7 @@ FAST_HANDLE(BLSMSK) {
 
 FAST_HANDLE(BEXTR) {
     biscuit::GPR src = rec.getGPR(&operands[1]);
-    biscuit::GPR control = rec.getGPR(&operands[2]);
+    biscuit::GPR control = rec.getGPR(&operands[2], X86_SIZE_QWORD);
     biscuit::GPR result = rec.scratch();
     biscuit::GPR start = rec.scratch();
     biscuit::GPR len = rec.scratch();
@@ -6916,6 +6916,9 @@ FAST_HANDLE(BEXTR) {
     as.SLTIU(condition, start, operands[0].size);
     as.CZERO_EQZ(result, result, condition);
 
+    rec.popScratch();
+    rec.popScratch();
+
     if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
         rec.clearFlag(X86_REF_CF);
     }
@@ -6933,7 +6936,7 @@ FAST_HANDLE(BEXTR) {
 
 FAST_HANDLE(SHLX) {
     biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
-    biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    biscuit::GPR src = rec.getGPR(&operands[1]);
     biscuit::GPR shift = rec.getGPR(&operands[2], X86_SIZE_QWORD);
     if (operands[0].size == 64) {
         as.SLL(dst, src, shift);
@@ -6947,7 +6950,7 @@ FAST_HANDLE(SHLX) {
 
 FAST_HANDLE(SHRX) {
     biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
-    biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    biscuit::GPR src = rec.getGPR(&operands[1]);
     biscuit::GPR shift = rec.getGPR(&operands[2], X86_SIZE_QWORD);
     if (operands[0].size == 64) {
         as.SRL(dst, src, shift);
@@ -6961,7 +6964,7 @@ FAST_HANDLE(SHRX) {
 
 FAST_HANDLE(SARX) {
     biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
-    biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    biscuit::GPR src = rec.getGPR(&operands[1]);
     biscuit::GPR shift = rec.getGPR(&operands[2], X86_SIZE_QWORD);
     if (operands[0].size == 64) {
         as.SRA(dst, src, shift);
@@ -6975,7 +6978,7 @@ FAST_HANDLE(SARX) {
 
 FAST_HANDLE(RORX) {
     biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
-    biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    biscuit::GPR src = rec.getGPR(&operands[1]);
     u8 shift = rec.getImmediate(&operands[2]);
     if (operands[0].size == 64) {
         shift &= 0x3F;
@@ -6993,15 +6996,15 @@ FAST_HANDLE(MULX) {
     biscuit::GPR hi_dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
     biscuit::GPR lo_dst = rec.getGPR(&operands[1], X86_SIZE_QWORD);
     if (operands[0].size == 64) {
-        biscuit::GPR src = rec.getGPR(&operands[2], X86_SIZE_QWORD);
+        biscuit::GPR src = rec.getGPR(&operands[2]);
         biscuit::GPR rdx = rec.getGPR(X86_REF_RDX, X86_SIZE_QWORD);
         as.MUL(lo_dst, src, rdx);
         as.MULHU(hi_dst, src, rdx);
         rec.setGPR(&operands[0], hi_dst);
         rec.setGPR(&operands[1], lo_dst);
     } else if (operands[0].size == 32) {
-        biscuit::GPR src = rec.getGPR(&operands[2], X86_SIZE_QWORD);
-        biscuit::GPR rdx = rec.getGPR(X86_REF_RDX, X86_SIZE_QWORD);
+        biscuit::GPR src = rec.getGPR(&operands[2]);
+        biscuit::GPR rdx = rec.getGPR(X86_REF_RDX, X86_SIZE_DWORD);
         as.MUL(lo_dst, src, rdx);
         as.SRLI(hi_dst, lo_dst, 32);
         as.ZEXTW(lo_dst, lo_dst);
@@ -7014,12 +7017,12 @@ FAST_HANDLE(MULX) {
 
 FAST_HANDLE(BZHI) {
     biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
-    biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    biscuit::GPR src = rec.getGPR(&operands[1]);
     biscuit::GPR index = rec.getGPR(&operands[2], X86_SIZE_QWORD);
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR max = rec.scratch();
-    biscuit::GPR neg_shift = rec.scratch();
     biscuit::GPR result = rec.scratch();
+    biscuit::GPR neg_shift = rec.scratch();
     biscuit::Label no_zero;
     as.MV(result, src);
     as.ANDI(temp, index, 0xFF);
@@ -7031,6 +7034,7 @@ FAST_HANDLE(BZHI) {
     as.SRL(result, result, neg_shift);
     as.CZERO_EQZ(result, result, temp); // if it's 0 we just clear the register
     as.Bind(&no_zero);
+    rec.popScratch();
     if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
         biscuit::GPR cf = rec.flag(X86_REF_CF);
         as.LI(max, operands[0].size - 1);
@@ -10624,7 +10628,7 @@ FAST_HANDLE(AESKEYGENASSIST) {
     x86_ref_e reg = rec.zydisToRef(operands[0].reg.value);
     rec.writebackState();
     if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-        x86_ref_e src = rec.zydisToRef(operands[0].reg.value);
+        x86_ref_e src = rec.zydisToRef(operands[1].reg.value);
         as.ADDI(a1, Recompiler::threadStatePointer(), offsetof(ThreadState, ctx.xmm) + (src - X86_REF_XMM0) * sizeof(XmmReg));
     } else {
         biscuit::GPR address = rec.lea(&operands[1]);
@@ -12800,6 +12804,7 @@ FAST_HANDLE(VPSHUFB) {
     as.VOR(iota_add, iota_add, temp);
     as.VMV1R(iota_dup, iota);
     as.VAND(iota_dup, iota_dup, bitmask);
+    as.VSLIDEDOWN(iota_add, iota_add, 16);
     as.VSLIDEUP(iota_dup, iota_add, 16);
     as.VRGATHER(dst, src, iota_dup);
 
@@ -14003,7 +14008,9 @@ FAST_HANDLE(VPMOVSXDQ) {
 
 void VGATHER(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int elements,
              bool sign_extend_index) {
-    ASSERT(operands[1].mem.base != ZYDIS_REGISTER_NONE);
+    if (operands[1].mem.base == ZYDIS_REGISTER_NONE) {
+        WARN("VGATHER with base == x0 at %lx", rec.getCurrentMetadata().guest_address);
+    }
     ASSERT(operands[1].mem.index != ZYDIS_REGISTER_NONE);
     ASSERT(operands[0].reg.value != operands[1].mem.index);
     ASSERT(operands[0].reg.value != operands[2].reg.value);
@@ -14014,7 +14021,8 @@ void VGATHER(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instructio
     biscuit::Vec shifted_index = rec.scratchVecM2();
     biscuit::Vec sexted_index = rec.scratchVecM2();
     biscuit::Vec result = rec.scratchVecM2();
-    biscuit::GPR base = rec.getGPR(rec.zydisToRef(operands[1].mem.base), rec.zydisToSize(operands[1].mem.base));
+    biscuit::GPR base =
+        operands[1].mem.base != ZYDIS_REGISTER_NONE ? rec.getGPR(rec.zydisToRef(operands[1].mem.base), rec.zydisToSize(operands[1].mem.base)) : x0;
     biscuit::Vec index = rec.getVec(operands[1].mem.index);
     biscuit::Vec mask = rec.getVec(&operands[2]);
     u64 disp = operands[1].mem.disp.value;
