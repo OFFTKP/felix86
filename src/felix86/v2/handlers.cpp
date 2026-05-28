@@ -14000,9 +14000,7 @@ void VGATHER(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instructio
     if (operands[1].mem.base == ZYDIS_REGISTER_NONE) {
         WARN("VGATHER with base == x0 at %lx", rec.getCurrentMetadata().guest_address);
     }
-    if (operands[1].mem.index == ZYDIS_REGISTER_NONE) {
-        WARN("VGATHER with index == x0 at %lx", rec.getCurrentMetadata().guest_address);
-    }
+    ASSERT(operands[1].mem.index != ZYDIS_REGISTER_NONE);
     ASSERT(operands[0].reg.value != operands[1].mem.index);
     ASSERT(operands[0].reg.value != operands[2].reg.value);
     ASSERT(operands[1].mem.index != operands[2].reg.value);
