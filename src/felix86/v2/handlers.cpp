@@ -12793,6 +12793,7 @@ FAST_HANDLE(VPSHUFB) {
     as.VOR(iota_add, iota_add, temp);
     as.VMV1R(iota_dup, iota);
     as.VAND(iota_dup, iota_dup, bitmask);
+    as.VSLIDEDOWN(iota_add, iota_add, 16);
     as.VSLIDEUP(iota_dup, iota_add, 16);
     as.VRGATHER(dst, src, iota_dup);
 
