@@ -72,7 +72,7 @@ bool is_feature_enabled(x86_feature feature) {
         return !g_config.no_bmi1 && is_feature_enabled(x86_feature::AVX);
     }
     case x86_feature::BMI2: {
-        return !g_config.no_bmi2 && is_feature_enabled(x86_feature::BMI1);
+        return !g_config.no_bmi2 && is_feature_enabled(x86_feature::BMI1) && Extensions::Zbc;
     }
     case x86_feature::F16C: {
         return is_feature_enabled(x86_feature::AVX) && Extensions::Zvfhmin;
