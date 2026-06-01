@@ -7048,12 +7048,10 @@ FAST_HANDLE(PEXT) {
     biscuit::GPR and_temp = rec.scratch();
     as.LI(neg2, -2);
     as.AND(data_temp, data, mask);
+    as.NOT(mask_temp, mask);
     for (int i = 0; i < 6; i++) {
         int shift = 1 << i;
-        if (i == 0) {
-            as.CLMUL(bit, mask, neg2);
-            as.AND(mask_temp, mask, bit);
-        } else if (i != 5) {
+        if (i != 5) {
             as.CLMUL(bit, mask_temp, neg2);
             as.AND(mask_temp, mask_temp, bit);
         } else if (i == 5) {
