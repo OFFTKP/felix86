@@ -7079,7 +7079,7 @@ FAST_HANDLE(PDEP) {
     biscuit::GPR and_temp = rec.scratch();
     as.LI(neg2, -2);
     as.NOT(mask_temp, mask);
-    for (int i = 0; i < 6; i++) {
+    for (int i = 5; i >= 0; i--) {
         int shift = 1 << i;
         if (i != 5) {
             as.CLMUL(bit, mask_temp, neg2);
