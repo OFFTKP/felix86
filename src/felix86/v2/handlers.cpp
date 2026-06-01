@@ -1,5 +1,4 @@
 #include <cmath>
-#include <functional>
 #include <Zydis/Zydis.h>
 #include "Zydis/DecoderTypes.h"
 #include "Zydis/SharedTypes.h"
@@ -135,7 +134,12 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
         return false;
     }
 
-    auto [next_instruction, next_operands] = rec.getNextInstruction();
+    auto opt = rec.getNextInstruction();
+    if (!opt.has_value()) {
+        return false;
+    }
+
+    auto [next_instruction, next_operands] = *opt;
     switch (next_instruction->mnemonic) {
     case ZYDIS_MNEMONIC_CMOVL: {
         biscuit::GPR cond = rec.scratch();
@@ -269,6 +273,101 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
         rec.scratch();
         CMOV(rec, rip, as, *next_instruction, next_operands, cond);
         rec.skipNext();
+        return true;
+    }
+    case ZYDIS_MNEMONIC_JL:
+    case ZYDIS_MNEMONIC_JLE:
+    case ZYDIS_MNEMONIC_JNL:
+    case ZYDIS_MNEMONIC_JNLE:
+    case ZYDIS_MNEMONIC_JB:
+    case ZYDIS_MNEMONIC_JBE:
+    case ZYDIS_MNEMONIC_JNB:
+    case ZYDIS_MNEMONIC_JNBE: {
+        // The earlier check confirmed that no flags are needed after this jump, so we can freely fuse instructions here
+        biscuit::GPR op0 = rec.getGPR(&operands[0]);
+        biscuit::GPR op1 = rec.getGPR(&operands[1]);
+        biscuit::GPR lhs, rhs;
+        if (instruction.operand_width != 64) {
+            lhs = rec.scratch();
+            rhs = rec.scratch();
+            rec.sext(lhs, op0, rec.zydisToSize(instruction.operand_width));
+            rec.sext(rhs, op1, rec.zydisToSize(instruction.operand_width));
+        } else {
+            lhs = op0;
+            rhs = op1;
+        }
+
+        if (g_config.auto_compress) {
+            as.DisableOptimization(Optimization::AutoCompress);
+        }
+        u64 immediate = rec.sextImmediate(rec.getImmediate(&next_operands[0]), next_operands[0].imm.size);
+        u64 rip_false = next_rip + next_instruction->length;
+        u64 rip_true = rip_false + immediate;
+        Label true_label;
+        switch (next_instruction->mnemonic) {
+        case ZYDIS_MNEMONIC_JL: {
+            as.BLT(lhs, rhs, &true_label);
+            break;
+        }
+        case ZYDIS_MNEMONIC_JLE: {
+            as.BLE(lhs, rhs, &true_label);
+            break;
+        }
+        case ZYDIS_MNEMONIC_JNL: {
+            as.BGE(lhs, rhs, &true_label);
+            break;
+        }
+        case ZYDIS_MNEMONIC_JNLE: {
+            as.BGT(lhs, rhs, &true_label);
+            break;
+        }
+        case ZYDIS_MNEMONIC_JB: {
+            as.BLTU(lhs, rhs, &true_label);
+            break;
+        }
+        case ZYDIS_MNEMONIC_JBE: {
+            as.BLEU(lhs, rhs, &true_label);
+            break;
+        }
+        case ZYDIS_MNEMONIC_JNB: {
+            as.BGEU(lhs, rhs, &true_label);
+            break;
+        }
+        case ZYDIS_MNEMONIC_JNBE: {
+            as.BGTU(lhs, rhs, &true_label);
+            break;
+        }
+        default: {
+            UNREACHABLE();
+        }
+        }
+
+        biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+        u64 rip_false_offset = rip_false - rec.getCurrentRipregValue();
+        rec.addi(ripreg, ripreg, rip_false_offset);
+        if (g_mode32) {
+            rec.zext(ripreg, ripreg, X86_SIZE_DWORD);
+            rip_false = (u32)rip_false;
+        }
+
+        as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
+        rec.jumpAndLink(rip_false);
+
+        as.Bind(&true_label);
+        u64 rip_true_offset = rip_true - rec.getCurrentRipregValue();
+        rec.addi(ripreg, ripreg, rip_true_offset);
+        if (g_mode32) {
+            rec.zext(ripreg, ripreg, X86_SIZE_DWORD);
+            rip_true = (u32)rip_true;
+        }
+
+        as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
+        rec.jumpAndLink(rip_true);
+        rec.skipNext();
+        rec.stopCompiling();
+        if (g_config.auto_compress) {
+            as.EnableOptimization(Optimization::AutoCompress);
+        }
         return true;
     }
     default: {

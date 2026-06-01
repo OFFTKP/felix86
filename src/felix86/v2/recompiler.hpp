@@ -702,7 +702,7 @@ struct Recompiler {
         current_ripreg_value = value;
     }
 
-    std::pair<ZydisDecodedInstruction*, ZydisDecodedOperand*> getNextInstruction();
+    std::optional<std::pair<ZydisDecodedInstruction*, ZydisDecodedOperand*>> getNextInstruction();
 
 private:
     struct FlagAccess {

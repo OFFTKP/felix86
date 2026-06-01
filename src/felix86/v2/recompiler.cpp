@@ -715,8 +715,10 @@ u64 Recompiler::compileSequence(u64 rip) {
     return rip;
 }
 
-std::pair<ZydisDecodedInstruction*, ZydisDecodedOperand*> Recompiler::getNextInstruction() {
-    ASSERT(instructions.size() > current_instruction_index + 1);
+std::optional<std::pair<ZydisDecodedInstruction*, ZydisDecodedOperand*>> Recompiler::getNextInstruction() {
+    if (current_instruction_index + 1 >= instructions.size()) {
+        return std::nullopt;
+    }
     auto& [instruction, operands] = instructions[current_instruction_index + 1];
     return std::make_pair(&instruction, operands);
 }
@@ -2199,13 +2201,14 @@ void Recompiler::scanAhead(u64 rip) {
                 // If all the landing places overwrite the flags (1 landing spot for jmp, 2 for jcc)
                 // then we can skip those flag calculations
                 if (is_jump && operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+                    u32 flags_we_care_about =
+                        ZYDIS_CPUFLAG_OF | ZYDIS_CPUFLAG_CF | ZYDIS_CPUFLAG_ZF | ZYDIS_CPUFLAG_SF | ZYDIS_CPUFLAG_AF | ZYDIS_CPUFLAG_PF;
                     auto scan_landing_block = [&](u64 rip_ahead) {
                         bool jump_to_self = rip_ahead == initial_rip;
                         ZydisDecodedInstruction instruction_ahead;
                         u32 changed_this_block = 0;
                         u32 used_this_block = 0;
-                        u32 flags_we_care_about =
-                            ZYDIS_CPUFLAG_OF | ZYDIS_CPUFLAG_CF | ZYDIS_CPUFLAG_ZF | ZYDIS_CPUFLAG_SF | ZYDIS_CPUFLAG_AF | ZYDIS_CPUFLAG_PF;
+
                         // 10 is heuristically picked with no real reason
                         // If we go too high we risk messing our performance
                         // TODO: some benchmarking may be in order
