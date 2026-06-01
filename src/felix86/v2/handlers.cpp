@@ -7038,6 +7038,7 @@ FAST_HANDLE(MULX) {
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 FAST_HANDLE(PEXT) {
+    WARN_ONCE("This program uses PEXT");
     biscuit::GPR data = rec.getGPR(&operands[1], X86_SIZE_QWORD);
     biscuit::GPR mask = rec.getGPR(&operands[2]);
     biscuit::GPR mask_temp = rec.scratch();
@@ -7069,6 +7070,7 @@ FAST_HANDLE(PEXT) {
 }
 
 FAST_HANDLE(PDEP) {
+    WARN_ONCE("This program uses PDEP");
     biscuit::GPR data = rec.getGPR(&operands[1], X86_SIZE_QWORD);
     biscuit::GPR mask = rec.getGPR(&operands[2]);
     biscuit::GPR mask_temp = rec.scratch();
