@@ -7068,7 +7068,39 @@ FAST_HANDLE(PEXT) {
     rec.setGPR(&operands[0], data_temp);
 }
 
-FAST_HANDLE(PDEP) {}
+FAST_HANDLE(PDEP) {
+    biscuit::GPR data = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    biscuit::GPR mask = rec.getGPR(&operands[2]);
+    biscuit::GPR mask_temp = rec.scratch();
+    biscuit::GPR neg2 = rec.scratch();
+    biscuit::GPR bit = rec.scratch();
+    biscuit::GPR data_temp = data; // for the first iteration, avoid a mv
+    biscuit::GPR andn_temp = rec.scratch();
+    biscuit::GPR and_temp = rec.scratch();
+    as.LI(neg2, -2);
+    as.NOT(mask_temp, mask);
+    for (int i = 0; i < 6; i++) {
+        int shift = 1 << i;
+        if (i != 5) {
+            as.CLMUL(bit, mask_temp, neg2);
+            as.AND(mask_temp, mask_temp, bit);
+        } else if (i == 5) {
+            as.NEG(bit, mask_temp);
+            as.SLLI(bit, bit, 1);
+        } else {
+            UNREACHABLE();
+        }
+        as.ANDN(andn_temp, data_temp, bit);
+        as.SLLI(and_temp, data_temp, shift);
+        as.AND(and_temp, and_temp, bit);
+        if (data_temp == data) {
+            data_temp = rec.scratch();
+        }
+        as.OR(data_temp, and_temp, andn_temp);
+    }
+    as.AND(data_temp, data_temp, mask);
+    rec.setGPR(&operands[0], data_temp);
+}
 
 FAST_HANDLE(BZHI) {
     biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
