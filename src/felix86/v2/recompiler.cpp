@@ -2286,9 +2286,6 @@ void Recompiler::scanAhead(u64 rip) {
                         u64 rip_ahead_true = rip_ahead_false + immediate;
                         // For the flags to not be calculated they need to be overwritten in both paths
                         thrashed_ahead = scan_landing_block(rip_ahead_false) & scan_landing_block(rip_ahead_true);
-                        if (thrashed_ahead == flags_we_care_about) {
-                            WARN("Block with no flags ahead: %lx", initial_rip);
-                        }
                     } else {
                         break;
                     }
