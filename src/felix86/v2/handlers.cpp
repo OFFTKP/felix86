@@ -7302,6 +7302,35 @@ FAST_HANDLE(BSWAP) {
     rec.setGPR(ref, X86_SIZE_QWORD, dst);
 }
 
+FAST_HANDLE(MOVBE) {
+    x86_size_e size = rec.getSize(&operands[0]);
+    biscuit::GPR data;
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        data = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    } else {
+        ASSERT(operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY);
+        data = rec.getGPR(&operands[1]);
+    }
+
+    if (size == X86_SIZE_DWORD) {
+        as.REV8(data, data);
+        as.SRLI(data, data, 32);
+    } else if (size == X86_SIZE_QWORD) {
+        as.REV8(data, data);
+    } else if (size == X86_SIZE_WORD) {
+        as.REV8(data, data);
+        as.SRLI(data, data, 48);
+    }
+
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        x86_ref_e ref = rec.zydisToRef(operands[0].reg.value);
+        rec.setGPR(ref, X86_SIZE_QWORD, data);
+    } else {
+        ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
+        rec.setGPR(&operands[0], data);
+    }
+}
+
 FAST_HANDLE(MOVLPS) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
         ASSERT(operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY);
