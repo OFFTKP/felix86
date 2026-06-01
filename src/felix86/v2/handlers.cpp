@@ -283,6 +283,7 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
     case ZYDIS_MNEMONIC_JBE:
     case ZYDIS_MNEMONIC_JNB:
     case ZYDIS_MNEMONIC_JNBE: {
+        PLAIN("Fusing CMP+JCC");
         // The earlier check confirmed that no flags are needed after this jump, so we can freely fuse instructions here
         biscuit::GPR op0 = rec.getGPR(&operands[0]);
         biscuit::GPR op1 = rec.getGPR(&operands[1]);
