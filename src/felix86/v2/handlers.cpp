@@ -292,7 +292,7 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
         bool needs_sext =
             instruction.operand_width != 64 && (instruction.mnemonic == ZYDIS_MNEMONIC_JL || instruction.mnemonic == ZYDIS_MNEMONIC_JLE ||
                                                 instruction.mnemonic == ZYDIS_MNEMONIC_JNL || instruction.mnemonic == ZYDIS_MNEMONIC_JNLE);
-        if (&&needs_sext) {
+        if (needs_sext) {
             lhs = rec.scratch();
             rhs = rec.scratch();
             rec.sext(lhs, op0, rec.zydisToSize(instruction.operand_width));
