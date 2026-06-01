@@ -7015,6 +7015,99 @@ FAST_HANDLE(MULX) {
     }
 }
 
+// The implementations of PEXT and PDEP are adapted from ZP7
+// ZP7 (Zach's Peppy Parallel-Prefix-Popcountin' PEXT/PDEP Polyfill)
+//
+// Copyright (c) 2020 Zach Wegner
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+FAST_HANDLE(PEXT) {
+    WARN_ONCE("This program uses PEXT");
+    biscuit::GPR data = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    biscuit::GPR mask = rec.getGPR(&operands[2]);
+    biscuit::GPR mask_temp = rec.scratch();
+    biscuit::GPR neg2 = rec.scratch();
+    biscuit::GPR bit = rec.scratch();
+    biscuit::GPR data_temp = rec.scratch();
+    biscuit::GPR andn_temp = rec.scratch();
+    as.LI(neg2, -2);
+    as.AND(data_temp, data, mask);
+    as.NOT(mask_temp, mask);
+    for (int i = 0; i < 6; i++) {
+        int shift = 1 << i;
+        if (i != 5) {
+            as.CLMUL(bit, mask_temp, neg2);
+            as.AND(mask_temp, mask_temp, bit);
+        } else if (i == 5) {
+            as.NEG(bit, mask_temp);
+            as.SLLI(bit, bit, 1);
+        } else {
+            UNREACHABLE();
+        }
+        as.ANDN(andn_temp, data_temp, bit);
+        as.AND(bit, data_temp, bit);
+        as.SRLI(bit, bit, shift);
+        as.OR(data_temp, bit, andn_temp);
+    }
+    rec.setGPR(&operands[0], data_temp);
+}
+
+FAST_HANDLE(PDEP) {
+    WARN_ONCE("This program uses PDEP");
+    biscuit::GPR data = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    biscuit::GPR mask = rec.getGPR(&operands[2]);
+    biscuit::GPR mask_temp = rec.scratch();
+    biscuit::GPR neg2 = rec.scratch();
+    biscuit::GPR bit = rec.scratch();
+    biscuit::GPR data_temp = data; // for the first iteration, avoid a mv
+    biscuit::GPR andn_temp = rec.scratch();
+    as.ADDI(sp, sp, -6 * (int)sizeof(u64));
+    as.LI(neg2, -2);
+    as.NOT(mask_temp, mask);
+    for (int i = 0; i < 6; i++) {
+        if (i != 5) {
+            as.CLMUL(bit, mask_temp, neg2);
+            as.AND(mask_temp, mask_temp, bit);
+        } else if (i == 5) {
+            as.NEG(bit, mask_temp);
+            as.SLLI(bit, bit, 1);
+        } else {
+            UNREACHABLE();
+        }
+        as.SD(bit, i * sizeof(u64), sp);
+    }
+    for (int i = 5; i >= 0; i--) {
+        int shift = 1 << i;
+        as.LD(bit, i * sizeof(u64), sp);
+        as.ANDN(andn_temp, data_temp, bit);
+        as.SLLI(neg2, data_temp, shift);
+        as.AND(neg2, neg2, bit);
+        if (data_temp == data) {
+            data_temp = rec.scratch();
+        }
+        as.OR(data_temp, neg2, andn_temp);
+    }
+    as.AND(data_temp, data_temp, mask);
+    as.ADDI(sp, sp, 6 * (int)sizeof(u64));
+    rec.setGPR(&operands[0], data_temp);
+}
+
 FAST_HANDLE(BZHI) {
     biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
     biscuit::GPR src = rec.getGPR(&operands[1]);
