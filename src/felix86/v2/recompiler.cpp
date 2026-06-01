@@ -2298,27 +2298,27 @@ void Recompiler::scanAhead(u64 rip) {
                     // If the JCC actually uses the flag, that's fine because the flag access will be after the usage
                     // so the instruction handler will emit that flag
                     if (thrashed_ahead & ZYDIS_CPUFLAG_CF) {
-                        flag_access_cpazso[0].push_back({true, rip});
+                        flag_access_cpazso[0].push_back({true, UINT64_MAX});
                     }
 
                     if (thrashed_ahead & ZYDIS_CPUFLAG_PF) {
-                        flag_access_cpazso[1].push_back({true, rip});
+                        flag_access_cpazso[1].push_back({true, UINT64_MAX});
                     }
 
                     if (thrashed_ahead & ZYDIS_CPUFLAG_AF) {
-                        flag_access_cpazso[2].push_back({true, rip});
+                        flag_access_cpazso[2].push_back({true, UINT64_MAX});
                     }
 
                     if (thrashed_ahead & ZYDIS_CPUFLAG_ZF) {
-                        flag_access_cpazso[3].push_back({true, rip});
+                        flag_access_cpazso[3].push_back({true, UINT64_MAX});
                     }
 
                     if (thrashed_ahead & ZYDIS_CPUFLAG_SF) {
-                        flag_access_cpazso[4].push_back({true, rip});
+                        flag_access_cpazso[4].push_back({true, UINT64_MAX});
                     }
 
                     if (thrashed_ahead & ZYDIS_CPUFLAG_OF) {
-                        flag_access_cpazso[5].push_back({true, rip});
+                        flag_access_cpazso[5].push_back({true, UINT64_MAX});
                     }
                 }
             }
