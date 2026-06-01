@@ -289,9 +289,10 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
         biscuit::GPR op0 = rec.getGPR(&operands[0]);
         biscuit::GPR op1 = rec.getGPR(&operands[1]);
         biscuit::GPR lhs, rhs;
-        bool needs_sext =
-            instruction.operand_width != 64 && (instruction.mnemonic == ZYDIS_MNEMONIC_JL || instruction.mnemonic == ZYDIS_MNEMONIC_JLE ||
-                                                instruction.mnemonic == ZYDIS_MNEMONIC_JNL || instruction.mnemonic == ZYDIS_MNEMONIC_JNLE);
+        bool needs_sext = instruction.operand_width != 64;
+        // TODO: zero-extend the immediate in op1 when not sign extending and add the below condition
+        // && (instruction.mnemonic == ZYDIS_MNEMONIC_JL || instruction.mnemonic == ZYDIS_MNEMONIC_JLE ||
+        // instruction.mnemonic == ZYDIS_MNEMONIC_JNL || instruction.mnemonic == ZYDIS_MNEMONIC_JNLE);
         if (needs_sext) {
             lhs = rec.scratch();
             rhs = rec.scratch();
