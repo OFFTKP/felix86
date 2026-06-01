@@ -7061,9 +7061,9 @@ FAST_HANDLE(PEXT) {
             UNREACHABLE();
         }
         as.ANDN(andn_temp, data_temp, bit);
-        as.AND(and_temp, data_temp, bit);
-        as.SRLI(and_temp, and_temp, shift);
-        as.OR(data_temp, and_temp, andn_temp);
+        as.AND(bit, data_temp, bit);
+        as.SRLI(bit, bit, shift);
+        as.OR(data_temp, bit, andn_temp);
     }
     rec.setGPR(&operands[0], data_temp);
 }
