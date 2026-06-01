@@ -7038,7 +7038,7 @@ FAST_HANDLE(MULX) {
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 FAST_HANDLE(PEXT) {
-    biscuit::GPR data = rec.getGPR(&operands[1]);
+    biscuit::GPR data = rec.getGPR(&operands[1], X86_SIZE_QWORD);
     biscuit::GPR mask = rec.getGPR(&operands[2]);
     biscuit::GPR mask_temp = rec.scratch();
     biscuit::GPR neg2 = rec.scratch();
