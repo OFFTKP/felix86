@@ -129,17 +129,32 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
     bool needs_sf = rec.shouldEmitFlag(next_rip, X86_REF_SF);
     bool needs_of = rec.shouldEmitFlag(next_rip, X86_REF_OF);
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf || needs_af;
-    // If after the next instruction we need any flag, we can't fuse the CMP because the flags will be important later on
-    if (needs_any_flag) {
-        return false;
-    }
-
     auto opt = rec.getNextInstruction();
     if (!opt.has_value()) {
         return false;
     }
 
     auto [next_instruction, next_operands] = *opt;
+    switch (next_instruction->mnemonic) {
+    case ZYDIS_MNEMONIC_JL:
+    case ZYDIS_MNEMONIC_JLE:
+    case ZYDIS_MNEMONIC_JNL:
+    case ZYDIS_MNEMONIC_JNLE:
+    case ZYDIS_MNEMONIC_JB:
+    case ZYDIS_MNEMONIC_JBE:
+    case ZYDIS_MNEMONIC_JNB:
+    case ZYDIS_MNEMONIC_JNBE: {
+        WARN("Branch %lx, %d %d %d %d %d %d", next_rip, needs_cf, needs_of, needs_pf, needs_sf, needs_zf, needs_af);
+        break;
+    }
+    default:
+        break;
+    }
+    // If after the next instruction we need any flag, we can't fuse the CMP because the flags will be important later on
+    if (needs_any_flag) {
+        return false;
+    }
+
     switch (next_instruction->mnemonic) {
     case ZYDIS_MNEMONIC_CMOVL: {
         biscuit::GPR cond = rec.scratch();
@@ -283,7 +298,6 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
     case ZYDIS_MNEMONIC_JBE:
     case ZYDIS_MNEMONIC_JNB:
     case ZYDIS_MNEMONIC_JNBE: {
-        PLAIN("Fusing CMP+JCC");
         // The earlier check confirmed that no flags are needed after this jump, so we can freely fuse instructions here
         biscuit::GPR op0 = rec.getGPR(&operands[0]);
         biscuit::GPR op1 = rec.getGPR(&operands[1]);
