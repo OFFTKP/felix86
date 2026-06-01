@@ -7046,7 +7046,6 @@ FAST_HANDLE(PEXT) {
     biscuit::GPR bit = rec.scratch();
     biscuit::GPR data_temp = rec.scratch();
     biscuit::GPR andn_temp = rec.scratch();
-    biscuit::GPR and_temp = rec.scratch();
     as.LI(neg2, -2);
     as.AND(data_temp, data, mask);
     as.NOT(mask_temp, mask);
@@ -7078,7 +7077,6 @@ FAST_HANDLE(PDEP) {
     biscuit::GPR bit = rec.scratch();
     biscuit::GPR data_temp = data; // for the first iteration, avoid a mv
     biscuit::GPR andn_temp = rec.scratch();
-    biscuit::GPR and_temp = rec.scratch();
     as.ADDI(sp, sp, -6 * (int)sizeof(u64));
     as.LI(neg2, -2);
     as.NOT(mask_temp, mask);
@@ -7098,12 +7096,12 @@ FAST_HANDLE(PDEP) {
         int shift = 1 << i;
         as.LD(bit, i * sizeof(u64), sp);
         as.ANDN(andn_temp, data_temp, bit);
-        as.SLLI(and_temp, data_temp, shift);
-        as.AND(and_temp, and_temp, bit);
+        as.SLLI(neg2, data_temp, shift);
+        as.AND(neg2, neg2, bit);
         if (data_temp == data) {
             data_temp = rec.scratch();
         }
-        as.OR(data_temp, and_temp, andn_temp);
+        as.OR(data_temp, neg2, andn_temp);
     }
     as.AND(data_temp, data_temp, mask);
     as.ADDI(sp, sp, 6 * (int)sizeof(u64));
