@@ -50,13 +50,17 @@ struct RegisterAccess {
     bool valid;  // true if loaded and potentially modified, false if written back to memory and allocated register holds garbage
 };
 
+struct TranslationSize {
+    u16 x86_instruction_size : 4;
+    u16 riscv_instructions_size : 12;
+};
+static_assert(sizeof(TranslationSize) == sizeof(u16));
+
 struct BlockMetadata {
-    u64 address{};
-    u64 address_end{};
-    u64 guest_address{};
-    u64 guest_address_end{};
-    std::vector<u8*> pending_links{};
-    std::vector<std::pair<u64, u64>> instruction_spans{};
+    u64 host_address{};
+    // This gives us a count of x86 instructions per block, the size of each instruction
+    // and the size of the risc-v instructions used to translate it
+    std::vector<TranslationSize> translation_sizes{};
 };
 
 // WARN: don't allocate this struct on the stack as it's quite big due to address_cache and can lead to stack overflow
@@ -193,7 +197,7 @@ struct Recompiler {
 
     void jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false);
 
-    void invalidateBlock(BlockMetadata* block);
+    void invalidateBlock(BlockMetadata* block, u64 rip);
 
     void insertSafepoint();
 
@@ -461,7 +465,7 @@ struct Recompiler {
             if (entry.guest == rip) {
                 return entry.host;
             } else if (blockExists(rip)) {
-                u64 host = getBlockMetadata(rip).address;
+                u64 host = getBlockMetadata(rip).host_address;
                 entry.guest = rip;
                 entry.host = host;
                 return host;
@@ -470,7 +474,7 @@ struct Recompiler {
             }
         } else {
             if (blockExists(rip)) {
-                return getBlockMetadata(rip).address;
+                return getBlockMetadata(rip).host_address;
             } else {
                 return compile(state, rip);
             }
@@ -751,13 +755,14 @@ private:
     void* start_of_code_cache{};
 
     std::unordered_map<u64, BlockMetadata> block_metadata{};
+    std::unordered_map<u64, std::vector<u8*>> pending_links{};
 
     Semaphore page_map_lock;
-    std::map<u64, std::vector<BlockMetadata*>> page_map{};
+    std::map<u64, std::vector<std::pair<u64, BlockMetadata*>>> page_map{};
 
     // For fast host pc -> block metadata lookup (binary search vs looking up one by one)
     // on signal handlers
-    std::map<u64, BlockMetadata*> host_pc_map{};
+    std::map<u64, std::pair<u64, BlockMetadata*>> host_pc_map{};
 
     bool compiling{};
 

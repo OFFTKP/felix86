@@ -123,9 +123,9 @@ void compile(const std::string& input) {
 
     std::unique_ptr<Recompiler> rec = std::make_unique<Recompiler>(true);
     rec->setFlagMode(flag_mode);
-    auto start = rec->getAssembler().GetCursorPointer();
+    u64 start = (u64)rec->getAssembler().GetCursorPointer();
     rec->compileSequence((u64)output.data());
-    auto end = rec->getAssembler().GetCursorPointer();
+    u64 end = (u64)rec->getAssembler().GetCursorPointer();
 
     BlockMetadata& metadata = rec->getBlockMetadata((u64)output.data());
 
@@ -143,25 +143,25 @@ void compile(const std::string& input) {
     end -= 8;
 
     size_t span_index = 0;
+    u64 address = start;
     for (int i = 0; i < end - start;) {
-        void* address = start + i;
-        i += 4;
-        u32 data = 0;
-        memcpy(&data, address, 4);
-        const char* out = rv64_print(data, (u64)address);
-
-        if (span_index + 1 < metadata.instruction_spans.size() && (u64)address == metadata.instruction_spans[span_index + 1].second) {
-            span_index++;
+        u64 riscv_size = metadata.translation_sizes[span_index].riscv_instructions_size;
+        for (int j = 0; j < riscv_size; j += 4) {
+            u32 data = 0;
+            memcpy(&data, (void*)(address + j), 4);
+            const char* out = rv64_print(data, address + j);
+            if (use_color) {
+                printf("%s", colors[span_index % color_count]);
+            }
+            printf("%s", out);
+            if (use_color) {
+                printf("%s", reset);
+            }
+            printf("\n");
         }
-
-        if (use_color) {
-            printf("%s", colors[span_index % color_count]);
-        }
-        printf("%s", out);
-        if (use_color) {
-            printf("%s", reset);
-        }
-        printf("\n");
+        address += riscv_size;
+        i += riscv_size;
+        span_index++;
     }
 }
 
