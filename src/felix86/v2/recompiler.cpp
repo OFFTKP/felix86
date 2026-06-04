@@ -336,7 +336,7 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block) {
         tas.AUIPC(t5, 0);
         ASSERT(instruction == *(u32*)linked_block);
 
-        auto [rip, block] = get_block_metadata(state, (u64)linked_block);
+        BlockMetadata* block = get_block_metadata(state, (u64)linked_block);
         ASSERT_MSG(block, "Failed to get block metadata for address %lx", linked_block);
         // The link location should be an instruction after the AUIPC...
         u8* link_location = linked_block + sizeof(u32);
