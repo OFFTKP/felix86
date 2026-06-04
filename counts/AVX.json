@@ -2671,7 +2671,7 @@
         "disassembly": "vpackusdw ymm1, ymm2, [rdi]"
     },
     "c4e25900dd": {
-        "instruction_count": 14,
+        "instruction_count": 15,
         "expected_asm": [
             "ADDIW           t3, zero, 0x20(32)",
             "VSETVLI         zero, t3, e8, m1, tu, mu",
@@ -2682,6 +2682,7 @@
             "VOR.VX          v3, v3, ra, none",
             "VMV1R.V         v2, v21",
             "VAND.VX         v2, v2, t1, none",
+            "VSLIDEDOWN.VI   v3, v3, 0xfffffff0(-16), none",
             "VSLIDEUP.VI     v2, v3, 0xfffffff0(-16), none",
             "VRGATHER.VV     v4, v20, v2, none",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
@@ -2691,7 +2692,7 @@
         "disassembly": "vpshufb xmm3, xmm4, xmm5"
     },
     "c4e269000f": {
-        "instruction_count": 16,
+        "instruction_count": 17,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VLE8.V          v5, a0, none, 1",
@@ -2704,6 +2705,7 @@
             "VOR.VX          v3, v3, ra, none",
             "VMV1R.V         v2, v5",
             "VAND.VX         v2, v2, t1, none",
+            "VSLIDEDOWN.VI   v3, v3, 0xfffffff0(-16), none",
             "VSLIDEUP.VI     v2, v3, 0xfffffff0(-16), none",
             "VRGATHER.VV     v4, v18, v2, none",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
@@ -2713,7 +2715,7 @@
         "disassembly": "vpshufb xmm1, xmm2, [rdi]"
     },
     "c4e25d00dd": {
-        "instruction_count": 12,
+        "instruction_count": 13,
         "expected_asm": [
             "ADDIW           t3, zero, 0x20(32)",
             "VSETVLI         zero, t3, e8, m1, tu, mu",
@@ -2724,6 +2726,7 @@
             "VOR.VX          v3, v3, ra, none",
             "VMV1R.V         v2, v21",
             "VAND.VX         v2, v2, t1, none",
+            "VSLIDEDOWN.VI   v3, v3, 0xfffffff0(-16), none",
             "VSLIDEUP.VI     v2, v3, 0xfffffff0(-16), none",
             "VRGATHER.VV     v4, v20, v2, none",
             "VMV1R.V         v19, v4"
@@ -2731,7 +2734,7 @@
         "disassembly": "vpshufb ymm3, ymm4, ymm5"
     },
     "c4e26d000f": {
-        "instruction_count": 13,
+        "instruction_count": 14,
         "expected_asm": [
             "ADDIW           t4, zero, 0x20(32)",
             "VSETVLI         zero, t4, e8, m1, tu, mu",
@@ -2743,6 +2746,7 @@
             "VOR.VX          v3, v3, ra, none",
             "VMV1R.V         v2, v5",
             "VAND.VX         v2, v2, t1, none",
+            "VSLIDEDOWN.VI   v3, v3, 0xfffffff0(-16), none",
             "VSLIDEUP.VI     v2, v3, 0xfffffff0(-16), none",
             "VRGATHER.VV     v4, v18, v2, none",
             "VMV1R.V         v17, v4"
@@ -8986,7 +8990,7 @@
             "CSRRW           zero, t4, 0x2(2)",
             "ANDI            t2, ra, 0xffffffc0(-64)",
             "SW              t2, gp, 0x310(784)",
-            "SB              t4, gp, 0x314(788)"
+            "SB              t4, gp, 0x31c(796)"
         ],
         "disassembly": "vldmxcsr [rdi]"
     },
@@ -12186,10 +12190,10 @@
             "SB              s7, gp, 0x2cb(715)",
             "SB              s8, gp, 0x2cc(716)",
             "SB              s9, gp, 0x2cd(717)",
-            "ADDI            a1, gp, 0x128(296)",
+            "ADDI            a1, gp, 0x148(328)",
             "ADDI            a0, gp, 0x128(296)",
             "ADDIW           a2, zero, 0xaa(170)",
-            "LD              t4, gp, 0x5a8(1448)",
+            "LD              t4, gp, 0x598(1432)",
             "JALR            ra, t4, 0x0(0)",
             "LD              s11, gp, 0x80(128)",
             "LD              t0, gp, 0x0(0)",
@@ -12217,7 +12221,7 @@
             "LBU             s7, gp, 0x2cb(715)",
             "LBU             s8, gp, 0x2cc(716)",
             "LBU             s9, gp, 0x2cd(717)",
-            "LBU             t1, gp, 0x314(788)",
+            "LBU             t1, gp, 0x31c(796)",
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
@@ -12259,7 +12263,7 @@
             "ADDI            a1, t1, 0x0(0)",
             "ADDI            a0, gp, 0xe8(232)",
             "ADDIW           a2, zero, 0xaa(170)",
-            "LD              t4, gp, 0x5a8(1448)",
+            "LD              t4, gp, 0x598(1432)",
             "JALR            ra, t4, 0x0(0)",
             "LD              s11, gp, 0x80(128)",
             "LD              t0, gp, 0x0(0)",
@@ -12287,7 +12291,7 @@
             "LBU             s7, gp, 0x2cb(715)",
             "LBU             s8, gp, 0x2cc(716)",
             "LBU             s9, gp, 0x2cd(717)",
-            "LBU             t3, gp, 0x314(788)",
+            "LBU             t3, gp, 0x31c(796)",
             "CSRRW           zero, t3, 0x2(2)",
             "FENCE          ",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
@@ -13361,7 +13365,7 @@
             "ADDIW           a1, zero, 0x0(0)",
             "ADDI            a2, gp, 0x128(296)",
             "ADDIW           a4, zero, 0xaa(170)",
-            "LD              t4, gp, 0x588(1416)",
+            "LD              t4, gp, 0x578(1400)",
             "JALR            ra, t4, 0x0(0)",
             "LD              s11, gp, 0x80(128)",
             "LD              t0, gp, 0x0(0)",
@@ -13389,7 +13393,7 @@
             "LBU             s7, gp, 0x2cb(715)",
             "LBU             s8, gp, 0x2cc(716)",
             "LBU             s9, gp, 0x2cd(717)",
-            "LBU             t1, gp, 0x314(788)",
+            "LBU             t1, gp, 0x31c(796)",
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          "
         ],
@@ -13430,7 +13434,7 @@
             "ADDIW           a1, zero, 0x0(0)",
             "ADDI            a2, gp, 0xe8(232)",
             "ADDIW           a4, zero, 0xaa(170)",
-            "LD              t4, gp, 0x588(1416)",
+            "LD              t4, gp, 0x578(1400)",
             "JALR            ra, t4, 0x0(0)",
             "LD              s11, gp, 0x80(128)",
             "LD              t0, gp, 0x0(0)",
@@ -13458,7 +13462,7 @@
             "LBU             s7, gp, 0x2cb(715)",
             "LBU             s8, gp, 0x2cc(716)",
             "LBU             s9, gp, 0x2cd(717)",
-            "LBU             t3, gp, 0x314(788)",
+            "LBU             t3, gp, 0x31c(796)",
             "CSRRW           zero, t3, 0x2(2)",
             "FENCE          "
         ],
@@ -13498,7 +13502,7 @@
             "ADDIW           a1, zero, 0x1(1)",
             "ADDI            a2, gp, 0x128(296)",
             "ADDIW           a4, zero, 0xaa(170)",
-            "LD              t4, gp, 0x588(1416)",
+            "LD              t4, gp, 0x578(1400)",
             "JALR            ra, t4, 0x0(0)",
             "LD              s11, gp, 0x80(128)",
             "LD              t0, gp, 0x0(0)",
@@ -13526,7 +13530,7 @@
             "LBU             s7, gp, 0x2cb(715)",
             "LBU             s8, gp, 0x2cc(716)",
             "LBU             s9, gp, 0x2cd(717)",
-            "LBU             t1, gp, 0x314(788)",
+            "LBU             t1, gp, 0x31c(796)",
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          "
         ],
@@ -13567,7 +13571,7 @@
             "ADDIW           a1, zero, 0x1(1)",
             "ADDI            a2, gp, 0xe8(232)",
             "ADDIW           a4, zero, 0xaa(170)",
-            "LD              t4, gp, 0x588(1416)",
+            "LD              t4, gp, 0x578(1400)",
             "JALR            ra, t4, 0x0(0)",
             "LD              s11, gp, 0x80(128)",
             "LD              t0, gp, 0x0(0)",
@@ -13595,7 +13599,7 @@
             "LBU             s7, gp, 0x2cb(715)",
             "LBU             s8, gp, 0x2cc(716)",
             "LBU             s9, gp, 0x2cd(717)",
-            "LBU             t3, gp, 0x314(788)",
+            "LBU             t3, gp, 0x31c(796)",
             "CSRRW           zero, t3, 0x2(2)",
             "FENCE          "
         ],
@@ -13635,7 +13639,7 @@
             "ADDIW           a1, zero, 0x2(2)",
             "ADDI            a2, gp, 0x128(296)",
             "ADDIW           a4, zero, 0xaa(170)",
-            "LD              t4, gp, 0x588(1416)",
+            "LD              t4, gp, 0x578(1400)",
             "JALR            ra, t4, 0x0(0)",
             "LD              s11, gp, 0x80(128)",
             "LD              t0, gp, 0x0(0)",
@@ -13663,7 +13667,7 @@
             "LBU             s7, gp, 0x2cb(715)",
             "LBU             s8, gp, 0x2cc(716)",
             "LBU             s9, gp, 0x2cd(717)",
-            "LBU             t1, gp, 0x314(788)",
+            "LBU             t1, gp, 0x31c(796)",
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          "
         ],
@@ -13704,7 +13708,7 @@
             "ADDIW           a1, zero, 0x2(2)",
             "ADDI            a2, gp, 0xe8(232)",
             "ADDIW           a4, zero, 0xaa(170)",
-            "LD              t4, gp, 0x588(1416)",
+            "LD              t4, gp, 0x578(1400)",
             "JALR            ra, t4, 0x0(0)",
             "LD              s11, gp, 0x80(128)",
             "LD              t0, gp, 0x0(0)",
@@ -13732,7 +13736,7 @@
             "LBU             s7, gp, 0x2cb(715)",
             "LBU             s8, gp, 0x2cc(716)",
             "LBU             s9, gp, 0x2cd(717)",
-            "LBU             t3, gp, 0x314(788)",
+            "LBU             t3, gp, 0x31c(796)",
             "CSRRW           zero, t3, 0x2(2)",
             "FENCE          "
         ],
@@ -13772,7 +13776,7 @@
             "ADDIW           a1, zero, 0x3(3)",
             "ADDI            a2, gp, 0x128(296)",
             "ADDIW           a4, zero, 0xaa(170)",
-            "LD              t4, gp, 0x588(1416)",
+            "LD              t4, gp, 0x578(1400)",
             "JALR            ra, t4, 0x0(0)",
             "LD              s11, gp, 0x80(128)",
             "LD              t0, gp, 0x0(0)",
@@ -13800,7 +13804,7 @@
             "LBU             s7, gp, 0x2cb(715)",
             "LBU             s8, gp, 0x2cc(716)",
             "LBU             s9, gp, 0x2cd(717)",
-            "LBU             t1, gp, 0x314(788)",
+            "LBU             t1, gp, 0x31c(796)",
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          "
         ],
@@ -13841,7 +13845,7 @@
             "ADDIW           a1, zero, 0x3(3)",
             "ADDI            a2, gp, 0xe8(232)",
             "ADDIW           a4, zero, 0xaa(170)",
-            "LD              t4, gp, 0x588(1416)",
+            "LD              t4, gp, 0x578(1400)",
             "JALR            ra, t4, 0x0(0)",
             "LD              s11, gp, 0x80(128)",
             "LD              t0, gp, 0x0(0)",
@@ -13869,7 +13873,7 @@
             "LBU             s7, gp, 0x2cb(715)",
             "LBU             s8, gp, 0x2cc(716)",
             "LBU             s9, gp, 0x2cd(717)",
-            "LBU             t3, gp, 0x314(788)",
+            "LBU             t3, gp, 0x31c(796)",
             "CSRRW           zero, t3, 0x2(2)",
             "FENCE          "
         ],

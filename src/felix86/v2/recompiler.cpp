@@ -672,7 +672,10 @@ u64 Recompiler::compileSequence(u64 rip) {
         resetScratch();
         flushX87();
         biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
-        as.LI(ripreg, rip);
+        u64 offset = rip - getCurrentRipregValue();
+        ASSERT(offset != 0);
+        setCurrentRipregValue(getCurrentRipregValue() + offset);
+        addi(ripreg, ripreg, offset);
         jumpAndLink(rip);
     }
 
