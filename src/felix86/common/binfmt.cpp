@@ -113,7 +113,7 @@ bool detect_binfmt_misc() {
 }
 
 void binfmt_misc(bool is_register) {
-    if (!Sudo::hasPermissions()) {
+    if (geteuid() != 0) {
         printf("I need root permissions to register felix86 in binfmt_misc, please re-run with root permissions as `sudo -E felix86 -b`\n");
         exit(1);
     }
