@@ -34,7 +34,7 @@ constexpr static u64 code_cache_sizes_count = std::size(code_cache_sizes);
 constexpr static u64 max_code_cache_size = code_cache_sizes[code_cache_sizes_count - 1];
 
 // TODO: move to header file
-std::pair<u64, BlockMetadata*> get_block_metadata(ThreadState* state, u64 host_pc);
+BlockMetadata* get_block_metadata(ThreadState* state, u64 host_pc);
 
 static void incorrect_magic(void* sp) {
     ERROR("Incorrect magic in frame (sp: %lx)", sp);
@@ -438,14 +438,14 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
     ASSERT(host_address_end - start >= 8); // At least 2 instructions, so that our unlinking logic works
 
     BlockMetadata& block_meta = getBlockMetadata(rip);
-    host_pc_map[host_address_end - 1] = {start_rip, &block_meta};
+    host_pc_map[host_address_end - 1] = {&block_meta};
 
     {
         auto guard = page_map_lock.lock();
         u64 start_masked = start_rip & ~0xFFFull;
         u64 end_masked = (end_rip - 1) & ~0xFFFull;
         for (u64 page = start_masked; page <= end_masked; page += 0x1000) {
-            page_map[page].push_back({start_rip, &block_meta});
+            page_map[page].push_back(&block_meta);
         }
     }
 
@@ -3272,7 +3272,7 @@ void Recompiler::setTOP(biscuit::GPR new_top) {
     as.SB(new_top, offsetof(ThreadState, ctx.fpu_top), threadStatePointer());
 }
 
-void Recompiler::invalidateBlock(BlockMetadata* block, u64 rip) {
+void Recompiler::invalidateBlock(BlockMetadata* block) {
     if (block->host_address == 0) {
         return;
     }
@@ -3289,8 +3289,8 @@ void Recompiler::invalidateBlock(BlockMetadata* block, u64 rip) {
     __atomic_store(address, &storage, __ATOMIC_SEQ_CST);
 
     if (g_config.address_cache) {
-        AddressCacheEntry& entry = address_cache[rip & ((1 << address_cache_bits) - 1)];
-        entry.guest = ~rip;
+        AddressCacheEntry& entry = address_cache[block->guest_address & ((1 << address_cache_bits) - 1)];
+        entry.guest = ~block->guest_address;
         entry.host = 0;
     }
 
@@ -3306,8 +3306,8 @@ int Recompiler::invalidateRange(u64 start, u64 end) {
     int blocks = 0;
     for (auto it = lower; it != upper; it++) {
         auto& blocks_in_page = it->second;
-        for (auto [rip, block] : blocks_in_page) {
-            invalidateBlock(block, rip);
+        for (BlockMetadata* block : blocks_in_page) {
+            invalidateBlock(block);
             blocks++;
         }
         blocks_in_page.clear();

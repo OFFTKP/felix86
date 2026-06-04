@@ -312,20 +312,20 @@ struct x86_rt_sigframe {
     /* fp state follows here */
 };
 
-std::pair<u64, BlockMetadata*> get_block_metadata(ThreadState* state, u64 host_pc) {
+BlockMetadata* get_block_metadata(ThreadState* state, u64 host_pc) {
     auto& map = state->recompiler->getHostPcMap();
     auto it = map.lower_bound(host_pc);
     ASSERT(it != map.end());
-    auto [rip, block] = it->second;
+    BlockMetadata* block = it->second;
     u64 address_end = block->host_address;
     for (auto& sizes : block->translation_sizes) {
         address_end += sizes.riscv_instructions_size;
     }
     if (!(host_pc >= block->host_address && host_pc < address_end)) {
         WARN("PC: %lx not inside range %lx-%lx?", host_pc, block->host_address, address_end);
-        return {0, nullptr};
+        return nullptr;
     }
-    return {rip, block};
+    return block;
 }
 
 u64 get_actual_rip(BlockMetadata& metadata, u64 guest_address, u64 fault_pc) {
@@ -1212,8 +1212,9 @@ bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, ucontext_t
         if (g_config.calltrace) {
             LOG("Current RIP:");
             if (in_jit_code) {
-                auto [block_rip, current_block] = get_block_metadata(current_state, pc);
+                auto current_block = get_block_metadata(current_state, pc);
                 if (current_block) {
+                    u64 block_rip = current_block->guest_address;
                     u64 actual_rip = get_actual_rip(*current_block, block_rip, pc);
                     print_address(actual_rip);
                 } else {
@@ -1266,8 +1267,9 @@ bool handle_wild_sigabrt(ThreadState* current_state, siginfo_t* info, ucontext_t
         if (g_config.calltrace) {
             LOG("Current RIP:");
             if (in_jit_code) {
-                auto [block_rip, current_block] = get_block_metadata(current_state, pc);
+                auto current_block = get_block_metadata(current_state, pc);
                 if (current_block) {
+                    u64 block_rip = current_block->guest_address;
                     u64 actual_rip = get_actual_rip(*current_block, block_rip, pc);
                     print_address(actual_rip);
                 } else {
@@ -1325,9 +1327,9 @@ bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucontext_t*
         tas2.SLTIU(x0, x0, FELIX86_HINT_GP);
     }
 
-    auto [block_rip, current_block] = get_block_metadata(current_state, pc);
+    BlockMetadata* current_block = get_block_metadata(current_state, pc);
     ASSERT_MSG(current_block, "Failed to get current block during synchronous signal with PC=%lx, RIP=%lx", pc, current_state->ctx.rip);
-    u64 actual_rip = get_actual_rip(*current_block, block_rip, pc);
+    u64 actual_rip = get_actual_rip(*current_block, current_block->guest_address, pc);
 
     int sig;
     if (next_instruction == expected_divzero) {
@@ -1403,8 +1405,9 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     if (info->si_code > 0 && (sig == SIGSEGV || sig == SIGBUS || sig == SIGILL || sig == SIGFPE || sig == SIGTRAP)) {
         // Synchronous signal, handle immediately
         if (is_in_jit_code(state, (u8*)pc)) {
-            auto [block_rip, current_block] = get_block_metadata(state, pc);
+            BlockMetadata* current_block = get_block_metadata(state, pc);
             ASSERT_MSG(current_block, "Failed to get current block during synchronous signal with PC=%lx, RIP=%lx", pc, state->ctx.rip);
+            u64 block_rip = current_block->guest_address;
             u64 actual_rip = get_actual_rip(*current_block, block_rip, pc);
             VERBOSE("Synchronous signal block: %lx, actual rip: %lx", block_rip, actual_rip);
             return prepare_synchronous_signal(state, sig, info, ctx, actual_rip);

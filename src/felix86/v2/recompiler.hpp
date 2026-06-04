@@ -58,6 +58,7 @@ static_assert(sizeof(TranslationSize) == sizeof(u16));
 
 struct BlockMetadata {
     u64 host_address{};
+    u64 guest_address{};
     // This gives us a count of x86 instructions per block, the size of each instruction
     // and the size of the risc-v instructions used to translate it
     std::vector<TranslationSize> translation_sizes{};
@@ -198,7 +199,7 @@ struct Recompiler {
 
     void jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false);
 
-    void invalidateBlock(BlockMetadata* block, u64 rip);
+    void invalidateBlock(BlockMetadata* block);
 
     void insertSafepoint();
 
@@ -758,11 +759,11 @@ private:
     std::unordered_map<u64, BlockMetadata> block_metadata{};
 
     Semaphore page_map_lock;
-    std::map<u64, std::vector<std::pair<u64, BlockMetadata*>>> page_map{};
+    std::map<u64, std::vector<BlockMetadata*>> page_map{};
 
     // For fast host pc -> block metadata lookup (binary search vs looking up one by one)
     // on signal handlers
-    std::map<u64, std::pair<u64, BlockMetadata*>> host_pc_map{};
+    std::map<u64, BlockMetadata*> host_pc_map{};
 
     bool compiling{};
 
