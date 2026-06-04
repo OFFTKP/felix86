@@ -61,6 +61,7 @@ struct BlockMetadata {
     // This gives us a count of x86 instructions per block, the size of each instruction
     // and the size of the risc-v instructions used to translate it
     std::vector<TranslationSize> translation_sizes{};
+    std::vector<u8*> pending_links{};
 };
 
 // WARN: don't allocate this struct on the stack as it's quite big due to address_cache and can lead to stack overflow
@@ -755,7 +756,6 @@ private:
     void* start_of_code_cache{};
 
     std::unordered_map<u64, BlockMetadata> block_metadata{};
-    std::unordered_map<u64, std::vector<u8*>> pending_links{};
 
     Semaphore page_map_lock;
     std::map<u64, std::vector<std::pair<u64, BlockMetadata*>>> page_map{};

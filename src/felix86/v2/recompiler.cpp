@@ -380,7 +380,6 @@ void Recompiler::clearCodeCache(ThreadState* state) {
             block_metadata.clear();
             host_pc_map.clear();
             page_map.clear();
-            pending_links.clear();
             for (size_t i = 0; i < (1 << address_cache_bits); i++) {
                 address_cache[i] = AddressCacheEntry{};
             }
@@ -397,7 +396,6 @@ void Recompiler::clearCodeCache(ThreadState* state) {
         block_metadata.clear();
         host_pc_map.clear();
         page_map.clear();
-        pending_links.clear();
         for (size_t i = 0; i < (1 << address_cache_bits); i++) {
             address_cache[i] = AddressCacheEntry{};
         }
@@ -2632,7 +2630,7 @@ void Recompiler::jumpAndLink(u64 rip) {
         u8* link_me = as.GetCursorPointer();
         backToDispatcher();
 
-        pending_links[rip].push_back(link_me);
+        getBlockMetadata(rip).pending_links.push_back(link_me);
     } else {
         auto& target_meta = getBlockMetadata(rip);
         u64 target = target_meta.host_address;
@@ -2704,7 +2702,7 @@ void Recompiler::expirePendingLinks(u64 rip) {
         return;
     }
 
-    auto& links = pending_links[rip];
+    auto& links = getBlockMetadata(rip).pending_links;
     for (u8* link : links) {
         u8* cursor = as.GetCursorPointer();
         as.SetCursorPointer(link);
@@ -2714,8 +2712,8 @@ void Recompiler::expirePendingLinks(u64 rip) {
 
     flush_icache();
 
-    links.clear();
-    pending_links.erase(rip);
+    // Free the memory as pending_links won't be used after the block is compiled
+    std::vector<u8*>().swap(links);
 }
 
 u64 Recompiler::zextImmediate(u64 imm, ZyanU8 size) {
