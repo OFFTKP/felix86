@@ -27,6 +27,61 @@
 #define SS_AUTODISARM (1U << 31)
 #endif
 
+enum class SignalBehavior {
+    Handler,
+    Terminate,
+    Ignore,
+    Stop,
+    Core,
+};
+
+SignalBehavior get_default_behavior(int sig) {
+    switch (sig) {
+    case SIGHUP:
+    case SIGALRM:
+    case SIGINT:
+    case SIGIO:
+    case SIGPIPE:
+    case SIGPROF:
+    case SIGPWR:
+    case SIGSTKFLT:
+    case SIGTERM:
+    case SIGUSR1:
+    case SIGUSR2:
+    case SIGVTALRM:
+    case 32 ... 64: /* Realtime signals */ {
+        return SignalBehavior::Terminate;
+    }
+    case SIGABRT:
+    case SIGBUS:
+    case SIGFPE:
+    case SIGILL:
+    case SIGQUIT:
+    case SIGSEGV:
+    case SIGSYS:
+    case SIGTRAP:
+    case SIGXCPU:
+    case SIGXFSZ: {
+        return SignalBehavior::Core;
+    }
+    case SIGCONT:
+    case SIGURG:
+    case SIGWINCH:
+    case SIGCHLD: {
+        return SignalBehavior::Ignore;
+    }
+    case SIGTSTP:
+    case SIGTTIN:
+    case SIGTTOU:
+    case SIGSTOP: {
+        return SignalBehavior::Stop;
+    }
+    default: {
+        return SignalBehavior::Handler;
+    }
+    }
+}
+
 u64* get_regs(void* ctx) {
 #ifdef __riscv
     return (u64*)((ucontext_t*)ctx)->uc_mcontext.__gregs;
@@ -915,6 +970,53 @@ void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uctx) {
     // we pull them to ThreadState so we can construct the signal context using ThreadState instead of ucontext_t
     // as it makes the code cleaner
     pull_registers_from_context(state, uctx);
+
+    SignalBehavior behavior = SignalBehavior::Handler;
+    // Normally we passthrough SIG_DFL and SIG_IGN to the kernel
+    // However for signals used by the emulator we must install a signal handler, so we need to handle
+    // the default behavior here. Also when a process is traced we capture and defer all signals so we need to manually
+    // ignore them or handle their default behavior here too
+    if (handler->func == 1) {
+        SIGLOG("Got signal %d with SIG_IGN handler", sig);
+        behavior = SignalBehavior::Ignore;
+    } else if (handler->func == 0) {
+        SIGLOG("Got signal %d with SIG_DFL handler", sig);
+        behavior = get_default_behavior(sig);
+    }
+
+    switch (behavior) {
+    case SignalBehavior::Handler: {
+        // Continue below to handle it...
+        break;
+    }
+    case SignalBehavior::Stop: {
+        WARN("Signal %d with default behavior stop?", sig);
+        [[fallthrough]];
+    }
+    case SignalBehavior::Terminate:
+    case SignalBehavior::Core: {
+        // Unblock signal and reraise it to get the default behavior
+        // This will make processes that wait on this process to see the correct
+        // result in waitpid & co
+        WARN("Signal %d with default behavior, terminating...", sig);
+        struct sigaction sa;
+        sa.sa_handler = SIG_DFL;
+        sigemptyset(&sa.sa_mask);
+        sa.sa_flags = 0;
+        ASSERT(syscall(SYS_rt_sigaction, sig, &sa, nullptr, sizeof(u64)) == 0);
+        sigset_t set;
+        sigemptyset(&set);
+        sigaddset(&set, sig);
+        ASSERT(syscall(SYS_rt_sigprocmask, SIG_UNBLOCK, &set, nullptr, sizeof(u64)) == 0);
+        syscall(SYS_tgkill, getpid(), gettid(), sig);
+        UNREACHABLE();
+        break;
+    }
+    case SignalBehavior::Ignore: {
+        SIGLOG("Signal %d with ignore behavior, skipping...", sig);
+        return;
+    }
+    }
 
     u64 rip = state->GetRip();
 
