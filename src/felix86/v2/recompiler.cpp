@@ -715,10 +715,14 @@ u64 Recompiler::compileSequence(u64 rip) {
     return rip;
 }
 
-std::pair<ZydisDecodedInstruction*, ZydisDecodedOperand*> Recompiler::getNextInstruction() {
+std::optional<std::pair<ZydisDecodedInstruction*, ZydisDecodedOperand*>> Recompiler::getNextInstruction() {
     ASSERT(instructions.size() > current_instruction_index + 1);
-    auto& [instruction, operands] = instructions[current_instruction_index + 1];
-    return std::make_pair(&instruction, operands);
+    if (current_instruction_index + 1 < instructions.size()) {
+        auto& [instruction, operands] = instructions[current_instruction_index + 1];
+        return std::make_pair(&instruction, operands);
+    } else {
+        return std::nullopt;
+    }
 }
 
 void Recompiler::skipNext() {

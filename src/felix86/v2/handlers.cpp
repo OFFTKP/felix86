@@ -135,7 +135,12 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
         return false;
     }
 
-    auto [next_instruction, next_operands] = rec.getNextInstruction();
+    auto opt = rec.getNextInstruction();
+    if (!opt) {
+        return false;
+    }
+
+    auto [next_instruction, next_operands] = *opt;
     switch (next_instruction->mnemonic) {
     case ZYDIS_MNEMONIC_CMOVL: {
         biscuit::GPR cond = rec.scratch();
