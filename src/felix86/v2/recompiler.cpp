@@ -558,6 +558,7 @@ u64 Recompiler::compileSequence(u64 rip) {
     scanAhead(rip);
     BlockMetadata& block_meta = getBlockMetadata(rip);
     block_meta.host_address = (u64)as.GetCursorPointer();
+    block_meta.guest_address = start_rip;
     block_meta.translation_sizes.resize(instructions.size());
 
     // TODO: Put all this resetting functionality in a function
