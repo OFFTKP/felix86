@@ -8,7 +8,6 @@
 #include "felix86/common/config.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
-#include "felix86/common/sudo.hpp"
 
 bool unregister_binfmt_misc(const std::string& name) {
     ASSERT(!name.empty());
