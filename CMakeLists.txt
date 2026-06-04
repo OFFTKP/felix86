@@ -197,10 +197,16 @@ if (BUILD_THUNKGEN)
 endif()
 
 if (BUILD_INSTRUCTION_COUNTER)
+    # Generated x86 code may slightly change between xbyak versions
+    # One example is order of operands in xchg reg, reg has changed in the past
+    # which causes slightly different generated code, so we pin it to a vendored version
+    add_library(vendored_xbyak INTERFACE)
+    target_include_directories(vendored_xbyak INTERFACE external/xbyak)
     add_executable(felix86_instruction_counter src/felix86/tools/generate_instruction_count.cpp external/box64/rv64_printer.c)
     target_include_directories(felix86_instruction_counter PRIVATE src external/box64)
-    target_link_libraries(felix86_instruction_counter PRIVATE felix86_core)
+    target_link_libraries(felix86_instruction_counter PRIVATE vendored_xbyak felix86_core)
 endif()
+
 
 if (BUILD_TESTS)
     add_subdirectory(external/Catch2)
