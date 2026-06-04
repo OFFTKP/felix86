@@ -31,7 +31,7 @@ jobs:
       - name: Configure
         run: |
           EXTRA_FLAGS=""
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             EXTRA_FLAGS="-DFELIX86_MONTHLY_RELEASE=1"
           fi
           cmake -B ${{ github.workspace }}/build -DBUILD_TESTS=1 -DCMAKE_TOOLCHAIN_FILE=riscv.cmake -DFELIX86_BUILD_THUNKING=1 -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Release $EXTRA_FLAGS
