@@ -29,8 +29,6 @@ jobs:
           sudo cp -r /usr/include/KHR /usr/local/include/KHR
           sudo cp -r /usr/include/vk_video /usr/local/include/vk_video
       - name: Configure
-        env:
-          GITHUB_REF: ${{ github.ref }}
         run: |
           EXTRA_FLAGS=""
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
