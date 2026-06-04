@@ -22,7 +22,7 @@ jobs:
           sudo apt update
           sudo apt install -y build-essential cmake libxbyak-dev
       - name: Configure
-        run: cmake -B ${{ github.workspace }}/build -DBUILD_INSTRUCTION_COUNTER=ON -DCMAKE_BUILD_TYPE=Release
+        run: cmake -B ${{ github.workspace }}/build -DBUILD_INSTRUCTION_COUNTER=ON -DBUILD_THUNKING=OFF -DCMAKE_BUILD_TYPE=Release
       - name: Build
         run: cmake --build ${{ github.workspace }}/build --target felix86_instruction_counter -j$(nproc)
       - name: Run instruction counter
