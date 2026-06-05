@@ -10464,6 +10464,12 @@ FAST_HANDLE(POPFQ) {
     as.ANDI(temp, temp, 1);
     as.SB(temp, offsetof(ThreadState, ac_bit), Recompiler::threadStatePointer());
 
+    biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+    u64 offset = (rip + instruction.length) - rec.getCurrentRipregValue();
+    ASSERT(offset != 0);
+    rec.setCurrentRipregValue(rec.getCurrentRipregValue() + offset);
+    rec.addi(ripreg, ripreg, offset);
+
     Label tf_not_set;
     as.SRLI(temp, flags, 8);
     as.ANDI(temp, temp, 1);
