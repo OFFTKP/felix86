@@ -536,6 +536,7 @@ void Recompiler::markPagesAsReadOnly(u64 start, u64 end) {
 }
 
 u64 Recompiler::compileSequence(u64 rip) {
+    PLAIN("Compiling %lx %d", rip, single_step);
     const u64 start_rip = rip;
     const bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
     compiling = true;

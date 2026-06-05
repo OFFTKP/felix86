@@ -1683,6 +1683,7 @@ void felix86_aeskeygenassist(u32* dst, u32* src, u32 imm) {
 }
 
 void felix86_tf_changed(ThreadState* state, bool tf) {
+    PLAIN("felix86_tf_changed %d", tf);
     state->recompiler->clearCodeCache(state);
     state->recompiler->setSingleStepMode(tf ? SingleStepMode::TrapFlag : SingleStepMode::None);
 }
