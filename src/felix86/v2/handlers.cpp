@@ -10470,17 +10470,21 @@ FAST_HANDLE(POPFQ) {
     rec.setCurrentRipregValue(rec.getCurrentRipregValue() + offset);
     rec.addi(ripreg, ripreg, offset);
 
-    Label tf_not_set;
+    biscuit::GPR tf = rec.scratch();
+    as.LB(tf, offsetof(ThreadState, ctx.tf), Recompiler::threadStatePointer());
+    Label tf_not_changed;
     as.SRLI(temp, flags, 8);
     as.ANDI(temp, temp, 1);
-    as.BEQZ(temp, &tf_not_set);
+    as.BEQ(tf, temp, &tf_not_changed);
+    rec.popScratch();
+
     rec.writebackState();
-    as.LI(a1, 1);
+    as.MV(a1, temp);
     as.MV(a0, Recompiler::threadStatePointer());
     rec.callPointer(offsetof(ThreadState, felix86_tf_changed));
     rec.restoreState();
     rec.backToDispatcher();
-    as.Bind(&tf_not_set);
+    as.Bind(&tf_not_changed);
 }
 
 FAST_HANDLE(PUSHF) {
