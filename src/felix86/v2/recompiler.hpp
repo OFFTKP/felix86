@@ -50,13 +50,19 @@ struct RegisterAccess {
     bool valid;  // true if loaded and potentially modified, false if written back to memory and allocated register holds garbage
 };
 
+struct TranslationSize {
+    u16 x86_instruction_size : 4;
+    u16 riscv_instructions_size : 12;
+};
+static_assert(sizeof(TranslationSize) == sizeof(u16));
+
 struct BlockMetadata {
-    u64 address{};
-    u64 address_end{};
+    u64 host_address{};
     u64 guest_address{};
-    u64 guest_address_end{};
+    // This gives us a count of x86 instructions per block, the size of each instruction
+    // and the size of the risc-v instructions used to translate it
+    std::vector<TranslationSize> translation_sizes{};
     std::vector<u8*> pending_links{};
-    std::vector<std::pair<u64, u64>> instruction_spans{};
 };
 
 // WARN: don't allocate this struct on the stack as it's quite big due to address_cache and can lead to stack overflow
@@ -461,7 +467,7 @@ struct Recompiler {
             if (entry.guest == rip) {
                 return entry.host;
             } else if (blockExists(rip)) {
-                u64 host = getBlockMetadata(rip).address;
+                u64 host = getBlockMetadata(rip).host_address;
                 entry.guest = rip;
                 entry.host = host;
                 return host;
@@ -470,7 +476,7 @@ struct Recompiler {
             }
         } else {
             if (blockExists(rip)) {
-                return getBlockMetadata(rip).address;
+                return getBlockMetadata(rip).host_address;
             } else {
                 return compile(state, rip);
             }

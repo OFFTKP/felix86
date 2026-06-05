@@ -336,11 +336,11 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block) {
         tas.AUIPC(t5, 0);
         ASSERT(instruction == *(u32*)linked_block);
 
-        auto linked_metadata = get_block_metadata(state, (u64)linked_block);
-        ASSERT_MSG(linked_metadata, "Failed to get block metadata for address %lx", linked_block);
+        BlockMetadata* block = get_block_metadata(state, (u64)linked_block);
+        ASSERT_MSG(block, "Failed to get block metadata for address %lx", linked_block);
         // The link location should be an instruction after the AUIPC...
         u8* link_location = linked_block + sizeof(u32);
-        if (linked_metadata->address != 0) {
+        if (block->host_address != 0) {
             u8* cursor = state->recompiler->as.GetCursorPointer();
             ASSERT_MSG(linked_block >= state->recompiler->start_of_code_cache && linked_block < cursor, "%lx <= %lx < %lx",
                        state->recompiler->start_of_code_cache, linked_block, cursor);
@@ -426,34 +426,33 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
         WARN_ONCE("This program has unaligned atomics that we can't emulate atomically");
     }
 
+    const u64 start_rip = rip;
     u64 start = (u64)as.GetCursorPointer();
 
     // Map it immediately so we can optimize conditional branch to self
-    BlockMetadata& block_meta = getBlockMetadata(rip);
-    block_meta.address = start;
 
     // A sequence of code (ie. basic block). This is so that we can also call it recursively later.
     u64 end_rip = compileSequence(rip);
+    u64 host_address_end = (u64)as.GetCursorPointer();
 
-    u64 end = (u64)as.GetCursorPointer();
+    ASSERT(host_address_end - start >= 8); // At least 2 instructions, so that our unlinking logic works
 
-    ASSERT(end - start >= 8); // At least 2 instructions, so that our unlinking logic works
-
-    host_pc_map[block_meta.address_end - 1] = &block_meta;
+    BlockMetadata& block_meta = getBlockMetadata(rip);
+    host_pc_map[host_address_end - 1] = {&block_meta};
 
     {
         auto guard = page_map_lock.lock();
-        u64 start_masked = block_meta.guest_address & ~0xFFFull;
-        u64 end_masked = (block_meta.guest_address_end - 1) & ~0xFFFull;
+        u64 start_masked = start_rip & ~0xFFFull;
+        u64 end_masked = (end_rip - 1) & ~0xFFFull;
         for (u64 page = start_masked; page <= end_masked; page += 0x1000) {
             page_map[page].push_back(&block_meta);
         }
     }
 
     if (g_config.address_cache) {
-        AddressCacheEntry& entry = address_cache[block_meta.guest_address & ((1 << address_cache_bits) - 1)];
-        entry.host = block_meta.address;
-        entry.guest = block_meta.guest_address;
+        AddressCacheEntry& entry = address_cache[start_rip & ((1 << address_cache_bits) - 1)];
+        entry.host = block_meta.host_address;
+        entry.guest = start_rip;
     }
 
     // If other blocks were waiting for this block to be linked, link them now
@@ -462,9 +461,35 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
     // Mark the page as read-only to catch self-modifying code
     markPagesAsReadOnly(rip, end_rip);
 
+    if (g_config.gdb) {
+        size_t inst_count = block_meta.translation_sizes.size();
+        felix86_jit_block_t* gdb_block = GDBJIT::createBlock(inst_count);
+        u64 host_address = block_meta.host_address;
+        u64 guest_address = start_rip;
+        for (size_t i = 0; i < inst_count; i++) {
+            ZydisDisassembledInstruction inst;
+            ZydisDisassembleIntel(decoder.machine_mode, guest_address, (void*)guest_address, 15, &inst);
+            int size = strlen(inst.text);
+            inst.text[size] = '\n';
+            fwrite(inst.text, size + 1, 1, gdb_block->file);
+            gdb_block->lines[i].line = 1 + i;
+            gdb_block->lines[i].pc = host_address;
+            guest_address += inst.info.length;
+            host_address += block_meta.translation_sizes[i].riscv_instructions_size;
+        }
+
+        gdb_block->host_start = block_meta.host_address;
+        gdb_block->host_end = host_address_end;
+        gdb_block->guest_address = start_rip;
+        gdb_block->line_count = inst_count;
+
+        fclose(gdb_block->file);
+        g_gdbjit->fire(gdb_block);
+    }
+
     if (g_config.perf_blocks || g_config.perf_symbols) {
         std::string symbol;
-        size_t size = block_meta.address_end - block_meta.address;
+        size_t size = host_address_end - block_meta.host_address;
         if (g_config.perf_symbols) {
             if (!has_region(rip)) {
                 // Executed region not found, update the symbols
@@ -473,9 +498,9 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
 
             symbol = get_perf_symbol(rip);
         } else {
-            symbol = fmt::format("block_0x{:x}", block_meta.guest_address);
+            symbol = fmt::format("block_0x{:x}", start_rip);
         }
-        g_process_globals.perf->addToFile(block_meta.address, size, symbol);
+        g_process_globals.perf->addToFile(block_meta.host_address, size, symbol);
     }
 
     if (g_config.perf_libs) {
@@ -485,8 +510,8 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
         }
 
         std::filesystem::path symbol = get_region(rip);
-        size_t size = block_meta.address_end - block_meta.address;
-        g_process_globals.perf->addToFile(block_meta.address, size, "guest " + symbol.filename().string());
+        size_t size = host_address_end - block_meta.host_address;
+        g_process_globals.perf->addToFile(block_meta.host_address, size, "guest " + symbol.filename().string());
     }
 
     return start;
@@ -511,6 +536,7 @@ void Recompiler::markPagesAsReadOnly(u64 start, u64 end) {
 }
 
 u64 Recompiler::compileSequence(u64 rip) {
+    const u64 start_rip = rip;
     compiling = true;
     u8* bytes = (u8*)rip;
     bool all_zeroes = true;
@@ -531,6 +557,9 @@ u64 Recompiler::compileSequence(u64 rip) {
 
     scanAhead(rip);
     BlockMetadata& block_meta = getBlockMetadata(rip);
+    block_meta.host_address = (u64)as.GetCursorPointer();
+    block_meta.guest_address = start_rip;
+    block_meta.translation_sizes.resize(instructions.size());
 
     // TODO: Put all this resetting functionality in a function
     resetX87();
@@ -541,7 +570,6 @@ u64 Recompiler::compileSequence(u64 rip) {
     fsrm_sse = true;                     // dispatcher loads SSE rounding mode as a default
     v0_has_mask = false;
 
-    current_block_metadata->guest_address = rip;
     current_ripreg_value = rip; // may change in a syscall to check for safepoints, or after a set amount of instructions in the future
 
     current_instruction_index = 0;
@@ -555,8 +583,6 @@ u64 Recompiler::compileSequence(u64 rip) {
 
     while (compiling) {
         auto& [instruction, operands] = instructions[current_instruction_index];
-
-        block_meta.instruction_spans.push_back({rip, (u64)as.GetCursorPointer()});
 
         bool is_mmx = (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].reg.value >= ZYDIS_REGISTER_MM0 &&
                        operands[0].reg.value <= ZYDIS_REGISTER_MM7) ||
@@ -583,6 +609,8 @@ u64 Recompiler::compileSequence(u64 rip) {
         if (instruction.mnemonic == ZYDIS_MNEMONIC_EMMS) {
             ran_mmx_once = false; // if we run another mmx instruction, set tag to valid again
         }
+
+        u64 start_pc = (u64)as.GetCursorPointer();
 
         if (is_mmx) {
             if (!ran_mmx_once) {
@@ -654,6 +682,13 @@ u64 Recompiler::compileSequence(u64 rip) {
             stopCompiling();
         }
 
+        u64 end_pc = (u64)as.GetCursorPointer();
+        u64 size = end_pc - start_pc;
+        ASSERT(instruction.length <= 15);
+        block_meta.translation_sizes[current_instruction_index].x86_instruction_size = instruction.length;
+        ASSERT(size < 1 << 12);
+        block_meta.translation_sizes[current_instruction_index].riscv_instructions_size = size;
+
         current_instruction_index += 1;
 
         if (skip_next) {
@@ -668,7 +703,7 @@ u64 Recompiler::compileSequence(u64 rip) {
     }
 
     if (current_block_big) {
-        VERBOSE("Block at %lx exceeded max instruction count", current_block_metadata->guest_address);
+        VERBOSE("Block at %lx exceeded max instruction count", start_rip);
         resetScratch();
         flushX87();
         biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
@@ -680,36 +715,6 @@ u64 Recompiler::compileSequence(u64 rip) {
     }
 
     resetScratch();
-
-    current_block_metadata->guest_address_end = rip;
-    current_block_metadata->address_end = (u64)as.GetCursorPointer();
-
-    if (g_config.gdb) {
-        size_t inst_count = current_block_metadata->instruction_spans.size();
-        felix86_jit_block_t* gdb_block = GDBJIT::createBlock(inst_count);
-        gdb_block->host_start = (u64)as.GetCursorPointer();
-
-        for (size_t i = 0; i < inst_count; i++) {
-            u64 guest_address = current_block_metadata->instruction_spans[i].first;
-            u64 host_address = current_block_metadata->instruction_spans[i].second;
-            ZydisDisassembledInstruction inst;
-            ZydisDisassembleIntel(decoder.machine_mode, guest_address, (void*)guest_address, 15, &inst);
-            int size = strlen(inst.text);
-            inst.text[size] = '\n';
-            fwrite(inst.text, size + 1, 1, gdb_block->file);
-            gdb_block->lines[i].line = 1 + i;
-            gdb_block->lines[i].pc = host_address;
-        }
-
-        gdb_block->host_start = current_block_metadata->address;
-        gdb_block->host_end = current_block_metadata->address_end;
-        gdb_block->guest_address = current_block_metadata->guest_address;
-        gdb_block->line_count = inst_count;
-
-        fclose(gdb_block->file);
-        g_gdbjit->fire(gdb_block);
-    }
-
     flush_icache();
 
     current_block_metadata = nullptr;
@@ -2636,7 +2641,7 @@ void Recompiler::jumpAndLink(u64 rip) {
         getBlockMetadata(rip).pending_links.push_back(link_me);
     } else {
         auto& target_meta = getBlockMetadata(rip);
-        u64 target = target_meta.address;
+        u64 target = target_meta.host_address;
 
         u64 offset = target - (u64)as.GetCursorPointer();
         if (IsValidJTypeImm(offset - 4)) {
@@ -2705,9 +2710,8 @@ void Recompiler::expirePendingLinks(u64 rip) {
         return;
     }
 
-    auto& block_meta = getBlockMetadata(rip);
-    auto& pending_links = block_meta.pending_links;
-    for (u8* link : pending_links) {
+    auto& links = getBlockMetadata(rip).pending_links;
+    for (u8* link : links) {
         u8* cursor = as.GetCursorPointer();
         as.SetCursorPointer(link);
         jumpAndLink(rip);
@@ -2716,7 +2720,8 @@ void Recompiler::expirePendingLinks(u64 rip) {
 
     flush_icache();
 
-    block_meta.pending_links.clear();
+    // Free the memory as pending_links won't be used after the block is compiled
+    std::vector<u8*>().swap(links);
 }
 
 u64 Recompiler::zextImmediate(u64 imm, ZyanU8 size) {
@@ -3044,7 +3049,7 @@ void Recompiler::sext(biscuit::GPR dst, biscuit::GPR src, x86_size_e size) {
 }
 
 bool Recompiler::blockExists(u64 rip) {
-    return getBlockMetadata(rip).address != 0;
+    return getBlockMetadata(rip).host_address != 0;
 }
 
 biscuit::GPR Recompiler::getFlags() {
@@ -3276,11 +3281,11 @@ void Recompiler::setTOP(biscuit::GPR new_top) {
 }
 
 void Recompiler::invalidateBlock(BlockMetadata* block) {
-    if (block->address == 0) {
+    if (block->host_address == 0) {
         return;
     }
 
-    u64* address = (u64*)block->address;
+    u64* address = (u64*)block->host_address;
     const u64 offset = (u64)invalidate_caller_thunk - (u64)address;
     const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
     const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
@@ -3297,7 +3302,7 @@ void Recompiler::invalidateBlock(BlockMetadata* block) {
         entry.host = 0;
     }
 
-    block->address = 0;
+    block->host_address = 0;
     std::atomic_thread_fence(std::memory_order_seq_cst);
 }
 
