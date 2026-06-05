@@ -408,6 +408,11 @@ static u32 get_reg_err(int sig, siginfo_t* info, ucontext_t* uctx) {
 
 // TODO: for synchronous signals like hlt/int3 etc. we need custom trapno/err
 static u32 get_reg_trapno(u64 host_pc, int sig, siginfo_t* info, ucontext_t* uctx) {
+    // TODO: ugly hardcoding, make this better ...
+    if (info->si_code == TRAP_TRACE) {
+        return 1;
+    }
+
     if (sig != SIGSEGV) {
         return 0;
     }
@@ -533,6 +538,11 @@ void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state, sigin
     state->SetGpr(X86_REF_RAX, 0);
     state->SetRip(signal.func);
     state->SetFlag(X86_REF_DF, 0);
+    bool tf = state->GetFlag(X86_REF_TF);
+    if (tf) {
+        state->SetFlag(X86_REF_TF, 0);
+        felix86_tf_changed(state, false);
+    }
 
     // Also update the allocatable state in the registers
     u64* regs = get_regs(host_context);
@@ -662,6 +672,11 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, si
     state->SetGpr(X86_REF_RAX, 0);
     state->SetRip(signal.func);
     state->SetFlag(X86_REF_DF, 0);
+    bool tf = state->GetFlag(X86_REF_TF);
+    if (tf) {
+        state->SetFlag(X86_REF_TF, 0);
+        felix86_tf_changed(state, false);
+    }
 
     // Also update the allocatable state in the registers
     u64* regs = get_regs(host_context);
@@ -756,6 +771,11 @@ void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state, sigin
     state->SetGpr(X86_REF_RCX, 0);
     state->SetRip(signal.func);
     state->SetFlag(X86_REF_DF, 0);
+    bool tf = state->GetFlag(X86_REF_TF);
+    if (tf) {
+        state->SetFlag(X86_REF_TF, 0);
+        felix86_tf_changed(state, false);
+    }
 
     // Also update the allocatable state in the registers
     u64* regs = get_regs(host_context);
@@ -796,6 +816,7 @@ void restore_sigcontext_32(ThreadState* state, x86_sigcontext_32* ctx) {
     bool af = (flags >> 4) & 1;
     bool zf = (flags >> 6) & 1;
     bool sf = (flags >> 7) & 1;
+    bool tf = (flags >> 8) & 1;
     bool of = (flags >> 11) & 1;
     bool df = (flags >> 10) & 1;
     state->SetFlag(X86_REF_CF, cf);
@@ -805,6 +826,11 @@ void restore_sigcontext_32(ThreadState* state, x86_sigcontext_32* ctx) {
     state->SetFlag(X86_REF_SF, sf);
     state->SetFlag(X86_REF_OF, of);
     state->SetFlag(X86_REF_DF, df);
+    bool old_tf = state->GetFlag(X86_REF_TF);
+    if (old_tf != tf) {
+        state->SetFlag(X86_REF_TF, tf);
+        felix86_tf_changed(state, tf);
+    }
 
     state->ctx.cs = ctx->cs;
     state->ctx.ss = ctx->ss;
@@ -877,6 +903,7 @@ void Signals::sigreturn(ThreadState* state, bool rt) {
         bool af = (flags >> 4) & 1;
         bool zf = (flags >> 6) & 1;
         bool sf = (flags >> 7) & 1;
+        bool tf = (flags >> 8) & 1;
         bool of = (flags >> 11) & 1;
         bool df = (flags >> 10) & 1;
         state->SetFlag(X86_REF_CF, cf);
@@ -886,6 +913,11 @@ void Signals::sigreturn(ThreadState* state, bool rt) {
         state->SetFlag(X86_REF_SF, sf);
         state->SetFlag(X86_REF_OF, of);
         state->SetFlag(X86_REF_DF, df);
+        bool old_tf = state->GetFlag(X86_REF_TF);
+        if (old_tf != tf) {
+            state->SetFlag(X86_REF_TF, tf);
+            felix86_tf_changed(state, tf);
+        }
 
         felix86_xrstor(state->ctx, &frame->uc.uc_mcontext.fpregs->fxsave, true);
 
@@ -1309,7 +1341,7 @@ bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucontext_t*
     // Check the hint right after to make sure this is a hlt
     u32 next_instruction = *(((u32*)pc) + 1);
 
-    u32 expected_divzero, expected_int3, expected_ud2, expected_gp;
+    u32 expected_divzero, expected_int3, expected_ud2, expected_gp, expected_tf;
     {
         Assembler tas2((u8*)&expected_divzero, sizeof(u32));
         tas2.SLTIU(x0, x0, FELIX86_HINT_DIVZERO);
@@ -1325,6 +1357,10 @@ bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucontext_t*
     {
         Assembler tas2((u8*)&expected_gp, sizeof(u32));
         tas2.SLTIU(x0, x0, FELIX86_HINT_GP);
+    }
+    {
+        Assembler tas2((u8*)&expected_tf, sizeof(u32));
+        tas2.SLTIU(x0, x0, FELIX86_HINT_TF);
     }
 
     BlockMetadata* current_block = get_block_metadata(current_state, pc);
@@ -1349,6 +1385,13 @@ bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucontext_t*
         sig = SIGSEGV;
         info->si_code = SI_KERNEL;
         info->si_addr = nullptr;
+    } else if (next_instruction == expected_tf) {
+        u64 rip = get_regs(context)[Recompiler::allocatedGPR(X86_REF_RIP).Index()]; // points to next instruction
+        ASSERT(rip > actual_rip && rip <= actual_rip + 15);
+        actual_rip = rip;
+        sig = SIGTRAP;
+        info->si_code = TRAP_TRACE;
+        info->si_addr = (void*)actual_rip;
     } else {
         return false;
     }

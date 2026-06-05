@@ -16,6 +16,7 @@
 #define FELIX86_HINT_DIVZERO 0xd0
 #define FELIX86_HINT_INT3 0xc3
 #define FELIX86_HINT_UD2 0xd2
+#define FELIX86_HINT_TF 0x7f
 
 constexpr int address_cache_bits = 16;
 
@@ -40,6 +41,11 @@ enum class FlagMode {
     Default,
     AlwaysEmit,
     NeverEmit,
+};
+
+enum class SingleStepMode : u8 {
+    None,
+    TrapFlag,
 };
 
 // This struct is for indicating within a block at which points a register contains a value of a guest register,
@@ -211,6 +217,10 @@ struct Recompiler {
         return gp; // due to -mno-relax, this register won't be modified in C++ code
                    // which is great because it means we can access it at any time during
                    // the process's lifetime
+    }
+
+    void setSingleStepMode(SingleStepMode mode) {
+        single_step = mode;
     }
 
     // TODO: move these elsewhere
@@ -440,8 +450,6 @@ struct Recompiler {
     bool blockExists(u64 rip);
 
     biscuit::GPR getFlags();
-
-    void setFlags(biscuit::GPR flags);
 
     u64 getImmediate(ZydisDecodedOperand* operand);
 
@@ -813,6 +821,8 @@ private:
     bool relocatable = false;
 
     bool v0_has_mask = false;
+
+    SingleStepMode single_step = SingleStepMode::None;
 
     constexpr static std::array scratch_gprs = {
         x1, x6, x28, x29, x7, x30, x31,

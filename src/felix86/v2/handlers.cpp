@@ -10417,6 +10417,7 @@ FAST_HANDLE(PUSHFQ) {
 }
 
 FAST_HANDLE(POPFQ) {
+    rec.flushX87(); // It's possible we have to run C++ code if trap flag is set, so flush here
     int size = instruction.operand_width;
     biscuit::GPR flags = rec.scratch();
     biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
@@ -10424,7 +10425,56 @@ FAST_HANDLE(POPFQ) {
     as.ORI(flags, flags, 0x202);
     as.ADDI(rsp, rsp, size / 8);
     rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
-    rec.setFlags(flags);
+
+    biscuit::GPR cf = rec.flag(X86_REF_CF);
+    biscuit::GPR zf = rec.flag(X86_REF_ZF);
+    biscuit::GPR sf = rec.flag(X86_REF_SF);
+    biscuit::GPR of = rec.flag(X86_REF_OF);
+    biscuit::GPR temp = rec.scratch();
+
+    as.ANDI(cf, flags, 1);
+
+    as.SRLI(temp, flags, 2);
+    as.ANDI(temp, temp, 1);
+    as.SB(temp, offsetof(ThreadState, ctx.pf), Recompiler::threadStatePointer());
+
+    as.SRLI(zf, flags, 6);
+    as.ANDI(zf, zf, 1);
+
+    as.SRLI(temp, flags, 4);
+    as.ANDI(temp, temp, 1);
+    as.SB(temp, offsetof(ThreadState, ctx.af), Recompiler::threadStatePointer());
+
+    as.SRLI(sf, flags, 7);
+    as.ANDI(sf, sf, 1);
+
+    as.SRLI(temp, flags, 10);
+    as.ANDI(temp, temp, 1);
+    as.SB(temp, offsetof(ThreadState, ctx.df), Recompiler::threadStatePointer());
+
+    as.SRLI(of, flags, 11);
+    as.ANDI(of, of, 1);
+
+    // CPUID bit may have been modified, which we need to emulate because this is how some programs detect CPUID support
+    as.SRLI(temp, flags, 21);
+    as.ANDI(temp, temp, 1);
+    as.SB(temp, offsetof(ThreadState, cpuid_bit), Recompiler::threadStatePointer());
+
+    as.SRLI(temp, flags, 18);
+    as.ANDI(temp, temp, 1);
+    as.SB(temp, offsetof(ThreadState, ac_bit), Recompiler::threadStatePointer());
+
+    Label tf_not_set;
+    as.SRLI(temp, flags, 8);
+    as.ANDI(temp, temp, 1);
+    as.BEQZ(temp, &tf_not_set);
+    rec.writebackState();
+    as.LI(a1, 1);
+    as.MV(a0, Recompiler::threadStatePointer());
+    rec.callPointer(offsetof(ThreadState, felix86_tf_changed));
+    rec.restoreState();
+    rec.backToDispatcher();
+    as.Bind(&tf_not_set);
 }
 
 FAST_HANDLE(PUSHF) {
