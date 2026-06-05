@@ -1681,3 +1681,9 @@ void felix86_aeskeygenassist(u32* dst, u32* src, u32 imm) {
     *(dst + 2) = x3_sub;
     *(dst + 3) = x3_sub_rotate ^ imm;
 }
+
+void felix86_tf_changed(ThreadState* state, bool tf) {
+    state->recompiler->clearCodeCache(state);
+    state->SetFlag(X86_REF_TF, tf);
+    state->recompiler->setSingleStepMode(tf ? SingleStepMode::TrapFlag : SingleStepMode::None);
+}

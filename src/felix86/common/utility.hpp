@@ -224,3 +224,5 @@ inline bool to_u64(u64* num, const char* str) {
     *num = result;
     return true;
 }
+
+void felix86_tf_changed(ThreadState* state, bool tf);

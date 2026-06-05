@@ -359,7 +359,7 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block) {
     }
 }
 
-void Recompiler::clearCodeCache(ThreadState* state) {
+void Recompiler::resizeOrClearCodeCache(ThreadState* state) {
     if (code_cache_size_index < code_cache_sizes_count - 1) {
         // Allocate more of our reserved buffer
         u8* old_mem = as.GetBufferPointer(0);
@@ -376,33 +376,28 @@ void Recompiler::clearCodeCache(ThreadState* state) {
             // Unsure what causes this to happen, but it does. In that case, clear code cache and carry on
             // Perhaps PR_MDWE_REFUSE_EXEC_GAIN
             WARN("Couldn't increment code cache because mmap returned %lx (errno: %s), clearing code cache", address, strerror(errno));
-            auto guard = page_map_lock.lock();
-            block_metadata.clear();
-            host_pc_map.clear();
-            page_map.clear();
-            for (size_t i = 0; i < (1 << address_cache_bits); i++) {
-                address_cache[i] = AddressCacheEntry{};
-            }
-
-            as.RewindBuffer();
-            emitNecessaryStuff();
+            clearCodeCache(state);
 
             // Undo the size increment
             code_cache_size_index--;
         }
     } else {
-        WARN("Clearing cache on thread %u", gettid());
-        auto guard = page_map_lock.lock();
-        block_metadata.clear();
-        host_pc_map.clear();
-        page_map.clear();
-        for (size_t i = 0; i < (1 << address_cache_bits); i++) {
-            address_cache[i] = AddressCacheEntry{};
-        }
-
-        as.RewindBuffer();
-        emitNecessaryStuff();
+        clearCodeCache(state);
     }
+}
+
+void Recompiler::clearCodeCache(ThreadState* state) {
+    WARN("Clearing cache on thread %u", gettid());
+    auto guard = page_map_lock.lock();
+    block_metadata.clear();
+    host_pc_map.clear();
+    page_map.clear();
+    for (size_t i = 0; i < (1 << address_cache_bits); i++) {
+        address_cache[i] = AddressCacheEntry{};
+    }
+
+    as.RewindBuffer();
+    emitNecessaryStuff();
 }
 
 u64 Recompiler::compile(ThreadState* state, u64 rip) {
@@ -410,7 +405,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
     size_t remaining_size = size - as.GetCodeBuffer().GetCursorOffset();
     // TODO: restrict max x86 instruction count per block
     if (remaining_size < 400'000) { // less than ~400KB left, clear cache
-        clearCodeCache(state);
+        resizeOrClearCodeCache(state);
     }
 
     // This should never happen, but we have this here to catch it if it does and report it
@@ -537,6 +532,7 @@ void Recompiler::markPagesAsReadOnly(u64 start, u64 end) {
 
 u64 Recompiler::compileSequence(u64 rip) {
     const u64 start_rip = rip;
+    const bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
     compiling = true;
     u8* bytes = (u8*)rip;
     bool all_zeroes = true;
@@ -673,12 +669,23 @@ u64 Recompiler::compileSequence(u64 rip) {
 
         rip += instruction.length;
 
-        if (g_config.single_step && compiling) {
+        if (is_single_step && compiling) {
             resetScratch();
             flushX87();
-            biscuit::GPR rip_after = allocatedGPR(X86_REF_RIP);
-            as.LI(rip_after, rip);
-            backToDispatcher();
+            biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
+            u64 offset = rip - getCurrentRipregValue();
+            ASSERT(offset != 0);
+            setCurrentRipregValue(getCurrentRipregValue() + offset);
+            addi(ripreg, ripreg, offset);
+            if (single_step == SingleStepMode::TrapFlag) {
+                as.SD(x0, 0, x0);
+                as.SLTIU(x0, x0, FELIX86_HINT_TF);
+                // Unreachable
+                as.C_UNDEF();
+                as.C_UNDEF();
+            } else {
+                backToDispatcher();
+            }
             stopCompiling();
         }
 
@@ -3084,46 +3091,6 @@ biscuit::GPR Recompiler::getFlags() {
     as.OR(reg, reg, temp);
     popScratch();
     return reg;
-}
-
-void Recompiler::setFlags(biscuit::GPR flags) {
-    biscuit::GPR cf = flag(X86_REF_CF);
-    biscuit::GPR zf = flag(X86_REF_ZF);
-    biscuit::GPR sf = flag(X86_REF_SF);
-    biscuit::GPR of = flag(X86_REF_OF);
-    biscuit::GPR temp = scratch();
-
-    as.ANDI(cf, flags, 1);
-
-    as.SRLI(temp, flags, 2);
-    as.ANDI(temp, temp, 1);
-    as.SB(temp, offsetof(ThreadState, ctx.pf), threadStatePointer());
-
-    as.SRLI(zf, flags, 6);
-    as.ANDI(zf, zf, 1);
-
-    as.SRLI(temp, flags, 4);
-    as.ANDI(temp, temp, 1);
-    as.SB(temp, offsetof(ThreadState, ctx.af), threadStatePointer());
-
-    as.SRLI(sf, flags, 7);
-    as.ANDI(sf, sf, 1);
-
-    as.SRLI(temp, flags, 10);
-    as.ANDI(temp, temp, 1);
-    as.SB(temp, offsetof(ThreadState, ctx.df), threadStatePointer());
-
-    as.SRLI(of, flags, 11);
-    as.ANDI(of, of, 1);
-
-    // CPUID bit may have been modified, which we need to emulate because this is how some programs detect CPUID support
-    as.SRLI(temp, flags, 21);
-    as.ANDI(temp, temp, 1);
-    as.SB(temp, offsetof(ThreadState, cpuid_bit), threadStatePointer());
-
-    as.SRLI(temp, flags, 18);
-    as.ANDI(temp, temp, 1);
-    as.SB(temp, offsetof(ThreadState, ac_bit), threadStatePointer());
 }
 
 biscuit::GPR Recompiler::getTOP() {

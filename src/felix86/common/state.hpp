@@ -106,6 +106,7 @@ typedef enum : u8 {
     X86_REF_SF,
     X86_REF_DF,
     X86_REF_OF,
+    X86_REF_TF,
     X86_REF_GS,
     X86_REF_FS,
     X86_REF_CS,
@@ -163,6 +164,7 @@ typedef enum : u8 {
     X(felix86_mpsadbw)                                                                                                                               \
     X(felix86_vpsadbw)                                                                                                                               \
     X(felix86_vpsadbw256)                                                                                                                            \
+    X(felix86_tf_changed)                                                                                                                            \
     X(felix86_aeskeygenassist)                                                                                                                       \
     X(felix86_vmpsadbw_128)                                                                                                                          \
     X(felix86_vmpsadbw_256)                                                                                                                          \
@@ -181,6 +183,7 @@ struct UserContext {
     bool sf{};
     bool of{};
     bool df{};
+    bool tf{};
     // Actual segment values
     u16 gs{};
     u16 fs{};
@@ -214,6 +217,7 @@ struct UserContext {
         flags |= af << 4;
         flags |= zf << 6;
         flags |= sf << 7;
+        flags |= tf << 8;
         flags |= df << 10;
         flags |= of << 11;
         return flags;
@@ -308,6 +312,8 @@ struct ThreadState {
             return ctx.df;
         case X86_REF_OF:
             return ctx.of;
+        case X86_REF_TF:
+            return ctx.tf;
         default:
             ERROR("Invalid flag reference: %d", flag);
             return false;
@@ -336,6 +342,9 @@ struct ThreadState {
             break;
         case X86_REF_OF:
             ctx.of = value;
+            break;
+        case X86_REF_TF:
+            ctx.tf = value;
             break;
         default:
             ERROR("Invalid flag reference: %d", flag);
