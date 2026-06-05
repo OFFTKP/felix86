@@ -528,6 +528,8 @@ struct Recompiler {
 
     void setFlag(x86_ref_e flag);
 
+    void resizeOrClearCodeCache(ThreadState* state);
+
     void clearCodeCache(ThreadState* state);
 
     void resetVectorState() {

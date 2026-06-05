@@ -359,7 +359,7 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block) {
     }
 }
 
-void Recompiler::clearCodeCache(ThreadState* state) {
+void Recompiler::resizeOrClearCodeCache(ThreadState* state) {
     if (code_cache_size_index < code_cache_sizes_count - 1) {
         // Allocate more of our reserved buffer
         u8* old_mem = as.GetBufferPointer(0);
@@ -376,33 +376,28 @@ void Recompiler::clearCodeCache(ThreadState* state) {
             // Unsure what causes this to happen, but it does. In that case, clear code cache and carry on
             // Perhaps PR_MDWE_REFUSE_EXEC_GAIN
             WARN("Couldn't increment code cache because mmap returned %lx (errno: %s), clearing code cache", address, strerror(errno));
-            auto guard = page_map_lock.lock();
-            block_metadata.clear();
-            host_pc_map.clear();
-            page_map.clear();
-            for (size_t i = 0; i < (1 << address_cache_bits); i++) {
-                address_cache[i] = AddressCacheEntry{};
-            }
-
-            as.RewindBuffer();
-            emitNecessaryStuff();
+            clearCodeCache(state);
 
             // Undo the size increment
             code_cache_size_index--;
         }
     } else {
-        WARN("Clearing cache on thread %u", gettid());
-        auto guard = page_map_lock.lock();
-        block_metadata.clear();
-        host_pc_map.clear();
-        page_map.clear();
-        for (size_t i = 0; i < (1 << address_cache_bits); i++) {
-            address_cache[i] = AddressCacheEntry{};
-        }
-
-        as.RewindBuffer();
-        emitNecessaryStuff();
+        clearCodeCache(state);
     }
+}
+
+void Recompiler::clearCodeCache(ThreadState* state) {
+    WARN("Clearing cache on thread %u", gettid());
+    auto guard = page_map_lock.lock();
+    block_metadata.clear();
+    host_pc_map.clear();
+    page_map.clear();
+    for (size_t i = 0; i < (1 << address_cache_bits); i++) {
+        address_cache[i] = AddressCacheEntry{};
+    }
+
+    as.RewindBuffer();
+    emitNecessaryStuff();
 }
 
 u64 Recompiler::compile(ThreadState* state, u64 rip) {
@@ -410,7 +405,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
     size_t remaining_size = size - as.GetCodeBuffer().GetCursorOffset();
     // TODO: restrict max x86 instruction count per block
     if (remaining_size < 400'000) { // less than ~400KB left, clear cache
-        clearCodeCache(state);
+        resizeOrClearCodeCache(state);
     }
 
     // This should never happen, but we have this here to catch it if it does and report it
