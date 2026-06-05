@@ -13752,7 +13752,7 @@
         "disassembly": "pushfq"
     },
     "9d": {
-        "instruction_count": 98,
+        "instruction_count": 92,
         "expected_asm": [
             "LD              ra, s1, 0x0(0)",
             "ORI             ra, ra, 0x202(514)",
@@ -13779,13 +13779,7 @@
             "SRLI            t1, ra, 0x12(18)",
             "ANDI            t1, t1, 0x1(1)",
             "SB              t1, gp, 0x351(849)",
-            "LUI             t3, 0x40(64)",
-            "ADDIW           t3, t3, 0xfffff8f1(-1807)",
-            "SLLI            t3, t3, 0x11(17)",
-            "ADDI            t3, t3, 0xfffffc4b(-949)",
-            "SLLI            t3, t3, 0xc(12)",
-            "ADDI            t3, t3, 0x1(1)",
-            "ADD             s11, s11, t3",
+            "ADDI            s11, s11, 0x1(1)",
             "LB              t3, gp, 0x2cf(719)",
             "SRLI            t1, ra, 0x8(8)",
             "ANDI            t1, t1, 0x1(1)",

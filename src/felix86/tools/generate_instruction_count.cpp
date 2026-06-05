@@ -83,6 +83,7 @@ void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbyak::Code
     ZydisDecodedInstruction zinstruction;
     ZydisDecodedOperand zoperands[10];
     u64 rip = (u64)x86_start;
+    rec.setCurrentRipregValue(rip);
     rec.decode(rip, zinstruction, zoperands);
     rec.compileInstruction(zinstruction, zoperands, rip);
     rec.resetScratch();
