@@ -220,6 +220,27 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
 #endif
     }
 
+    if (leaf == 0x0000'0015) {
+#ifdef __riscv
+        riscv_hwprobe pairs[] = {
+            {RISCV_HWPROBE_KEY_TIME_CSR_FREQ, 0},
+        };
+
+        int r = syscall(SYS_riscv_hwprobe, pairs, std::size(pairs), 0, nullptr, 0);
+        uint64_t hz = pairs[0].value;
+        if (r == 0) {
+            // TSCFreq = ECX*(EBX/EAX)
+            results.ecx = hz;
+            results.eax = 1;
+            results.ebx = 1;
+            results.edx = 0;
+        } else {
+            WARN("Failed to query RDTIME frequency");
+        }
+        found = true;
+#endif
+    }
+
     if (found && leaf == 0x8000'0001) {
         bit_set(result.ecx, 0, true); // LAHF/SAHF
         bit_set(result.ecx, 5, is_feature_enabled(x86_feature::LZCNT_POPCNT));
