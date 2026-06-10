@@ -62,7 +62,7 @@ static inline void bit_set(u32& data, int position, bool value) {
 
 [[maybe_unused]] constexpr std::array nehalem_mappings = {
     // http://users.atw.hu/instlatx64/GenuineIntel/GenuineIntel00106A2_Nehalem-EP_CPUID.txt
-    (Cpuid){0x00000000, NO_SUBLEAF, 0x0000000A, 0x756E6547, 0x6C65746E, 0x49656E69},
+    (Cpuid){0x00000000, NO_SUBLEAF, 0x00000015, 0x756E6547, 0x6C65746E, 0x49656E69},
     (Cpuid){0x00000001, NO_SUBLEAF, 0x00010676, 0x00040800, 0x000CE3BD, 0xBFEBFBFF},
     (Cpuid){0x00000002, NO_SUBLEAF, 0x05B0B101, 0x005657F0, 0x00000000, 0x2CB4304E},
     (Cpuid){0x00000003, NO_SUBLEAF, 0x00000000, 0x00000000, 0x00000000, 0x00000000},
@@ -187,6 +187,27 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
             WARN("Unknown leaf+subleaf combo: %d %d", leaf, subleaf);
         }
         found = true;
+    }
+
+    if (leaf == 0x0000'0015) {
+#ifdef __riscv
+        riscv_hwprobe pairs[] = {
+            {RISCV_HWPROBE_KEY_TIME_CSR_FREQ, 0},
+        };
+
+        int r = syscall(SYS_riscv_hwprobe, pairs, std::size(pairs), 0, nullptr, 0);
+        uint64_t hz = pairs[0].value;
+        if (r == 0) {
+            // TSCFreq = ECX*(EBX/EAX)
+            results.ecx = hz;
+            results.eax = 1;
+            results.ebx = 1;
+            results.edx = 0;
+        } else {
+            WARN("Failed to query RDTIME frequency");
+        }
+        found = true;
+#endif
     }
 
     if (found && leaf == 0x8000'0001) {
