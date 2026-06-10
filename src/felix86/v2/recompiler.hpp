@@ -510,6 +510,10 @@ struct Recompiler {
 
     void updateOverflowSub(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size);
 
+    void updateOverflowAdc(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size);
+
+    void updateOverflowSbb(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size);
+
     void updateCarryAdd(biscuit::GPR lhs, biscuit::GPR result, x86_size_e size);
 
     void updateCarrySub(biscuit::GPR lhs, biscuit::GPR rhs);
