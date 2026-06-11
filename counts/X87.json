@@ -1257,7 +1257,7 @@
         "disassembly": "fabs"
     },
     "d9fe": {
-        "instruction_count": 58,
+        "instruction_count": 60,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -1310,6 +1310,8 @@
             "VLE64.V         v16, t1, none, 1",
             "ADDI            t1, gp, 0x1c8(456)",
             "VLE64.V         v24, t1, none, 1",
+            "VSETVLI         t1, zero, e64, m1, tu, mu",
+            "VXOR.VV         v15, v15, v15, none",
             "LBU             s5, gp, 0x2c8(712)",
             "LBU             s7, gp, 0x2cb(715)",
             "LBU             s8, gp, 0x2cc(716)",
@@ -1321,7 +1323,7 @@
         "disassembly": "fsin"
     },
     "d9ff": {
-        "instruction_count": 58,
+        "instruction_count": 60,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -1374,6 +1376,8 @@
             "VLE64.V         v16, t1, none, 1",
             "ADDI            t1, gp, 0x1c8(456)",
             "VLE64.V         v24, t1, none, 1",
+            "VSETVLI         t1, zero, e64, m1, tu, mu",
+            "VXOR.VV         v15, v15, v15, none",
             "LBU             s5, gp, 0x2c8(712)",
             "LBU             s7, gp, 0x2cb(715)",
             "LBU             s8, gp, 0x2cc(716)",
@@ -1603,7 +1607,7 @@
         "disassembly": "frndint"
     },
     "d9f8": {
-        "instruction_count": 58,
+        "instruction_count": 60,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -1656,6 +1660,8 @@
             "VLE64.V         v16, t1, none, 1",
             "ADDI            t1, gp, 0x1c8(456)",
             "VLE64.V         v24, t1, none, 1",
+            "VSETVLI         t1, zero, e64, m1, tu, mu",
+            "VXOR.VV         v15, v15, v15, none",
             "LBU             s5, gp, 0x2c8(712)",
             "LBU             s7, gp, 0x2cb(715)",
             "LBU             s8, gp, 0x2cc(716)",
@@ -1716,7 +1722,7 @@
         "disassembly": "fnstsw [rdi]"
     },
     "d927": {
-        "instruction_count": 60,
+        "instruction_count": 62,
         "expected_asm": [
             "ADDI            ra, a0, 0x0(0)",
             "SD              s11, gp, 0x80(128)",
@@ -1771,6 +1777,8 @@
             "VLE64.V         v16, t3, none, 1",
             "ADDI            t3, gp, 0x1c8(456)",
             "VLE64.V         v24, t3, none, 1",
+            "VSETVLI         t3, zero, e64, m1, tu, mu",
+            "VXOR.VV         v15, v15, v15, none",
             "LBU             s5, gp, 0x2c8(712)",
             "LBU             s7, gp, 0x2cb(715)",
             "LBU             s8, gp, 0x2cc(716)",
@@ -1782,7 +1790,7 @@
         "disassembly": "fldenv [rdi]"
     },
     "d937": {
-        "instruction_count": 60,
+        "instruction_count": 62,
         "expected_asm": [
             "ADDI            ra, a0, 0x0(0)",
             "SD              s11, gp, 0x80(128)",
@@ -1837,6 +1845,8 @@
             "VLE64.V         v16, t3, none, 1",
             "ADDI            t3, gp, 0x1c8(456)",
             "VLE64.V         v24, t3, none, 1",
+            "VSETVLI         t3, zero, e64, m1, tu, mu",
+            "VXOR.VV         v15, v15, v15, none",
             "LBU             s5, gp, 0x2c8(712)",
             "LBU             s7, gp, 0x2cb(715)",
             "LBU             s8, gp, 0x2cc(716)",

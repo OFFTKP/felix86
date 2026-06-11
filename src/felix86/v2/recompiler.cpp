@@ -158,6 +158,9 @@ Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
 
     for (int i = 0; i < 8; i++) {
         x87_reg_cache[i].reg = biscuit::FPR(biscuit::ft0.Index() + i);
+    }
+
+    for (int i = 0; i < (int)mmx_reg_cache.size(); i++) {
         mmx_reg_cache[i].reg = biscuit::Vec(biscuit::v8.Index() + i);
     }
 }
@@ -564,7 +567,6 @@ u64 Recompiler::compileSequence(u64 rip) {
     resetVectorState();
     local_x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
     fsrm_sse = true;                     // dispatcher loads SSE rounding mode as a default
-    v0_has_mask = false;
 
     current_ripreg_value = rip; // may change in a syscall to check for safepoints, or after a set amount of instructions in the future
 
@@ -789,14 +791,10 @@ void Recompiler::flushX87() {
         as.SB(top, offsetof(ThreadState, ctx.fpu_top), threadStatePointer());
     }
 
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < (int)mmx_reg_cache.size(); i++) {
         if (mmx_reg_cache[i].dirty) {
             ASSERT(!x87_dirty);
-            ASSERT(mmx_reg_cache[i].loaded);
-            setVectorState(SEW::E64, 1);
-            biscuit::Vec vec = mmx_reg_cache[i].reg;
-            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, ctx.fp) + i * 8);
-            as.VSE64(vec, address);
+            flushMMXRegister(i);
         }
     }
 
@@ -812,6 +810,22 @@ void Recompiler::flushX87() {
     popScratch();
 
     resetX87();
+}
+
+void Recompiler::flushMMXRegister(int index) {
+    x86_ref_e ref = mmx_reg_cache[index].ref;
+    ASSERT(index >= 0 && index < (int)mmx_reg_cache.size());
+    biscuit::GPR address = scratch();
+    ASSERT(ref != X86_REF_COUNT);
+    setVectorState(SEW::E64, 1);
+    biscuit::Vec vec = mmx_reg_cache[index].reg;
+    ASSERT(ref >= X86_REF_MM0 && ref <= X86_REF_MM7);
+    int mmx_index = ref - X86_REF_MM0;
+    as.ADDI(address, threadStatePointer(), offsetof(ThreadState, ctx.fp) + mmx_index * 8);
+    as.VSE64(vec, address);
+    popScratch();
+    mmx_reg_cache[index].ref = X86_REF_COUNT;
+    mmx_reg_cache[index].dirty = false;
 }
 
 void Recompiler::compileInstruction(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, u64 rip) {
@@ -1521,12 +1535,13 @@ void Recompiler::vsplat(biscuit::Vec vec, u64 imm) {
     }
 }
 
+void Recompiler::vzeroAllBits(biscuit::Vec dst) {
+    as.VMV1R(dst, zero_vec);
+}
+
 void Recompiler::vzeroTopBits(biscuit::Vec dst, biscuit::Vec src) {
     setVectorState(SEW::E64, 4);
-    if (!v0_has_mask) {
-        as.VMV(v0, -4); // 0b1100
-        v0_has_mask = true;
-    }
+    as.VMV(v0, -4); // 0b1100
     as.VMERGE(dst, src, 0);
 }
 
@@ -1945,7 +1960,6 @@ void Recompiler::stopCompiling() {
 }
 
 void Recompiler::writebackState() {
-    v0Modified();
     resetVectorState();
 
     flushX87();
@@ -2036,6 +2050,10 @@ void Recompiler::restoreState() {
         }
     }
 
+    as.VSETVLI(address, x0, SEW::E64);
+    as.VXOR(zero_vec, zero_vec, zero_vec);
+    resetVectorState();
+
     popScratch();
 
     biscuit::GPR cf = allocatedGPR(X86_REF_CF);
@@ -2065,7 +2083,6 @@ void Recompiler::restoreState() {
 
     resetVectorState();
     cached_lea_operand = nullptr;
-    v0Modified();
 }
 
 void Recompiler::backToDispatcher() {

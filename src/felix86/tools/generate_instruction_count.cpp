@@ -73,7 +73,6 @@ void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbyak::Code
     rec.setVectorState(SEW::E1024, 0);
     rec.setFlagMode(flags ? FlagMode::AlwaysEmit : FlagMode::NeverEmit);
     rec.resetX87();
-    rec.v0Modified();
 
     Xbyak::CodeGenerator x(8192);
     auto x86_start = x.getCurr();

@@ -33,7 +33,7 @@ struct AllocatedX87Reg {
 
 struct AllocatedMMXReg {
     biscuit::Vec reg;
-    bool loaded = false;
+    x86_ref_e ref = X86_REF_COUNT;
     bool dirty = false;
 };
 
@@ -379,22 +379,39 @@ struct Recompiler {
             return allocatedXMM(ymmToXmm(reg));
         }
         case X86_REF_MM0 ... X86_REF_MM7: {
-            int index = reg - X86_REF_MM0;
-            AllocatedMMXReg& entry = mmx_reg_cache[index];
-            if (entry.loaded) {
-                return entry.reg;
+            int mmx_index = reg - X86_REF_MM0;
+            AllocatedMMXReg* empty_reg = nullptr;
+            for (int i = 0; i < (int)mmx_reg_cache.size(); i++) {
+                AllocatedMMXReg& entry = mmx_reg_cache[i];
+                if (entry.ref == reg) {
+                    return entry.reg;
+                } else if (entry.ref == X86_REF_COUNT) {
+                    empty_reg = &entry;
+                }
             }
+
+            if (!empty_reg) {
+                // TODO: LRU could be faster here
+                empty_reg = &mmx_reg_cache[0];
+                if (mmx_reg_cache[0].dirty) {
+                    flushMMXRegister(0);
+                }
+            }
+
+            ASSERT(empty_reg);
+            ASSERT(!empty_reg->dirty);
+            ASSERT(empty_reg->ref == X86_REF_COUNT);
 
             // We don't statically allocate MMX registers because they are so rare
             // to justify loading/storing them on every VM enter/exit
             biscuit::GPR address = scratch();
-            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, ctx.fp) + index * 8);
+            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, ctx.fp) + mmx_index * 8);
             setVectorState(SEW::E64, 1);
-            as.VLE64(entry.reg, address);
+            as.VLE64(empty_reg->reg, address);
             popScratch();
-            entry.loaded = true;
-            entry.dirty = true; // TODO: this will dirty loaded mmx regs that aren't written to, fix
-            return entry.reg;
+            empty_reg->ref = reg;
+            empty_reg->dirty = true; // TODO: this will dirty loaded mmx regs that aren't written to, fix
+            return empty_reg->reg;
         }
         default: {
             UNREACHABLE();
@@ -429,15 +446,9 @@ struct Recompiler {
 
     void vsplat(biscuit::Vec vec, u64 imm);
 
+    void vzeroAllBits(biscuit::Vec dst);
+
     void vzeroTopBits(biscuit::Vec dst, biscuit::Vec src);
-
-    void v0Modified() {
-        v0_has_mask = false;
-    }
-
-    bool v0HasMask() {
-        return v0_has_mask;
-    }
 
     void setLockHandled() {
         lock_handled = true;
@@ -685,7 +696,9 @@ struct Recompiler {
             x87_reg_cache[i].loaded = false;
             x87_reg_cache[i].dirty = false;
             x87_reg_cache[i].modify_tag = false;
-            mmx_reg_cache[i].loaded = false;
+        }
+        for (int i = 0; i < (int)mmx_reg_cache.size(); i++) {
+            mmx_reg_cache[i].ref = X86_REF_COUNT;
             mmx_reg_cache[i].dirty = false;
         }
         pushed_this_block = 0;
@@ -739,6 +752,8 @@ private:
     void markPagesAsReadOnly(u64 start, u64 end);
 
     void inlineSyscall(int sysno, int argcount);
+
+    void flushMMXRegister(int index);
 
     static void invalidateAt(ThreadState* state, u8* linked_block);
 
@@ -816,19 +831,19 @@ private:
 
     std::array<AllocatedX87Reg, 8> x87_reg_cache;
 
-    std::array<AllocatedMMXReg, 8> mmx_reg_cache;
+    std::array<AllocatedMMXReg, 7> mmx_reg_cache; // v8 - v14
 
     int pushed_this_block = 0;
 
     bool relocatable = false;
-
-    bool v0_has_mask = false;
 
     SingleStepMode single_step = SingleStepMode::None;
 
     constexpr static std::array scratch_gprs = {
         x1, x6, x28, x29, x7, x30, x31,
     };
+
+    constexpr static biscuit::Vec zero_vec = v15; // speeds up upper bit zeroing for avx emulation
 
     // TODO: is the below comment still true? make it not true
     // TODO: to remove "if changed" comment, go to places that regs are hardcoded and add static asserts that they are scratches
