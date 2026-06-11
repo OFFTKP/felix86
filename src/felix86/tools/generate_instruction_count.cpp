@@ -1428,6 +1428,57 @@ int main() {
 
     GEN_AVX_YMM3_IMM(vpclmulqdq);
 
+    GEN_AVX(vfmadd213ss);
+    GEN_AVX(vfmadd213ps);
+    GEN_AVX(vfmadd213sd);
+    GEN_AVX(vfmadd213pd);
+    GEN_AVX(vfnmadd213ss);
+    GEN_AVX(vfnmadd213ps);
+    GEN_AVX(vfnmadd213sd);
+    GEN_AVX(vfnmadd213pd);
+    GEN_AVX(vfmsub213ss);
+    GEN_AVX(vfmsub213ps);
+    GEN_AVX(vfmsub213sd);
+    GEN_AVX(vfmsub213pd);
+    GEN_AVX(vfnmsub213ss);
+    GEN_AVX(vfnmsub213ps);
+    GEN_AVX(vfnmsub213sd);
+    GEN_AVX(vfnmsub213pd);
+
+    GEN_AVX(vfmadd132ss);
+    GEN_AVX(vfmadd132ps);
+    GEN_AVX(vfmadd132sd);
+    GEN_AVX(vfmadd132pd);
+    GEN_AVX(vfnmadd132ss);
+    GEN_AVX(vfnmadd132ps);
+    GEN_AVX(vfnmadd132sd);
+    GEN_AVX(vfnmadd132pd);
+    GEN_AVX(vfmsub132ss);
+    GEN_AVX(vfmsub132ps);
+    GEN_AVX(vfmsub132sd);
+    GEN_AVX(vfmsub132pd);
+    GEN_AVX(vfnmsub132ss);
+    GEN_AVX(vfnmsub132ps);
+    GEN_AVX(vfnmsub132sd);
+    GEN_AVX(vfnmsub132pd);
+
+    GEN_AVX(vfmadd231ss);
+    GEN_AVX(vfmadd231ps);
+    GEN_AVX(vfmadd231sd);
+    GEN_AVX(vfmadd231pd);
+    GEN_AVX(vfnmadd231ss);
+    GEN_AVX(vfnmadd231ps);
+    GEN_AVX(vfnmadd231sd);
+    GEN_AVX(vfnmadd231pd);
+    GEN_AVX(vfmsub231ss);
+    GEN_AVX(vfmsub231ps);
+    GEN_AVX(vfmsub231sd);
+    GEN_AVX(vfmsub231pd);
+    GEN_AVX(vfnmsub231ss);
+    GEN_AVX(vfnmsub231ps);
+    GEN_AVX(vfnmsub231sd);
+    GEN_AVX(vfnmsub231pd);
+
     std::ofstream avx("counts/AVX.json");
     avx << json.dump(4);
     json.clear();
