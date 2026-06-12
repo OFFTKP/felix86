@@ -16001,9 +16001,6 @@ void VFMADDSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruct
     biscuit::Vec src3 = rec.getVec(&operands[2]);
     rec.setVectorState(sew, !is_xmms ? length : length / 2);
     rec.vsplat(v0, reverse ? 0b01010101 : 0b10101010);
-    if (is_xmms) {
-        rec.vzeroAllBits(dst);
-    }
     switch (order) {
     case 132: {
         as.VFMADD(dst, src3, src2, VecMask::Yes);
@@ -16027,6 +16024,9 @@ void VFMADDSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruct
         UNREACHABLE();
         break;
     }
+    }
+    if (is_xmms) {
+        rec.vzeroTopBits(dst, dst);
     }
     rec.setVec(&operands[0], dst);
 }

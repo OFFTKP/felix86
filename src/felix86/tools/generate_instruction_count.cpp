@@ -986,7 +986,6 @@ int main() {
     GEN_AVX(vpmulhw);
     GEN_AVX(vpmulhuw);
     GEN_AVX(vpmulld);
-    GEN(vpmulld(xmm1, xmm1, xmm2));
     GEN_AVX(vpmuldq);
     GEN_AVX(vpmuludq);
     GEN_AVX(vpmulhrsw);
@@ -1429,21 +1428,21 @@ int main() {
 
     GEN_AVX_YMM3_IMM(vpclmulqdq);
 
-    GEN_AVX(vfmadd213ss);
+    GEN_AVX_XMM3(vfmadd213ss);
     GEN_AVX(vfmadd213ps);
-    GEN_AVX(vfmadd213sd);
+    GEN_AVX_XMM3(vfmadd213sd);
     GEN_AVX(vfmadd213pd);
-    GEN_AVX(vfnmadd213ss);
+    GEN_AVX_XMM3(vfnmadd213ss);
     GEN_AVX(vfnmadd213ps);
-    GEN_AVX(vfnmadd213sd);
+    GEN_AVX_XMM3(vfnmadd213sd);
     GEN_AVX(vfnmadd213pd);
-    GEN_AVX(vfmsub213ss);
+    GEN_AVX_XMM3(vfmsub213ss);
     GEN_AVX(vfmsub213ps);
-    GEN_AVX(vfmsub213sd);
+    GEN_AVX_XMM3(vfmsub213sd);
     GEN_AVX(vfmsub213pd);
-    GEN_AVX(vfnmsub213ss);
+    GEN_AVX_XMM3(vfnmsub213ss);
     GEN_AVX(vfnmsub213ps);
-    GEN_AVX(vfnmsub213sd);
+    GEN_AVX_XMM3(vfnmsub213sd);
     GEN_AVX(vfnmsub213pd);
 
     GEN_AVX(vfmadd132ss);
