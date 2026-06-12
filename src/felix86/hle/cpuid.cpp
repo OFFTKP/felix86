@@ -199,10 +199,10 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
         uint64_t hz = pairs[0].value;
         if (r == 0) {
             // TSCFreq = ECX*(EBX/EAX)
-            results.ecx = hz;
-            results.eax = 1;
-            results.ebx = 1;
-            results.edx = 0;
+            result.ecx = hz;
+            result.eax = 1;
+            result.ebx = 1;
+            result.edx = 0;
         } else {
             WARN("Failed to query RDTIME frequency");
         }
