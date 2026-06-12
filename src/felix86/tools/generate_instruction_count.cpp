@@ -122,6 +122,7 @@ int main() {
     Extensions::Zbb = true;
     Extensions::Zbs = true;
     Extensions::Zbc = true;
+    Extensions::Zvbc = true;
     Extensions::C = true;
     Extensions::V = true;
     Extensions::VLEN = 256;

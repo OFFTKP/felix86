@@ -9230,35 +9230,33 @@ FAST_HANDLE(PHSUBSW) {
 }
 
 FAST_HANDLE(PCLMULQDQ) {
-    // TODO: port to Zvbc when available, also change in feature.cpp
-    ASSERT(Extensions::Zbc);
+    ASSERT(Extensions::Zvbc);
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
     biscuit::Vec temp = rec.scratchVec();
     biscuit::Vec temp2 = rec.scratchVec();
-    biscuit::GPR X = rec.scratch();
-    biscuit::GPR Y = rec.scratch();
-    biscuit::GPR dst_low = rec.scratch();
-    biscuit::GPR dst_high = rec.scratch();
+    biscuit::Vec X;
+    biscuit::Vec Y;
+    biscuit::Vec dst_low = rec.scratchVec();
+    biscuit::Vec dst_high = rec.scratchVec();
     u8 imm = rec.getImmediate(&operands[2]);
     rec.setVectorState(SEW::E64, 2);
     if (imm & 1) {
         as.VSLIDEDOWN(temp, dst, 1);
-        as.VMV_XS(X, temp);
+        X = temp;
     } else {
-        as.VMV_XS(X, dst);
+        X = dst;
     }
     if (imm & 0b10000) {
-        as.VSLIDEDOWN(temp, src, 1);
-        as.VMV_XS(Y, temp);
+        as.VSLIDEDOWN(temp2, src, 1);
+        Y = temp2;
     } else {
-        as.VMV_XS(Y, src);
+        Y = src;
     }
-    as.CLMUL(dst_low, X, Y);
-    as.CLMULH(dst_high, X, Y);
-    as.VMV_SX(temp, dst_high);
-    as.VSLIDE1UP(temp2, temp, dst_low);
-    rec.setVec(&operands[0], temp2);
+    as.VCLMUL(dst_low, X, Y);
+    as.VCLMULH(dst_high, X, Y);
+    as.VSLIDEUP(dst_low, dst_high, 1);
+    rec.setVec(&operands[0], dst_low);
 }
 
 FAST_HANDLE(CRC32) {
@@ -14292,59 +14290,37 @@ FAST_HANDLE(VPGATHERQQ) {
 }
 
 FAST_HANDLE(VPCLMULQDQ) {
-    // TODO: port to Zvbc when available, also change in feature.cpp
-    ASSERT(Extensions::Zbc);
+    ASSERT(Extensions::Zvbc);
     biscuit::Vec src1 = rec.getVec(&operands[1]);
     biscuit::Vec src2 = rec.getVec(&operands[2]);
     biscuit::Vec temp = rec.scratchVec();
     biscuit::Vec temp2 = rec.scratchVec();
-    biscuit::GPR X = rec.scratch();
-    biscuit::GPR Y = rec.scratch();
-    biscuit::GPR dst_low = rec.scratch();
-    biscuit::GPR dst_high = rec.scratch();
+    biscuit::Vec X;
+    biscuit::Vec Y;
+    biscuit::Vec dst_low = rec.scratchVec();
+    biscuit::Vec dst_high = rec.scratchVec();
     u8 imm = rec.getImmediate(&operands[3]);
     rec.setVectorState(SEW::E64, 4);
     if (imm & 1) {
         as.VSLIDEDOWN(temp, src1, 1);
-        as.VMV_XS(X, temp);
+        X = temp;
     } else {
-        as.VMV_XS(X, src1);
+        X = src1;
     }
     if (imm & 0b10000) {
-        as.VSLIDEDOWN(temp, src2, 1);
-        as.VMV_XS(Y, temp);
+        as.VSLIDEDOWN(temp2, src2, 1);
+        Y = temp2;
     } else {
-        as.VMV_XS(Y, src2);
+        Y = src2;
     }
-    as.CLMUL(dst_low, X, Y);
-    as.CLMULH(dst_high, X, Y);
-    as.VMV_SX(temp, dst_high);
-    as.VSLIDE1UP(temp2, temp, dst_low);
+    as.VCLMUL(dst_low, X, Y);
+    as.VCLMULH(dst_high, X, Y);
+    as.VSLIDEUP(temp, dst_high, 1);
+    rec.vsplat(v0, 0b1010);
+    rec.v0Modified();
+    as.VMERGE(dst_low, dst_low, temp);
 
-    if (instruction.raw.vex.L) {
-        if (imm & 1) {
-            as.VSLIDEDOWN(temp, src1, 3);
-            as.VMV_XS(X, temp);
-        } else {
-            as.VSLIDEDOWN(temp, src1, 2);
-            as.VMV_XS(X, temp);
-        }
-        if (imm & 0b10000) {
-            as.VSLIDEDOWN(temp, src2, 3);
-            as.VMV_XS(Y, temp);
-        } else {
-            as.VSLIDEDOWN(temp, src2, 2);
-            as.VMV_XS(Y, temp);
-        }
-        as.CLMUL(dst_low, X, Y);
-        as.CLMULH(dst_high, X, Y);
-        as.VMV_SX(temp, dst_low);
-        as.VSLIDEUP(temp2, temp, 2);
-        as.VMV_SX(temp, dst_high);
-        as.VSLIDEUP(temp2, temp, 3);
-    }
-
-    rec.setVec(&operands[0], temp2);
+    rec.setVec(&operands[0], dst_low);
 }
 
 FAST_HANDLE(VDPPD) {
