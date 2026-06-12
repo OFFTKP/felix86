@@ -135,6 +135,7 @@ struct Extensions {
     X(Zfa)                                                                                                                                           \
     X(Zvfhmin)                                                                                                                                       \
     X(Zvbb)                                                                                                                                          \
+    X(Zvbc)                                                                                                                                          \
     X(Zvkned)                                                                                                                                        \
     X(Zknd)                                                                                                                                          \
     X(Zicclsm)                                                                                                                                       \

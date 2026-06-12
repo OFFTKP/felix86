@@ -63,7 +63,7 @@ bool is_feature_enabled(x86_feature feature) {
         return is_feature_enabled(x86_feature::AES) && is_feature_enabled(x86_feature::AVX);
     }
     case x86_feature::PCLMULQDQ: {
-        return !g_config.no_pclmulqdq && Extensions::Zbc;
+        return !g_config.no_pclmulqdq && Extensions::Zvbc;
     }
     case x86_feature::VPCLMULQDQ: {
         return is_feature_enabled(x86_feature::AVX) && is_feature_enabled(x86_feature::PCLMULQDQ);
