@@ -178,19 +178,20 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
         result.ebx = 0;
         result.ecx = 0;
         result.edx = 0;
+        u64 xsave_size = sizeof(fxsave_frame) + sizeof(xsave_header) + (felix86_xsave_contains_ymms() ? sizeof(ymm_hi) : 0);
         if (subleaf == 2 && felix86_xsave_contains_ymms()) {
             // AVX YMM_HI size and offset in XSAVE
             result.eax = sizeof(ymm_hi);
             result.ebx = sizeof(fxsave_frame) + sizeof(xsave_header);
             found = true;
         } else if (subleaf == 0) {
-            result.ebx = sizeof(xsave_header) + (felix86_xsave_contains_ymms() ? sizeof(ymm_hi) : 0);
-            result.ecx = sizeof(xsave_header) + (felix86_xsave_contains_ymms() ? sizeof(ymm_hi) : 0);
+            result.ebx = xsave_size;
+            result.ecx = xsave_size;
             result.eax = get_xfeature_enabled_mask();
             result.edx = 0;
             found = true;
         } else if (subleaf == 1) {
-            result.ebx = sizeof(fxsave_frame) + sizeof(xsave_header) + sizeof(ymm_hi);
+            result.ebx = xsave_size;
             found = true;
         }
     }
