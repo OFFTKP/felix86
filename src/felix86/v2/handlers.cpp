@@ -12218,6 +12218,7 @@ inline static void AVX_Operation(Recompiler& rec, Assembler& as, ZydisDecodedIns
     bool is_xmms = !instruction.raw.vex.L;
     biscuit::Vec dst;
     biscuit::Vec src1 = rec.getVec(&operands[1]);
+    biscuit::Vec src2 = instruction.operand_count == 3 ? rec.getVec(&operands[2]) : src1;
     int element_count = elements == 1 ? 1 : elements / (is_xmms ? 2 : 1);
 
     // In 1 element operations like vaddss or vsqrtss, bits 127:32/127:64 are src1 bits
@@ -12226,13 +12227,18 @@ inline static void AVX_Operation(Recompiler& rec, Assembler& as, ZydisDecodedIns
         dst = rec.scratchVec();
         as.VMV1R(dst, src1);
     } else {
-        dst = rec.getVec(&operands[0]);
         if (is_xmms) {
-            rec.vzeroAllBits(dst);
+            if (dst != src1 && dst != src2) {
+                dst = rec.getVec(&operands[0]);
+                rec.vzeroAllBits(dst);
+            } else {
+                dst = rec.scratchVec();
+            }
+        } else {
+            dst = rec.getVec(&operands[0]);
         }
     }
 
-    biscuit::Vec src2 = instruction.operand_count == 3 ? rec.getVec(&operands[2]) : src1;
     rec.setVectorState(sew, element_count);
     if constexpr (std::is_same_v<Func, FuncPtr3>) {
         (as.*operation)(dst, src1, src2, VecMask::No);
