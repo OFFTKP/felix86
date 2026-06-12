@@ -14291,27 +14291,27 @@ FAST_HANDLE(VPGATHERQQ) {
 
 FAST_HANDLE(VPCLMULQDQ) {
     ASSERT(Extensions::Zvbc);
-    biscuit::Vec dst = rec.getVec(&operands[0]);
-    biscuit::Vec src = rec.getVec(&operands[1]);
+    biscuit::Vec src1 = rec.getVec(&operands[1]);
+    biscuit::Vec src2 = rec.getVec(&operands[2]);
     biscuit::Vec temp = rec.scratchVec();
     biscuit::Vec temp2 = rec.scratchVec();
     biscuit::Vec X;
     biscuit::Vec Y;
     biscuit::Vec dst_low = rec.scratchVec();
     biscuit::Vec dst_high = rec.scratchVec();
-    u8 imm = rec.getImmediate(&operands[2]);
+    u8 imm = rec.getImmediate(&operands[3]);
     rec.setVectorState(SEW::E64, 2);
     if (imm & 1) {
-        as.VSLIDEDOWN(temp, dst, 1);
+        as.VSLIDEDOWN(temp, src1, 1);
         X = temp;
     } else {
-        X = dst;
+        X = src1;
     }
     if (imm & 0b10000) {
-        as.VSLIDEDOWN(temp2, src, 1);
+        as.VSLIDEDOWN(temp2, src2, 1);
         Y = temp2;
     } else {
-        Y = src;
+        Y = src2;
     }
     as.VCLMUL(dst_low, X, Y);
     as.VCLMULH(dst_high, X, Y);
