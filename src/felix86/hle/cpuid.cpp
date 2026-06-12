@@ -194,6 +194,9 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
     }
 
     if (leaf == 0x0000'0015) {
+#ifndef RISCV_HWPROBE_KEY_TIME_CSR_FREQ
+#define RISCV_HWPROBE_KEY_TIME_CSR_FREQ 8
+#endif
 #ifdef __riscv
         riscv_hwprobe pairs[] = {
             {RISCV_HWPROBE_KEY_TIME_CSR_FREQ, 0},
