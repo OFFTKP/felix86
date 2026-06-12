@@ -986,6 +986,7 @@ int main() {
     GEN_AVX(vpmulhw);
     GEN_AVX(vpmulhuw);
     GEN_AVX(vpmulld);
+    GEN(vpmulld(xmm1, xmm1, xmm2));
     GEN_AVX(vpmuldq);
     GEN_AVX(vpmuludq);
     GEN_AVX(vpmulhrsw);

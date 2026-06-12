@@ -12227,15 +12227,13 @@ inline static void AVX_Operation(Recompiler& rec, Assembler& as, ZydisDecodedIns
         dst = rec.scratchVec();
         as.VMV1R(dst, src1);
     } else {
+        dst = rec.getVec(&operands[0]);
         if (is_xmms) {
             if (dst != src1 && dst != src2) {
-                dst = rec.getVec(&operands[0]);
                 rec.vzeroAllBits(dst);
             } else {
                 dst = rec.scratchVec();
             }
-        } else {
-            dst = rec.getVec(&operands[0]);
         }
     }
 
