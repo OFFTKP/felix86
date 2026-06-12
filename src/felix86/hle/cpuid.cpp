@@ -191,6 +191,7 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
             found = true;
         } else if (subleaf == 1) {
             result.ebx = sizeof(fxsave_frame) + sizeof(xsave_header) + sizeof(ymm_hi);
+            found = true;
         }
     }
 
