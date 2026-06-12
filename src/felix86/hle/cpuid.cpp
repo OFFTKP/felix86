@@ -9,6 +9,10 @@
 #include "felix86/common/xsave.hpp"
 #include "felix86/hle/cpuid.hpp"
 
+#ifdef __riscv
+#include <asm/hwprobe.h>
+#endif
+
 constexpr u32 NO_SUBLEAF = 0xFFFFFFFF;
 
 static inline void bit_set(u32& data, int position, bool value) {
