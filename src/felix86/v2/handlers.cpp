@@ -14317,7 +14317,7 @@ FAST_HANDLE(VPCLMULQDQ) {
     as.VCLMULH(dst_high, X, Y);
     as.VSLIDEUP(dst_low, dst_high, 1);
 
-    rec.setVec(&operands[0], temp2);
+    rec.setVec(&operands[0], dst_low);
 }
 
 FAST_HANDLE(VDPPD) {
