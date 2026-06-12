@@ -14300,7 +14300,7 @@ FAST_HANDLE(VPCLMULQDQ) {
     biscuit::Vec dst_low = rec.scratchVec();
     biscuit::Vec dst_high = rec.scratchVec();
     u8 imm = rec.getImmediate(&operands[3]);
-    rec.setVectorState(SEW::E64, 2);
+    rec.setVectorState(SEW::E64, 4);
     if (imm & 1) {
         as.VSLIDEDOWN(temp, src1, 1);
         X = temp;
