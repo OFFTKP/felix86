@@ -182,15 +182,16 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
             // AVX YMM_HI size and offset in XSAVE
             result.eax = sizeof(ymm_hi);
             result.ebx = sizeof(fxsave_frame) + sizeof(xsave_header);
-        } else if (subleaf == 0 && felix86_xsave_contains_ymms()) {
-            result.ebx = sizeof(xsave_header) + sizeof(ymm_hi);
-            result.ecx = sizeof(xsave_header) + sizeof(ymm_hi);
-            result.eax = 0b111;
+            found = true;
+        } else if (subleaf == 0) {
+            result.ebx = sizeof(xsave_header) + (felix86_xsave_contains_ymms() ? sizeof(ymm_hi) : 0);
+            result.ecx = sizeof(xsave_header) + (felix86_xsave_contains_ymms() ? sizeof(ymm_hi) : 0);
+            result.eax = get_xfeature_enabled_mask();
             result.edx = 0;
-        } else {
-            WARN("Unknown leaf+subleaf combo: %d %d", leaf, subleaf);
+            found = true;
+        } else if (subleaf == 1) {
+            result.ebx = sizeof(fxsave_frame) + sizeof(xsave_header) + sizeof(ymm_hi);
         }
-        found = true;
     }
 
     if (leaf == 0x0000'0015) {
