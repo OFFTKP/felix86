@@ -201,22 +201,22 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
 #define RISCV_HWPROBE_KEY_TIME_CSR_FREQ 8
 #endif
 #ifdef __riscv
-        // riscv_hwprobe pairs[] = {
-        //     {RISCV_HWPROBE_KEY_TIME_CSR_FREQ, 0},
-        // };
+        riscv_hwprobe pairs[] = {
+            {RISCV_HWPROBE_KEY_TIME_CSR_FREQ, 0},
+        };
 
-        // int r = syscall(SYS_riscv_hwprobe, pairs, std::size(pairs), 0, nullptr, 0);
-        // uint64_t hz = pairs[0].value;
-        // if (r == 0) {
-        //     // TSCFreq = ECX*(EBX/EAX)
-        //     result.ecx = hz;
-        //     result.eax = 1;
-        //     result.ebx = 1;
-        //     result.edx = 0;
-        // } else {
-        //     WARN("Failed to query RDTIME frequency");
-        // }
-        // found = true;
+        int r = syscall(SYS_riscv_hwprobe, pairs, std::size(pairs), 0, nullptr, 0);
+        uint64_t hz = pairs[0].value;
+        if (r == 0) {
+            // TSCFreq = ECX*(EBX/EAX)
+            result.ecx = hz;
+            result.eax = 1;
+            result.ebx = 1;
+            result.edx = 0;
+        } else {
+            WARN("Failed to query RDTIME frequency");
+        }
+        found = true;
 #endif
     }
 
