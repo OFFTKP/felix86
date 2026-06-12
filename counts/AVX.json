@@ -14373,9 +14373,9 @@
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "57A24A33 ???",
             "D7A24A37 ???",
-            "VSLIDEUP.VI     v5, v5, 0x1(1), none",
+            "VSLIDEUP.VI     v2, v5, 0x1(1), none",
             "VMV.V.I         v0, 0xa(10)",
-            "VMERGE.VVM      v4, v4, v5",
+            "VMERGE.VVM      v4, v4, v2",
             "VMV1R.V         v19, v4"
         ],
         "disassembly": "vpclmulqdq ymm3, ymm4, ymm5, 0xAA"
@@ -14389,9 +14389,9 @@
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "D7222133 ???",
             "57232137 ???",
-            "VSLIDEUP.VI     v6, v6, 0x1(1), none",
+            "VSLIDEUP.VI     v3, v6, 0x1(1), none",
             "VMV.V.I         v0, 0xa(10)",
-            "VMERGE.VVM      v5, v5, v6",
+            "VMERGE.VVM      v5, v5, v3",
             "VMV1R.V         v17, v5"
         ],
         "disassembly": "vpclmulqdq ymm1, ymm2, [rdi], 0xAA"
@@ -14402,9 +14402,9 @@
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "57A24A33 ???",
             "D7A24A37 ???",
-            "VSLIDEUP.VI     v5, v5, 0x1(1), none",
+            "VSLIDEUP.VI     v2, v5, 0x1(1), none",
             "VMV.V.I         v0, 0xa(10)",
-            "VMERGE.VVM      v4, v4, v5",
+            "VMERGE.VVM      v4, v4, v2",
             "VMV.V.I         v0, 0xfffffffc(-4)",
             "VMERGE.VIM      v19, v4, 0x0(0)"
         ],
@@ -14418,9 +14418,9 @@
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "D7222133 ???",
             "57232137 ???",
-            "VSLIDEUP.VI     v6, v6, 0x1(1), none",
+            "VSLIDEUP.VI     v3, v6, 0x1(1), none",
             "VMV.V.I         v0, 0xa(10)",
-            "VMERGE.VVM      v5, v5, v6",
+            "VMERGE.VVM      v5, v5, v3",
             "VMV.V.I         v0, 0xfffffffc(-4)",
             "VMERGE.VIM      v17, v5, 0x0(0)"
         ],
