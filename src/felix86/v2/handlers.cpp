@@ -14315,10 +14315,10 @@ FAST_HANDLE(VPCLMULQDQ) {
     }
     as.VCLMUL(dst_low, X, Y);
     as.VCLMULH(dst_high, X, Y);
-    as.VSLIDEUP(dst_high, dst_high, 1);
+    as.VSLIDEUP(temp, dst_high, 1);
     rec.vsplat(v0, 0b1010);
     rec.v0Modified();
-    as.VMERGE(dst_low, dst_low, dst_high);
+    as.VMERGE(dst_low, dst_low, temp);
 
     rec.setVec(&operands[0], dst_low);
 }
