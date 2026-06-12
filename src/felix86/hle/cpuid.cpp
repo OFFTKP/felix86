@@ -9,6 +9,10 @@
 #include "felix86/common/xsave.hpp"
 #include "felix86/hle/cpuid.hpp"
 
+#ifdef __riscv
+#include <asm/hwprobe.h>
+#endif
+
 constexpr u32 NO_SUBLEAF = 0xFFFFFFFF;
 
 static inline void bit_set(u32& data, int position, bool value) {
@@ -62,7 +66,7 @@ static inline void bit_set(u32& data, int position, bool value) {
 
 [[maybe_unused]] constexpr std::array nehalem_mappings = {
     // http://users.atw.hu/instlatx64/GenuineIntel/GenuineIntel00106A2_Nehalem-EP_CPUID.txt
-    (Cpuid){0x00000000, NO_SUBLEAF, 0x0000000A, 0x756E6547, 0x6C65746E, 0x49656E69},
+    (Cpuid){0x00000000, NO_SUBLEAF, 0x00000015, 0x756E6547, 0x6C65746E, 0x49656E69},
     (Cpuid){0x00000001, NO_SUBLEAF, 0x00010676, 0x00040800, 0x000CE3BD, 0xBFEBFBFF},
     (Cpuid){0x00000002, NO_SUBLEAF, 0x05B0B101, 0x005657F0, 0x00000000, 0x2CB4304E},
     (Cpuid){0x00000003, NO_SUBLEAF, 0x00000000, 0x00000000, 0x00000000, 0x00000000},
@@ -174,19 +178,46 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
         result.ebx = 0;
         result.ecx = 0;
         result.edx = 0;
+        u64 xsave_size = sizeof(fxsave_frame) + sizeof(xsave_header) + (felix86_xsave_contains_ymms() ? sizeof(ymm_hi) : 0);
         if (subleaf == 2 && felix86_xsave_contains_ymms()) {
             // AVX YMM_HI size and offset in XSAVE
             result.eax = sizeof(ymm_hi);
             result.ebx = sizeof(fxsave_frame) + sizeof(xsave_header);
-        } else if (subleaf == 0 && felix86_xsave_contains_ymms()) {
-            result.ebx = sizeof(xsave_header) + sizeof(ymm_hi);
-            result.ecx = sizeof(xsave_header) + sizeof(ymm_hi);
-            result.eax = 0b111;
+            found = true;
+        } else if (subleaf == 0) {
+            result.ebx = xsave_size;
+            result.ecx = xsave_size;
+            result.eax = get_xfeature_enabled_mask();
+            result.edx = 0;
+            found = true;
+        } else if (subleaf == 1) {
+            result.ebx = xsave_size;
+            found = true;
+        }
+    }
+
+    if (leaf == 0x0000'0015) {
+#ifndef RISCV_HWPROBE_KEY_TIME_CSR_FREQ
+#define RISCV_HWPROBE_KEY_TIME_CSR_FREQ 8
+#endif
+#ifdef __riscv
+        riscv_hwprobe pairs[] = {
+            {RISCV_HWPROBE_KEY_TIME_CSR_FREQ, 0},
+        };
+
+        int r = syscall(SYS_riscv_hwprobe, pairs, std::size(pairs), 0, nullptr, 0);
+        uint64_t hz = pairs[0].value;
+        if (r == 0) {
+            // TSCFreq = ECX*(EBX/EAX)
+            result.ecx = hz;
+            result.eax = 1;
+            result.ebx = 1;
             result.edx = 0;
         } else {
-            WARN("Unknown leaf+subleaf combo: %d %d", leaf, subleaf);
+            WARN("Failed to query RDTIME frequency");
         }
         found = true;
+#endif
     }
 
     if (found && leaf == 0x8000'0001) {
