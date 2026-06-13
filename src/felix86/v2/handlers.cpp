@@ -1062,7 +1062,7 @@ FAST_HANDLE(SBB) {
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
-        rec.updateOverflowSub(dst, src, result_2, size);
+        rec.updateOverflowSbb(dst, src, result_2, size);
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_ZF)) {
@@ -1100,7 +1100,7 @@ FAST_HANDLE(ADC) {
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
-        rec.updateOverflowAdd(dst, src, result_2, size);
+        rec.updateOverflowAdc(dst, src, result_2, size);
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_ZF)) {

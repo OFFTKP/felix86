@@ -2432,6 +2432,38 @@ void Recompiler::updateOverflowAdd(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::
     popScratch();
 }
 
+void Recompiler::updateOverflowSbb(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size_e) {
+    int size = getBitSize(size_e);
+    biscuit::GPR of = flag(X86_REF_OF);
+    biscuit::GPR temp = scratch();
+    as.NOT(temp, lhs);
+    as.OR(of, temp, rhs);
+    as.AND(of, of, result);
+    as.AND(temp, temp, rhs);
+    as.OR(of, of, temp);
+    as.SRLI(temp, of, size - 2);
+    as.SRLI(of, of, size - 1);
+    as.XOR(of, of, temp);
+    as.ANDI(of, of, 1);
+    popScratch();
+}
+
+void Recompiler::updateOverflowAdc(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size_e) {
+    int size = getBitSize(size_e);
+    biscuit::GPR of = flag(X86_REF_OF);
+    biscuit::GPR temp = scratch();
+    as.OR(of, lhs, rhs);
+    as.NOT(temp, result);
+    as.AND(of, temp, of);
+    as.AND(temp, lhs, rhs);
+    as.OR(of, of, temp);
+    as.SRLI(temp, of, size - 2);
+    as.SRLI(of, of, size - 1);
+    as.XOR(of, of, temp);
+    as.ANDI(of, of, 1);
+    popScratch();
+}
+
 void Recompiler::updateAuxiliaryAdd(biscuit::GPR lhs, biscuit::GPR result) {
     biscuit::GPR af = scratch();
     biscuit::GPR temp = scratch();
