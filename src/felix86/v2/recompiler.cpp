@@ -33,9 +33,6 @@ constexpr static u64 code_cache_sizes[] = {
 constexpr static u64 code_cache_sizes_count = std::size(code_cache_sizes);
 constexpr static u64 max_code_cache_size = code_cache_sizes[code_cache_sizes_count - 1];
 
-// TODO: move to header file
-BlockMetadata* get_block_metadata(ThreadState* state, u64 host_pc);
-
 static void incorrect_magic(void* sp) {
     ERROR("Incorrect magic in frame (sp: %lx)", sp);
 }
@@ -336,24 +333,20 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block) {
         tas.AUIPC(t5, 0);
         ASSERT(instruction == *(u32*)linked_block);
 
-        BlockMetadata* block = get_block_metadata(state, (u64)linked_block);
-        ASSERT_MSG(block, "Failed to get block metadata for address %lx", linked_block);
         // The link location should be an instruction after the AUIPC...
         u8* link_location = linked_block + sizeof(u32);
-        if (block->host_address != 0) {
-            u8* cursor = state->recompiler->as.GetCursorPointer();
-            ASSERT_MSG(linked_block >= state->recompiler->start_of_code_cache && linked_block < cursor, "%lx <= %lx < %lx",
-                       state->recompiler->start_of_code_cache, linked_block, cursor);
+        u8* cursor = state->recompiler->as.GetCursorPointer();
+        ASSERT_MSG(linked_block >= state->recompiler->start_of_code_cache && linked_block < cursor, "%lx <= %lx < %lx",
+                   state->recompiler->start_of_code_cache, linked_block, cursor);
 
-            // And here we need to mark the block for linking again. This will either link if the block is already compiled
-            // or jump back to dispatcher that will link when the block gets compiled.
-            state->recompiler->as.SetCursorPointer(link_location);
-            // Because there was a writebackState before entering this function, state->rip contains the guest address that we tried
-            // to jump to before getting hit by this invalidation. So we can jumpAndLink there.
-            state->recompiler->jumpAndLink(state->ctx.rip);
-            state->recompiler->as.SetCursorPointer(cursor);
-            flush_icache();
-        }
+        // And here we need to mark the block for linking again. This will either link if the block is already compiled
+        // or jump back to dispatcher that will link when the block gets compiled.
+        state->recompiler->as.SetCursorPointer(link_location);
+        // Because there was a writebackState before entering this function, state->rip contains the guest address that we tried
+        // to jump to before getting hit by this invalidation. So we can jumpAndLink there.
+        state->recompiler->jumpAndLink(state->ctx.rip);
+        state->recompiler->as.SetCursorPointer(cursor);
+        flush_icache();
     } else {
         // The dispatcher makes sure the third argument is set to 0 if we get here not from a link
     }
