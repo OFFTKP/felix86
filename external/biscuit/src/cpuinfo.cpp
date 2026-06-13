@@ -637,7 +637,7 @@ bool CheckExtensionSignal(biscuit::RISCVExtension extension) {
     result = mprotect(memory, 4096, PROT_READ | PROT_EXEC);
     BISCUIT_ASSERT(result == 0);
 
-    __riscv_flush_icache(static_cast<void*>(function), as.GetCursorPointer(), 0);
+    __riscv_flush_icache(reinterpret_cast<void*>(function), as.GetCursorPointer(), 0);
 
     bool has_extension = function(&valid_memory);
 
