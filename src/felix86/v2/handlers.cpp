@@ -2683,18 +2683,13 @@ FAST_HANDLE(DIV) {
     }
     case X86_SIZE_QWORD: {
         // Most of the time the program doesn't actually want a 128-bit divide
-        // and instead wants a 64-bit divide. If RDX is sign-extended from RAX then
-        // we can use our RISC-V divide instruction rather than calling a function to emulate 128-bit div
+        // and instead wants a 64-bit divide. If RDX is zero  we can use our RISC-V
+        // divide instruction rather than calling a function to emulate 128-bit div
         biscuit::GPR rax = rec.getGPR(X86_REF_RAX, X86_SIZE_QWORD);
         biscuit::GPR rdx = rec.getGPR(X86_REF_RDX, X86_SIZE_QWORD);
         biscuit::Label do_128bit, end;
 
-        biscuit::GPR rax_sext = rec.scratch();
-        as.SRAI(rax_sext, rax, 63);
-        as.BNE(rax_sext, rdx, &do_128bit);
-        rec.popScratch();
-
-        // We need a slow 128-bit divide...
+        as.BNEZ(rdx, &do_128bit);
 
         biscuit::GPR mod = rec.scratch();
         biscuit::GPR div = rec.scratch();
@@ -2808,8 +2803,6 @@ FAST_HANDLE(IDIV) {
         as.SRAI(rax_sext, rax, 63);
         as.BNE(rax_sext, rdx, &do_128bit);
         rec.popScratch();
-
-        // We need a slow 128-bit divide...
 
         biscuit::GPR mod = rec.scratch();
         biscuit::GPR div = rec.scratch();
