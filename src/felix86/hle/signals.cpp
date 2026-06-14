@@ -1455,8 +1455,9 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             VERBOSE("Synchronous signal block: %lx, actual rip: %lx", block_rip, actual_rip);
             return prepare_synchronous_signal(state, sig, info, ctx, actual_rip);
         } else {
-            ERROR("Synchronous signal %s with code %d but not in JIT code during RIP=%lx, PC=%lx", sigdescr_np(sig), info->si_code, state->ctx.rip,
-                  pc);
+            AddressCacheEntry entry = state->recompiler->getAddressCacheEntry(state->ctx.rip);
+            ERROR("Synchronous signal %s with code %d but not in JIT code during RIP=%lx, PC=%lx, RA=%lx, address_cache entry: [%lx, %lx]",
+                  sigdescr_np(sig), info->si_code, state->ctx.rip, pc, get_regs(ctx)[1], entry.guest, entry.host);
         }
     } else {
         // Asynchronous signal, defer

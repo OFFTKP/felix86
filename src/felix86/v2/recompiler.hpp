@@ -471,7 +471,7 @@ struct Recompiler {
 
     u64 getCompiledBlock(ThreadState* state, u64 rip) {
         if (g_config.address_cache) {
-            AddressCacheEntry& entry = address_cache[rip & ((1 << address_cache_bits) - 1)];
+            AddressCacheEntry& entry = getAddressCacheEntry(rip);
             if (entry.guest == rip) {
                 return entry.host;
             } else if (blockExists(rip)) {
@@ -504,6 +504,10 @@ struct Recompiler {
 
     x86_size_e stackWidth() {
         return g_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
+    }
+
+    AddressCacheEntry& getAddressCacheEntry(u64 rip) {
+        return address_cache[rip & ((1 << address_cache_bits) - 1)];
     }
 
     void updateOverflowAdd(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size);

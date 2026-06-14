@@ -438,7 +438,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
     }
 
     if (g_config.address_cache) {
-        AddressCacheEntry& entry = address_cache[start_rip & ((1 << address_cache_bits) - 1)];
+        AddressCacheEntry& entry = getAddressCacheEntry(start_rip);
         entry.host = block_meta.host_address;
         entry.guest = start_rip;
     }
@@ -3289,7 +3289,7 @@ void Recompiler::invalidateBlock(BlockMetadata* block) {
     __atomic_store(address, &storage, __ATOMIC_SEQ_CST);
 
     if (g_config.address_cache) {
-        AddressCacheEntry& entry = address_cache[block->guest_address & ((1 << address_cache_bits) - 1)];
+        AddressCacheEntry& entry = getAddressCacheEntry(block->guest_address);
         entry.guest = ~block->guest_address;
         entry.host = 0;
     }
