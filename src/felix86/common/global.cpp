@@ -195,6 +195,11 @@ std::string get_extensions() {
             extensions += ",";
         extensions += "zvbb";
     }
+    if (Extensions::Zvbc) {
+        if (!extensions.empty())
+            extensions += ",";
+        extensions += "zvbc";
+    }
     if (Extensions::Zvkned) {
         if (!extensions.empty())
             extensions += ",";
