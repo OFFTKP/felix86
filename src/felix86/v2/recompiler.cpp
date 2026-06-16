@@ -1282,58 +1282,6 @@ biscuit::Vec Recompiler::getVec(const ZydisDecodedOperand* operand) {
     }
 }
 
-biscuit::GPR Recompiler::getElementGPR(ZydisDecodedOperand* operand, x86_size_e size, int element, bool sext) {
-    biscuit::GPR address;
-    int offset;
-    if (operand->type == ZYDIS_OPERAND_TYPE_REGISTER) {
-        ASSERT(operand->reg.value >= ZYDIS_REGISTER_XMM0 && operand->reg.value <= ZYDIS_REGISTER_XMM15);
-        x86_ref_e ref = zydisToRef(operand->reg.value);
-        offset = offsetof(ThreadState, ctx.xmm) + (ref - X86_REF_XMM0) * sizeof(XmmReg) + (getBitSize(size) / 8) * element;
-        address = threadStatePointer();
-    } else if (operand->type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        address = lea(operand, false);
-        offset = (getBitSize(size) / 8) * element;
-    } else {
-        UNREACHABLE();
-    }
-
-    biscuit::GPR temp = scratch();
-    switch (size) {
-    case X86_SIZE_BYTE: {
-        if (!sext) {
-            as.LBU(temp, offset, address);
-        } else {
-            as.LB(temp, offset, address);
-        }
-        break;
-    }
-    case X86_SIZE_WORD: {
-        if (!sext) {
-            as.LHU(temp, offset, address);
-        } else {
-            as.LH(temp, offset, address);
-        }
-        break;
-    }
-    case X86_SIZE_DWORD: {
-        if (!sext) {
-            as.LWU(temp, offset, address);
-        } else {
-            as.LW(temp, offset, address);
-        }
-        break;
-    }
-    case X86_SIZE_QWORD: {
-        as.LD(temp, offset, address);
-        break;
-    }
-    default: {
-        UNREACHABLE();
-    }
-    }
-    return temp;
-}
-
 biscuit::FPR Recompiler::getElementFPR(ZydisDecodedOperand* operand, x86_size_e size, int element) {
     biscuit::GPR address;
     int offset;
@@ -1364,74 +1312,6 @@ biscuit::FPR Recompiler::getElementFPR(ZydisDecodedOperand* operand, x86_size_e 
     }
     }
     return temp;
-}
-
-void Recompiler::setElementGPR(ZydisDecodedOperand* operand, x86_size_e size, int element, biscuit::GPR src) {
-    biscuit::GPR address;
-    int offset;
-    if (operand->type == ZYDIS_OPERAND_TYPE_REGISTER) {
-        ASSERT(operand->reg.value >= ZYDIS_REGISTER_XMM0 && operand->reg.value <= ZYDIS_REGISTER_XMM15);
-        x86_ref_e ref = zydisToRef(operand->reg.value);
-        offset = offsetof(ThreadState, ctx.xmm) + (ref - X86_REF_XMM0) * sizeof(XmmReg) + (getBitSize(size) / 8) * element;
-        address = threadStatePointer();
-    } else if (operand->type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        address = lea(operand, false);
-        offset = (getBitSize(size) / 8) * element;
-    } else {
-        UNREACHABLE();
-    }
-
-    switch (size) {
-    case X86_SIZE_BYTE: {
-        as.SB(src, offset, address);
-        break;
-    }
-    case X86_SIZE_WORD: {
-        as.SH(src, offset, address);
-        break;
-    }
-    case X86_SIZE_DWORD: {
-        as.SW(src, offset, address);
-        break;
-    }
-    case X86_SIZE_QWORD: {
-        as.SD(src, offset, address);
-        break;
-    }
-    default: {
-        UNREACHABLE();
-    }
-    }
-}
-
-void Recompiler::setElementFPR(ZydisDecodedOperand* operand, x86_size_e size, int element, biscuit::FPR src) {
-    biscuit::GPR address;
-    int offset;
-    if (operand->type == ZYDIS_OPERAND_TYPE_REGISTER) {
-        ASSERT(operand->reg.value >= ZYDIS_REGISTER_XMM0 && operand->reg.value <= ZYDIS_REGISTER_XMM15);
-        x86_ref_e ref = zydisToRef(operand->reg.value);
-        offset = offsetof(ThreadState, ctx.xmm) + (ref - X86_REF_XMM0) * sizeof(XmmReg) + (getBitSize(size) / 8) * element;
-        address = threadStatePointer();
-    } else if (operand->type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        address = lea(operand, false);
-        offset = (getBitSize(size) / 8) * element;
-    } else {
-        UNREACHABLE();
-    }
-
-    switch (size) {
-    case X86_SIZE_DWORD: {
-        as.FSW(src, offset, address);
-        break;
-    }
-    case X86_SIZE_QWORD: {
-        as.FSD(src, offset, address);
-        break;
-    }
-    default: {
-        UNREACHABLE();
-    }
-    }
 }
 
 u64 Recompiler::getImmediate(ZydisDecodedOperand* operand) {

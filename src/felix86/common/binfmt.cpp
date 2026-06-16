@@ -156,7 +156,12 @@ void binfmt_misc(bool is_register) {
         unregister_binfmt_misc("felix86-x86_64");
         unregister_binfmt_misc("felix86-i386");
 
-        FILE* fp = fopen("/proc/sys/fs/binfmt_misc/register", "w");
+        int fd = open("/proc/sys/fs/binfmt_misc/register", O_WRONLY);
+        if (fd < 0) {
+            perror("open");
+            exit(1);
+        }
+        FILE* fp = fdopen(fd, "w");
 
         if (!fp) {
             ERROR("Failed to open /proc/sys/fs/binfmt_misc/register");
@@ -169,7 +174,12 @@ void binfmt_misc(bool is_register) {
 
         fclose(fp);
 
-        fp = fopen("/proc/sys/fs/binfmt_misc/register", "w");
+        fd = open("/proc/sys/fs/binfmt_misc/register", O_WRONLY);
+        if (fd < 0) {
+            perror("open");
+            exit(1);
+        }
+        fp = fdopen(fd, "w");
 
         if (fwrite(registration_string_i386.c_str(), 1, registration_string_i386.size(), fp) != registration_string_i386.size()) {
             fclose(fp);

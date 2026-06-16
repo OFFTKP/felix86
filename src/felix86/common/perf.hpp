@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <fcntl.h>
 #include <sys/syscall.h>
 #include "felix86/common/log.hpp"
 #include "felix86/hle/fd.hpp"
@@ -10,17 +11,15 @@ struct Perf {
     Perf() {
         if (g_config.perf_blocks || g_config.perf_libs || g_config.perf_global) {
             std::string path = "/tmp/perf-" + std::to_string(getpid()) + ".map";
-            f = fopen(path.c_str(), "a");
-            if (f) {
-                fd = fileno(f);
-                ASSERT(fd > 0);
-                // fd = FD::moveToHighNumber(fd); -- TODO: doing this isn't safe probably with FILE*, rewrite to use syscalls instead of FILE*
-                FD::protect(fd);
-            } else {
-                // TODO: for some reason, running a setuid app through binfmt_misc after being forked
-                // loves failing the fopen and idk why, but game processes aren't setuid so we can perf them fine
+            fd = open(path.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0600);
+            if (fd < 0) {
                 WARN("Failed to open perf map file for process %d", getpid());
+                return;
             }
+            fd = FD::moveToHighNumber(fd);
+            FD::protect(fd);
+            f = fdopen(fd, "a");
+            ASSERT(f);
         }
     }
 
