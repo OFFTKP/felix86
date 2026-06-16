@@ -142,14 +142,7 @@ struct Recompiler {
     biscuit::Vec getVec(ZydisRegister reg);
 
     biscuit::Vec getVec(x86_ref_e ref);
-
-    biscuit::GPR getElementGPR(ZydisDecodedOperand* operand, x86_size_e size, int element, bool sext = false);
-
     biscuit::FPR getElementFPR(ZydisDecodedOperand* operand, x86_size_e size, int element);
-
-    void setElementGPR(ZydisDecodedOperand* operand, x86_size_e size, int element, biscuit::GPR src);
-
-    void setElementFPR(ZydisDecodedOperand* operand, x86_size_e size, int element, biscuit::FPR src);
 
     void setGPR(const ZydisDecodedOperand* operand, biscuit::GPR reg);
 

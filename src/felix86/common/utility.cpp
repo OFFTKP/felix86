@@ -552,7 +552,7 @@ void dump_states() {
     auto& states = g_process_globals.states;
     int i = 0;
     for (auto& state : states) {
-        dprintf(g_output_fd, ANSI_COLOR_RED "State %d (%ld):" ANSI_COLOR_RESET "\n", i, gettid());
+        dprintf(g_output_fd, ANSI_COLOR_RED "State %d (%d):" ANSI_COLOR_RESET "\n", i, gettid());
 
         if (g_config.calltrace) {
             auto it = state->recompiler->getCalltrace().rbegin();

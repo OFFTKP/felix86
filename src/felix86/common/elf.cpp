@@ -400,12 +400,12 @@ void Elf::Load(const std::filesystem::path& path) {
     // Avoiding heap allocations for when I must do that in the future
     Elf_Phdr* phdrtable = (Elf_Phdr*)alloca(ehdr.phnum() * sizeof(Elf_Phdr));
     fseek(file, ehdr.phoff(), SEEK_SET);
-    for (Elf64_Half i = 0; i < ehdr.phnum(); i++) {
+    for (u64 i = 0; i < ehdr.phnum(); i++) {
         // Placement new to run the constructor
         new (&phdrtable[i]) Elf_Phdr(mode32, file);
     }
 
-    for (Elf64_Half i = 0; i < ehdr.phnum(); i++) {
+    for (u64 i = 0; i < ehdr.phnum(); i++) {
         Elf_Phdr& phdr = phdrtable[i];
         switch (phdr.type()) {
         case PT_INTERP: {
@@ -492,7 +492,7 @@ void Elf::Load(const std::filesystem::path& path) {
 
     VERBOSE("Allocated memory at %p-%p", base_ptr, base_ptr + highest_vaddr);
 
-    for (Elf64_Half i = 0; i < ehdr.phnum(); i += 1) {
+    for (u64 i = 0; i < ehdr.phnum(); i += 1) {
         Elf_Phdr& phdr = phdrtable[i];
         switch (phdr.type()) {
         case PT_LOAD: {

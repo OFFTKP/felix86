@@ -97,7 +97,8 @@ static void setupMainStack(ThreadState* state) {
     }
 
     size_t envc = g_params.envp.size();
-    u64* envp_addresses = (u64*)alloca(envc * sizeof(u64));
+    std::vector<u64> envp_addresses;
+    envp_addresses.resize(envc);
 
     for (size_t i = 0; i < envc; i++) {
         const char* env = g_params.envp[i].c_str();
@@ -123,16 +124,16 @@ static void setupMainStack(ThreadState* state) {
     std::vector<std::pair<u64, u64>> auxv_entries = {
         {AT_PAGESZ, {4096}},
         {AT_EXECFN, {(u64)program_name}},
-        {AT_CLKTCK, {100}},
+        {AT_CLKTCK, {getauxval(AT_CLKTCK)}},
         {AT_ENTRY, {elf->GetEntrypoint()}},
         {AT_PLATFORM, {(u64)platform_name}},
         {AT_BASE, {(u64)elf->GetProgramBase()}},
         {AT_FLAGS, {0}},
-        {AT_UID, {1000}},
-        {AT_EUID, {1000}},
-        {AT_GID, {1000}},
-        {AT_EGID, {1000}},
-        {AT_SECURE, {0}},
+        {AT_UID, {getauxval(AT_UID)}},
+        {AT_EUID, {getauxval(AT_EUID)}},
+        {AT_GID, {getauxval(AT_GID)}},
+        {AT_EGID, {getauxval(AT_EGID)}},
+        {AT_SECURE, {getauxval(AT_SECURE)}},
         {AT_PHDR, {(u64)elf->GetPhdr()}},
         {AT_PHENT, {elf->GetPhent()}},
         {AT_PHNUM, {elf->GetPhnum()}},

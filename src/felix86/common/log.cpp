@@ -28,11 +28,11 @@ void Logger::startServer(bool detach) {
     int fd = mkstemps(log_path.data(), 4);
     ASSERT(fd != -1);
 
-    int ok = mkfifo(g_pipe_name.c_str(), 0666);
+    int ok = mkfifo(g_pipe_name.c_str(), 0600);
     ASSERT(ok == 0);
 
     // mkfifo uses umask to set the permissions, override them
-    ok = chmod(g_pipe_name.c_str(), 0666);
+    ok = chmod(g_pipe_name.c_str(), 0600);
     ASSERT(ok == 0);
 
     if (detach) {
