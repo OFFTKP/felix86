@@ -66,7 +66,6 @@ add_subdirectory(external/biscuit)
 add_subdirectory(external/zydis)
 add_subdirectory(external/fmt)
 target_compile_definitions(fmt PRIVATE FMT_USE_EXCEPTIONS=0)
-add_subdirectory(external/scnlib)
 
 if (FELIX86_BUILD_THUNKING)
     message("Building with thunking support")
