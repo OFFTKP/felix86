@@ -39,8 +39,6 @@ You should now be inside the rootfs.
 Here you can run your x86 and x86-64 applications, such as games:
 ![My rootfs is named /rootfs](./example.png)
 
-**You can also run x86 executables that are outside the rootfs, the first time you do so you will be prompted to mark the directory as trusted.**
-
 The rootfs you downloaded should have enough libraries to support most games, but if any are missing use your **x86-64 package manager** to install them while inside the rootfs.    
 
 > [!TIP]

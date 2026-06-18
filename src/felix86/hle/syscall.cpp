@@ -1503,6 +1503,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
             const std::string& args = script.GetArgs();
             script_interpreter = script.GetInterpreter();
             FdPath interpreter_fd_path = Filesystem::resolve(script_interpreter.c_str(), true);
+            ASSERT_MSG(!interpreter_fd_path.is_error(), "Interpreter not found: %s", script_interpreter.c_str());
             ASSERT(interpreter_fd_path.full_path());
             ASSERT(interpreter_fd_path.full_path()[0] == '/');
             script_interpreter = interpreter_fd_path.full_path();
@@ -1523,7 +1524,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
 
             path = std::filesystem::absolute(path);
             if (path.string().find(g_config.rootfs_path.string()) != 0) {
-                WARN("Script path is not inside rootfs? %s", path.c_str()); // TODO: might be inside a trusted folder, check and don't warn
+                WARN("Script path is not inside rootfs? %s", path.c_str()); // TODO: might be inside a fakemounted folder, check and don't warn
             } else {
                 // We are running it through emulated bash, so the script itself needs to be a regular path
                 path = path.string().substr(g_config.rootfs_path.string().size());

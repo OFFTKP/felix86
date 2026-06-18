@@ -54,17 +54,6 @@ void seal_memfd(int fd) {
     ASSERT(fcntl(fd, F_ADD_SEALS, F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW | F_SEAL_WRITE | F_SEAL_FUTURE_WRITE) == 0);
 }
 
-void replace_trusted_folder_path(std::string& path) {
-    for (const auto& trusted : g_fake_mounts) {
-        if (trusted.trusted_folder) {
-            if (path.find(trusted.src_path) == 0) {
-                replace_all(path, trusted.src_path, trusted.dst_path);
-                break;
-            }
-        }
-    }
-}
-
 void Filesystem::initializeEmulatedNodes() {
     // clang-format off
     emulated_nodes[PROC_CPUINFO] = EmulatedNode {
@@ -116,68 +105,10 @@ void Filesystem::initializeEmulatedNodes() {
     }
 }
 
-std::filesystem::path Filesystem::ConvertToTrustedPath(const std::filesystem::path& path) {
-    // Should be easily convertible to a normalized path by just replacing slashes
-    ASSERT(path.is_absolute());
-    ASSERT(std::filesystem::canonical(path) == path);
-    std::string normalized_path = path.string();
-    const std::string dirname = path.filename();
-    replace_all(normalized_path, "/", "-");
-
-    // Make our fake directory
-    std::error_code ec;
-    const std::filesystem::path dest_path =
-        std::filesystem::path("/run") / "user" / std::to_string(geteuid()) / "felix86" / "trusted" / normalized_path / dirname;
-    if (std::filesystem::exists(dest_path, ec) && std::filesystem::is_directory(dest_path, ec)) {
-        return dest_path;
-    }
-
-    bool ok = std::filesystem::create_directories(dest_path, ec);
-    if (!ok || ec) {
-        return {};
-    }
-
-    return dest_path;
-}
-
-bool Filesystem::TrustFolder(const std::filesystem::path& path) {
-    // Goal: We need a way to run things that are outside the rootfs
-    // Ideas:
-    // - Symlink folder: Bad. Symlinks are resolved inside the rootfs. Allows access outside the rootfs
-    // - Mounting: Bad. Pollutes mountinfo, gets us in root requiring hell
-    // - Fake mounting: Seems to work. But then:
-    //    Say /mydir is mounted to /rootfs/home/mnt
-    //    /mydir/test should resolve to /rootfs/home/mnt/test, sure
-    //    /mydir/.. should resolve to /rootfs/home, not /, sure
-    //    open(/home/mnt) should resolve to open(/mydir), what about a later open(fd, "..")? Needs care
-    // We will place these fake paths inside a tmpfs, in this case /run/user/$euid/felix86/trusted/NormalizedPath/DirName
-    // For example, say my path is /home/myname/mydir, the dir it will exist in is /run/user/$euid/felix86/trusted/home-myname-mydir/mydir
-    // In case programs rely on the directory name the executable is in being correct (for whatever reason) then this would cover it
-    // The "normalized path" here serves as a unique identifier per trusted path
-    // This is to not conflict with other dirs that have the same final component name but a different path
-    std::error_code ec;
-    const std::filesystem::path final_path = std::filesystem::canonical(path, ec);
-    if (ec) {
-        return false;
-    }
-
-    bool is_directory = std::filesystem::is_directory(path, ec);
-    if (!is_directory || ec) {
-        return false;
-    }
-
-    std::filesystem::path dest_path = ConvertToTrustedPath(final_path);
-    if (dest_path.empty()) {
-        return false;
-    }
-
-    return FakeMount(final_path, dest_path, true);
-}
-
 // Make our resolveImpl function think that dst points to mount_me and has the contents of mount_me, while
 // also not allowing the program to see the contents of mount_me/.. (in this case it would see dst/..)
 // Currently, dst must be a path that is mounted inside the rootfs like /run/... because of our dst.relative_path shenanigans when mount_me+".."
-bool Filesystem::FakeMount(const std::filesystem::path& mount_me, const std::filesystem::path& dst, bool trusted_folder) {
+bool Filesystem::FakeMount(const std::filesystem::path& mount_me, const std::filesystem::path& dst) {
     std::error_code ec;
     bool is_directory = std::filesystem::is_directory(mount_me, ec);
     if (!is_directory || ec) {
@@ -220,21 +151,7 @@ bool Filesystem::FakeMount(const std::filesystem::path& mount_me, const std::fil
 
     node.src_fd = FD::moveToHighNumber(result);
     FD::protect(node.src_fd);
-
-    if (trusted_folder) {
-        result = open(dst.parent_path().c_str(), O_PATH | O_DIRECTORY);
-        if (result == -1) {
-            return false;
-        }
-
-        node.dst_parent_fd = FD::moveToHighNumber(result);
-        FD::protect(node.dst_parent_fd);
-    } else {
-        node.dst_parent_fd = g_rootfs_fd;
-    }
-
-    node.trusted_folder = trusted_folder;
-
+    node.dst_parent_fd = g_rootfs_fd;
     g_fake_mounts.push_back(node);
     return true;
 }
@@ -335,7 +252,6 @@ int Filesystem::ReadlinkAt(int fd, const char* filename, char* buf, int bufsiz) 
 
     if (result > 0) {
         std::string str(our_buffer, result);
-        // TODO: when magic link, replace_trusted_folder_path(str), for /proc/self/fd stuff
         removeRootfsPrefix(str);
         strncpy(buf, str.c_str(), bufsiz);
         return std::min(bufsiz, (int)str.size());
@@ -349,7 +265,6 @@ int Filesystem::Getcwd(char* buf, size_t size) {
 
     if (result > 0) {
         std::string str = buf;
-        replace_trusted_folder_path(str);
         removeRootfsPrefix(str);
         strncpy(buf, str.c_str(), size);
         return strlen(buf);

@@ -289,24 +289,6 @@ std::string Config::getConfigHex() {
     return hex_string;
 }
 
-bool Config::addTrustedPath(const std::filesystem::path& path) {
-    const std::filesystem::path config_dir = getConfigDir();
-    const std::filesystem::path trusted_paths = config_dir / "trusted.txt";
-    {
-        std::string line;
-        std::ifstream file(trusted_paths);
-        while (std::getline(file, line)) {
-            if (line == path) {
-                return true;
-            }
-        }
-    }
-
-    std::ofstream out(trusted_paths, std::ios_base::app | std::ios_base::out);
-    out << path.string() << "\n";
-    return true;
-}
-
 u64 get_int(const char* str) {
     int len = strlen(str);
     if (len > 2) {

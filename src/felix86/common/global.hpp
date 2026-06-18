@@ -104,10 +104,6 @@ struct FakeMountNode {
     int src_fd{};        // used for current_fd in path resolution
     int dst_parent_fd{}; // ditto
     struct statx src_stat{};
-
-    // Fake mounts are used for two purposes, mounting /dev & co, and trusted folders
-    // For trusted folders we need to do extra work on getcwd and readlink, so we mark the fake mounts that are actually trusted folders
-    bool trusted_folder{};
 };
 extern std::vector<FakeMountNode> g_fake_mounts;
 
