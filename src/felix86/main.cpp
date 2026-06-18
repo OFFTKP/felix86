@@ -617,7 +617,7 @@ int main(int argc, char* argv[]) {
         if (is_subpath(g_params.executable_path, g_config.rootfs_path)) {
             // All is good
         } else {
-            // Executable path might be outside the rootfs but in a fakemount (e.g. in /tmp or in a trusted folder)
+            // Executable path might be outside the rootfs but in a fakemount (e.g. in /tmp or in /home)
             std::error_code ec;
             bool found = false;
             std::filesystem::path canonical_path = std::filesystem::canonical(unmodified_executable_path, ec);
@@ -642,71 +642,7 @@ int main(int argc, char* argv[]) {
             }
 
             if (!found) {
-                if (!g_execve_process) {
-                    std::filesystem::path parent = canonical_path.parent_path();
-                    int status;
-                    bool tty = isatty(STDOUT_FILENO);
-                    if (tty) {
-                        if (std::filesystem::exists("/bin/whiptail")) {
-                            status = WEXITSTATUS(
-                                system(("/bin/whiptail --title \"felix86: Add to trusted folders?\" --yes-button Yes --no-button No --yesno \"" +
-                                        (canonical_path.string() + " seems to be outside the rootfs." + " Would you like to add the parent folder " +
-                                         parent.string() + " to the trusted folders?") +
-                                        "\" 0 0")
-                                           .c_str()));
-                        } else {
-                            status = 2;
-                            WARN("Couldn't find /bin/whiptail to ask user if they want to trust the folder");
-                        }
-                    } else {
-                        if (std::filesystem::exists("/bin/zenity")) {
-                            status =
-                                WEXITSTATUS(system(("/bin/zenity --question --title=\"felix86: Add to trusted folders?\" --ok-label=\"Yes\" "
-                                                    "--cancel-label=\"No\" --text=\"" +
-                                                    (canonical_path.string() + " seems to be outside the rootfs." +
-                                                     " Would you like to add the parent folder " + parent.string() + " to the trusted folders?") +
-                                                    "\"")
-                                                       .c_str()));
-                        } else {
-                            status = 2;
-                            WARN("Couldn't find /bin/zenity to ask user if they want to trust the folder");
-                        }
-                    }
-
-                    if (status == 0) { // Yes
-                        Config::addTrustedPath(parent);
-                        Filesystem::TrustFolder(parent);
-                        for (const auto& fake_mount : g_fake_mounts) {
-                            if (is_subpath(canonical_path, fake_mount.src_path)) {
-                                std::filesystem::path cutoff_path = canonical_path.string().substr(fake_mount.src_path.string().size());
-                                std::filesystem::path executable = fake_mount.dst_path / cutoff_path.relative_path();
-                                if (is_subpath(executable, g_config.rootfs_path)) {
-                                    executable = executable.string().substr(g_config.rootfs_path.string().size());
-                                }
-                                // Point /proc/self/exe & co to the fake mount guest path
-                                g_executable_path_guest_override = executable;
-                                g_params.argv[0] = g_executable_path_guest_override;
-                                g_params.executable_path = canonical_path;
-                                break;
-                            }
-                        }
-                    } else if (status == 1) { // No
-                        if (!tty) {
-                            int result = system(
-                                (std::string(
-                                     "/bin/zenity --info --title=\"felix86: Directory not trusted!\" --text=\"Running x86 executables that are "
-                                     "outside the rootfs (") +
-                                 g_config.rootfs_path.string() + ") require you to mark the directory as trusted!\"")
-                                    .c_str());
-                            (void)result;
-                        }
-                        ERROR("%s needs to be moved inside the rootfs or a parent folder needs to be trusted", unmodified_executable_path.c_str());
-                    } else {
-                        ERROR("%s is not in a trusted folder. Please add %s to %s/trusted.txt manually or move executable"
-                              " and its libraries inside rootfs",
-                              canonical_path.c_str(), parent.c_str(), Config::getConfigDir().c_str());
-                    }
-                }
+                ERROR("Executable not inside rootfs");
             }
         }
     }

@@ -367,35 +367,6 @@ void initialize_globals() {
         }
         ASSERT(std::filesystem::is_directory(g_config.rootfs_path));
 
-        // TODO: pass in similar way as __FELIX86_CONFIG to children
-        std::error_code ec;
-        const std::filesystem::path config_dir = Config::getConfigDir();
-        if (!config_dir.empty()) {
-            const std::filesystem::path trusted_paths = config_dir / "trusted.txt";
-            if (std::filesystem::exists(trusted_paths, ec)) {
-                std::ifstream file(trusted_paths);
-                if (file.is_open()) {
-                    std::string line;
-                    bool all_ok = true;
-                    while (std::getline(file, line)) {
-                        if (line.empty()) {
-                            continue;
-                        }
-
-                        bool ok = Filesystem::TrustFolder(line);
-                        if (!ok) {
-                            WARN("Failed to trust folder %s", line.c_str());
-                            all_ok = false;
-                        }
-                    }
-
-                    if (!all_ok) {
-                        WARN("Failed to trust some folders. If they don't exist anymore, remove them from %s", trusted_paths.c_str());
-                    }
-                }
-            }
-        }
-
         g_rootfs_fd = open(g_config.rootfs_path.c_str(), O_PATH | O_DIRECTORY);
         ASSERT_MSG(g_rootfs_fd > 0, "Failed to open rootfs directory");
         g_rootfs_fd = FD::moveToHighNumber(g_rootfs_fd);

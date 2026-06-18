@@ -135,6 +135,7 @@ struct Filesystem {
 
         if (!elf->GetInterpreterPath().empty()) {
             FdPath fd_path = Filesystem::resolve(elf->GetInterpreterPath().c_str(), true);
+            ASSERT_MSG(!fd_path.is_error(), "Interpreter not found: %s", elf->GetInterpreterPath().c_str());
             ASSERT(fd_path.full_path());
             std::filesystem::path interpreter_path = fd_path.full_path();
             if (!interpreter_path.is_absolute()) {
@@ -177,11 +178,7 @@ struct Filesystem {
         return executable_path;
     }
 
-    static std::filesystem::path ConvertToTrustedPath(const std::filesystem::path& path);
-
-    static bool TrustFolder(const std::filesystem::path& path);
-
-    static bool FakeMount(const std::filesystem::path& mount_me, const std::filesystem::path& dst, bool trusted_folder = false);
+    static bool FakeMount(const std::filesystem::path& mount_me, const std::filesystem::path& dst);
 
     // Emulated syscall functions
     int OpenAt(int fd, const char* filename, int flags, u64 mode);

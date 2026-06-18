@@ -28,8 +28,6 @@ struct Config {
     static bool loadProfile(Config& config, const std::filesystem::path& profile);
     static void save(const std::filesystem::path& path, const Config& config, bool only_non_default = false);
 
-    static bool addTrustedPath(const std::filesystem::path& path);
-
     static std::filesystem::path getConfigDir();
 
     static std::string getConfigHex();
