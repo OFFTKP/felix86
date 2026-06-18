@@ -1602,43 +1602,32 @@ void replaceOne(std::string& s, const std::string& search, const std::string& re
 
 // TODO: HACK: this is mountinfo emulation that only helps to get bwrap working, proper impl. might be needed eventually
 std::string felix86_mountinfo() {
-    std::string line;
     std::string rv;
-
     auto lock = g_process_globals.states_lock.lock();
-    std::ifstream t("/proc/self/mountinfo");
-    while (getline(t, line)) {
-        int nid;
-        sscanf(line.c_str(), "%d", &nid);
+    std::ifstream ifs("/proc/self/mountinfo");
+    std::string line;
 
-        {
-            // what happens here is brain dead
-            // do the magic here
-            char path1[512];
-            char path2[512];
-            int nid2;
-            char devid[512];
+    while (std::getline(ifs, line)) {
+        int nid, nid2;
+        char devid[512];
+        char path1[4096];
+        char path2[4096];
 
-            std::string ori = line;
-
-            sscanf(line.c_str(), "%d %d %s %s %s", &nid, &nid2, devid, path1, path2);
-
-            char original[4096];
-            sprintf(original, "%d %d %s %s %s", nid, nid2, devid, path1, path2);
-
-            std::string path1s = path1;
-            std::string path2s = path2;
-            for (auto& mount_path : g_process_globals.mount_paths) {
-                replaceOne(path1s, mount_path, "");
-                replaceOne(path2s, mount_path, "");
-            }
-
-            char replacement[4096];
-            sprintf(replacement, "%d %d %s %s %s", nid, nid2, devid, path1s.c_str(), path2s.c_str());
-            replaceOne(line, original, replacement);
+        int pos = 0;
+        int fields = sscanf(line.c_str(), "%d %d %511s %4095s %4095s%n", &nid, &nid2, devid, path1, path2, &pos);
+        if (fields != 5) {
+            rv += line + "\n";
+            continue;
         }
-        rv += line;
-        rv += "\n";
+
+        std::string path1s = path1;
+        std::string path2s = path2;
+        for (auto& mount_path : g_process_globals.mount_paths) {
+            replaceOne(path1s, mount_path, "");
+            replaceOne(path2s, mount_path, "");
+        }
+
+        rv += fmt::format("{} {} {} {} {}{}\n", nid, nid2, devid, path1s, path2s, line.substr(pos));
     }
     return rv;
 }
