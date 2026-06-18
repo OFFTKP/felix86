@@ -56,6 +56,10 @@ static struct argp_option options[] = {
     {"get-rootfs", 'g', 0, 0, "Get the rootfs path from config.toml"},
     {"set-thunks", 'S', "DIR", 0, "Set the thunks path in config.toml"},
     {"binfmt-misc", 'b', 0, 0, "Register the emulator in binfmt_misc so that x86-64 executables can run without prepending the emulator path"},
+    {"binfmt-misc-setuid", 'B', 0, 0,
+     "Register the emulator in binfmt_misc so that x86-64 executables can run without prepending the emulator path. Also enables the credentials "
+     "flag, which allows for running privileged executables with the emulator. This may have security implications, read: "
+     "https://felix86.com/docs/users/troubleshooting#privileged-executables-dont-work"},
     {"detect-binfmt-misc", 'd', 0, 0, "Check if we are correctly registered in binfmt_misc, returns 0 if ok"},
     {"unregister-binfmt-misc", 'u', 0, 0, "Unregister the emulator from binfmt_misc"},
     {"log-server", 'l', 0, 0, "Start just the log server in the background"},
@@ -361,7 +365,12 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         break;
     }
     case 'b': {
-        binfmt_misc(true);
+        binfmt_misc(true, false);
+        exit(0);
+        break;
+    }
+    case 'B': {
+        binfmt_misc(true, true);
         exit(0);
         break;
     }
@@ -372,7 +381,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         break;
     }
     case 'u': {
-        binfmt_misc(false);
+        binfmt_misc(false, false);
         exit(0);
         break;
     }

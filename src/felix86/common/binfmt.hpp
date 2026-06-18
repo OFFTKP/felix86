@@ -2,5 +2,5 @@
 #include <string>
 
 bool detect_binfmt_misc();
-void binfmt_misc(bool is_register);
+void binfmt_misc(bool is_register, bool is_credentials);
 bool unregister_binfmt_misc(const std::string& path);
