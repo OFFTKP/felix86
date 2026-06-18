@@ -42,7 +42,7 @@ void gen_many(Recompiler& rec, const std::string& name, nlohmann::ordered_json& 
     func(x);
 
     auto bisc = rec.getAssembler().GetCursorPointer();
-    rec.compileSequence((u64)x86_start);
+    rec.compileSequence(false, (u64)x86_start);
     auto after = rec.getAssembler().GetCursorPointer();
     int count = 0;
     Instruction inst;
@@ -85,6 +85,7 @@ void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbyak::Code
     u64 rip = (u64)x86_start;
     rec.setCurrentRipregValue(rip);
     rec.decode(rip, zinstruction, zoperands);
+    rec.setCurrentMode32(false);
     rec.compileInstruction(zinstruction, zoperands, rip);
     rec.resetScratch();
     rec.flushX87();

@@ -252,7 +252,6 @@ void Emulator::Start() {
         }
     }
 
-    ThreadState* main_state = ThreadState::Create(nullptr);
     bool mode32 = false;
     if (peek == Elf::PeekResult::Elf32) {
         mode32 = true;
@@ -266,6 +265,7 @@ void Emulator::Start() {
         prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, 4 * GB, 2 * GB, "felix86-guard");
     }
 
+    ThreadState* main_state = ThreadState::Create();
     main_state->ctx.cs = mode32 ? 0x23 : 0x33;
 
     if (!mode32 && !g_config.thunks_path.empty()) {

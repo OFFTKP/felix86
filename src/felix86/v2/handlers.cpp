@@ -19,7 +19,7 @@
 #include "felix86/v2/handlers.hpp"
 #include "felix86/v2/recompiler.hpp"
 
-#define MODE32 (ThreadState::Get()->ctx.Mode32())
+#define MODE32 (rec.isMode32())
 
 void felix86_syscall(felix86_frame* frame);
 

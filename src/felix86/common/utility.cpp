@@ -246,8 +246,8 @@ __attribute__((visibility("default"))) int guest_breakpoint_abs(u64 address) {
     return g_breakpoints.size();
 }
 
-__attribute__((visibility("default"))) std::string disassemble_one(u64 address) {
-    ZydisMachineMode mode = ThreadState::Get()->ctx.Mode32() ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
+__attribute__((visibility("default"))) std::string disassemble_one(bool mode32, u64 address) {
+    ZydisMachineMode mode = mode32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
     ZydisDisassembledInstruction instruction;
     auto result = ZydisDisassembleIntel(mode, address, (void*)address, 15, &instruction);
     if (ZYAN_SUCCESS(result)) {
@@ -688,7 +688,7 @@ std::string get_perf_symbol(u64 address) {
         }
     }
 
-    const char* x86 = ThreadState::Get()->ctx.Mode32() ? "x86" : "x86_64";
+    const char* x86 = "x86";
     std::string ret;
     if (symbol) {
         std::string symbol_name = symbol->name;

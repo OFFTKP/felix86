@@ -125,7 +125,7 @@ void compile(const std::string& input) {
     std::unique_ptr<Recompiler> rec = std::make_unique<Recompiler>(true);
     rec->setFlagMode(flag_mode);
     u64 start = (u64)rec->getAssembler().GetCursorPointer();
-    rec->compileSequence((u64)output.data());
+    rec->compileSequence(mode32, (u64)output.data());
     u64 end = (u64)rec->getAssembler().GetCursorPointer();
 
     BlockMetadata& metadata = rec->getBlockMetadata((u64)output.data());

@@ -492,11 +492,19 @@ struct Recompiler {
     void checkModifiesRax(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
 
     u8 stackPointerSize() {
-        return ThreadState::Get()->ctx.Mode32() ? 4 : 8;
+        return current_mode32 ? 4 : 8;
     }
 
     x86_size_e stackWidth() {
-        return ThreadState::Get()->ctx.Mode32() ? X86_SIZE_DWORD : X86_SIZE_QWORD;
+        return current_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
+    }
+
+    void setCurrentMode32(bool mode) {
+        current_mode32 = mode;
+    }
+
+    bool isMode32() {
+        return current_mode32;
     }
 
     AddressCacheEntry& getAddressCacheEntry(u64 rip) {
@@ -663,7 +671,7 @@ struct Recompiler {
         return false;
     }
 
-    u64 compileSequence(u64 rip);
+    u64 compileSequence(bool mode32, u64 rip);
 
     void compileInstruction(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, u64 rip);
 
@@ -795,6 +803,8 @@ private:
     SEW current_sew = SEW::E1024;
     u8 current_vlen = 0;
     LMUL current_grouping = LMUL::M1;
+    bool current_mode32 = false;
+    bool current_decoder_initialized = false;
 
     biscuit::GPR cached_lea = x0;
     const ZydisDecodedOperand* cached_lea_operand;
