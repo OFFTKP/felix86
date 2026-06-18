@@ -111,7 +111,7 @@ bool detect_binfmt_misc() {
     }
 }
 
-void binfmt_misc(bool is_register) {
+void binfmt_misc(bool is_register, bool is_credentials) {
     if (geteuid() != 0) {
         printf("I need root permissions to register felix86 in binfmt_misc, please re-run with root permissions as `sudo -E felix86 -b`\n");
         exit(1);
@@ -133,11 +133,11 @@ void binfmt_misc(bool is_register) {
     exe_path[len] = '\0';
 
     std::string registration_string_x64 = fmt::format(
-        R"!(:felix86-x86_64:M:0:\x7fELF\x02\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x3e\x00:\xff\xff\xff\xff\xff\xfe\xfe\x00\x00\x00\x00\xff\xff\xff\xff\xff\xfe\xff\xff\xff:{}:OCF)!",
-        exe_path);
+        R"!(:felix86-x86_64:M:0:\x7fELF\x02\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x3e\x00:\xff\xff\xff\xff\xff\xfe\xfe\x00\x00\x00\x00\xff\xff\xff\xff\xff\xfe\xff\xff\xff:{}:O{}F)!",
+        exe_path, is_credentials ? "C" : "");
     std::string registration_string_i386 = fmt::format(
-        R"!(:felix86-i386:M:0:\x7fELF\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x03\x00:\xff\xff\xff\xff\xff\xfe\xfe\x00\x00\x00\x00\xff\xff\xff\xff\xff\xfe\xff\xff\xff:{}:OCF)!",
-        exe_path);
+        R"!(:felix86-i386:M:0:\x7fELF\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x03\x00:\xff\xff\xff\xff\xff\xfe\xfe\x00\x00\x00\x00\xff\xff\xff\xff\xff\xfe\xff\xff\xff:{}:O{}F)!",
+        exe_path, is_credentials ? "C" : "");
 
     if (!is_register) {
         if (unregister_binfmt_misc("felix86-x86_64")) {
