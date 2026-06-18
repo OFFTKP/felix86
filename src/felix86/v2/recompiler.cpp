@@ -19,6 +19,8 @@
 #include "felix86/v2/recompiler.hpp"
 #include "fmt/format.h"
 
+#define MODE32 (ThreadState::Get()->ctx.Mode32())
+
 // TODO: benchmark to find best arrangement?
 constexpr static u64 MB = 1024 * 1024;
 constexpr static u64 GB = 1024 * 1024 * 1024;
@@ -96,7 +98,7 @@ Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
     void* address = MAP_FAILED;
     // If the program is allocated in 32-bit address space then it's not worth performing this optimization
     // as to not interfere with MAP_32BIT and because immediates can be made in 2 instructions
-    if (min > 5 * GB && !g_mode32) {
+    if (min > 5 * GB && !MODE32) {
         for (int i = 0; i < 4; i++) {
             min -= 256 * MB;
             address = ::mmap((void*)min, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE | MAP_FIXED_NOREPLACE, -1, 0);
@@ -127,8 +129,8 @@ Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
 
     emitNecessaryStuff();
 
-    ZydisMachineMode mode = g_mode32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
-    ZydisStackWidth stack_width = g_mode32 ? ZYDIS_STACK_WIDTH_32 : ZYDIS_STACK_WIDTH_64;
+    ZydisMachineMode mode = MODE32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
+    ZydisStackWidth stack_width = MODE32 ? ZYDIS_STACK_WIDTH_32 : ZYDIS_STACK_WIDTH_64;
 
     ZydisDecoderInit(&decoder, mode, stack_width);
     ZydisDecoderEnableMode(&decoder, ZYDIS_DECODER_MODE_AMD_BRANCHES, ZYAN_TRUE);
@@ -402,7 +404,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
     }
 
     // This should never happen, but we have this here to catch it if it does and report it
-    if (g_mode32 && (rip & 0xFFFF'FFFF'0000'0000)) {
+    if (MODE32 && (rip & 0xFFFF'FFFF'0000'0000)) {
         if (rip >= 0x1'0000'0000 && rip <= 0x1'FFFF'FFFF) {
             u64 old = rip;
             rip &= 0xFFFF'FFFF;
@@ -1360,7 +1362,7 @@ biscuit::GPR Recompiler::getGPR(x86_ref_e ref, x86_size_e size) {
         return gpr16;
     }
     case X86_SIZE_DWORD: {
-        if (!g_mode32 || g_config.paranoid) {
+        if (!MODE32 || g_config.paranoid) {
             // Need to zext and store in scratch
             biscuit::GPR gpr32 = scratch();
             zext(gpr32, gpr, X86_SIZE_DWORD);
@@ -1609,7 +1611,7 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
     biscuit::GPR base, index;
 
     if (operand->mem.base == ZYDIS_REGISTER_RIP) {
-        ASSERT(!g_mode32);
+        ASSERT(!MODE32);
         u64 offset_from_start = (current_rip - getCurrentRipregValue()) + current_instruction->length + (u64)operand->mem.disp.value;
         u64 offset_from_cursor = (current_rip + current_instruction->length + operand->mem.disp.value) - (u64)as.GetCursorPointer();
         if (IsValid2GBImm(offset_from_cursor) && !IsValidSigned12BitImm(offset_from_start) && !relocatable) {
@@ -1772,22 +1774,22 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
             break;
         }
         case ZYDIS_REGISTER_SS: {
-            ASSERT(g_mode32);
+            ASSERT(MODE32);
             offset = offsetof(ThreadState, ctx.ssbase);
             break;
         }
         case ZYDIS_REGISTER_ES: {
-            ASSERT(g_mode32);
+            ASSERT(MODE32);
             offset = offsetof(ThreadState, ctx.esbase);
             break;
         }
         case ZYDIS_REGISTER_DS: {
-            ASSERT(g_mode32);
+            ASSERT(MODE32);
             offset = offsetof(ThreadState, ctx.dsbase);
             break;
         }
         case ZYDIS_REGISTER_CS: {
-            ASSERT(g_mode32);
+            ASSERT(MODE32);
             offset = offsetof(ThreadState, ctx.csbase);
             break;
         }
@@ -1803,7 +1805,7 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
         popScratch();
     }
 
-    if (g_mode32 && current_instruction->address_width != 64 /* HACK: we set address_width = 64 in handler for LEA to avoid this zext*/) {
+    if (MODE32 && current_instruction->address_width != 64 /* HACK: we set address_width = 64 in handler for LEA to avoid this zext*/) {
         // The additions may have overflown the address
         as.ZEXTW(address, address);
     }
@@ -2585,7 +2587,7 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
     biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
     u64 rip_false_offset = rip_false - getCurrentRipregValue();
     addi(ripreg, ripreg, rip_false_offset);
-    if (g_mode32) {
+    if (MODE32) {
         zext(ripreg, ripreg, X86_SIZE_DWORD);
         rip_false = (u32)rip_false;
     }
@@ -2600,7 +2602,7 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
     as.Bind(&true_label);
     u64 rip_true_offset = rip_true - getCurrentRipregValue();
     addi(ripreg, ripreg, rip_true_offset);
-    if (g_mode32) {
+    if (MODE32) {
         zext(ripreg, ripreg, X86_SIZE_DWORD);
         rip_true = (u32)rip_true;
     }
@@ -3229,7 +3231,7 @@ bool Recompiler::tryInlineSyscall() {
         return false;
     }
 
-    if (g_mode32) {
+    if (MODE32) {
         // Unimplemented for now
         return false;
     }

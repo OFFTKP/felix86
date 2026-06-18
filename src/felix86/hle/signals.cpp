@@ -788,7 +788,7 @@ void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state, sigin
 
 void setupFrame(RegisteredSignal& signal, int sig, ThreadState* state, siginfo_t* guest_info, ucontext_t* host_context) {
     VERBOSE("Preparing frame for sig %d with si_code=%d", sig, guest_info->si_code);
-    if (!g_mode32) {
+    if (!state->ctx.Mode32()) {
         return setupFrame_x64(signal, sig, state, guest_info, host_context);
     } else {
         if (signal.flags & SA_SIGINFO) {
@@ -843,7 +843,7 @@ void restore_sigcontext_32(ThreadState* state, x86_sigcontext_32* ctx) {
 void Signals::sigreturn(ThreadState* state, bool rt) {
     u64 rsp = state->GetGpr(X86_REF_RSP);
 
-    if (g_mode32) {
+    if (state->ctx.Mode32()) {
         // In 32-bit mode, rt_sigreturn signals pop just the return address while legacy signals pop the sig value too, see trampoline
         rsp -= rt ? 4 : 8;
         x86_rt_sigframe* rt_frame = (x86_rt_sigframe*)rsp;

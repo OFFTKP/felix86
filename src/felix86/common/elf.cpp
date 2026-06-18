@@ -342,12 +342,11 @@ void Elf::Load(const std::filesystem::path& path) {
     }
 
     // Check if it's a 32-bit executable
-    bool mode32 = e_ident[4] == ELFCLASS32;
-    ASSERT(g_mode32 == mode32); // same mode as the one we're configured to execute for
+    bool is32bit = e_ident[4] == ELFCLASS32;
 
     // Go back to start to read the full header
     fseek(file, 0, SEEK_SET);
-    Elf_Ehdr ehdr(mode32, file);
+    Elf_Ehdr ehdr(is32bit, file);
 
     if (e_ident[0] != 0x7F || e_ident[1] != 'E' || e_ident[2] != 'L' || e_ident[3] != 'F') {
         ERROR("File %s is not an ELF file", path.c_str());
@@ -392,7 +391,7 @@ void Elf::Load(const std::filesystem::path& path) {
 
     entry = ehdr.entry();
 
-    u64 expected_phentsize = mode32 ? sizeof(Elf32_Phdr) : sizeof(Elf64_Phdr);
+    u64 expected_phentsize = is32bit ? sizeof(Elf32_Phdr) : sizeof(Elf64_Phdr);
     if (ehdr.phentsize() != expected_phentsize) {
         ERROR("File %s has an invalid program header size: %d", path.c_str(), (int)ehdr.phentsize());
     }
@@ -402,7 +401,7 @@ void Elf::Load(const std::filesystem::path& path) {
     fseek(file, ehdr.phoff(), SEEK_SET);
     for (u64 i = 0; i < ehdr.phnum(); i++) {
         // Placement new to run the constructor
-        new (&phdrtable[i]) Elf_Phdr(mode32, file);
+        new (&phdrtable[i]) Elf_Phdr(is32bit, file);
     }
 
     for (u64 i = 0; i < ehdr.phnum(); i++) {
@@ -455,11 +454,11 @@ void Elf::Load(const std::filesystem::path& path) {
     if (ehdr.type() == ET_DYN) {
         // In 32-bit mode the Mapper will properly choose a 32-bit address
         if (base_hint) {
-            base_ptr = (u8*)g_mapper->map((u8*)base_hint, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
+            base_ptr = (u8*)g_mapper->map(is32bit, (u8*)base_hint, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
         } else {
             u64 hint = 0;
             int flags = MAP_PRIVATE | MAP_ANONYMOUS;
-            if (g_mode32) {
+            if (is32bit) {
                 // We don't want to load the executable in the low memory area, because if a non-relocatable executable wants to be loaded
                 // there, it won't be able to. Example is wine + an older 32-bit game with no relocation tables
                 if (is_interpreter) {
@@ -474,10 +473,10 @@ void Elf::Load(const std::filesystem::path& path) {
                 }
                 flags |= MAP_FIXED_NOREPLACE;
             }
-            base_ptr = (u8*)g_mapper->map((void*)hint, highest_vaddr, 0, flags, -1, 0);
+            base_ptr = (u8*)g_mapper->map(is32bit, (void*)hint, highest_vaddr, 0, flags, -1, 0);
             if (base_ptr == MAP_FAILED) {
                 WARN("Failed to allocate ELF at %lx", hint);
-                base_ptr = (u8*)g_mapper->map(nullptr, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+                base_ptr = (u8*)g_mapper->map(is32bit, nullptr, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
             }
         }
 
@@ -516,7 +515,7 @@ void Elf::Load(const std::filesystem::path& path) {
             }
 
             if (segment_size) {
-                void* addr = g_mapper->map((void*)segment_base, segment_size, prot, MAP_PRIVATE | MAP_FIXED, fd, offset);
+                void* addr = g_mapper->map(is32bit, (void*)segment_base, segment_size, prot, MAP_PRIVATE | MAP_FIXED, fd, offset);
                 if (addr == MAP_FAILED) {
                     ERROR("Failed to allocate memory for segment in file %s. Error: %s", path.c_str(), strerror(errno));
                 } else if (addr != (void*)segment_base) {
@@ -544,7 +543,8 @@ void Elf::Load(const std::filesystem::path& path) {
 
                 if (bss_page_start != bss_page_end) {
                     size_t excess_size = bss_page_end - bss_page_start;
-                    void* bss_excess = g_mapper->map((void*)bss_page_start, excess_size, prot, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
+                    void* bss_excess =
+                        g_mapper->map(is32bit, (void*)bss_page_start, excess_size, prot, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
                     if (bss_excess == MAP_FAILED) {
                         ERROR("Failed to allocate memory for BSS in file %s", path.c_str());
                     }
@@ -653,7 +653,12 @@ Elf::PeekResult Elf::Peek(const std::filesystem::path& path) {
 }
 
 void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path& path, u8* start_of_data, u8* end_of_data) {
-    // g_mode32 has already been set at this point
+    PeekResult result = Elf::Peek(path);
+    if (result != PeekResult::Elf32 && result != PeekResult::Elf64) {
+        WARN("%s is not an ELF", path.c_str());
+        return;
+    }
+    bool mode32 = result == PeekResult::Elf32;
     // Load static symbols first
     size_t dynsym_size = 0;
     do {
@@ -670,7 +675,7 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
         (void)file_size;
         fseek(file, 0, SEEK_SET);
 
-        Elf_Ehdr ehdr(g_mode32, file);
+        Elf_Ehdr ehdr(mode32, file);
 
         if (ehdr.shnum() == 0) {
             WARN("Empty section table for file: %s", path.c_str());
@@ -681,14 +686,14 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
         u64 ehdr_phoff = ehdr.phoff();
         fseek(file, ehdr_phoff, SEEK_SET);
         for (u64 i = 0; i < ehdr.phnum(); i++) {
-            phdrtable.push_back(std::make_unique<Elf_Phdr>(g_mode32, file));
+            phdrtable.push_back(std::make_unique<Elf_Phdr>(mode32, file));
         }
 
         std::vector<std::unique_ptr<Elf_Shdr>> shdrtable;
         u64 ehdr_shoff = ehdr.shoff();
         fseek(file, ehdr_shoff, SEEK_SET);
         for (u64 i = 0; i < ehdr.shnum(); i++) {
-            shdrtable.push_back(std::make_unique<Elf_Shdr>(g_mode32, file));
+            shdrtable.push_back(std::make_unique<Elf_Shdr>(mode32, file));
         }
 
         u64 shstrindex = ehdr.shstrindex();
@@ -740,12 +745,12 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                 ERROR("Failed to read the .strtab string table");
             }
 
-            size_t symbol_count = symtab->size() / (g_mode32 ? sizeof(Elf32_Sym) : sizeof(Elf64_Sym));
+            size_t symbol_count = symtab->size() / (mode32 ? sizeof(Elf32_Sym) : sizeof(Elf64_Sym));
             std::vector<std::unique_ptr<Elf_Sym>> elf_symbols;
             u64 symtab_off = symtab->offset();
             fseek(file, symtab_off, SEEK_SET);
             for (u64 i = 0; i < symbol_count; i++) {
-                elf_symbols.push_back(std::make_unique<Elf_Sym>(g_mode32, file));
+                elf_symbols.push_back(std::make_unique<Elf_Sym>(mode32, file));
             }
 
             for (u64 i = 0; i < symbol_count; i++) {
@@ -786,13 +791,13 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
     } while (0);
 
     // Find the dynamic segment, load dynamic symbols that have now been loaded by the interpreter hopefully
-    Elf_Ehdr ehdr(g_mode32, start_of_data);
+    Elf_Ehdr ehdr(mode32, start_of_data);
 
     std::vector<std::unique_ptr<Elf_Phdr>> phdrtable;
     u8* start_of_phdr = start_of_data + ehdr.phoff();
     for (u64 i = 0; i < ehdr.phnum(); i++) {
         void* current_phdr = start_of_phdr + (i * ehdr.phentsize());
-        phdrtable.push_back(std::make_unique<Elf_Phdr>(g_mode32, current_phdr));
+        phdrtable.push_back(std::make_unique<Elf_Phdr>(mode32, current_phdr));
     }
 
     Elf_Phdr* dynamic = nullptr;
@@ -818,9 +823,9 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
             return;
         }
 
-        size_t count = dynamic->memsz() / (g_mode32 ? sizeof(Elf32_Dyn) : sizeof(Elf64_Dyn));
+        size_t count = dynamic->memsz() / (mode32 ? sizeof(Elf32_Dyn) : sizeof(Elf64_Dyn));
         for (size_t i = 0; i < count; i++) {
-            if (g_mode32) {
+            if (mode32) {
                 Elf32_Dyn* dyn = (Elf32_Dyn*)(dynamic_ptr + (i * sizeof(Elf32_Dyn)));
                 if (dyn->d_tag == DT_SYMTAB) {
                     symtab = (u8*)(u64)dyn->d_un.d_ptr;
@@ -841,7 +846,7 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
         }
 
         if (symtab > start_of_data && (u8*)strtab > start_of_data) {
-            size_t sym_size = g_mode32 ? sizeof(Elf32_Sym) : sizeof(Elf64_Sym);
+            size_t sym_size = mode32 ? sizeof(Elf32_Sym) : sizeof(Elf64_Sym);
             size_t dynsym_count = dynsym_size / sym_size;
             size_t mod = dynsym_size % sym_size;
             if (mod != 0) {
@@ -855,7 +860,7 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
 
             for (size_t i = 0; i < dynsym_count; i++) {
                 u8* data = symtab + (sym_size * i);
-                Elf_Sym elf_symbol(g_mode32, data);
+                Elf_Sym elf_symbol(mode32, data);
                 size_t index = elf_symbol.offset();
                 const char* symbol = strtab + index;
                 if ((u8*)symbol > end_of_data) {

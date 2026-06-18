@@ -3,9 +3,9 @@
 #include "felix86/common/types.hpp"
 
 struct BRK {
-    static void allocate();
+    static void allocate(bool mode32);
 
-    static u64 set(u64 new_brk);
+    static u64 set(bool mode32, u64 new_brk);
 
 private:
     constexpr static u64 size32 = 32 * 1024 * 1024;

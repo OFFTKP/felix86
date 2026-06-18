@@ -3,6 +3,7 @@
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/overlay.hpp"
+#include "felix86/common/state.hpp"
 
 struct Overlay {
     std::string lib_name;
@@ -26,11 +27,12 @@ const char* Overlays::isOverlay(int fd, const char* pathname) {
     } else {
         path = g_config.rootfs_path / path.relative_path();
     }
+    bool mode32 = ThreadState::Get()->ctx.Mode32();
     std::string filename = path.filename();
     for (auto& entry : overlays) {
         if (filename == entry.lib_name) {
             Elf::PeekResult result = Elf::Peek(path);
-            if ((g_mode32 && result == Elf::PeekResult::Elf32) || (!g_mode32 && result == Elf::PeekResult::Elf64)) {
+            if ((mode32 && result == Elf::PeekResult::Elf32) || (!mode32 && result == Elf::PeekResult::Elf64)) {
                 LOG("Found overlay %s -> %s", pathname, entry.overlayed_path.c_str());
                 return entry.overlayed_path.c_str();
             }

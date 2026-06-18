@@ -492,11 +492,11 @@ struct Recompiler {
     void checkModifiesRax(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
 
     u8 stackPointerSize() {
-        return g_mode32 ? 4 : 8;
+        return ThreadState::Get()->ctx.Mode32() ? 4 : 8;
     }
 
     x86_size_e stackWidth() {
-        return g_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
+        return ThreadState::Get()->ctx.Mode32() ? X86_SIZE_DWORD : X86_SIZE_QWORD;
     }
 
     AddressCacheEntry& getAddressCacheEntry(u64 rip) {

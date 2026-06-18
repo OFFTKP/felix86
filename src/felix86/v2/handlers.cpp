@@ -19,6 +19,8 @@
 #include "felix86/v2/handlers.hpp"
 #include "felix86/v2/recompiler.hpp"
 
+#define MODE32 (ThreadState::Get()->ctx.Mode32())
+
 void felix86_syscall(felix86_frame* frame);
 
 void felix86_syscall32(felix86_frame* frame, u32 rip_nex);
@@ -38,7 +40,7 @@ void felix86_cpuid(ThreadState* state);
 
 void UnimplementedHandler(Recompiler& rec, u64 rip, biscuit::Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands) {
     ZydisDisassembledInstruction disassembled;
-    auto mode = g_mode32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
+    auto mode = MODE32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
     if (ZYAN_SUCCESS(ZydisDisassembleIntel(mode, rip, (u8*)rip, 15, &disassembled))) {
         ERROR("Unhandled instruction %s (%02x)", disassembled.text, (int)instruction.opcode);
     } else {
@@ -538,7 +540,8 @@ void SHIFT_noflags(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruct
 
 FAST_HANDLE(MOV) {
     if (is_segment(operands[0])) {
-        if (g_mode32) {
+        if (MODE32) {
+            ASSERT(operands[0].reg.value != ZYDIS_REGISTER_CS);
             biscuit::GPR src = rec.getGPR(&operands[1]);
             rec.writebackState();
             as.MV(a0, rec.threadStatePointer());
@@ -547,47 +550,43 @@ FAST_HANDLE(MOV) {
             rec.callPointer(offsetof(ThreadState, felix86_set_segment));
             rec.restoreState();
         } else {
-            WARN("Setting segment register in 64-bit mode, ignoring");
+            WARN("Setting segment register %d in 64-bit mode, ignoring", operands[0].reg.value);
         }
     } else if (is_segment(operands[1])) {
-        if (g_mode32) {
-            biscuit::GPR seg = rec.scratch();
-            int offset = 0;
-            switch (operands[1].reg.value) {
-            case ZYDIS_REGISTER_CS: {
-                offset = offsetof(ThreadState, ctx.cs);
-                break;
-            }
-            case ZYDIS_REGISTER_DS: {
-                offset = offsetof(ThreadState, ctx.ds);
-                break;
-            }
-            case ZYDIS_REGISTER_SS: {
-                offset = offsetof(ThreadState, ctx.ss);
-                break;
-            }
-            case ZYDIS_REGISTER_ES: {
-                offset = offsetof(ThreadState, ctx.es);
-                break;
-            }
-            case ZYDIS_REGISTER_FS: {
-                offset = offsetof(ThreadState, ctx.fs);
-                break;
-            }
-            case ZYDIS_REGISTER_GS: {
-                offset = offsetof(ThreadState, ctx.gs);
-                break;
-            }
-            default: {
-                UNREACHABLE();
-                break;
-            }
-            }
-            as.LHU(seg, offset, rec.threadStatePointer());
-            rec.setGPR(&operands[0], seg);
-        } else {
-            WARN("Getting segment register in 64-bit mode, ignoring");
+        biscuit::GPR seg = rec.scratch();
+        int offset = 0;
+        switch (operands[1].reg.value) {
+        case ZYDIS_REGISTER_CS: {
+            offset = offsetof(ThreadState, ctx.cs);
+            break;
         }
+        case ZYDIS_REGISTER_DS: {
+            offset = offsetof(ThreadState, ctx.ds);
+            break;
+        }
+        case ZYDIS_REGISTER_SS: {
+            offset = offsetof(ThreadState, ctx.ss);
+            break;
+        }
+        case ZYDIS_REGISTER_ES: {
+            offset = offsetof(ThreadState, ctx.es);
+            break;
+        }
+        case ZYDIS_REGISTER_FS: {
+            offset = offsetof(ThreadState, ctx.fs);
+            break;
+        }
+        case ZYDIS_REGISTER_GS: {
+            offset = offsetof(ThreadState, ctx.gs);
+            break;
+        }
+        default: {
+            UNREACHABLE();
+            break;
+        }
+        }
+        as.LHU(seg, offset, rec.threadStatePointer());
+        rec.setGPR(&operands[0], seg);
     } else {
         bool reg_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER;
         bool not_same = rec.zydisToRef(operands[0].reg.value) != rec.zydisToRef(operands[1].reg.value);
@@ -1762,7 +1761,7 @@ FAST_HANDLE(CALL) {
         rec.writeMemory(ripreg, rsp, 0, rec.stackWidth());
         rec.addi(ripreg, ripreg, displacement);
         u64 address = rip + instruction.length + displacement;
-        if (g_mode32) {
+        if (MODE32) {
             rec.zext(ripreg, ripreg, X86_SIZE_DWORD);
             address = (u32)address;
         }
@@ -1806,7 +1805,7 @@ FAST_HANDLE(RET) {
 }
 
 FAST_HANDLE(IRETD) {
-    ASSERT(g_mode32);
+    ASSERT(MODE32);
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
     rec.callPointer(offsetof(ThreadState, felix86_iret));
@@ -1816,7 +1815,7 @@ FAST_HANDLE(IRETD) {
 }
 
 FAST_HANDLE(IRETQ) {
-    ASSERT(!g_mode32);
+    ASSERT(!MODE32);
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
     rec.callPointer(offsetof(ThreadState, felix86_iret));
@@ -1876,7 +1875,8 @@ FAST_HANDLE(PUSH) {
 
 FAST_HANDLE(POP) {
     if (is_segment(operands[0])) {
-        ASSERT_MSG(g_mode32, "Popping segment not in 32-bit mode?");
+        ASSERT_MSG(MODE32, "Popping segment not in 32-bit mode?");
+        ASSERT(operands[0].reg.value != ZYDIS_REGISTER_CS);
         biscuit::GPR src = rec.scratch();
         biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
         int imm = size_to_bytes(instruction.operand_width);
@@ -1947,7 +1947,7 @@ FAST_HANDLE(AAA) {
 }
 
 FAST_HANDLE(AAD) {
-    ASSERT(g_mode32);
+    ASSERT(MODE32);
     biscuit::GPR temp_al = rec.getGPR(X86_REF_RAX, X86_SIZE_BYTE);
     biscuit::GPR temp_ah = rec.getGPR(X86_REF_RAX, X86_SIZE_BYTE_HIGH);
     biscuit::GPR imm = rec.getGPR(&operands[0]);
@@ -1959,7 +1959,7 @@ FAST_HANDLE(AAD) {
 
 FAST_HANDLE(AAM) {
     // TODO: optimize the div by constant to mul by recip+shift
-    ASSERT(g_mode32);
+    ASSERT(MODE32);
     biscuit::GPR al = rec.scratch();
     biscuit::GPR ah = rec.scratch();
     biscuit::GPR temp_al = rec.getGPR(X86_REF_RAX, X86_SIZE_BYTE);
@@ -1971,7 +1971,7 @@ FAST_HANDLE(AAM) {
 }
 
 FAST_HANDLE(AAS) {
-    ASSERT(g_mode32);
+    ASSERT(MODE32);
     biscuit::Label true_label, end;
     biscuit::GPR temp_al = rec.getGPR(X86_REF_RAX, X86_SIZE_BYTE);
     biscuit::GPR af = rec.flag(X86_REF_AF);
@@ -2566,7 +2566,7 @@ FAST_HANDLE(JMP) {
         u64 offset = (rip - rec.getCurrentRipregValue()) + instruction.length + displacement;
         biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
         rec.addi(ripreg, ripreg, offset);
-        if (g_mode32) {
+        if (MODE32) {
             rec.zext(ripreg, ripreg, X86_SIZE_DWORD);
             address = (u32)address;
         }
@@ -4192,7 +4192,7 @@ FAST_HANDLE(CPUID) {
 
 FAST_HANDLE(SYSCALL) {
     if (Seccomp::hasFilters() && !g_config.seccomp_always_allow) {
-        if (g_mode32) {
+        if (MODE32) {
             ERROR("Seccomp during 32-bit program");
         }
 
@@ -4249,7 +4249,7 @@ FAST_HANDLE(SYSCALL) {
     as.SLTIU(x0, x0, FELIX86_HINT_SAFEPOINT_SYSCALL);
     rec.insertSafepoint();
 
-    if (g_mode32) {
+    if (MODE32) {
         ASSERT(rec.getCurrentRipregValue() <= UINT32_MAX);
     }
 }
@@ -8627,7 +8627,7 @@ FAST_HANDLE(CVTTPS2PI) {
 }
 
 FAST_HANDLE(XLAT) {
-    if (!g_mode32) {
+    if (!MODE32) {
         biscuit::GPR rbx = rec.getGPR(X86_REF_RBX, X86_SIZE_QWORD);
         biscuit::GPR al = rec.getGPR(X86_REF_RAX, X86_SIZE_BYTE);
         biscuit::GPR address = rec.scratch();
@@ -9949,7 +9949,7 @@ FAST_HANDLE(RCR) {
 }
 
 FAST_HANDLE(PUSHA) {
-    ASSERT(g_mode32);
+    ASSERT(MODE32);
     x86_size_e reg_size;
     int stack_offset;
     switch (instruction.operand_width) {
@@ -9993,7 +9993,7 @@ FAST_HANDLE(PUSHA) {
 }
 
 FAST_HANDLE(POPA) {
-    ASSERT(g_mode32);
+    ASSERT(MODE32);
     x86_size_e reg_size;
     int stack_offset;
     switch (instruction.operand_width) {
@@ -11855,7 +11855,7 @@ FAST_HANDLE(INT) {
         ERROR("INT encountered with unknown immediate: %d", operands[0].imm.value.u);
     }
 
-    if (g_mode32) {
+    if (MODE32) {
         ASSERT(rec.getCurrentRipregValue() <= UINT32_MAX);
     }
 }
@@ -12162,7 +12162,7 @@ FAST_HANDLE(VZEROUPPER) {
     rec.vsplat(v0, 0b11001100);
     as.VSETVLI(temp, x0, SEW::E64, LMUL::M8);
     as.VXOR(first_group, first_group, first_group, VecMask::Yes);
-    if (!g_mode32) {
+    if (!MODE32) {
         as.VXOR(second_group, second_group, second_group, VecMask::Yes);
     }
     rec.v0Modified();
@@ -12175,7 +12175,7 @@ FAST_HANDLE(VZEROALL) {
     biscuit::Vec second_group = rec.allocatedVec(X86_REF_XMM8);
     as.VSETVLI(temp, x0, SEW::E64, LMUL::M8);
     as.VXOR(first_group, first_group, first_group);
-    if (!g_mode32) {
+    if (!MODE32) {
         as.VXOR(second_group, second_group, second_group);
     }
     rec.resetVectorState();

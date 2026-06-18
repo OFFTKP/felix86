@@ -26,7 +26,6 @@ using namespace biscuit;
 
 bool g_extensions_manually_specified = false;
 bool g_print_all_calls = false;
-bool g_mode32 = false;
 std::atomic_bool g_symbols_cached = {false};
 u64 g_initial_brk = 0;
 u64 g_current_brk = 0;

@@ -126,8 +126,8 @@ void* Mapper::remap32(void* old_address, u64 old_size, u64 new_size, int flags, 
     }
 }
 
-void* Mapper::map(void* addr, u64 size, int prot, int flags, int fd, u64 offset) {
-    if (g_mode32) {
+void* Mapper::map(bool mode32, void* addr, u64 size, int prot, int flags, int fd, u64 offset) {
+    if (mode32) {
         return map32(addr, size, prot, flags, fd, offset);
     } else {
         if ((flags & (MAP_FIXED | MAP_FIXED_NOREPLACE)) && (u64)addr < UINT32_MAX) {
@@ -138,8 +138,8 @@ void* Mapper::map(void* addr, u64 size, int prot, int flags, int fd, u64 offset)
     }
 }
 
-int Mapper::unmap(void* addr, u64 size) {
-    if (g_mode32) {
+int Mapper::unmap(bool mode32, void* addr, u64 size) {
+    if (mode32) {
         return unmap32(addr, size);
     } else {
         if ((u64)addr < UINT32_MAX) {
@@ -150,8 +150,8 @@ int Mapper::unmap(void* addr, u64 size) {
     }
 }
 
-void* Mapper::remap(void* old_address, u64 old_size, u64 new_size, int flags, void* new_address) {
-    if (g_mode32) {
+void* Mapper::remap(bool mode32, void* old_address, u64 old_size, u64 new_size, int flags, void* new_address) {
+    if (mode32) {
         return remap32(old_address, old_size, new_size, flags, new_address);
     } else {
         if ((flags & MREMAP_FIXED) && (u64)new_address <= UINT32_MAX) {

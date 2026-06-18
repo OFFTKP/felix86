@@ -24,6 +24,7 @@ const char* colors[color_count] = {
 const char* reset = ANSI_COLOR_RESET;
 
 bool use_color = false;
+bool mode32 = false;
 
 void print_help() {
     printf("Commands:\n");
@@ -58,7 +59,7 @@ void compile(const std::string& input) {
 
     {
         std::ofstream ofs(pbuffer);
-        if (g_mode32) {
+        if (mode32) {
             ofs << "bits 32\n";
         } else {
             ofs << "bits 64\n";
@@ -206,10 +207,10 @@ void __attribute__((noreturn)) enter_repl() {
         iss >> cmd;
 
         if (cmd == "mode32") {
-            g_mode32 = true;
+            mode32 = true;
             printf("Switched to x86-32 mode\n");
         } else if (cmd == "mode64") {
-            g_mode32 = false;
+            mode32 = false;
             printf("Switched to x86-64 mode\n");
         } else if (cmd == "help") {
             print_help();

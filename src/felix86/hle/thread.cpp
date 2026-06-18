@@ -388,7 +388,7 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
 
     while (true) {
         VERBOSE("Attempting to allocate stack on %p", (void*)stack_hint);
-        base = (u8*)g_mapper->map((void*)stack_hint, max_stack_size, PROT_NONE,
+        base = (u8*)g_mapper->map(mode32, (void*)stack_hint, max_stack_size, PROT_NONE,
                                   MAP_PRIVATE | MAP_FIXED_NOREPLACE | MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_NORESERVE, -1, 0);
         if (base != MAP_FAILED) {
             break;
@@ -401,7 +401,7 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
         }
     }
 
-    u8* stack_pointer = (u8*)g_mapper->map(base + max_stack_size - stack_size, stack_size, PROT_READ | PROT_WRITE,
+    u8* stack_pointer = (u8*)g_mapper->map(mode32, base + max_stack_size - stack_size, stack_size, PROT_READ | PROT_WRITE,
                                            MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS | MAP_GROWSDOWN, -1, 0);
     if (stack_pointer == MAP_FAILED) {
         ERROR("Failed to allocate stack");

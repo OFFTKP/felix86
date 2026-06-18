@@ -8,6 +8,8 @@
 #include "felix86/common/utility.hpp"
 #include "felix86/hle/mmap.hpp"
 
+bool g_mode32 = false;
+
 namespace Catch {
     template <>
     struct StringMaker<std::pair<uint32_t, uint32_t>> {
