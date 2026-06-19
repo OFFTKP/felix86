@@ -232,6 +232,17 @@ struct UserContext {
             return false;
         }
     }
+
+    void SetFlags(u64 flags) {
+        cf = flags & 1;
+        pf = (flags >> 2) & 1;
+        af = (flags >> 4) & 1;
+        zf = (flags >> 6) & 1;
+        sf = (flags >> 7) & 1;
+        tf = (flags >> 8) & 1;
+        df = (flags >> 10) & 1;
+        of = (flags >> 11) & 1;
+    }
 };
 
 // TODO: Please make me standard layout type? offsetof warnings...

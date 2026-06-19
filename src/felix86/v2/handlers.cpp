@@ -544,13 +544,30 @@ FAST_HANDLE(MOV) {
             ASSERT(operands[0].reg.value != ZYDIS_REGISTER_CS);
             biscuit::GPR src = rec.getGPR(&operands[1]);
             rec.writebackState();
-            as.MV(a0, rec.threadStatePointer());
             as.MV(a1, src);
             as.LI(a2, operands[0].reg.value);
+            as.MV(a0, rec.threadStatePointer());
             rec.callPointer(offsetof(ThreadState, felix86_set_segment));
             rec.restoreState();
         } else {
-            WARN("Setting segment register %d in 64-bit mode, ignoring", operands[0].reg.value);
+            switch (operands[0].reg.value) {
+            case ZYDIS_REGISTER_FS:
+            case ZYDIS_REGISTER_GS: {
+                WARN("Setting segment register %d in 64-bit mode", operands[0].reg.value);
+                biscuit::GPR src = rec.getGPR(&operands[1]);
+                rec.writebackState();
+                as.MV(a1, src);
+                as.LI(a2, operands[0].reg.value);
+                as.MV(a0, rec.threadStatePointer());
+                rec.callPointer(offsetof(ThreadState, felix86_set_segment));
+                rec.restoreState();
+                break;
+            }
+            default: {
+                WARN("Setting segment register %d in 64-bit mode, ignoring", operands[0].reg.value);
+                break;
+            }
+            }
         }
     } else if (is_segment(operands[1])) {
         biscuit::GPR seg = rec.scratch();
@@ -1808,6 +1825,7 @@ FAST_HANDLE(IRETD) {
     ASSERT(MODE32);
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
+    as.LI(a1, 0);
     rec.callPointer(offsetof(ThreadState, felix86_iret));
     rec.restoreState();
     rec.backToDispatcher();
@@ -1818,6 +1836,7 @@ FAST_HANDLE(IRETQ) {
     ASSERT(!MODE32);
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
+    as.LI(a1, 1);
     rec.callPointer(offsetof(ThreadState, felix86_iret));
     rec.restoreState();
     rec.backToDispatcher();
@@ -9449,6 +9468,7 @@ FAST_HANDLE(XRSTOR64) {
 }
 
 FAST_HANDLE(WRFSBASE) {
+    WARN("WRFSBASE");
     biscuit::GPR reg = rec.getGPR(&operands[0]);
 
     if (instruction.operand_width == 32) {

@@ -305,32 +305,24 @@ int clear_breakpoints() {
     return count;
 }
 
-void felix86_iret(struct ThreadState* state) {
-    int size = state->ctx.Mode32() ? 4 : 8;
+void felix86_iret(struct ThreadState* state, bool iretq) {
+    int size = !iretq ? 4 : 8;
     u64 rsp = state->ctx.gprs[X86_REF_RSP];
     u8* rsp_ptr = (u8*)rsp;
     u64 rip = 0, rflags = 0, cs = 0, ss = 0, new_rsp = 0;
     memcpy(&rip, rsp_ptr, size);
     memcpy(&cs, rsp_ptr + (size * 1), size);
     memcpy(&rflags, rsp_ptr + (size * 2), size);
-
-    if (!state->ctx.Mode32()) {
-        memcpy(&new_rsp, rsp_ptr + (size * 3), size);
-        memcpy(&ss, rsp_ptr + (size * 4), size);
-        state->SetGpr(X86_REF_RSP, new_rsp);
-        // TODO: what are we supposed to do with ss?
-    }
-
+    memcpy(&new_rsp, rsp_ptr + (size * 3), size);
+    memcpy(&ss, rsp_ptr + (size * 4), size);
+    state->SetGpr(X86_REF_RSP, new_rsp);
+    felix86_set_segment(state, ss, ZYDIS_REGISTER_SS);
     u64 mask = 0x3F7BD7;
     rflags &= mask;
-    // TODO: actually set rflags
-
+    rflags |= 0b10;
+    state->ctx.SetFlags(rflags);
     state->SetRip(rip);
-
-    if (state->ctx.Mode32()) {
-        felix86_set_segment(state, cs, ZYDIS_REGISTER_CS);
-        state->SetGpr(X86_REF_RSP, rsp + 3 * 4); // 3 values popped
-    }
+    felix86_set_segment(state, cs, ZYDIS_REGISTER_CS);
 }
 
 void felix86_fstenv_16(ThreadState* state, u64 address) {
