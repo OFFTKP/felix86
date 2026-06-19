@@ -94,9 +94,9 @@ void felix86_fxsave(const UserContext& ctx, void* address, bool save_x87, bool s
     bool is_mmx = (x87State)ctx.x87_state == x87State::MMX;
     bool is_x87 = (x87State)ctx.x87_state == x87State::x87;
     fxsave_frame* data = (fxsave_frame*)address;
-
+    bool mode32 = ThreadState::Get()->ctx.Mode32();
     if (save_xmm) {
-        for (int i = 0; i < (g_mode32 ? 8 : 16); i++) {
+        for (int i = 0; i < (mode32 ? 8 : 16); i++) {
             data->xmms[i] = ctx.xmm[i];
         }
     }
@@ -144,8 +144,9 @@ void felix86_fxsave(const UserContext& ctx, void* address, bool save_x87, bool s
 void felix86_fxrstor(UserContext& ctx, void* address, bool restore_x87, bool restore_xmm, bool restore_mxcsr) {
     fxsave_frame* data = (fxsave_frame*)address;
 
+    bool mode32 = ThreadState::Get()->ctx.Mode32();
     if (restore_xmm) {
-        for (int i = 0; i < (g_mode32 ? 8 : 16); i++) {
+        for (int i = 0; i < (mode32 ? 8 : 16); i++) {
             ctx.xmm[i].data[0] = data->xmms[i].val[0];
             ctx.xmm[i].data[1] = data->xmms[i].val[1];
         }

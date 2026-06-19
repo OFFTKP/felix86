@@ -188,10 +188,11 @@ bool try_strace_ioctl(int rdi, u64 rsi, u64 rdx, u64 result) {
 
 Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5, u64 arg6) {
     ThreadState* state = frame->state;
+    bool mode32 = state->ctx.Mode32();
     Result result;
     switch (rv_syscall) {
     case felix86_riscv64_brk: {
-        result = BRK::set(arg1);
+        result = BRK::set(mode32, arg1);
         break;
     }
     case felix86_riscv64_kcmp: {
@@ -777,7 +778,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         break;
     }
     case felix86_riscv64_openat: {
-        result = g_fs->OpenAt((int)arg1, (char*)arg2, (int)arg3, arg4);
+        result = g_fs->OpenAt(mode32, (int)arg1, (char*)arg2, (int)arg3, arg4);
         break;
     }
     case felix86_riscv64_tgkill: {
@@ -807,7 +808,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
 #endif
         u64 flags = arg4;
         bool is_fixed = (flags & MAP_FIXED) || (flags & MAP_FIXED_NOREPLACE);
-        if ((flags & MAP_32BIT) || (is_fixed && arg1 < UINT32_MAX) || g_mode32) {
+        if ((flags & MAP_32BIT) || (is_fixed && arg1 < UINT32_MAX) || mode32) {
             // The MAP_32BIT flag is x86 only so we need to emulate it
             // For example, Mono tries to use it to allocate code cache pages near the executable so that it can use
             // +-2GiB jumps. If it doesn't get them near enough it will eventually crash and die.
@@ -831,7 +832,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         break;
     }
     case felix86_riscv64_munmap: {
-        if (arg1 < UINT32_MAX || g_mode32) {
+        if (arg1 < UINT32_MAX || mode32) {
             // Track unmaps in the 32-bit address space for MAP_32BIT in 64-bit mode
             result = g_mapper->unmap32((void*)arg1, arg2);
         } else {
@@ -969,7 +970,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         break;
     }
     case felix86_riscv64_mremap: {
-        result = (u64)g_mapper->remap((void*)arg1, arg2, arg3, arg4, (void*)arg5);
+        result = (u64)g_mapper->remap(mode32, (void*)arg1, arg2, arg3, arg4, (void*)arg5);
         if (result > 0) {
             Recompiler::invalidateRangeGlobal(arg1, arg1 + arg2, "mremap");
             Recompiler::invalidateRangeGlobal(result, result + arg3, "mremap");
@@ -1547,16 +1548,16 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
 
         if (arg2) {
             u8* guest_argv = (u8*)arg2;
-            guest_argv += g_mode32 ? 4 : 8;
+            guest_argv += mode32 ? 4 : 8;
             while (true) {
                 u64 ptr = 0;
-                memcpy(&ptr, guest_argv, g_mode32 ? 4 : 8);
+                memcpy(&ptr, guest_argv, mode32 ? 4 : 8);
                 if (ptr == 0) {
                     break;
                 }
 
                 argv.push_back((const char*)ptr);
-                guest_argv += g_mode32 ? 4 : 8;
+                guest_argv += mode32 ? 4 : 8;
             }
         } else {
             WARN("argv null during execve...?");
@@ -1577,7 +1578,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
             u8* guest_envp = (u8*)arg3;
             while (true) {
                 u64 ptr = 0;
-                memcpy(&ptr, guest_envp, g_mode32 ? 4 : 8);
+                memcpy(&ptr, guest_envp, mode32 ? 4 : 8);
                 if (ptr == 0) {
                     break;
                 }
@@ -1586,7 +1587,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
                 guest_envs += string_to_hex((const char*)ptr);
                 guest_envs += ",";
 
-                guest_envp += g_mode32 ? 4 : 8;
+                guest_envp += mode32 ? 4 : 8;
             }
 
             if (!guest_envs.empty()) {
@@ -1709,6 +1710,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
 void felix86_syscall(felix86_frame* frame) {
     ASSERT(frame->magic == felix86_frame::expected_magic);
     ThreadState* state = frame->state;
+    bool mode32 = state->ctx.Mode32();
     state->should_restart_syscall = false;
     u64 syscall_number = state->GetGpr(X86_REF_RAX);
     state->restarted_syscall_original_rax = syscall_number;
@@ -1872,7 +1874,7 @@ void felix86_syscall(felix86_frame* frame) {
             break;
         }
         case felix86_x86_64_open: {
-            result = g_fs->OpenAt(AT_FDCWD, (char*)arg1, (int)arg2, arg3);
+            result = g_fs->OpenAt(mode32, AT_FDCWD, (char*)arg1, (int)arg2, arg3);
             break;
         }
         case felix86_x86_64_alarm: {
@@ -1968,10 +1970,11 @@ void felix86_syscall(felix86_frame* frame) {
 
 void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
     ASSERT(frame->magic == felix86_frame::expected_magic);
-    if (!g_mode32) {
+    ThreadState* state = frame->state;
+    bool mode32 = state->ctx.Mode32();
+    if (!mode32) {
         WARN("Executing 32-bit syscall on 64-bit process");
     }
-    ThreadState* state = frame->state;
     state->should_restart_syscall = false;
     u64 syscall_number = state->GetGpr(X86_REF_RAX);
     u64 arg1 = state->GetGpr(X86_REF_RBX);
@@ -2317,7 +2320,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         case felix86_x86_32_mmap_pgoff: {
             // mmap2 is like mmap but file offset is in pages (4096 bytes) to help with the lack of big enough integers in x86-32
             u64 offset = arg6 * 4096;
-            result = (ssize_t)g_mapper->map((void*)arg1, arg2, arg3, arg4, arg5, offset);
+            result = (ssize_t)g_mapper->map(mode32, (void*)arg1, arg2, arg3, arg4, arg5, offset);
             if (result > 0) {
                 Recompiler::invalidateRangeGlobal(result, result + arg2, "mmap_pgoff");
 
@@ -2371,7 +2374,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_open: {
-            result = g_fs->OpenAt(AT_FDCWD, (char*)arg1, (int)arg2, arg3);
+            result = g_fs->OpenAt(mode32, AT_FDCWD, (char*)arg1, (int)arg2, arg3);
             break;
         }
         case felix86_x86_32_shmat: {

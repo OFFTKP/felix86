@@ -184,13 +184,12 @@ struct UserContext {
     bool of{};
     bool df{};
     bool tf{};
-    // Actual segment values
-    u16 gs{};
-    u16 fs{};
-    u16 cs{};
-    u16 ds{};
-    u16 ss{};
-    u16 es{};
+    u64 gs{};
+    u64 fs{};
+    u64 cs{};
+    u64 ds{};
+    u64 ss = (5 << 3 | 3);
+    u64 es{};
     // Base addresses (either fsbase/gsbase on 64-bit mode or all of them set by ie. mov gs, ax & on set_thread_area in 32-bit mode)
     u64 gsbase{};
     u64 fsbase{};
@@ -222,6 +221,17 @@ struct UserContext {
         flags |= of << 11;
         return flags;
     }
+
+    bool Mode32() {
+        if (cs == 0x23) {
+            return true;
+        } else if (cs == 0x33) {
+            return false;
+        } else {
+            UNREACHABLE();
+            return false;
+        }
+    }
 };
 
 // TODO: Please make me standard layout type? offsetof warnings...
@@ -247,8 +257,6 @@ struct ThreadState {
 
     // TODO: make it a u64
     sigset_t signal_mask{};
-
-    bool mode32 = false; // 32-bit execution mode, changes the behavior of some instructions and the decoder
 
     u32 gdt[32]{};
 
@@ -396,7 +404,7 @@ struct ThreadState {
     }
 
     void SetTLS(u64 address) {
-        if (g_mode32) {
+        if (ctx.Mode32()) {
             ASSERT(SetUserDesc((x86_user_desc*)address) == 0);
         } else {
             ctx.fsbase = address;

@@ -156,7 +156,7 @@ bool Filesystem::FakeMount(const std::filesystem::path& mount_me, const std::fil
     return true;
 }
 
-int Filesystem::OpenAt(int fd, const char* filename, int flags, u64 mode) {
+int Filesystem::OpenAt(bool mode32, int fd, const char* filename, int flags, u64 mode) {
     bool follow = !(flags & O_NOFOLLOW);
     FdPath fd_path = resolve(fd, filename, follow);
     if (fd_path.is_error()) {
@@ -164,7 +164,7 @@ int Filesystem::OpenAt(int fd, const char* filename, int flags, u64 mode) {
         return -fd_path.get_errno();
     }
 
-    if (!g_mode32) {
+    if (!mode32) {
         // We may be opening a library, check if it's one of our overlays
         const char* overlay = Overlays::isOverlay(fd, filename);
         if (overlay) {

@@ -41,7 +41,7 @@ struct BPFJit {
     ~BPFJit() = default;
 
     void compileProgram(const x64_sock_fprog* program) {
-        ASSERT(!g_mode32);
+        ASSERT(!ThreadState::Get()->ctx.Mode32());
         if (program->len == 0) {
             WARN("seccomp program len == 0?");
             return;

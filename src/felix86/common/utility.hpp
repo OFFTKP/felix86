@@ -157,7 +157,7 @@ const std::string& felix86_cpuinfo();
 
 bool check_if_privileged_executable(const std::filesystem::path& path);
 
-std::string disassemble_one(u64 address);
+std::string disassemble_one(bool mode32, u64 address);
 
 void felix86_crash_and_burn();
 

@@ -6,9 +6,9 @@
 
 // TODO: add verifications using /proc/self/maps and optional debugging mode that always verifies
 struct Mapper {
-    [[nodiscard]] void* map(void* addr, u64 size, int prot, int flags, int fd, u64 offset);
-    int unmap(void* addr, u64 size);
-    [[nodiscard]] void* remap(void* old_address, u64 old_size, u64 new_size, int flags, void* new_address);
+    [[nodiscard]] void* map(bool mode32, void* addr, u64 size, int prot, int flags, int fd, u64 offset);
+    int unmap(bool mode32, void* addr, u64 size);
+    [[nodiscard]] void* remap(bool mode32, void* old_address, u64 old_size, u64 new_size, int flags, void* new_address);
 
     [[nodiscard]] void* map32(void* addr, u64 size, int prot, int flags, int fd, u64 offset);
     int unmap32(void* addr, u64 size);

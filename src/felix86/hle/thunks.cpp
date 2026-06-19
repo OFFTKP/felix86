@@ -1061,7 +1061,7 @@ void Thunks::initialize() {
         std::filesystem::path thunk_path;
         for (const char* name : names) {
             std::filesystem::path path;
-            if (!g_mode32) {
+            if (!ThreadState::Get()->ctx.Mode32()) {
                 path = thunks / "x86_64-linux-gnu" / name;
             } else {
                 path = thunks / "i386-linux-gnu" / name;

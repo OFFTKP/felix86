@@ -8,6 +8,8 @@
 #include "felix86/common/utility.hpp"
 #include "felix86/hle/mmap.hpp"
 
+bool g_mode32 = false;
+
 namespace Catch {
     template <>
     struct StringMaker<std::pair<uint32_t, uint32_t>> {
@@ -24,28 +26,28 @@ namespace Catch {
 
 #define MMAP_AT(addr, size) \
     do { \
-        void* address = mapper.map((void*)(addr), size, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0); \
+        void* address = mapper.map(g_mode32, (void*)(addr), size, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0); \
         CATCH_REQUIRE(address == (void*)(u64)(addr)); \
         unmap_me.push_back({(u64)(addr), size}); \
     } while (0)
 
 #define MREMAP_AT(old_addr, old_size, new_addr, new_size) \
     do {\
-        void* address = mapper.remap((void*)old_addr, old_size, new_size, MREMAP_FIXED | MREMAP_MAYMOVE, (void*)new_addr); \
+        void* address = mapper.remap(g_mode32, (void*)old_addr, old_size, new_size, MREMAP_FIXED | MREMAP_MAYMOVE, (void*)new_addr); \
         CATCH_REQUIRE(address == (void*)(u64)(new_addr)); \
         unmap_me.push_back({(u64)(new_addr), new_size}); \
     } while(0)
 
 #define MMAP_AT_R(size) \
     do { \
-        void* address = mapper.map((void*)(0), size, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0); \
+        void* address = mapper.map(g_mode32, (void*)(0), size, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0); \
         unmap_me.push_back({(u64)(address), size}); \
     } while (0)
 
 // Doesn't need to erase from unmap_me
 #define UNMAP_AT(addr, size) \
     do { \
-        int result = mapper.unmap((void*)(addr), size); \
+        int result = mapper.unmap(g_mode32, (void*)(addr), size); \
         CATCH_REQUIRE(result == 0); \
     } while(0)
 
@@ -463,7 +465,7 @@ CATCH_TEST_CASE("MMap bug", "[mmap32]") {
     MMAP_AT(0x85800000, 0x8d400000-0x85800000);
     MMAP_AT(0xFFF00000, 0xFFFFFFFF-0xFFF00000);
 
-    void* address = mapper.map((void*)0xfff00000, 0x7d000, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
+    void* address = mapper.map(g_mode32, (void*)0xfff00000, 0x7d000, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
     ASSERT(address == (void*)0xfff00000);
 
     verifyRegions(mapper, {

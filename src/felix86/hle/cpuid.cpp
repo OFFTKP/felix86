@@ -130,7 +130,8 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
     Cpuid result{};
     bool found = false;
 
-    auto& mappings = g_mode32 ? selected_mappings_32 : selected_mappings;
+    bool mode32 = ThreadState::Get()->ctx.Mode32();
+    auto& mappings = mode32 ? selected_mappings_32 : selected_mappings;
     for (const Cpuid& cpuid : mappings) {
         if (cpuid.leaf == leaf && (cpuid.subleaf == subleaf || cpuid.subleaf == NO_SUBLEAF)) {
             result = cpuid;

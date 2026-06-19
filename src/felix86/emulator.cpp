@@ -65,6 +65,7 @@ struct auxv32_t {
 };
 
 static void setupMainStack(ThreadState* state) {
+    bool mode32 = state->ctx.Mode32();
     ssize_t argc = g_params.argv.size();
     if (argc > 1) {
         VERBOSE("Passing %zu arguments to guest executable", argc - 1);
@@ -78,7 +79,7 @@ static void setupMainStack(ThreadState* state) {
     std::shared_ptr<Elf> elf = g_fs->GetExecutable();
 
     // Initial process stack according to System V AMD64 ABI
-    auto pair = Threads::AllocateStack(g_mode32);
+    auto pair = Threads::AllocateStack(mode32);
     u64 rsp = (u64)pair.first;
 
     // To hold the addresses of the arguments for later pushing
@@ -87,7 +88,7 @@ static void setupMainStack(ThreadState* state) {
     rsp = stack_push_string(rsp, path);
     const char* program_name = (const char*)rsp;
 
-    rsp = stack_push_string(rsp, g_mode32 ? x86_string : x86_64_string);
+    rsp = stack_push_string(rsp, mode32 ? x86_string : x86_64_string);
     const char* platform_name = (const char*)rsp;
 
     // wine-preloader actually relies on us pushing these in this order
@@ -141,7 +142,7 @@ static void setupMainStack(ThreadState* state) {
         {AT_HWCAP, {0xBFEBFBFF}},
     };
 
-    if (!g_mode32) {
+    if (!mode32) {
         // Add pointer to VDSO object
         // Since we include it as part of the felix86 binary we can just
         // point there directly in 64-bit mode
@@ -161,7 +162,7 @@ static void setupMainStack(ThreadState* state) {
     // past our own information block
     // It's important to calculate this because the RSP final
     // value needs to be aligned to 16 bytes
-    int pointer_size = g_mode32 ? 4 : 8;
+    int pointer_size = mode32 ? 4 : 8;
     u16 size_needed = (2 * pointer_size) * auxv_count + // aux vector entries
                       pointer_size +                    // null terminator
                       envc * pointer_size +             // envp
@@ -176,7 +177,7 @@ static void setupMainStack(ThreadState* state) {
 
     u64 final_rsp = rsp - size_needed;
 
-    u64 (*stack_push)(u64, u64) = g_mode32 ? stack_push32 : stack_push64;
+    u64 (*stack_push)(u64, u64) = mode32 ? stack_push32 : stack_push64;
 
     for (int i = auxv_count - 1; i >= 0; i--) {
         rsp = stack_push(rsp, auxv_entries[i].second);
@@ -251,8 +252,9 @@ void Emulator::Start() {
         }
     }
 
+    bool mode32 = false;
     if (peek == Elf::PeekResult::Elf32) {
-        g_mode32 = true;
+        mode32 = true;
         // Allocate a 2GiB guard right after to catch bad addresses (that may need to loop around the address space?)
         constexpr u64 GB = 1024 * 1024 * 1024;
         void* guard = mmap((void*)(4 * GB), 2 * GB, PROT_NONE, MAP_FIXED_NOREPLACE | MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
@@ -261,17 +263,18 @@ void Emulator::Start() {
         }
 
         prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, 4 * GB, 2 * GB, "felix86-guard");
-    } else {
-        g_mode32 = false;
     }
 
-    if (!g_mode32 && !g_config.thunks_path.empty()) {
+    ThreadState* main_state = ThreadState::Create();
+    main_state->ctx.cs = mode32 ? 0x23 : 0x33;
+
+    if (!mode32 && !g_config.thunks_path.empty()) {
         Thunks::initialize();
     }
 
     g_fs->LoadExecutable(path);
 
-    BRK::allocate();
+    BRK::allocate(mode32);
 
     if (!g_execve_process) {
         if (!g_config.no_rootfs) {
@@ -302,7 +305,6 @@ void Emulator::Start() {
         }
     }
 
-    ThreadState* main_state = ThreadState::Create(nullptr);
     main_state->signal_table = SignalHandlerTable::Create(nullptr);
     main_state->SetRip(g_fs->GetEntrypoint());
 
@@ -340,9 +342,8 @@ void Emulator::Start() {
 }
 
 void Emulator::StartTest(const TestConfig& config, u64 stack) {
-    g_mode32 = config.mode32;
-
     ThreadState* main_state = ThreadState::Create(nullptr);
+    main_state->ctx.cs = config.mode32 ? 0x23 : 0x33;
     main_state->SetGpr(X86_REF_RSP, stack);
     main_state->SetRip(config.entrypoint);
 

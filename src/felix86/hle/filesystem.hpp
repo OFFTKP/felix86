@@ -181,7 +181,7 @@ struct Filesystem {
     static bool FakeMount(const std::filesystem::path& mount_me, const std::filesystem::path& dst);
 
     // Emulated syscall functions
-    int OpenAt(int fd, const char* filename, int flags, u64 mode);
+    int OpenAt(bool mode32, int fd, const char* filename, int flags, u64 mode);
 
     static int FAccessAt(int fd, const char* filename, int mode, int flags);
 

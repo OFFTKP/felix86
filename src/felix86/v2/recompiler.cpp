@@ -96,7 +96,7 @@ Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
     void* address = MAP_FAILED;
     // If the program is allocated in 32-bit address space then it's not worth performing this optimization
     // as to not interfere with MAP_32BIT and because immediates can be made in 2 instructions
-    if (min > 5 * GB && !g_mode32) {
+    if (min > 5 * GB) {
         for (int i = 0; i < 4; i++) {
             min -= 256 * MB;
             address = ::mmap((void*)min, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE | MAP_FIXED_NOREPLACE, -1, 0);
@@ -126,12 +126,6 @@ Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
     }
 
     emitNecessaryStuff();
-
-    ZydisMachineMode mode = g_mode32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
-    ZydisStackWidth stack_width = g_mode32 ? ZYDIS_STACK_WIDTH_32 : ZYDIS_STACK_WIDTH_64;
-
-    ZydisDecoderInit(&decoder, mode, stack_width);
-    ZydisDecoderEnableMode(&decoder, ZYDIS_DECODER_MODE_AMD_BRANCHES, ZYAN_TRUE);
 
     if (g_config.always_flags || g_config.paranoid) {
         flag_mode = FlagMode::AlwaysEmit;
@@ -401,15 +395,6 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
         resizeOrClearCodeCache(state);
     }
 
-    // This should never happen, but we have this here to catch it if it does and report it
-    if (g_mode32 && (rip & 0xFFFF'FFFF'0000'0000)) {
-        if (rip >= 0x1'0000'0000 && rip <= 0x1'FFFF'FFFF) {
-            u64 old = rip;
-            rip &= 0xFFFF'FFFF;
-            WARN("RIP wrapped around... %lx -> %lx", old, rip);
-        }
-    }
-
     if (state->unaligned_atomics_counter) {
         WARN_ONCE("This program has unaligned atomics that we can't emulate atomically");
     }
@@ -420,7 +405,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
     // Map it immediately so we can optimize conditional branch to self
 
     // A sequence of code (ie. basic block). This is so that we can also call it recursively later.
-    u64 end_rip = compileSequence(rip);
+    u64 end_rip = compileSequence(state->ctx.Mode32(), rip);
     u64 host_address_end = (u64)as.GetCursorPointer();
 
     ASSERT(host_address_end - start >= 8); // At least 2 instructions, so that our unlinking logic works
@@ -523,7 +508,7 @@ void Recompiler::markPagesAsReadOnly(u64 start, u64 end) {
     }
 }
 
-u64 Recompiler::compileSequence(u64 rip) {
+u64 Recompiler::compileSequence(bool mode32, u64 rip) {
     const u64 start_rip = rip;
     const bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
     compiling = true;
@@ -544,6 +529,8 @@ u64 Recompiler::compileSequence(u64 rip) {
         WARN("Jumped to address %lx which has a sequence of zeroes -- probably a bad jump?", rip);
     }
 
+    current_mode32 = mode32;
+    current_decoder_initialized = false; // TODO: don't invalidate if same mode32 as before
     scanAhead(rip);
     BlockMetadata& block_meta = getBlockMetadata(rip);
     block_meta.host_address = (u64)as.GetCursorPointer();
@@ -560,7 +547,6 @@ u64 Recompiler::compileSequence(u64 rip) {
     v0_has_mask = false;
 
     current_ripreg_value = rip; // may change in a syscall to check for safepoints, or after a set amount of instructions in the future
-
     current_instruction_index = 0;
 
     bool ran_mmx_once = false;
@@ -884,7 +870,7 @@ void Recompiler::compileInstruction(ZydisDecodedInstruction& instruction, ZydisD
     }
 
     if ((instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK) && !lock_handled) {
-        WARN("Didn't properly handle lock instruction: %s", disassemble_one(rip).c_str());
+        WARN("Didn't properly handle lock instruction: %s", disassemble_one(current_mode32, rip).c_str());
     }
 }
 
@@ -1164,6 +1150,15 @@ biscuit::Vec Recompiler::getVec(ZydisRegister reg) {
 }
 
 ZydisMnemonic Recompiler::decode(u64 rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands) {
+    if (!current_decoder_initialized) {
+        ZydisMachineMode mode = current_mode32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
+        ZydisStackWidth stack_width = current_mode32 ? ZYDIS_STACK_WIDTH_32 : ZYDIS_STACK_WIDTH_64;
+
+        ZydisDecoderInit(&decoder, mode, stack_width);
+        ZydisDecoderEnableMode(&decoder, ZYDIS_DECODER_MODE_AMD_BRANCHES, ZYAN_TRUE);
+        current_decoder_initialized = true;
+    }
+
     if (operands) {
         ZyanStatus status = ZydisDecoderDecodeFull(&decoder, (void*)rip, 15, &instruction, operands);
         if (!ZYAN_SUCCESS(status)) {
@@ -1360,7 +1355,7 @@ biscuit::GPR Recompiler::getGPR(x86_ref_e ref, x86_size_e size) {
         return gpr16;
     }
     case X86_SIZE_DWORD: {
-        if (!g_mode32 || g_config.paranoid) {
+        if (!current_mode32 || g_config.paranoid) {
             // Need to zext and store in scratch
             biscuit::GPR gpr32 = scratch();
             zext(gpr32, gpr, X86_SIZE_DWORD);
@@ -1609,7 +1604,7 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
     biscuit::GPR base, index;
 
     if (operand->mem.base == ZYDIS_REGISTER_RIP) {
-        ASSERT(!g_mode32);
+        ASSERT(!current_mode32);
         u64 offset_from_start = (current_rip - getCurrentRipregValue()) + current_instruction->length + (u64)operand->mem.disp.value;
         u64 offset_from_cursor = (current_rip + current_instruction->length + operand->mem.disp.value) - (u64)as.GetCursorPointer();
         if (IsValid2GBImm(offset_from_cursor) && !IsValidSigned12BitImm(offset_from_start) && !relocatable) {
@@ -1772,22 +1767,22 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
             break;
         }
         case ZYDIS_REGISTER_SS: {
-            ASSERT(g_mode32);
+            ASSERT(current_mode32);
             offset = offsetof(ThreadState, ctx.ssbase);
             break;
         }
         case ZYDIS_REGISTER_ES: {
-            ASSERT(g_mode32);
+            ASSERT(current_mode32);
             offset = offsetof(ThreadState, ctx.esbase);
             break;
         }
         case ZYDIS_REGISTER_DS: {
-            ASSERT(g_mode32);
+            ASSERT(current_mode32);
             offset = offsetof(ThreadState, ctx.dsbase);
             break;
         }
         case ZYDIS_REGISTER_CS: {
-            ASSERT(g_mode32);
+            ASSERT(current_mode32);
             offset = offsetof(ThreadState, ctx.csbase);
             break;
         }
@@ -1803,7 +1798,7 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
         popScratch();
     }
 
-    if (g_mode32 && current_instruction->address_width != 64 /* HACK: we set address_width = 64 in handler for LEA to avoid this zext*/) {
+    if (current_mode32 && current_instruction->address_width != 64 /* HACK: we set address_width = 64 in handler for LEA to avoid this zext*/) {
         // The additions may have overflown the address
         as.ZEXTW(address, address);
     }
@@ -2585,7 +2580,7 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
     biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
     u64 rip_false_offset = rip_false - getCurrentRipregValue();
     addi(ripreg, ripreg, rip_false_offset);
-    if (g_mode32) {
+    if (current_mode32) {
         zext(ripreg, ripreg, X86_SIZE_DWORD);
         rip_false = (u32)rip_false;
     }
@@ -2600,7 +2595,7 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
     as.Bind(&true_label);
     u64 rip_true_offset = rip_true - getCurrentRipregValue();
     addi(ripreg, ripreg, rip_true_offset);
-    if (g_mode32) {
+    if (current_mode32) {
         zext(ripreg, ripreg, X86_SIZE_DWORD);
         rip_true = (u32)rip_true;
     }
@@ -3229,7 +3224,7 @@ bool Recompiler::tryInlineSyscall() {
         return false;
     }
 
-    if (g_mode32) {
+    if (current_mode32) {
         // Unimplemented for now
         return false;
     }

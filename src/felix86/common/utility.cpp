@@ -246,8 +246,8 @@ __attribute__((visibility("default"))) int guest_breakpoint_abs(u64 address) {
     return g_breakpoints.size();
 }
 
-__attribute__((visibility("default"))) std::string disassemble_one(u64 address) {
-    ZydisMachineMode mode = g_mode32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
+__attribute__((visibility("default"))) std::string disassemble_one(bool mode32, u64 address) {
+    ZydisMachineMode mode = mode32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
     ZydisDisassembledInstruction instruction;
     auto result = ZydisDisassembleIntel(mode, address, (void*)address, 15, &instruction);
     if (ZYAN_SUCCESS(result)) {
@@ -263,8 +263,8 @@ __attribute__((visibility("default"))) std::string disassemble_one(u64 address) 
 
 __attribute__((visibility("default"))) void disassemble(u64 host_address) {
     ZydisDecoder decoder;
-    ZydisMachineMode mode = g_mode32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
-    ZydisStackWidth stack_width = g_mode32 ? ZYDIS_STACK_WIDTH_32 : ZYDIS_STACK_WIDTH_64;
+    ZydisMachineMode mode = ThreadState::Get()->ctx.Mode32() ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
+    ZydisStackWidth stack_width = ThreadState::Get()->ctx.Mode32() ? ZYDIS_STACK_WIDTH_32 : ZYDIS_STACK_WIDTH_64;
     ZydisDecoderInit(&decoder, mode, stack_width);
 
     u64 cur = host_address;
@@ -306,7 +306,7 @@ int clear_breakpoints() {
 }
 
 void felix86_iret(struct ThreadState* state) {
-    int size = g_mode32 ? 4 : 8;
+    int size = state->ctx.Mode32() ? 4 : 8;
     u64 rsp = state->ctx.gprs[X86_REF_RSP];
     u8* rsp_ptr = (u8*)rsp;
     u64 rip = 0, rflags = 0, cs = 0, ss = 0, new_rsp = 0;
@@ -314,7 +314,7 @@ void felix86_iret(struct ThreadState* state) {
     memcpy(&cs, rsp_ptr + (size * 1), size);
     memcpy(&rflags, rsp_ptr + (size * 2), size);
 
-    if (!g_mode32) {
+    if (!state->ctx.Mode32()) {
         memcpy(&new_rsp, rsp_ptr + (size * 3), size);
         memcpy(&ss, rsp_ptr + (size * 4), size);
         state->SetGpr(X86_REF_RSP, new_rsp);
@@ -327,7 +327,7 @@ void felix86_iret(struct ThreadState* state) {
 
     state->SetRip(rip);
 
-    if (g_mode32) {
+    if (state->ctx.Mode32()) {
         felix86_set_segment(state, cs, ZYDIS_REGISTER_CS);
         state->SetGpr(X86_REF_RSP, rsp + 3 * 4); // 3 values popped
     }
@@ -688,7 +688,7 @@ std::string get_perf_symbol(u64 address) {
         }
     }
 
-    const char* x86 = g_mode32 ? "x86" : "x86_64";
+    const char* x86 = "x86";
     std::string ret;
     if (symbol) {
         std::string symbol_name = symbol->name;
@@ -1281,8 +1281,14 @@ void felix86_set_segment(ThreadState* state, u64 value, int segment) {
 
     switch (segment) {
     case ZYDIS_REGISTER_CS: {
+        bool old_mode32 = state->ctx.Mode32();
         state->ctx.cs = value;
         state->ctx.csbase = base;
+        bool new_mode32 = state->ctx.Mode32();
+        if (old_mode32 != new_mode32) {
+            WARN("Mode32 switched during %lx", state->ctx.rip);
+            state->recompiler->clearCodeCache(state);
+        }
         break;
     }
     case ZYDIS_REGISTER_DS: {
