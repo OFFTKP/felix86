@@ -529,6 +529,8 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
         WARN("Jumped to address %lx which has a sequence of zeroes -- probably a bad jump?", rip);
     }
 
+    current_mode32 = mode32;
+    current_decoder_initialized = false; // TODO: don't invalidate if same mode32 as before
     scanAhead(rip);
     BlockMetadata& block_meta = getBlockMetadata(rip);
     block_meta.host_address = (u64)as.GetCursorPointer();
@@ -545,8 +547,6 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
     v0_has_mask = false;
 
     current_ripreg_value = rip; // may change in a syscall to check for safepoints, or after a set amount of instructions in the future
-    current_mode32 = mode32;
-    current_decoder_initialized = false; // TODO: don't invalidate if same mode32 as before
     current_instruction_index = 0;
 
     bool ran_mmx_once = false;
