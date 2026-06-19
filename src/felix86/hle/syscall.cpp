@@ -1307,6 +1307,12 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
             }
             break;
         }
+        case PR_SET_SYSCALL_USER_DISPATCH: {
+            // Not supported
+            WARN("prctl(PR_SET_SYSCALL_USER_DISPATCH) not supported");
+            result = -EINVAL;
+            break;
+        }
         default: {
             result = SYSCALL(prctl, arg1, arg2, arg3, arg4, arg5, arg6);
             break;
@@ -1915,21 +1921,25 @@ void felix86_syscall(felix86_frame* frame) {
         case felix86_x86_64_arch_prctl: {
             switch (arg1) {
             case felix86_x86_64_ARCH_SET_GS: {
+                state->ctx.gs = 0;
                 state->ctx.gsbase = arg2;
                 result = 0;
                 break;
             }
             case felix86_x86_64_ARCH_SET_FS: {
+                state->ctx.fs = 0;
                 state->ctx.fsbase = arg2;
                 result = 0;
                 break;
             }
             case felix86_x86_64_ARCH_GET_FS: {
-                result = state->ctx.fsbase;
+                *(u64*)arg2 = state->ctx.fsbase;
+                result = 0;
                 break;
             }
             case felix86_x86_64_ARCH_GET_GS: {
-                result = state->ctx.gsbase;
+                *(u64*)arg2 = state->ctx.gsbase;
+                result = 0;
                 break;
             }
             default: {
@@ -1972,11 +1982,11 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
     ASSERT(frame->magic == felix86_frame::expected_magic);
     ThreadState* state = frame->state;
     bool mode32 = state->ctx.Mode32();
+    u64 syscall_number = state->GetGpr(X86_REF_RAX);
     if (!mode32) {
-        WARN("Executing 32-bit syscall on 64-bit process");
+        WARN("Executing 32-bit syscall %d on 64-bit process", syscall_number);
     }
     state->should_restart_syscall = false;
-    u64 syscall_number = state->GetGpr(X86_REF_RAX);
     u64 arg1 = state->GetGpr(X86_REF_RBX);
     u64 arg2 = state->GetGpr(X86_REF_RCX);
     u64 arg3 = state->GetGpr(X86_REF_RDX);
