@@ -2613,6 +2613,27 @@ FAST_HANDLE(MOVD) {
 }
 
 FAST_HANDLE(JMP) {
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        if (operands[0].size == 64 + 16 || operands[0].size == 32 + 16) {
+            WARN("Far jump detected at %lx", rip);
+            bool bit32 = operands[0].size == 32 + 16;
+            biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+            biscuit::GPR address = rec.lea(&operands[0]);
+            biscuit::GPR cs = rec.scratch();
+            rec.readMemory(ripreg, address, 0, bit32 ? X86_SIZE_DWORD : X86_SIZE_QWORD);
+            rec.readMemory(cs, address, bit32 ? 4 : 8, X86_SIZE_WORD);
+            rec.writebackState();
+            as.MV(a1, cs);
+            as.LI(a2, ZYDIS_REGISTER_CS);
+            as.MV(a0, rec.threadStatePointer());
+            rec.callPointer(offsetof(ThreadState, felix86_set_segment));
+            rec.restoreState();
+            rec.backToDispatcher();
+            rec.stopCompiling();
+            return;
+        }
+    }
+
     switch (operands[0].type) {
     case ZYDIS_OPERAND_TYPE_REGISTER:
     case ZYDIS_OPERAND_TYPE_MEMORY: {
