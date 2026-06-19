@@ -13824,7 +13824,7 @@
         "disassembly": "pushfq"
     },
     "9d": {
-        "instruction_count": 92,
+        "instruction_count": 94,
         "expected_asm": [
             "LD              ra, s1, 0x0(0)",
             "ORI             ra, ra, 0x202(514)",
@@ -13855,7 +13855,7 @@
             "LB              t3, gp, 0x2cf(719)",
             "SRLI            t1, ra, 0x8(8)",
             "ANDI            t1, t1, 0x1(1)",
-            "BEQ             t3, t1, 0xfc(252)",
+            "BEQ             t3, t1, 0x104(260)",
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
             "SD              s10, gp, 0x8(8)",
@@ -13908,6 +13908,8 @@
             "VLE64.V         v16, t4, none, 1",
             "ADDI            t4, gp, 0x1c8(456)",
             "VLE64.V         v24, t4, none, 1",
+            "VSETVLI         t4, zero, e64, m1, tu, mu",
+            "VXOR.VV         v15, v15, v15, none",
             "LBU             s5, gp, 0x2c8(712)",
             "LBU             s7, gp, 0x2cb(715)",
             "LBU             s8, gp, 0x2cc(716)",

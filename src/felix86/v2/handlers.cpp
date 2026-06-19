@@ -2445,7 +2445,6 @@ FAST_HANDLE(MOVQ) {
         as.VMV_SX(dst, src);
 
         rec.setVec(&operands[0], dst);
-        rec.v0Modified();
     } else if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
         ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER);
 
@@ -2461,7 +2460,6 @@ FAST_HANDLE(MOVQ) {
             as.VMV_SX(dst, src);
 
             rec.setVec(&operands[0], dst);
-            rec.v0Modified();
         } else if (rec.isGPR(operands[0].reg.value)) {
             biscuit::GPR dst = rec.getGPR(&operands[0]);
             biscuit::Vec src = rec.getVec(&operands[1]);
@@ -2480,7 +2478,6 @@ FAST_HANDLE(MOVQ) {
             as.VOR(result, src, 0, VecMask::Yes);
 
             rec.setVec(&operands[0], result);
-            rec.v0Modified();
         }
     }
 }
@@ -2508,7 +2505,6 @@ FAST_HANDLE(MOVD) {
         as.VMV_SX(dst, src);
 
         rec.setVec(&operands[0], dst);
-        rec.v0Modified();
     } else if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
         ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER);
 
@@ -2524,7 +2520,6 @@ FAST_HANDLE(MOVD) {
             as.VMV_SX(dst, src);
 
             rec.setVec(&operands[0], dst);
-            rec.v0Modified();
         } else if (rec.isGPR(operands[0].reg.value)) {
             biscuit::GPR dst = rec.getGPR(&operands[0]);
             biscuit::Vec src = rec.getVec(&operands[1]);
@@ -2543,7 +2538,6 @@ FAST_HANDLE(MOVD) {
             as.VOR(result, src, 0, VecMask::Yes);
 
             rec.setVec(&operands[0], result);
-            rec.v0Modified();
         }
     }
 }
@@ -4030,7 +4024,6 @@ FAST_HANDLE(PUNPCKHQDQ) {
     as.VMERGE(dst, temp, src);
 
     rec.setVec(&operands[0], dst);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(UNPCKLPS) {
@@ -4095,7 +4088,6 @@ FAST_HANDLE(UNPCKLPD) {
         as.VMV(v0, 0b10);
         as.VXOR(index, index, index);
         as.VLUXEI64(dst, address, index, VecMask::Yes);
-        rec.v0Modified();
     }
 
     rec.setVec(&operands[0], dst);
@@ -4113,14 +4105,12 @@ FAST_HANDLE(UNPCKHPD) {
         as.VMV(v0, 0b10);
         as.VMERGE(result, scratch, src);
         rec.setVec(&operands[0], result);
-        rec.v0Modified();
     } else {
         biscuit::GPR address = rec.lea(&operands[1], false);
         as.VMV(v0, 0b10);
         as.VSLIDEDOWN(dst, dst, 1);
         as.VLE64(dst, address, VecMask::Yes);
         rec.setVec(&operands[0], dst);
-        rec.v0Modified();
     }
 }
 
@@ -4582,7 +4572,6 @@ FAST_HANDLE(MINPS) {
     as.VFMIN(nan_mask_2, dst, src);        // actual max result calculation
     as.VMERGE(zero_mask, nan_mask_2, src); // Where v0 is 1's, use src, otherwise use result of vfmax
     rec.setVec(&operands[0], zero_mask);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(MINPD) {
@@ -4622,7 +4611,6 @@ FAST_HANDLE(MINPD) {
     as.VFMIN(nan_mask_2, dst, src);        // actual max result calculation
     as.VMERGE(zero_mask, nan_mask_2, src); // Where v0 is 1's, use src, otherwise use result of vfmax
     rec.setVec(&operands[0], zero_mask);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(PMINUB) {
@@ -4842,7 +4830,6 @@ FAST_HANDLE(MAXPS) {
     as.VFMAX(nan_mask_2, dst, src);        // actual max result calculation
     as.VMERGE(zero_mask, nan_mask_2, src); // Where v0 is 1's, use src, otherwise use result of vfmax
     rec.setVec(&operands[0], zero_mask);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(MAXPD) {
@@ -4882,7 +4869,6 @@ FAST_HANDLE(MAXPD) {
     as.VFMAX(nan_mask_2, dst, src);        // actual max result calculation
     as.VMERGE(zero_mask, nan_mask_2, src); // Where v0 is 1's, use src, otherwise use result of vfmax
     rec.setVec(&operands[0], zero_mask);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(MULPS) {
@@ -6064,7 +6050,6 @@ void PCMPEQ(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& in
     as.VMV(zero, 0);
     as.VMSEQ(v0, dst, src);
     as.VMERGE(dst, zero, -1ll);
-    rec.v0Modified();
     rec.setVec(&operands[0], dst);
 }
 
@@ -6076,7 +6061,6 @@ void PCMPGT(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& in
     as.VMV(zero, 0);
     as.VMSLT(v0, src, dst);
     as.VMERGE(dst, zero, -1ll);
-    rec.v0Modified();
     rec.setVec(&operands[0], dst);
 }
 
@@ -6181,8 +6165,6 @@ void CMPP(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& inst
     // Set to 1s where the mask is set
     as.VMV(result, 0);
     as.VOR(result, result, -1, VecMask::Yes);
-
-    rec.v0Modified();
     rec.setVec(&operands[0], result);
 }
 
@@ -6340,7 +6322,6 @@ FAST_HANDLE(PBLENDVB) {
     as.VMERGE(dst, dst, src);
 
     rec.setVec(&operands[0], dst);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(PBLENDW) {
@@ -6355,7 +6336,6 @@ FAST_HANDLE(PBLENDW) {
     as.VMERGE(dst, dst, src);
 
     rec.setVec(&operands[0], dst);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(BLENDPS) {
@@ -6368,7 +6348,6 @@ FAST_HANDLE(BLENDPS) {
     as.VMERGE(dst, dst, src);
 
     rec.setVec(&operands[0], dst);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(BLENDVPS) {
@@ -6381,7 +6360,6 @@ FAST_HANDLE(BLENDVPS) {
     as.VMERGE(dst, dst, src);
 
     rec.setVec(&operands[0], dst);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(BLENDPD) {
@@ -6394,7 +6372,6 @@ FAST_HANDLE(BLENDPD) {
     as.VMERGE(dst, dst, src);
 
     rec.setVec(&operands[0], dst);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(BLENDVPD) {
@@ -6407,7 +6384,6 @@ FAST_HANDLE(BLENDVPD) {
     as.VMERGE(dst, dst, src);
 
     rec.setVec(&operands[0], dst);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(DPPS) {
@@ -6438,7 +6414,6 @@ FAST_HANDLE(DPPS) {
     }
 
     rec.setVec(&operands[0], dst);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(DPPD) {
@@ -6469,7 +6444,6 @@ FAST_HANDLE(DPPD) {
     }
 
     rec.setVec(&operands[0], dst);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(PSHUFLW) {
@@ -6522,7 +6496,6 @@ FAST_HANDLE(PSHUFHW) {
     as.VRGATHER(result, src, iota2, VecMask::Yes);
 
     rec.setVec(&operands[0], result);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(PALIGNR) {
@@ -7770,7 +7743,6 @@ FAST_HANDLE(MASKMOVDQU) {
     rec.setVectorState(SEW::E8, 16);
     as.VMSGTU(v0, mask, imm); // >= 0x80 -> bit 7 set in element
     as.VSE8(data, address, VecMask::Yes);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(MASKMOVQ) {
@@ -7782,7 +7754,6 @@ FAST_HANDLE(MASKMOVQ) {
     rec.setVectorState(SEW::E8, 8);
     as.VMSGTU(v0, mask, imm); // >= 0x80 -> bit 7 set in element
     as.VSE8(data, address, VecMask::Yes);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(SFENCE) {
@@ -8505,7 +8476,6 @@ FAST_HANDLE(CVTPD2PS) {
     as.VMV(v0, 0b1100);
     as.VAND(result, result, 0, VecMask::Yes);
     rec.setVec(&operands[0], result);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(CVTPS2PD) {
@@ -8548,7 +8518,6 @@ FAST_HANDLE(CVTTPD2DQ) {
     as.VAND(dst, dst, 0, VecMask::Yes);
 
     rec.setVec(&operands[0], dst);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(CVTPD2DQ) {
@@ -8563,7 +8532,6 @@ FAST_HANDLE(CVTPD2DQ) {
     as.VAND(result, result, 0, VecMask::Yes);
 
     rec.setVec(&operands[0], result);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(CVTPI2PD) {
@@ -8916,7 +8884,6 @@ FAST_HANDLE(ADDSUBPS) {
     as.VFSUB(result, dst, src);
     as.VFADD(result, dst, src, VecMask::Yes);
     rec.setVec(&operands[0], result);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(ADDSUBPD) {
@@ -8928,7 +8895,6 @@ FAST_HANDLE(ADDSUBPD) {
     as.VFSUB(result, dst, src);
     as.VFADD(result, dst, src, VecMask::Yes);
     rec.setVec(&operands[0], result);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(HADDPD) {
@@ -8968,7 +8934,6 @@ FAST_HANDLE(HSUBPD) {
     as.VSLIDEUP(result2, result1, 1);
 
     rec.setVec(&operands[0], result2);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(HADDPS) {
@@ -8994,7 +8959,6 @@ FAST_HANDLE(HADDPS) {
     as.VSLIDEUP(compress1, compress2, 2);
 
     rec.setVec(&operands[0], compress1);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(HSUBPS) {
@@ -9020,7 +8984,6 @@ FAST_HANDLE(HSUBPS) {
     as.VSLIDEUP(compress1, compress2, 2);
 
     rec.setVec(&operands[0], compress1);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(LDDQU) {
@@ -9041,7 +9004,6 @@ void PSIGN(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& ins
     as.VXOR(result, result, result, VecMask::Yes);
 
     rec.setVec(&operands[0], result);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(PSIGND) {
@@ -10395,7 +10357,6 @@ FAST_HANDLE(INSERTPS) {
     }
 
     rec.setVec(&operands[0], dst);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(PUSHFQ) {
@@ -12024,7 +11985,6 @@ FAST_HANDLE(VMOVD) {
             rec.setVectorState(SEW::E32, 8);
             as.VMV(v0, 0b1);
             as.VMNOT(v0, v0);
-            rec.v0Modified();
             as.VMERGE(dst, src, 0);
             rec.setVec(&operands[0], dst);
         } else {
@@ -12057,7 +12017,6 @@ FAST_HANDLE(VMOVQ) {
             }
             rec.setVectorState(SEW::E64, 4);
             as.VMV(v0, 0b1110);
-            rec.v0Modified();
             as.VMERGE(dst, src, 0);
             rec.setVec(&operands[0], dst);
         } else {
@@ -12165,7 +12124,6 @@ FAST_HANDLE(VZEROUPPER) {
     if (!MODE32) {
         as.VXOR(second_group, second_group, second_group, VecMask::Yes);
     }
-    rec.v0Modified();
     rec.resetVectorState();
 }
 
@@ -12190,7 +12148,6 @@ FAST_HANDLE(VMASKMOVDQU) {
     rec.setVectorState(SEW::E8, 16);
     as.VMSGTU(v0, mask, imm); // >= 0x80 -> bit 7 set in element
     as.VSE8(data, address, VecMask::Yes);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(VMASKMOVPD) {
@@ -12198,13 +12155,11 @@ FAST_HANDLE(VMASKMOVPD) {
     biscuit::Vec mask = rec.getVec(&operands[1]);
     rec.setVectorState(SEW::E64, elements);
     as.VMSLT(v0, mask, x0);
-    rec.v0Modified();
     if (operands[2].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         biscuit::Vec temp = rec.scratchVec();
         biscuit::GPR address = rec.lea(&operands[2]);
         as.VLE64(temp, address, VecMask::Yes);
         as.VMNOT(v0, v0);
-        rec.v0Modified();
         as.VXOR(temp, temp, temp, VecMask::Yes);
         rec.setVec(&operands[0], temp);
     } else if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
@@ -12221,13 +12176,11 @@ FAST_HANDLE(VMASKMOVPS) {
     biscuit::Vec mask = rec.getVec(&operands[1]);
     rec.setVectorState(SEW::E32, elements);
     as.VMSLT(v0, mask, x0);
-    rec.v0Modified();
     if (operands[2].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         biscuit::Vec temp = rec.scratchVec();
         biscuit::GPR address = rec.lea(&operands[2]);
         as.VLE32(temp, address, VecMask::Yes);
         as.VMNOT(v0, v0);
-        rec.v0Modified();
         as.VXOR(temp, temp, temp, VecMask::Yes);
         rec.setVec(&operands[0], temp);
     } else if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
@@ -12254,17 +12207,27 @@ template <typename Func>
 inline static void AVX_Operation(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, Func operation,
                                  SEW sew, int elements) {
     bool is_xmms = !instruction.raw.vex.L;
-    biscuit::Vec dst = is_xmms ? rec.scratchVec() : rec.getVec(&operands[0]);
+    biscuit::Vec dst;
     biscuit::Vec src1 = rec.getVec(&operands[1]);
+    biscuit::Vec src2 = instruction.operand_count == 3 ? rec.getVec(&operands[2]) : src1;
     int element_count = elements == 1 ? 1 : elements / (is_xmms ? 2 : 1);
 
     // In 1 element operations like vaddss or vsqrtss, bits 127:32/127:64 are src1 bits
-    if (element_count == 1 && dst != src1) {
-        ASSERT(is_xmms); // aka dst == scratchVec
+    if (element_count == 1) {
+        ASSERT(is_xmms);
+        dst = rec.scratchVec();
         as.VMV1R(dst, src1);
+    } else {
+        dst = rec.getVec(&operands[0]);
+        if (is_xmms) {
+            if (dst != src1 && dst != src2) {
+                rec.vzeroAllBits(dst);
+            } else {
+                dst = rec.scratchVec();
+            }
+        }
     }
 
-    biscuit::Vec src2 = instruction.operand_count == 3 ? rec.getVec(&operands[2]) : src1;
     rec.setVectorState(sew, element_count);
     if constexpr (std::is_same_v<Func, FuncPtr3>) {
         (as.*operation)(dst, src1, src2, VecMask::No);
@@ -12303,8 +12266,6 @@ void VPSIGN(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& in
     as.VRSUB(result, src1, x0, VecMask::Yes);
     as.VMSEQ(v0, src2, x0);
     as.VXOR(result, result, result, VecMask::Yes);
-
-    rec.v0Modified();
     rec.setVec(&operands[0], result);
 }
 
@@ -12639,9 +12600,7 @@ FAST_HANDLE(VPERMILPS) {
         rec.setVectorState(SEW::E16, 8);
         // Make a mask for the upper elements
         as.VID(v0);
-        as.VMSGT(v0, v0, 3);
-        rec.v0Modified();
-        // Upper elements can pick elements > 4
+        as.VMSGT(v0, v0, 3); // Upper elements can pick elements > 4
         as.VOR(iota_vec, iota_vec, 0b100, VecMask::Yes);
         rec.setVectorState(SEW::E32, 8);
         as.VRGATHEREI16(result, data, iota_vec);
@@ -12655,7 +12614,6 @@ FAST_HANDLE(VPERMILPS) {
         // Make a mask for the upper elements
         as.VID(v0);
         as.VMSGT(v0, v0, 3);
-        rec.v0Modified();
         as.VAND(modified_iota, iota, 0b11);
         // Upper elements can pick elements > 4
         as.VOR(modified_iota, modified_iota, 0b100, VecMask::Yes);
@@ -12684,7 +12642,6 @@ FAST_HANDLE(VPERMILPD) {
         // Make a mask for the upper elements
         as.VID(v0);
         as.VMSGT(v0, v0, 1);
-        rec.v0Modified();
         as.VSRL(modified_iota, iota, 1);
         as.VAND(modified_iota, modified_iota, 1);
         // Upper elements can pick element 2 or 3
@@ -12763,7 +12720,6 @@ FAST_HANDLE(VPERM2I128) {
         }
         as.VMV(v0, 0b11);
         as.VXOR(result, result, result, VecMask::Yes);
-        rec.v0Modified();
         rec.setVec(&operands[0], result);
         return;
     }
@@ -12996,8 +12952,6 @@ FAST_HANDLE(VPSHUFLW) {
     rec.setVectorState(SEW::E64, 4);
     as.LI(mask, 0b1111'0000'1111);
     as.VMV(v0, mask);
-    rec.v0Modified();
-
     u64 el0 = imm & 0b11;
     u64 el1 = (imm >> 2) & 0b11;
     u64 el2 = (imm >> 4) & 0b11;
@@ -13025,8 +12979,6 @@ FAST_HANDLE(VPSHUFHW) {
     rec.setVectorState(SEW::E64, 4);
     as.LI(mask, 0b1111'0000'1111'0000);
     as.VMV(v0, mask);
-    rec.v0Modified();
-
     u64 el0 = imm & 0b11;
     u64 el1 = (imm >> 2) & 0b11;
     u64 el2 = (imm >> 4) & 0b11;
@@ -13163,7 +13115,6 @@ void VPCMPEQ(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& i
     as.VMV(zero, 0);
     as.VMSEQ(v0, src1, src2);
     as.VMERGE(dst, zero, -1ll);
-    rec.v0Modified();
     rec.setVec(&operands[0], dst);
 }
 
@@ -13177,7 +13128,6 @@ void VPCMPGT(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& i
     as.VMV(zero, 0);
     as.VMSLT(v0, src2, src1);
     as.VMERGE(dst, zero, -1ll);
-    rec.v0Modified();
     rec.setVec(&operands[0], dst);
 }
 
@@ -13425,7 +13375,6 @@ FAST_HANDLE(VHSUBPS) {
     as.VRGATHER(src1_slide, result1, iota_vec);
     as.VRGATHER(src2_slide, result2, iota_vec);
     rec.vsplat(v0, 0b11001100);
-    rec.v0Modified();
     as.VMERGE(final, src1_slide, src2_slide);
 
     rec.setVec(&operands[0], final);
@@ -13445,7 +13394,6 @@ FAST_HANDLE(VHSUBPD) {
     as.VFSUB(result1, src1, src1_slide);
     as.VFSUB(result2, src2_slide, src2);
     as.VMV(v0, 0b1010);
-    rec.v0Modified();
     as.VMERGE(final, result1, result2);
     rec.setVec(&operands[0], final);
 }
@@ -13490,7 +13438,6 @@ FAST_HANDLE(VHADDPS) {
     as.VRGATHER(src1_slide, result1, iota_vec);
     as.VRGATHER(src2_slide, result2, iota_vec);
     rec.vsplat(v0, 0b11001100);
-    rec.v0Modified();
     as.VMERGE(final, src1_slide, src2_slide);
 
     rec.setVec(&operands[0], final);
@@ -13510,7 +13457,6 @@ FAST_HANDLE(VHADDPD) {
     as.VFADD(result1, src1, src1_slide);
     as.VFADD(result2, src2, src2_slide);
     as.VMV(v0, 0b1010);
-    rec.v0Modified();
     as.VMERGE(final, result1, result2);
     rec.setVec(&operands[0], final);
 }
@@ -13609,8 +13555,6 @@ FAST_HANDLE(VINSERTPS) {
         as.VMV(v0, zmask);
         as.VXOR(dst, dst, dst, VecMask::Yes);
     }
-
-    rec.v0Modified();
     rec.setVec(&operands[0], dst);
 }
 
@@ -13637,7 +13581,6 @@ FAST_HANDLE(VCVTPD2DQ) {
         biscuit::Vec dst = rec.getVec(&operands[0]);
         rec.vsplat(v0, 0b1110);
         as.VAND(result, result, 0, VecMask::Yes);
-        rec.v0Modified();
         as.VMV1R(dst, result); // saves having to use the mask to zero upper bits
         rec.setVec(&operands[0], dst);
     } else {
@@ -13658,7 +13601,6 @@ FAST_HANDLE(VCVTTPD2DQ) {
         biscuit::Vec dst = rec.getVec(&operands[0]);
         rec.vsplat(v0, 0b1110);
         as.VAND(result, result, 0, VecMask::Yes);
-        rec.v0Modified();
         as.VMV1R(dst, result); // saves having to use the mask to zero upper bits
         rec.setVec(&operands[0], dst);
     } else {
@@ -13679,7 +13621,6 @@ FAST_HANDLE(VCVTPD2PS) {
         biscuit::Vec dst = rec.getVec(&operands[0]);
         rec.vsplat(v0, 0b1110);
         as.VAND(result, result, 0, VecMask::Yes);
-        rec.v0Modified();
         as.VMV1R(dst, result); // saves having to use the mask to zero upper bits
         rec.setVec(&operands[0], dst);
     } else {
@@ -13887,7 +13828,6 @@ FAST_HANDLE(VPSADBW) {
     rec.setVectorState(SEW::E16, 16);
     as.LI(scratch, 0xFF);
     as.VMV_SX(v0, scratch);
-    rec.v0Modified();
     as.VMV(zero, 0);
     if (is_xmms) {
         as.VMV(mask, 0);
@@ -13998,8 +13938,6 @@ FAST_HANDLE(VDPPS) {
 
         as.VSLIDEUP(result, result2, 4);
     }
-
-    rec.v0Modified();
     rec.setVec(&operands[0], result);
 }
 
@@ -14225,7 +14163,6 @@ void VGATHER(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instructio
     // Make sure to not load more than we need
     rec.setVectorState(sew, is_128_version ? elements / 2 : elements);
     as.VMSLT(v0, mask, x0);
-    rec.v0Modified();
     as.VLUXEI64(result, address, shifted_index, VecMask::Yes);
 
     rec.setVectorState(sew, sew == SEW::E32 ? 8 : 4);
@@ -14242,7 +14179,6 @@ void VGATHER(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instructio
         as.VMV(v0, 0b1110);
         as.VXOR(result, result, result, VecMask::Yes);
         as.VMV1R(dst, result);
-        rec.v0Modified();
         rec.setVec(&operands[0], dst); // doesn't zero upper since operand==dst
     } else {
         rec.setVec(&operands[0], result);
@@ -14343,8 +14279,6 @@ FAST_HANDLE(VDPPD) {
     } else {
         // Using all elements
     }
-
-    rec.v0Modified();
     rec.setVec(&operands[0], result);
 }
 
@@ -14531,8 +14465,6 @@ void VCMP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, 
     }
     as.VMV(result, 0);
     as.VOR(result, result, -1, VecMask::Yes);
-
-    rec.v0Modified();
     rec.setVec(&operands[0], result);
 }
 
@@ -14699,7 +14631,6 @@ FAST_HANDLE(VPUNPCKLQDQ) {
 
     rec.setVectorState(SEW::E64, 4);
     as.VMV(v0, 0b0101);
-    rec.v0Modified();
     as.VMV(temp1, src1);
     as.VSLIDE1UP(temp2, src2, x0);
     as.VMERGE(result, temp2, temp1);
@@ -14775,7 +14706,6 @@ FAST_HANDLE(VPUNPCKHQDQ) {
 
     rec.setVectorState(SEW::E64, 4);
     as.VMV(v0, 0b0101);
-    rec.v0Modified();
     as.VMV(temp1, src2);
     as.VSLIDE1DOWN(temp2, src1, x0);
     as.VMERGE(result, temp1, temp2);
@@ -14934,7 +14864,6 @@ FAST_HANDLE(VSHUFPS) {
     as.VRGATHER(shuffled_src1, src1, iota_reg);
     as.VRGATHER(shuffled_src2, src2, iota_reg);
     rec.vsplat(v0, 0b11001100);
-    rec.v0Modified();
     as.VMERGE(dst, shuffled_src1, shuffled_src2);
 
     rec.setVec(&operands[0], dst);
@@ -14961,7 +14890,6 @@ FAST_HANDLE(VSHUFPD) {
     as.VRGATHEREI16(shuffled_src1, src1, iota_reg);
     as.VRGATHEREI16(shuffled_src2, src2, iota_reg);
     as.VMV(v0, 0b1010);
-    rec.v0Modified();
     as.VMERGE(dst, shuffled_src1, shuffled_src2);
 
     rec.setVec(&operands[0], dst);
@@ -15100,17 +15028,14 @@ void VADDSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instructio
     bool is_xmms = !instruction.raw.vex.L;
     biscuit::Vec temp = rec.scratchVec();
     biscuit::Vec negated_src = rec.scratchVec();
-    biscuit::Vec v0_storage = rec.scratchVec();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src1 = rec.getVec(&operands[1]);
     biscuit::Vec src2 = rec.getVec(&operands[2]);
 
-    rec.setVectorState(sew, is_xmms ? elements / 2 : elements);
-
-    if (is_xmms && rec.v0HasMask()) {
-        // Save mask and restore it later
-        as.VMMV(v0_storage, v0);
+    if (is_xmms) {
+        rec.vzeroAllBits(dst);
     }
+    rec.setVectorState(sew, is_xmms ? elements / 2 : elements);
 
     // Construct mask. One more instruction compared to LI+VMV_SX but doesn't need GPR->Vec cross
     as.VID(temp);
@@ -15121,12 +15046,6 @@ void VADDSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instructio
     as.VMV(negated_src, src2);
     as.VFNEG(negated_src, negated_src, VecMask::Yes);
     as.VFADD(dst, src1, negated_src);
-
-    if (is_xmms && rec.v0HasMask()) {
-        as.VMMV(v0, v0_storage);
-    } else {
-        rec.v0Modified();
-    }
 
     rec.setVec(&operands[0], dst);
 }
@@ -15153,7 +15072,6 @@ void VBLEND(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction
         rec.setVectorState(sew, is_xmms ? elements / 2 : elements);
         rec.vsplat(v0, imm);
     }
-    rec.v0Modified(); // TODO: store and restore v0 if already set
     as.VMERGE(dst, src1, src2);
     rec.setVec(&operands[0], dst);
 }
@@ -15512,7 +15430,6 @@ void VBLENDV(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instructio
     biscuit::Vec mask = rec.getVec(&operands[3]);
     rec.setVectorState(sew, is_xmms ? elements / 2 : elements);
     as.VMSLT(v0, mask, x0);
-    rec.v0Modified(); // TODO: store and restore v0 if already set
     as.VMERGE(dst, src1, src2);
     rec.setVec(&operands[0], dst);
 }
@@ -15839,7 +15756,6 @@ FAST_HANDLE(VPSLLDQ) {
         u16 mask = ((0xFFFF << imm) & 0xFFFF);
         rec.setVectorState(SEW::E16, 16);
         rec.vsplat(v0, mask);
-        rec.v0Modified();
         as.VXOR(result, result, result);
         rec.setVectorState(SEW::E8, 32);
         as.VSLIDEUP(result, src, imm, VecMask::Yes);
@@ -15860,7 +15776,6 @@ FAST_HANDLE(VPSRLDQ) {
         u16 mask = ((0xFFFF >> imm) & 0xFFFF);
         rec.setVectorState(SEW::E16, 16);
         rec.vsplat(v0, mask);
-        rec.v0Modified();
         as.VXOR(result, result, result);
         rec.setVectorState(SEW::E8, 32);
         as.VSLIDEDOWN(result, src, imm, VecMask::Yes);
@@ -15877,7 +15792,6 @@ void VPSHIFTV(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instructi
     as.LI(max, sew_to_bits(sew) - 1);
     rec.setVectorState(sew, vl);
     as.VMSGTU(v0, shift, max);
-    rec.v0Modified();
     (as.*operation)(dst, data, shift, VecMask::No);
     as.VXOR(dst, dst, dst, VecMask::Yes);
     rec.setVec(&operands[0], dst);
@@ -16056,7 +15970,6 @@ void VFMADDSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruct
     biscuit::Vec src3 = rec.getVec(&operands[2]);
     rec.setVectorState(sew, !is_xmms ? length : length / 2);
     rec.vsplat(v0, reverse ? 0b01010101 : 0b10101010);
-    rec.v0Modified();
     switch (order) {
     case 132: {
         as.VFMADD(dst, src3, src2, VecMask::Yes);
