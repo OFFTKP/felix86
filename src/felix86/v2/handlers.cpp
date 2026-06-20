@@ -9489,7 +9489,6 @@ FAST_HANDLE(XRSTOR64) {
 }
 
 FAST_HANDLE(WRFSBASE) {
-    WARN("WRFSBASE");
     biscuit::GPR reg = rec.getGPR(&operands[0]);
 
     if (instruction.operand_width == 32) {
