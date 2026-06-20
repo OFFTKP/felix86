@@ -305,8 +305,8 @@ int clear_breakpoints() {
     return count;
 }
 
-void felix86_iret(struct ThreadState* state) {
-    int size = state->ctx.Mode32() ? 4 : 8;
+void felix86_iret(struct ThreadState* state, bool iretq) {
+    int size = !iretq ? 4 : 8;
     u64 rsp = state->ctx.gprs[X86_REF_RSP];
     u8* rsp_ptr = (u8*)rsp;
     u64 rip = 0, rflags = 0, cs = 0, ss = 0, new_rsp = 0;
@@ -314,23 +314,23 @@ void felix86_iret(struct ThreadState* state) {
     memcpy(&cs, rsp_ptr + (size * 1), size);
     memcpy(&rflags, rsp_ptr + (size * 2), size);
 
-    if (!state->ctx.Mode32()) {
+    if (state->ctx.Mode32()) {
+        state->SetGpr(X86_REF_RSP, rsp + 3 * sizeof(u32));
+    } else {
         memcpy(&new_rsp, rsp_ptr + (size * 3), size);
         memcpy(&ss, rsp_ptr + (size * 4), size);
         state->SetGpr(X86_REF_RSP, new_rsp);
-        // TODO: what are we supposed to do with ss?
+        ss &= 0xFFFF;
+        felix86_set_segment(state, ss, ZYDIS_REGISTER_SS);
     }
 
     u64 mask = 0x3F7BD7;
     rflags &= mask;
-    // TODO: actually set rflags
-
+    rflags |= 0b10;
+    state->ctx.SetFlags(rflags);
     state->SetRip(rip);
-
-    if (state->ctx.Mode32()) {
-        felix86_set_segment(state, cs, ZYDIS_REGISTER_CS);
-        state->SetGpr(X86_REF_RSP, rsp + 3 * 4); // 3 values popped
-    }
+    cs &= 0xFFFF;
+    felix86_set_segment(state, cs, ZYDIS_REGISTER_CS);
 }
 
 void felix86_fstenv_16(ThreadState* state, u64 address) {
@@ -1287,7 +1287,12 @@ void felix86_set_segment(ThreadState* state, u64 value, int segment) {
         bool new_mode32 = state->ctx.Mode32();
         if (old_mode32 != new_mode32) {
             WARN("Mode32 switched during %lx", state->ctx.rip);
-            state->recompiler->clearCodeCache(state);
+            // Technically there could be a code segment that runs on both 32-bit and 64-bit
+            // and we'd need to clear the code cache on switch or have separate 32-bit and 64-bit
+            // code caches to emulate it correctly. There's no known programs that do this
+            // as of this moment so we don't care about it, the warning above will help
+            // us find such a case if it ever comes up
+            // state->recompiler->clearCodeCache(state);
         }
         break;
     }
