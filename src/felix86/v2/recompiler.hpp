@@ -97,7 +97,7 @@ struct Recompiler {
 
     biscuit::FPR scratchFPR();
 
-    ZydisMnemonic decode(u64 rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
+    ZydisMnemonic decode(u64 rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, bool ok_to_fail = false);
 
     constexpr static bool isScratch(biscuit::GPR reg) {
         if (std::find(scratch_gprs.begin(), scratch_gprs.end(), reg) != scratch_gprs.end()) {
