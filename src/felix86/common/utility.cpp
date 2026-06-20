@@ -320,13 +320,16 @@ void felix86_iret(struct ThreadState* state, bool iretq) {
         memcpy(&new_rsp, rsp_ptr + (size * 3), size);
         memcpy(&ss, rsp_ptr + (size * 4), size);
         state->SetGpr(X86_REF_RSP, new_rsp);
+        ss &= 0xFFFF;
         felix86_set_segment(state, ss, ZYDIS_REGISTER_SS);
     }
+
     u64 mask = 0x3F7BD7;
     rflags &= mask;
     rflags |= 0b10;
     state->ctx.SetFlags(rflags);
     state->SetRip(rip);
+    cs &= 0xFFFF;
     felix86_set_segment(state, cs, ZYDIS_REGISTER_CS);
 }
 
