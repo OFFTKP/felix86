@@ -5339,6 +5339,32 @@ FAST_HANDLE(SHUFPD) {
     rec.setVec(&operands[0], vtemp);
 }
 
+FAST_HANDLE(SIDT) {
+    WARN("This program uses SIDT");
+    biscuit::GPR address = rec.lea(&operands[0]);
+    biscuit::GPR temp1 = rec.scratch();
+    biscuit::GPR temp2 = rec.scratch();
+    as.LI(temp1, 0xFFF);
+    as.LI(temp2, MODE32 ? 0 : 0xFFFFFE0000000000ull);
+    as.SH(temp1, 0, address);
+    rec.writeMemory(temp2, address, 2, MODE32 ? X86_SIZE_DWORD : X86_SIZE_QWORD);
+}
+
+FAST_HANDLE(SGDT) {
+    WARN("This program uses SGDT");
+    biscuit::GPR address = rec.lea(&operands[0]);
+    biscuit::GPR temp1 = rec.scratch();
+    biscuit::GPR temp2 = rec.scratch();
+    as.LI(temp1, 0xFFF);
+    as.LI(temp2, MODE32 ? 0xFFFE0000ull : 0xFFFFFFFFFFFE0000ull);
+    as.SH(temp1, 0, address);
+    rec.writeMemory(temp2, address, 2, MODE32 ? X86_SIZE_DWORD : X86_SIZE_QWORD);
+}
+
+FAST_HANDLE(SLDT) {
+    WARN("This program uses SLDT, handling as nop");
+}
+
 FAST_HANDLE(LEAVE) {
     x86_size_e size = rec.zydisToSize(instruction.operand_width);
     biscuit::GPR rbp = rec.getGPR(X86_REF_RBP, size);
