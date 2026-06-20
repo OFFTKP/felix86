@@ -5,6 +5,7 @@
 X(MOV)
 X(AAA)
 X(AAD)
+X(DAA)
 X(AAM)
 X(AAS)
 X(ADD)
