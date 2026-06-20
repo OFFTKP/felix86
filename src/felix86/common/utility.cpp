@@ -1287,6 +1287,11 @@ void felix86_set_segment(ThreadState* state, u64 value, int segment) {
         bool new_mode32 = state->ctx.Mode32();
         if (old_mode32 != new_mode32) {
             WARN("Mode32 switched during %lx", state->ctx.rip);
+            // Technically there could be a code segment that runs on both 32-bit and 64-bit
+            // and we'd need to clear the code cache on switch or have separate 32-bit and 64-bit
+            // code caches to emulate it correctly. There's no known programs that do this
+            // as of this moment so we don't care about it, the warning above will help
+            // us find such a case if it ever comes up
             // state->recompiler->clearCodeCache(state);
         }
         break;
