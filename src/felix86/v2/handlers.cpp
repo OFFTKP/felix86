@@ -5088,6 +5088,16 @@ FAST_HANDLE(MOVSB) {
     as.LI(temp, width / 8);
     as.Bind(&end);
 
+    if (MODE32) {
+        as.LD(data, offsetof(ThreadState, ctx.esbase), Recompiler::threadStatePointer());
+        as.ADD(rdi, rdi, data);
+        as.ZEXTW(rdi, rdi);
+
+        as.LD(data, offsetof(ThreadState, ctx.dsbase), Recompiler::threadStatePointer());
+        as.ADD(rsi, rsi, data);
+        as.ZEXTW(rsi, rsi);
+    }
+
     Label loop_end, loop_body;
     if (HAS_REP) {
         rec.repPrologue(&loop_end, rcx);
@@ -5169,6 +5179,16 @@ FAST_HANDLE(CMPSB) {
     as.Bind(&end);
     rec.popScratch(); // pop df
 
+    if (MODE32) {
+        as.LD(src1, offsetof(ThreadState, ctx.esbase), Recompiler::threadStatePointer());
+        as.ADD(rdi, rdi, src1);
+        as.ZEXTW(rdi, rdi);
+
+        as.LD(src1, offsetof(ThreadState, ctx.dsbase), Recompiler::threadStatePointer());
+        as.ADD(rsi, rsi, src1);
+        as.ZEXTW(rsi, rsi);
+    }
+
     Label loop_end, loop_body;
     if (HAS_REP) {
         rec.repPrologue(&loop_end, rcx);
@@ -5227,6 +5247,12 @@ FAST_HANDLE(SCASB) {
     as.LI(temp, width / 8);
     as.Bind(&end);
 
+    if (MODE32) {
+        as.LD(src2, offsetof(ThreadState, ctx.esbase), Recompiler::threadStatePointer());
+        as.ADD(rdi, rdi, src2);
+        as.ZEXTW(rdi, rdi);
+    }
+
     rec.popScratch();
 
     Label loop_end, loop_body;
@@ -5282,6 +5308,12 @@ FAST_HANDLE(LODSB) {
     as.LI(temp, width / 8);
     as.Bind(&end);
 
+    if (MODE32) {
+        as.LD(loaded, offsetof(ThreadState, ctx.dsbase), Recompiler::threadStatePointer());
+        as.ADD(rsi, rsi, loaded);
+        as.ZEXTW(rsi, rsi);
+    }
+
     rec.readMemory(loaded, rsi, 0, size);
 
     as.ADD(rsi, rsi, temp);
@@ -5311,6 +5343,7 @@ FAST_HANDLE(STOSB) {
     biscuit::GPR rcx = rec.getGPR(X86_REF_RCX, address_width);
     biscuit::GPR rax = rec.getGPR(X86_REF_RAX, rec.zydisToSize(width));
     biscuit::GPR temp = rec.scratch();
+    biscuit::GPR temp2 = rec.scratch();
     biscuit::GPR df = rec.scratch();
     as.LBU(df, offsetof(ThreadState, ctx.df), rec.threadStatePointer());
 
@@ -5320,6 +5353,12 @@ FAST_HANDLE(STOSB) {
     as.LI(temp, width / 8);
     as.Bind(&end);
     rec.popScratch();
+
+    if (MODE32) {
+        as.LD(temp2, offsetof(ThreadState, ctx.esbase), Recompiler::threadStatePointer());
+        as.ADD(rdi, rdi, temp2);
+        as.ZEXTW(rdi, rdi);
+    }
 
     if (HAS_REP) {
         rec.repPrologue(&loop_end, rcx);
