@@ -1962,61 +1962,44 @@ FAST_HANDLE(DAA) {
     biscuit::GPR old_al = rec.getGPR(X86_REF_RAX, X86_SIZE_BYTE);
     biscuit::GPR cf = rec.flag(X86_REF_CF);
     biscuit::GPR af = rec.flag(X86_REF_AF);
-    biscuit::GPR new_al = rec.scratch();
-    biscuit::GPR old_cf = rec.scratch();
-    biscuit::GPR condition = rec.scratch();
-    biscuit::GPR temp = rec.scratch();
-    as.MV(old_cf, cf);
-    as.MV(new_al, old_al);
-    rec.clearFlag(X86_REF_CF);
+    biscuit::GPR temp1 = rec.scratch();
+    biscuit::GPR temp2 = rec.scratch();
+    as.ANDI(temp1, old_al, 0xF);
+    as.SLTIU(temp1, temp1, 10);
+    as.XORI(temp1, temp1, 1);
+    as.OR(af, temp1, af);
+    as.SB(af, offsetof(ThreadState, ctx.af), rec.threadStatePointer());
 
-    biscuit::Label after1, end1;
-    as.ANDI(temp, old_al, 0xF);
-    as.SLTIU(temp, temp, 10);
-    as.XORI(temp, temp, 1);
-    as.OR(condition, temp, af);
-    as.BEQZ(condition, &after1);
+    as.SLTIU(temp2, old_al, 0x9a);
+    as.XORI(temp2, temp2, 1);
+    as.OR(cf, cf, temp2);
 
-    as.ADDI(new_al, new_al, 6);
-    as.ANDI(condition, new_al, 0xF0);
-    as.ANDI(temp, old_al, 0xF0);
-    as.XOR(condition, condition, temp);
-    as.SNEZ(condition, condition);
-    as.OR(cf, cf, condition);
+    biscuit::Label skip1, skip2;
+    as.BEQZ(af, &skip1);
+    as.ADDI(old_al, old_al, 6);
+    as.Bind(&skip1);
 
-    as.J(&end1);
-    as.Bind(&after1);
-    rec.clearFlag(X86_REF_AF);
-    as.Bind(&end1);
+    as.BEQZ(cf, &skip2);
+    as.ADDI(old_al, old_al, 0x60);
+    as.Bind(&skip2);
 
-    biscuit::Label end2;
-    as.LI(temp, 0x99);
-    as.SGTU(condition, old_al, temp);
-    as.OR(condition, condition, cf);
-    as.BEQZ(condition, &end2);
-    as.ADDI(new_al, new_al, 0x60);
-    rec.setFlag(X86_REF_CF);
-    as.Bind(&end2);
-
-    rec.popScratch();
-    rec.popScratch();
-
+    bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
     bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
     bool needs_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
-    bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
+
     if (needs_pf) {
-        rec.updateParity(new_al);
+        rec.updateParity(old_al);
     }
 
     if (needs_zf) {
-        rec.updateZero(new_al, X86_SIZE_BYTE);
+        rec.updateZero(old_al, X86_SIZE_BYTE);
     }
 
     if (needs_sf) {
-        rec.updateSign(new_al, X86_SIZE_BYTE);
+        rec.updateSign(old_al, X86_SIZE_BYTE);
     }
 
-    rec.setGPR(X86_REF_RAX, X86_SIZE_BYTE, new_al);
+    rec.setGPR(X86_REF_RAX, X86_SIZE_BYTE, old_al);
 }
 
 FAST_HANDLE(AAM) {
