@@ -1149,7 +1149,7 @@ biscuit::Vec Recompiler::getVec(ZydisRegister reg) {
     return getVec(ref);
 }
 
-ZydisMnemonic Recompiler::decode(u64 rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands) {
+ZydisMnemonic Recompiler::decode(u64 rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, bool ok_to_fail) {
     if (!current_decoder_initialized) {
         ZydisMachineMode mode = current_mode32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
         ZydisStackWidth stack_width = current_mode32 ? ZYDIS_STACK_WIDTH_32 : ZYDIS_STACK_WIDTH_64;
@@ -1162,12 +1162,20 @@ ZydisMnemonic Recompiler::decode(u64 rip, ZydisDecodedInstruction& instruction, 
     if (operands) {
         ZyanStatus status = ZydisDecoderDecodeFull(&decoder, (void*)rip, 15, &instruction, operands);
         if (!ZYAN_SUCCESS(status)) {
+            if (ok_to_fail) {
+                WARN("Failed to decode instruction at 0x%016lx", rip);
+                return ZYDIS_MNEMONIC_INVALID;
+            }
             ERROR("Failed to decode instruction at 0x%016lx", rip);
         }
     } else {
         ZydisDecoderContext context;
         ZyanStatus status = ZydisDecoderDecodeInstruction(&decoder, &context, (void*)rip, 15, &instruction);
         if (!ZYAN_SUCCESS(status)) {
+            if (ok_to_fail) {
+                WARN("Failed to decode instruction at 0x%016lx", rip);
+                return ZYDIS_MNEMONIC_INVALID;
+            }
             ERROR("Failed to decode instruction at 0x%016lx", rip);
         }
     }
@@ -2104,7 +2112,15 @@ void Recompiler::scanAhead(u64 rip) {
                                 instruction_ahead = instructions[i].first;
                                 mnemonic = instruction_ahead.mnemonic;
                             } else {
-                                mnemonic = decode(rip_ahead, instruction_ahead, nullptr);
+                                mnemonic = decode(rip_ahead, instruction_ahead, nullptr, true);
+                                if (mnemonic == ZYDIS_MNEMONIC_INVALID) {
+                                    // If this path is hit the instructions will be invalid
+                                    // One may assume this means that we can assume flags won't be used in this path
+                                    // But in reality it could be the case this path gets self-modified to use the flags
+                                    // Since this scenario that one path contains invalid instructions is very rare, we just emit
+                                    // all the flags to be safe
+                                    return 0u;
+                                }
                             }
                             bool is_jump = instruction_ahead.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
                             bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET || mnemonic == ZYDIS_MNEMONIC_IRETD || mnemonic == ZYDIS_MNEMONIC_IRETQ;
