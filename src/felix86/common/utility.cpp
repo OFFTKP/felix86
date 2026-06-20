@@ -1287,7 +1287,7 @@ void felix86_set_segment(ThreadState* state, u64 value, int segment) {
         bool new_mode32 = state->ctx.Mode32();
         if (old_mode32 != new_mode32) {
             WARN("Mode32 switched during %lx", state->ctx.rip);
-            state->recompiler->clearCodeCache(state);
+            // state->recompiler->clearCodeCache(state);
         }
         break;
     }
