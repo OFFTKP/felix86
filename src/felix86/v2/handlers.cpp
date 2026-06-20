@@ -5340,6 +5340,7 @@ FAST_HANDLE(SHUFPD) {
 }
 
 FAST_HANDLE(SIDT) {
+    WARN("This program uses SIDT");
     biscuit::GPR address = rec.lea(&operands[0]);
     biscuit::GPR temp1 = rec.scratch();
     biscuit::GPR temp2 = rec.scratch();
@@ -5350,6 +5351,7 @@ FAST_HANDLE(SIDT) {
 }
 
 FAST_HANDLE(SGDT) {
+    WARN("This program uses SGDT");
     biscuit::GPR address = rec.lea(&operands[0]);
     biscuit::GPR temp1 = rec.scratch();
     biscuit::GPR temp2 = rec.scratch();
