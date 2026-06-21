@@ -118,6 +118,8 @@ public:
 
     /// Returns the vector register length in bytes.
     uint32_t GetVlenb() const;
+
+    uint64_t GetHighestVirtualAddress() const;
 };
 
 } // namespace biscuit

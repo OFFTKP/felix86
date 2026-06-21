@@ -5,6 +5,7 @@
 #include <sys/mman.h>
 #include <sys/syscall.h>
 #include <sys/ucontext.h>
+#include "biscuit/cpuinfo.hpp"
 #include "felix86/common/config.hpp"
 #include "felix86/common/feature.hpp"
 #include "felix86/common/global.hpp"
@@ -1221,12 +1222,23 @@ bool handle_breakpoint(ThreadState* current_state, siginfo_t* info, ucontext_t* 
 }
 
 bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
+
     if (g_config.abort_sigsegv) {
-        // Re-raise as SIGABRT so that a core dump is generated
-        struct sigaction sa{};
-        sa.sa_handler = SIG_DFL;
-        sigaction(SIGABRT, &sa, nullptr); // nop out old signal handler
-        raise(SIGABRT);
+        // A bug that may pop up if we have issues in our address cache or code cache is an invalid address
+        // These would usually manifest as jump to null page or to a bogus address with upper bits set
+        // So we check those conditions here and collect important info that may be difficult to obtain
+        // from inside the coredump
+        biscuit::CPUInfo info;
+        u64 max_address = info.GetHighestVirtualAddress();
+        if (pc < mmap_min_addr() || (pc & ~max_address)) {
+            WARN("Jump to bad address: %lx", pc);
+            WARN("RIP: %lx", current_state->ctx.rip);
+            BlockMetadata& meta = current_state->recompiler->getBlockMetadata(current_state->ctx.rip);
+            AddressCacheEntry& entry = current_state->recompiler->getAddressCacheEntry(current_state->ctx.rip);
+            WARN("BlockMetadata: [%lx, %lx], address_cache: [%lx, %lx]", meta.guest_address, meta.host_address, entry.guest, entry.host);
+        }
+
+        felix86_coredump();
     }
 
     // In many cases it's annoying to attach a debugger at the start of a program, because it may be spawning many processes which

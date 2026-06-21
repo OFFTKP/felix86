@@ -832,4 +832,21 @@ uint32_t CPUInfo::GetVlenb() const {
     return 0;
 }
 
+uint64_t CPUInfo::GetHighestVirtualAddress() const {
+#if defined(__riscv) && defined(__linux__)
+    riscv_hwprobe pairs[] = {
+        {RISCV_HWPROBE_KEY_HIGHEST_VIRT_ADDRESS, 0},
+    };
+
+    long result = syscall(SYS_riscv_hwprobe, pairs, std::size(pairs), 0, nullptr, 0);
+    if (result == 0) {
+        return pairs[0].value;
+    } else {
+        return 0;
+    }
+#else
+    return 0;
+#endif
+}
+
 } // namespace biscuit
