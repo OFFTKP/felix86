@@ -259,6 +259,10 @@
 #define RISCV_HWPROBE_EXT_ZALRSC (1ULL << 57)
 #endif
 
+#ifndef RISCV_HWPROBE_KEY_HIGHEST_VIRT_ADDRESS
+#define RISCV_HWPROBE_KEY_HIGHEST_VIRT_ADDRESS 7
+#endif
+
 namespace {
 
 #if defined(__linux__) && defined(__riscv)
