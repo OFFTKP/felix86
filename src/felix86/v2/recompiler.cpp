@@ -305,6 +305,9 @@ void Recompiler::emitInvalidateCallerThunk() {
     // All block links set the return address in t5, and we collect it here
     // The dispatcher itself sets t5 to 0 to signal that the jump comes from there
     as.MV(a1, t5);
+    // Contains the RISC-V PC of the block that gets invalidated
+    as.MV(a2, t6);
+    as.ADDI(a2, a2, -8); // JALR links to instruction right after, go back two
     call((u64)Recompiler::invalidateAt);
     restoreState(); // TODO: instead, make a "backToDispatcherSkipWriteback" function and remove this restore
     backToDispatcher();
@@ -317,7 +320,17 @@ void Recompiler::emitInvalidateCallerThunk() {
 // so that when we reach invalidate_caller_thunk, we know who the caller is.
 // Note that we don't use JAL to set t5, because that would conflict with us wanting to use JAL with the return address reg
 // for rsb optimizations later down the line
-void Recompiler::invalidateAt(ThreadState* state, u8* linked_block) {
+void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_block) {
+    u64 rip = state->ctx.rip;
+    BlockMetadata& metadata = state->recompiler->getBlockMetadata(rip);
+    if (metadata.host_address == (u64)invalid_block) {
+        ASSERT(invalid_block);
+        metadata.host_address = 0;
+        AddressCacheEntry& entry = state->recompiler->getAddressCacheEntry(rip);
+        entry.guest = ~rip;
+        entry.host = 0xdeadbeefdeadbeef;
+    }
+
     if (linked_block) {
         // This was jumped to by a link. We need to unlink the caller so it doesn't jump here again.
         // The second argument (which we got from t5) is going to be one instruction before the link point
@@ -338,7 +351,7 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block) {
         state->recompiler->as.SetCursorPointer(link_location);
         // Because there was a writebackState before entering this function, state->rip contains the guest address that we tried
         // to jump to before getting hit by this invalidation. So we can jumpAndLink there.
-        state->recompiler->jumpAndLink(state->ctx.rip);
+        state->recompiler->jumpAndLink(rip);
         state->recompiler->as.SetCursorPointer(cursor);
         flush_icache();
     } else {
@@ -3164,11 +3177,12 @@ void Recompiler::setTOP(biscuit::GPR new_top) {
 }
 
 void Recompiler::invalidateBlock(BlockMetadata* block) {
-    if (block->host_address == 0) {
+    u64 host_address = __atomic_load_n(&block->host_address, __ATOMIC_SEQ_CST);
+    if (host_address == 0) {
         return;
     }
 
-    u64* address = (u64*)block->host_address;
+    u64* address = (u64*)host_address;
     const u64 offset = (u64)invalidate_caller_thunk - (u64)address;
     const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
     const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
@@ -3176,17 +3190,8 @@ void Recompiler::invalidateBlock(BlockMetadata* block) {
     Assembler tas((u8*)&storage, 8);
     ASSERT(isScratch(t4));
     tas.AUIPC(t4, hi20);
-    tas.JR(t4, lo12);
+    tas.JALR(t6, lo12, t4); // see invalidate_caller_thunk for t6
     __atomic_store(address, &storage, __ATOMIC_SEQ_CST);
-
-    if (g_config.address_cache) {
-        AddressCacheEntry& entry = getAddressCacheEntry(block->guest_address);
-        entry.guest = ~block->guest_address;
-        entry.host = 0;
-    }
-
-    block->host_address = 0;
-    std::atomic_thread_fence(std::memory_order_seq_cst);
 }
 
 int Recompiler::invalidateRange(u64 start, u64 end) {

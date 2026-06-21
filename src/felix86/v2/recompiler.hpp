@@ -749,7 +749,7 @@ private:
 
     void inlineSyscall(int sysno, int argcount);
 
-    static void invalidateAt(ThreadState* state, u8* linked_block);
+    static void invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_block);
 
     biscuit::Assembler as{};
     ZydisDecoder decoder{};
