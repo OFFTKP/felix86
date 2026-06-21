@@ -259,6 +259,10 @@
 #define RISCV_HWPROBE_EXT_ZALRSC (1ULL << 57)
 #endif
 
+#ifndef RISCV_HWPROBE_KEY_HIGHEST_VIRT_ADDRESS
+#define RISCV_HWPROBE_KEY_HIGHEST_VIRT_ADDRESS 7
+#endif
+
 namespace {
 
 #if defined(__linux__) && defined(__riscv)
@@ -830,6 +834,23 @@ uint32_t CPUInfo::GetVlenb() const {
     }
 
     return 0;
+}
+
+uint64_t CPUInfo::GetHighestVirtualAddress() const {
+#if defined(__riscv) && defined(__linux__)
+    riscv_hwprobe pairs[] = {
+        {RISCV_HWPROBE_KEY_HIGHEST_VIRT_ADDRESS, 0},
+    };
+
+    long result = syscall(SYS_riscv_hwprobe, pairs, std::size(pairs), 0, nullptr, 0);
+    if (result == 0) {
+        return pairs[0].value - 1;
+    } else {
+        return 0;
+    }
+#else
+    return 0;
+#endif
 }
 
 } // namespace biscuit

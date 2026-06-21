@@ -2,6 +2,7 @@
 #include <cstring>
 #include <fstream>
 #include <sys/ioctl.h>
+#include <sys/prctl.h>
 #include <sys/stat.h>
 #include "Zydis/Decoder.h"
 #include "Zydis/Disassembler.h"
@@ -1686,4 +1687,24 @@ void felix86_tf_changed(ThreadState* state, bool tf) {
     state->recompiler->clearCodeCache(state);
     state->SetFlag(X86_REF_TF, tf);
     state->recompiler->setSingleStepMode(tf ? SingleStepMode::TrapFlag : SingleStepMode::None);
+}
+
+void felix86_coredump() {
+    WARN("Dumping core...");
+    struct rlimit rlim;
+    rlim.rlim_cur = RLIM_INFINITY;
+    rlim.rlim_max = RLIM_INFINITY;
+    if (setrlimit(RLIMIT_CORE, &rlim) != 0) {
+        WARN("Failed to change the coredump limit: %d", errno);
+    }
+
+    signal(SIGABRT, SIG_DFL);
+    sigset_t set;
+    sigemptyset(&set);
+    sigprocmask(SIG_SETMASK, &set, nullptr);
+
+    raise(SIGABRT);
+
+    // A tracer may choose to ignore the signal but we must not return
+    UNREACHABLE();
 }
