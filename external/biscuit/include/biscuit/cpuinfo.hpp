@@ -6,10 +6,10 @@
 
 #pragma once
 
-#include <biscuit/assembler.hpp>
-#include <biscuit/registers.hpp>
 #include <cstddef>
 #include <cstdint>
+#include <biscuit/assembler.hpp>
+#include <biscuit/registers.hpp>
 
 namespace biscuit {
 
@@ -119,6 +119,11 @@ public:
     /// Returns the vector register length in bytes.
     uint32_t GetVlenb() const;
 
+    /// Returns the highest userspace accessible virtual address.
+    /// On Linux, they are the following:
+    ///     In Sv39: 0x0000003fffffffff
+    ///     In Sv48: 0x00007fffffffffff
+    ///     In Sv57: 0x00ffffffffffffff
     uint64_t GetHighestVirtualAddress() const;
 };
 

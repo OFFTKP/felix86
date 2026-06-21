@@ -840,7 +840,7 @@ uint64_t CPUInfo::GetHighestVirtualAddress() const {
 
     long result = syscall(SYS_riscv_hwprobe, pairs, std::size(pairs), 0, nullptr, 0);
     if (result == 0) {
-        return pairs[0].value;
+        return pairs[0].value - 1;
     } else {
         return 0;
     }
