@@ -328,7 +328,7 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_
         metadata.host_address = 0;
         AddressCacheEntry& entry = state->recompiler->getAddressCacheEntry(rip);
         entry.guest = ~rip;
-        entry.host = 0xdeadbeefdeadbeef;
+        entry.host = -1ull;
     }
 
     if (linked_block) {
@@ -710,6 +710,7 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
         ASSERT(offset != 0);
         setCurrentRipregValue(getCurrentRipregValue() + offset);
         addi(ripreg, ripreg, offset);
+        as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
         jumpAndLink(rip);
     }
 
