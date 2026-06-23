@@ -25,10 +25,6 @@
 #pragma message("You are compiling for x86-64, felix86 should only be compiled for RISC-V, are you sure you want to do this?")
 #endif
 
-void* empty_pthread_handler(void*) {
-    return nullptr;
-}
-
 void rootfs_not_set_error() {
     printf("Rootfs path not set. Set it using `felix86 -s /path/to/rootfs`.\n");
     printf("Consult the installation guide: https://felix86.com/docs/users/installation-guide/\n\n");
