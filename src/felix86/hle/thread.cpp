@@ -216,18 +216,31 @@ pthread_attr_setsysflags_t felix86_get_pthread_attr_setsysflags_ptr() {
 }
 
 long NewCloneMe(CloneArgs& host_clone_args) {
-    // CloneMe creates two processes to create a TLS
+    // We use a custom pthread_attr_t in our custom libc. However, it makes use of a `void* unused` field
+    // so as to not disturb the size. This way the usage of pthread_attr_t here allocates enough stack space.
+    // CloneMe creates two processes to create a TLS and also set the correct flags
     // NewCloneMe uses a custom felix86 glibc fork to change the clone flags
     // This should be more accurate in some rare cases, such as ptrace detecting our processes
     // or CLONE_VM without CLONE_THREAD and checking that tgid == tid
     ASSERT(host_clone_args.guest_flags & CLONE_VM);
-    pthread_attr_setsysflags_t pthread_attr_setsysflags = felix86_get_pthread_attr_setsysflags_ptr();
+    u64 pthread_create_flags =
+        CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SYSVSEM | CLONE_SIGHAND | CLONE_THREAD | CLONE_SETTLS | CLONE_PARENT_SETTID | CLONE_CHILD_CLEARTID;
+
     pthread_attr_t attr;
     pthread_attr_init(&attr);
+    if (host_clone_args.guest_flags == pthread_create_flags) {
+        // Great, just passthrough to host
+    } else {
+        pthread_attr_setsysflags_t pthread_attr_setsysflags = felix86_get_pthread_attr_setsysflags_ptr();
+        if (!pthread_attr_setsysflags) {
+            // Not using the custom glibc, use the old method
+            pthread_attr_destroy(&attr);
+            return CloneMe(host_clone_args);
+        }
 
-    // Always set a new host-side TLS
-    u64 host_flags = host_clone_args.guest_flags | CLONE_SETTLS;
-    pthread_attr_setsysflags(&attr, host_flags);
+        u64 host_flags = host_clone_args.guest_flags | CLONE_SETTLS; // Always set a new host-side TLS
+        pthread_attr_setsysflags(&attr, host_flags);
+    }
 
     pthread_t thread;
     pthread_create(&thread, &attr, pthread_handler, &host_clone_args);
@@ -395,11 +408,7 @@ long Threads::Clone(ThreadState* current_state, CloneArgs* args) {
     } else if (args->new_rsp == 0 || !(args->guest_flags & CLONE_VM)) {
         result = ForkMe(*args);
     } else {
-        if (felix86_get_pthread_attr_setsysflags_ptr()) {
-            result = NewCloneMe(*args);
-        } else {
-            result = CloneMe(*args);
-        }
+        result = NewCloneMe(*args);
     }
 
     return result;
