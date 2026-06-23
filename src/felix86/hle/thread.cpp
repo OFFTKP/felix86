@@ -1,5 +1,6 @@
 #include <atomic>
 #include <csignal>
+#include <dlfcn.h>
 #include <fcntl.h>
 #include <linux/futex.h>
 #include <sys/mman.h>
@@ -203,6 +204,44 @@ long CloneMe(CloneArgs& host_clone_args) {
     return result;
 }
 
+using pthread_attr_setsysflags_t = int (*)(pthread_attr_t*, size_t);
+
+pthread_attr_setsysflags_t felix86_get_pthread_attr_setsysflags_ptr() {
+    static void* pthread_attr_setsysflags_p = dlsym(RTLD_DEFAULT, "pthread_attr_setsysflags");
+    if (!pthread_attr_setsysflags_p) {
+        WARN_ONCE("pthread_attr_setsysflags not found, custom libc not present, using legacy clone implementation");
+        return NULL;
+    }
+    return (pthread_attr_setsysflags_t)pthread_attr_setsysflags_p;
+}
+
+long NewCloneMe(CloneArgs& host_clone_args) {
+    // CloneMe creates two processes to create a TLS
+    // NewCloneMe uses a custom felix86 glibc fork to change the clone flags
+    // This should be more accurate in some rare cases, such as ptrace detecting our processes
+    // or CLONE_VM without CLONE_THREAD and checking that tgid == tid
+    ASSERT(host_clone_args.guest_flags & CLONE_VM);
+    pthread_attr_setsysflags_t pthread_attr_setsysflags = felix86_get_pthread_attr_setsysflags_ptr();
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+
+    // Always set a new host-side TLS
+    u64 host_flags = host_clone_args.guest_flags | CLONE_SETTLS;
+    pthread_attr_setsysflags(&attr, host_flags);
+
+    pthread_t thread;
+    pthread_create(&thread, &attr, pthread_handler, &host_clone_args);
+    pthread_detach(thread);
+
+    pthread_attr_destroy(&attr);
+
+    // Wait for the pthread_handler to finish initialization and set this flag
+    while (!__atomic_load_n(&host_clone_args.new_tid, __ATOMIC_SEQ_CST))
+        ;
+
+    return host_clone_args.new_tid;
+}
+
 long ForkMe(CloneArgs& host_clone_args) {
     // If the child_stack argument is NULL, we need to handle it specially. The `clone` function can't take a null child_stack, we have to use
     // the syscall. Per the clone man page: Another difference for sys_clone is that the child_stack argument may be zero, in which case
@@ -356,7 +395,11 @@ long Threads::Clone(ThreadState* current_state, CloneArgs* args) {
     } else if (args->new_rsp == 0 || !(args->guest_flags & CLONE_VM)) {
         result = ForkMe(*args);
     } else {
-        result = CloneMe(*args);
+        if (felix86_get_pthread_attr_setsysflags_ptr()) {
+            result = NewCloneMe(*args);
+        } else {
+            result = CloneMe(*args);
+        }
     }
 
     return result;
