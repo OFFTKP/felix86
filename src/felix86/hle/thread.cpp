@@ -40,6 +40,13 @@ void* pthread_handler(void* args) {
         state->signal_table = SignalHandlerTable::Create(clone_args.parent_state->signal_table);
     }
 
+    // pthread_create may trample our signal handlers because it uses them for setxid/cancel but since
+    // we don't care about those we'll trample them back with the guest signal handlers
+    RegisteredSignal* sig32 = state->signal_table->getRegisteredSignal(32);
+    RegisteredSignal* sig33 = state->signal_table->getRegisteredSignal(33);
+    Signals::registerSignalHandler(state, 32, sig32->func, sig32->mask, sig32->flags, sig32->restorer);
+    Signals::registerSignalHandler(state, 33, sig33->func, sig33->mask, sig33->flags, sig33->restorer);
+
     Signals::sigprocmask(state, SIG_SETMASK, &state->signal_mask, nullptr);
 
     int tid = gettid();
