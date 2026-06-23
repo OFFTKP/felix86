@@ -25,10 +25,6 @@
 #pragma message("You are compiling for x86-64, felix86 should only be compiled for RISC-V, are you sure you want to do this?")
 #endif
 
-void* empty_pthread_handler(void*) {
-    return nullptr;
-}
-
 void rootfs_not_set_error() {
     printf("Rootfs path not set. Set it using `felix86 -s /path/to/rootfs`.\n");
     printf("Consult the installation guide: https://felix86.com/docs/users/installation-guide/\n\n");
@@ -671,15 +667,6 @@ int main(int argc, char* argv[]) {
     }
 
     SIGLOG("New felix86 instance with PID %d and executable path %s", getpid(), g_params.executable_path.c_str());
-
-    // Create a thread that does nothing and immediately exits
-    // glibc sets up the setuid signal handler when you create the first thread
-    // We want it to set it before we start emulation, then the guest handler can trample it
-    // What we don't want to happen is, guest glibc sets the handler, then creates a thread, then host glibc tramples the guest
-    // handler and setuid signals happen on the host. So to prevent that, make a quick thread here
-    pthread_t thread;
-    pthread_create(&thread, nullptr, &empty_pthread_handler, nullptr);
-    pthread_join(thread, nullptr);
 
     Emulator::Start();
     UNREACHABLE();
