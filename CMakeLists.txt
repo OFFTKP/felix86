@@ -181,6 +181,24 @@ add_executable(felix86)
 target_sources(felix86 PRIVATE src/felix86/main.cpp)
 target_link_libraries(felix86 PRIVATE felix86_core)
 
+# If custom glibc is installed you can use these environment variables to patch the executable
+# This is helpful for developers to automatically patch felix86 after building
+if (FELIX86_LDSO AND FELIX86_RUNPATH)
+    find_program(PATCHELF_EXECUTABLE patchelf)
+
+    if (NOT PATCHELF_EXECUTABLE)
+        message(FATAL_ERROR "patchelf not found but FELIX86_LDSO/FELIX86_RUNPATH were supplied. "
+            "Install patchelf or unset these options.")
+    endif()
+
+    message(STATUS "patchelf found: ${PATCHELF_EXECUTABLE}")
+
+    add_custom_command(TARGET felix86 POST_BUILD
+        COMMAND ${PATCHELF_EXECUTABLE} --set-interpreter "${FELIX86_LDSO}" --set-rpath "${FELIX86_RUNPATH}" $<TARGET_FILE:felix86>
+        COMMENT "Patching felix86 with patchelf"
+    )
+endif()
+
 if (BUILD_REPL)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(READLINE REQUIRED readline)

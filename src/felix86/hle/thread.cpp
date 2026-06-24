@@ -1,5 +1,6 @@
 #include <atomic>
 #include <csignal>
+#include <dlfcn.h>
 #include <fcntl.h>
 #include <linux/futex.h>
 #include <sys/mman.h>
@@ -203,6 +204,59 @@ long CloneMe(CloneArgs& host_clone_args) {
     return result;
 }
 
+using pthread_attr_setsysflags_t = int (*)(pthread_attr_t*, size_t);
+
+pthread_attr_setsysflags_t felix86_get_pthread_attr_setsysflags_ptr() {
+    static void* pthread_attr_setsysflags_p = dlsym(RTLD_DEFAULT, "pthread_attr_setsysflags");
+    if (!pthread_attr_setsysflags_p) {
+        WARN_ONCE("pthread_attr_setsysflags not found, custom libc not present, using legacy clone implementation");
+        return NULL;
+    }
+    return (pthread_attr_setsysflags_t)pthread_attr_setsysflags_p;
+}
+
+long NewCloneMe(CloneArgs& host_clone_args) {
+    // We use a custom pthread_attr_t in our custom libc. It makes use of a `void* unused` field in pthread_attr_t
+    // so as to not disturb the size. This way the usage of pthread_attr_t here allocates enough stack space.
+    // This way we can use the TLS created by the libc via pthread_create and also modify the flags to be accurate on the guest side.
+    // The custom libc is installed by default via the installation script, but if not present the code will fallback to the old
+    // method using CloneMe and work as before
+    ASSERT(host_clone_args.guest_flags & CLONE_VM);
+    u64 pthread_create_flags =
+        CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SYSVSEM | CLONE_SIGHAND | CLONE_THREAD | CLONE_SETTLS | CLONE_PARENT_SETTID | CLONE_CHILD_CLEARTID;
+
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    if (host_clone_args.guest_flags == pthread_create_flags) {
+        // Great, just passthrough to host
+    } else {
+        // Try to use our custom glibc function to manipulate the pthread_create clone flags
+        pthread_attr_setsysflags_t pthread_attr_setsysflags = felix86_get_pthread_attr_setsysflags_ptr();
+        if (!pthread_attr_setsysflags) {
+            // Not using the custom glibc, use the old method
+            pthread_attr_destroy(&attr);
+            return CloneMe(host_clone_args);
+        }
+
+        std::string sflags = flags_to_string(host_clone_args.guest_flags);
+        WARN("Using pthread_attr_setsysflags for clone with flags: %s", sflags.c_str());
+        u64 host_flags = host_clone_args.guest_flags | CLONE_SETTLS; // Always set a new host-side TLS
+        pthread_attr_setsysflags(&attr, host_flags);
+    }
+
+    pthread_t thread;
+    pthread_create(&thread, &attr, pthread_handler, &host_clone_args);
+    pthread_detach(thread);
+
+    pthread_attr_destroy(&attr);
+
+    // Wait for the pthread_handler to finish initialization and set this flag
+    while (!__atomic_load_n(&host_clone_args.new_tid, __ATOMIC_SEQ_CST))
+        ;
+
+    return host_clone_args.new_tid;
+}
+
 long ForkMe(CloneArgs& host_clone_args) {
     // If the child_stack argument is NULL, we need to handle it specially. The `clone` function can't take a null child_stack, we have to use
     // the syscall. Per the clone man page: Another difference for sys_clone is that the child_stack argument may be zero, in which case
@@ -356,7 +410,7 @@ long Threads::Clone(ThreadState* current_state, CloneArgs* args) {
     } else if (args->new_rsp == 0 || !(args->guest_flags & CLONE_VM)) {
         result = ForkMe(*args);
     } else {
-        result = CloneMe(*args);
+        result = NewCloneMe(*args);
     }
 
     return result;

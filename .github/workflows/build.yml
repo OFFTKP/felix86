@@ -93,6 +93,10 @@ jobs:
           ROOTFSPATH=$($FELIX86PATH -g)
           git clone https://github.com/felix86-emu/binary_tests $RUNNER_TEMP/tests
           cd $RUNNER_TEMP/tests
+          FELIX86_GLIBC_LINK="https://github.com/felix86-emu/glibc/releases/download/2.4.3-felix86/glibc-felix86.zip"
+          curl -fsSL "$FELIX86_GLIBC_LINK" -o "$RUNNER_TEMP/tests/glibc.zip"
+          unzip -o -d "$RUNNER_TEMP/tests" "$RUNNER_TEMP/tests/glibc.zip"
+          patchelf --set-interpreter "$RUNNER_TEMP/tests/lib/riscv64-linux-gnu/ld-linux-riscv64-lp64d.so.1" --add-rpath "$RUNNER_TEMP/tests/lib/riscv64-linux-gnu" "$FELIX86PATH"
           bash ./install-tests.sh $HOME/felix86_test_binaries
           bash ./run-tests.sh $FELIX86PATH $HOME/felix86_test_binaries
 
