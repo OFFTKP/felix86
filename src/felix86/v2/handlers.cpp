@@ -1973,6 +1973,19 @@ FAST_HANDLE(AAD) {
     as.MUL(temp_ah, temp_ah, imm);
     as.ADD(temp_al, temp_al, temp_ah);
     as.ANDI(temp_al, temp_al, 0xFF);
+
+    if (rec.shouldEmitFlag(rip, X86_REF_PF)) {
+        rec.updateParity(temp_al);
+    }
+
+    if (rec.shouldEmitFlag(rip, X86_REF_ZF)) {
+        rec.updateZero(temp_al, X86_SIZE_BYTE);
+    }
+
+    if (rec.shouldEmitFlag(rip, X86_REF_SF)) {
+        rec.updateSign(temp_al, X86_SIZE_BYTE);
+    }
+
     rec.setGPR(X86_REF_RAX, X86_SIZE_WORD, temp_al);
 }
 
@@ -2030,6 +2043,19 @@ FAST_HANDLE(AAM) {
     biscuit::GPR imm = rec.getGPR(&operands[0]);
     as.DIVUW(ah, temp_al, imm);
     as.REMUW(al, temp_al, imm);
+
+    if (rec.shouldEmitFlag(rip, X86_REF_PF)) {
+        rec.updateParity(al);
+    }
+
+    if (rec.shouldEmitFlag(rip, X86_REF_ZF)) {
+        rec.updateZero(al, X86_SIZE_BYTE);
+    }
+
+    if (rec.shouldEmitFlag(rip, X86_REF_SF)) {
+        rec.updateSign(al, X86_SIZE_BYTE);
+    }
+
     rec.setGPR(X86_REF_RAX, X86_SIZE_BYTE, al);
     rec.setGPR(X86_REF_RAX, X86_SIZE_BYTE_HIGH, ah);
 }
@@ -2146,7 +2172,7 @@ FAST_HANDLE(SHL_imm) {
         if (needs_of) {
             biscuit::GPR of = rec.flag(X86_REF_OF);
             u8 shift_right = rec.getBitSize(size) - 1;
-            as.SRLI(of, dst, shift_right);
+            as.SRLI(of, result, shift_right);
             as.ANDI(of, of, 1);
             as.XOR(of, of, rec.flag(X86_REF_CF));
         }
@@ -7107,6 +7133,9 @@ FAST_HANDLE(MULX) {
     if (operands[0].size == 64) {
         biscuit::GPR src = rec.getGPR(&operands[2]);
         biscuit::GPR rdx = rec.getGPR(X86_REF_RDX, X86_SIZE_QWORD);
+        if (lo_dst == src || lo_dst == rdx) {
+            lo_dst = rec.scratch();
+        }
         as.MUL(lo_dst, src, rdx);
         as.MULHU(hi_dst, src, rdx);
         rec.setGPR(&operands[0], hi_dst);
@@ -10035,16 +10064,16 @@ FAST_HANDLE(RCR) {
 
     as.MV(dst_temp, dst);
 
+    Label loop, end;
+    as.Bind(&loop);
+    as.BEQZ(shift, &end);
+
     if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
         biscuit::GPR of = rec.flag(X86_REF_OF);
         as.SRLI(of, dst_temp, instruction.operand_width - 1);
         as.ANDI(of, of, 1);
         as.XOR(of, of, cf);
     }
-
-    Label loop, end;
-    as.Bind(&loop);
-    as.BEQZ(shift, &end);
 
     as.ANDI(cf_temp, dst_temp, 1);
     as.SRLI(dst_temp, dst_temp, 1);
