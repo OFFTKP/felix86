@@ -542,6 +542,29 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
         WARN("Jumped to address %lx which has a sequence of zeroes -- probably a bad jump?", rip);
     }
 
+    // When invalidating from other threads we need to do it in a single atomic instruction, thus block starts
+    // need to be aligned to 8 bytes as we exchange two instructions
+    switch ((u64)as.GetCursorPointer() & 0x7) {
+    case 0: {
+        break;
+    }
+    case 4: {
+        as.NOP();
+        break;
+    }
+    case 2: {
+        as.C_NOP();
+        as.NOP();
+        break;
+    }
+    case 6: {
+        as.C_NOP();
+        break;
+    }
+    }
+
+    ASSERT(((u64)as.GetCursorPointer() & 0x7) == 0);
+
     current_mode32 = mode32;
     current_decoder_initialized = false; // TODO: don't invalidate if same mode32 as before
     scanAhead(rip);
@@ -3192,7 +3215,10 @@ void Recompiler::invalidateBlock(BlockMetadata* block) {
     ASSERT(isScratch(t4));
     tas.AUIPC(t4, hi20);
     tas.JALR(t6, lo12, t4); // see invalidate_caller_thunk for t6
-    __atomic_store(address, &storage, __ATOMIC_SEQ_CST);
+    // If the address isn't aligned it can lead into problems with the atomic instruction or
+    // with the fact that the first and second instructions can span multiple cache blocks
+    ASSERT(((u64)address & 0x7) == 0);
+    __atomic_exchange_n(address, storage, __ATOMIC_SEQ_CST);
 }
 
 int Recompiler::invalidateRange(u64 start, u64 end) {
