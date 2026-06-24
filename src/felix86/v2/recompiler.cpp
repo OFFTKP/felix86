@@ -161,8 +161,12 @@ Recompiler::~Recompiler() {
 void Recompiler::emitNecessaryStuff() {
     OptimizationGuard guard(as, optimization_guard_counter);
 
-    emitInvalidateCallerThunk();
+    u8* replace_me = emitInvalidateCallerThunk();
     emitDispatcher();
+    u8* ptr = as.GetCursorPointer();
+    as.SetCursorPointer(replace_me);
+    backToDispatcher();
+    as.SetCursorPointer(ptr);
 
     start_of_code_cache = as.GetCursorPointer();
 
@@ -299,7 +303,7 @@ void Recompiler::emitDispatcher() {
     as.JR(ra);
 }
 
-void Recompiler::emitInvalidateCallerThunk() {
+u8* Recompiler::emitInvalidateCallerThunk() {
     invalidate_caller_thunk = (u64)as.GetCursorPointer();
 
     // Call the invalidateAt function which will remove the block from the map
@@ -314,7 +318,13 @@ void Recompiler::emitInvalidateCallerThunk() {
     as.ADDI(a2, a2, -8); // JALR links to instruction right after, go back two
     call((u64)Recompiler::invalidateAt);
     restoreState(); // TODO: instead, make a "backToDispatcherSkipWriteback" function and remove this restore
-    backToDispatcher();
+
+    // Will be replaced with backToDispatcher later
+    u8* replace_me = as.GetCursorPointer();
+    as.NOP();
+    as.NOP();
+    as.NOP();
+    return replace_me;
 }
 
 // Note: This function is important. When we invalidate a block range, our choices are either iterate every block that links
