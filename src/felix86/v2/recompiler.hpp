@@ -739,7 +739,7 @@ private:
 
     void emitDispatcher();
 
-    void emitInvalidateCallerThunk();
+    [[nodiscard]] u8* emitInvalidateCallerThunk();
 
     void scanAhead(u64 rip);
 
