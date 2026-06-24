@@ -231,6 +231,7 @@ long NewCloneMe(CloneArgs& host_clone_args) {
     if (host_clone_args.guest_flags == pthread_create_flags) {
         // Great, just passthrough to host
     } else {
+        // Try to use our custom glibc function to manipulate the pthread_create clone flags
         pthread_attr_setsysflags_t pthread_attr_setsysflags = felix86_get_pthread_attr_setsysflags_ptr();
         if (!pthread_attr_setsysflags) {
             // Not using the custom glibc, use the old method
@@ -238,6 +239,8 @@ long NewCloneMe(CloneArgs& host_clone_args) {
             return CloneMe(host_clone_args);
         }
 
+        std::string sflags = flags_to_string(host_clone_args.guest_flags);
+        WARN("Using pthread_attr_setsysflags for clone with flags: %s", sflags.c_str());
         u64 host_flags = host_clone_args.guest_flags | CLONE_SETTLS; // Always set a new host-side TLS
         pthread_attr_setsysflags(&attr, host_flags);
     }
