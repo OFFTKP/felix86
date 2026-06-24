@@ -9598,7 +9598,7 @@ FAST_HANDLE(XADD_lock_32) {
         }
 
         if (update_af) {
-            rec.updateAuxiliaryAdd(dst, src);
+            rec.updateAuxiliaryAdd(dst, result);
         }
 
         if (update_zf) {
@@ -9669,7 +9669,7 @@ FAST_HANDLE(XADD_lock_64) {
         }
 
         if (update_af) {
-            rec.updateAuxiliaryAdd(dst, src);
+            rec.updateAuxiliaryAdd(dst, result);
         }
 
         if (update_zf) {
@@ -9729,7 +9729,7 @@ FAST_HANDLE(XADD) {
     }
 
     if (update_af) {
-        rec.updateAuxiliaryAdd(dst, src);
+        rec.updateAuxiliaryAdd(dst, result);
     }
 
     if (update_zf) {
