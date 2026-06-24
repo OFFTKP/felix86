@@ -306,16 +306,21 @@ void Recompiler::emitDispatcher() {
 u8* Recompiler::emitInvalidateCallerThunk() {
     invalidate_caller_thunk = (u64)as.GetCursorPointer();
 
+    as.ADDI(sp, sp, -16);
+    // All block links set the return address in t5, and we collect it here
+    // The dispatcher itself sets t5 to 0 to signal that the jump comes from there
+    as.SD(sp, 0, t5);
+    // Contains the RISC-V PC of the block that gets invalidated
+    as.SD(sp, 8, ra);
+
     // Call the invalidateAt function which will remove the block from the map
     // when it's called and it will go back to the dispatcher, which will trigger a new compilation
     writebackState();
     as.MV(a0, threadStatePointer());
-    // All block links set the return address in t5, and we collect it here
-    // The dispatcher itself sets t5 to 0 to signal that the jump comes from there
-    as.MV(a1, t5);
-    // Contains the RISC-V PC of the block that gets invalidated
-    as.MV(a2, ra);
-    as.ADDI(a2, a2, -8); // JALR links to instruction right after, go back two
+    as.LD(a1, 0, sp);
+    as.LD(a2, 8, sp);
+    as.ADDI(a2, a2, -4); // JALR links to instruction right after, go back 4 bytes
+    as.ADDI(sp, sp, 16);
     call((u64)Recompiler::invalidateAt);
     restoreState(); // TODO: instead, make a "backToDispatcherSkipWriteback" function and remove this restore
 
