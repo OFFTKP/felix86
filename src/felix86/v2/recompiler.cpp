@@ -542,28 +542,6 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
         WARN("Jumped to address %lx which has a sequence of zeroes -- probably a bad jump?", rip);
     }
 
-    current_mode32 = mode32;
-    current_decoder_initialized = false; // TODO: don't invalidate if same mode32 as before
-    scanAhead(rip);
-    BlockMetadata& block_meta = getBlockMetadata(rip);
-    block_meta.host_address = (u64)as.GetCursorPointer();
-    block_meta.guest_address = start_rip;
-    block_meta.translation_sizes.resize(instructions.size());
-
-    // TODO: Put all this resetting functionality in a function
-    resetX87();
-    pushed_this_block = 0;
-    current_block_metadata = &block_meta;
-    resetVectorState();
-    local_x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
-    fsrm_sse = true;                     // dispatcher loads SSE rounding mode as a default
-    v0_has_mask = false;
-
-    current_ripreg_value = rip; // may change in a syscall to check for safepoints, or after a set amount of instructions in the future
-    current_instruction_index = 0;
-
-    bool ran_mmx_once = false;
-
     // When invalidating from other threads we need to do it in a single atomic instruction, thus block starts
     // need to be aligned to 8 bytes as we exchange two instructions
     switch ((u64)as.GetCursorPointer() & 0x7) {
@@ -586,6 +564,28 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
     }
 
     ASSERT(((u64)as.GetCursorPointer() & 0x7) == 0);
+
+    current_mode32 = mode32;
+    current_decoder_initialized = false; // TODO: don't invalidate if same mode32 as before
+    scanAhead(rip);
+    BlockMetadata& block_meta = getBlockMetadata(rip);
+    block_meta.host_address = (u64)as.GetCursorPointer();
+    block_meta.guest_address = start_rip;
+    block_meta.translation_sizes.resize(instructions.size());
+
+    // TODO: Put all this resetting functionality in a function
+    resetX87();
+    pushed_this_block = 0;
+    current_block_metadata = &block_meta;
+    resetVectorState();
+    local_x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
+    fsrm_sse = true;                     // dispatcher loads SSE rounding mode as a default
+    v0_has_mask = false;
+
+    current_ripreg_value = rip; // may change in a syscall to check for safepoints, or after a set amount of instructions in the future
+    current_instruction_index = 0;
+
+    bool ran_mmx_once = false;
 
     // Insert a safepoint at the start of the block, as it's easier than doing it at the end of the block
     // Also, this means that when a signal returns it will find a compiled block instead of needing to compile a new one
