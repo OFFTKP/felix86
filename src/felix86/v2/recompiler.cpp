@@ -309,9 +309,9 @@ u8* Recompiler::emitInvalidateCallerThunk() {
     as.ADDI(sp, sp, -16);
     // All block links set the return address in t5, and we collect it here
     // The dispatcher itself sets t5 to 0 to signal that the jump comes from there
-    as.SD(sp, 0, t5);
+    as.SD(t5, 0, sp);
     // Contains the RISC-V PC of the block that gets invalidated
-    as.SD(sp, 8, ra);
+    as.SD(ra, 8, sp);
 
     // Call the invalidateAt function which will remove the block from the map
     // when it's called and it will go back to the dispatcher, which will trigger a new compilation
