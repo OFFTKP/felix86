@@ -161,8 +161,8 @@ Recompiler::~Recompiler() {
 void Recompiler::emitNecessaryStuff() {
     OptimizationGuard guard(as, optimization_guard_counter);
 
-    emitDispatcher();
     emitInvalidateCallerThunk();
+    emitDispatcher();
 
     start_of_code_cache = as.GetCursorPointer();
 
@@ -192,6 +192,10 @@ void Recompiler::emitDispatcher() {
     // Also save the magic number
     as.LI(t1, felix86_frame::expected_magic);
     as.SD(t1, offsetof(felix86_frame, magic), sp);
+
+    ASSERT(invalidate_caller_thunk);
+    as.LI(t1, invalidate_caller_thunk);
+    as.SD(t1, offsetof(felix86_frame, invalidate_caller_thunk_ptr), sp);
 
     as.MV(threadStatePointer(), a0);
 
@@ -306,7 +310,7 @@ void Recompiler::emitInvalidateCallerThunk() {
     // The dispatcher itself sets t5 to 0 to signal that the jump comes from there
     as.MV(a1, t5);
     // Contains the RISC-V PC of the block that gets invalidated
-    as.MV(a2, t6);
+    as.MV(a2, ra);
     as.ADDI(a2, a2, -8); // JALR links to instruction right after, go back two
     call((u64)Recompiler::invalidateAt);
     restoreState(); // TODO: instead, make a "backToDispatcherSkipWriteback" function and remove this restore
@@ -504,6 +508,8 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
 }
 
 void Recompiler::insertSafepoint() {
+    // This instruction must be 4 bytes, see invalidateBlock for reason
+    OptimizationGuard guard(as, optimization_guard_counter);
     as.SD(x0, -8, Recompiler::threadStatePointer());
 }
 
@@ -3206,18 +3212,23 @@ void Recompiler::invalidateBlock(BlockMetadata* block) {
         return;
     }
 
-    u64* address = (u64*)host_address;
-    const u64 offset = (u64)invalidate_caller_thunk - (u64)address;
-    const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
-    const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
-    u64 storage;
-    Assembler tas((u8*)&storage, 8);
-    ASSERT(isScratch(t4));
-    tas.AUIPC(t4, hi20);
-    tas.JALR(t6, lo12, t4); // see invalidate_caller_thunk for t6
-    // If the address isn't aligned it can lead into problems with the atomic instruction or
-    // with the fact that the first and second instructions can span multiple cache blocks
-    ASSERT(((u64)address & 0x7) == 0);
+    u32* address = (u32*)host_address;
+    u32 storage;
+    Assembler tas((u8*)&storage, 4);
+    static_assert(isScratch(t4));
+    static_assert(isScratch(ra));
+    // It is important we use two compressed instructions here
+    // Previously we would use two non-compressed instructions
+    // But there's the scenario of one thread being about to run the second instruction
+    // and another thread invalidating the block. In that case only the second instruction would be run
+    // and jump to a bogus place. By being two compressed instructions and ensuring the first instruction
+    // of a block (the safepoint) is a 4-byte instruction, either the first instruction of the block executes
+    // or the two invalidation instructions execute, there's no in-between
+    // We would prefer to load the literal from ThreadState or AUIPC like before, but compressed can't do that
+    // so we use C.LDSP here
+    tas.C_LDSP(t4, offsetof(felix86_frame, invalidate_caller_thunk_ptr));
+    tas.C_JALR(t4); // ra is used in invalidate_caller_thunk
+    ASSERT(((u64)address & 0x4) == 0);
     __atomic_exchange_n(address, storage, __ATOMIC_SEQ_CST);
 }
 
