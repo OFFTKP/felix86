@@ -216,12 +216,11 @@ pthread_attr_setsysflags_t felix86_get_pthread_attr_setsysflags_ptr() {
 }
 
 long NewCloneMe(CloneArgs& host_clone_args) {
-    // We use a custom pthread_attr_t in our custom libc. However, it makes use of a `void* unused` field
+    // We use a custom pthread_attr_t in our custom libc. It makes use of a `void* unused` field in pthread_attr_t
     // so as to not disturb the size. This way the usage of pthread_attr_t here allocates enough stack space.
-    // CloneMe creates two processes to create a TLS and also set the correct flags
-    // NewCloneMe uses a custom felix86 glibc fork to change the clone flags
-    // This should be more accurate in some rare cases, such as ptrace detecting our processes
-    // or CLONE_VM without CLONE_THREAD and checking that tgid == tid
+    // This way we can use the TLS created by the libc via pthread_create and also modify the flags to be accurate on the guest side.
+    // The custom libc is installed by default via the installation script, but if not present the code will fallback to the old
+    // method using CloneMe and work as before
     ASSERT(host_clone_args.guest_flags & CLONE_VM);
     u64 pthread_create_flags =
         CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SYSVSEM | CLONE_SIGHAND | CLONE_THREAD | CLONE_SETTLS | CLONE_PARENT_SETTID | CLONE_CHILD_CLEARTID;
