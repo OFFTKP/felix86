@@ -14122,9 +14122,9 @@
         "instruction_count": 7,
         "expected_asm": [
             "ANDI            ra, t0, 0xff(255)",
-            "LBU             t3, gp, 0x2ce(718)",
+            "LBU             t4, gp, 0x2ce(718)",
             "ADDIW           t1, zero, 0xffffffff(-1)",
-            "BNE             zero, t3, 0x8(8)",
+            "BNE             zero, t4, 0x8(8)",
             "ADDIW           t1, zero, 0x1(1)",
             "SB              ra, a0, 0x0(0)",
             "ADD             a0, a0, t1"
@@ -14135,9 +14135,9 @@
         "instruction_count": 7,
         "expected_asm": [
             "ZEXT.H          ra, t0",
-            "LBU             t3, gp, 0x2ce(718)",
+            "LBU             t4, gp, 0x2ce(718)",
             "ADDIW           t1, zero, 0xfffffffe(-2)",
-            "BNE             zero, t3, 0x8(8)",
+            "BNE             zero, t4, 0x8(8)",
             "ADDIW           t1, zero, 0x2(2)",
             "SH              ra, a0, 0x0(0)",
             "ADD             a0, a0, t1"
@@ -14148,9 +14148,9 @@
         "instruction_count": 7,
         "expected_asm": [
             "ADD.UW          ra, t0, zero",
-            "LBU             t3, gp, 0x2ce(718)",
+            "LBU             t4, gp, 0x2ce(718)",
             "ADDIW           t1, zero, 0xfffffffc(-4)",
-            "BNE             zero, t3, 0x8(8)",
+            "BNE             zero, t4, 0x8(8)",
             "ADDIW           t1, zero, 0x4(4)",
             "SW              ra, a0, 0x0(0)",
             "ADD             a0, a0, t1"
@@ -14160,9 +14160,9 @@
     "48ab": {
         "instruction_count": 6,
         "expected_asm": [
-            "LBU             t1, gp, 0x2ce(718)",
+            "LBU             t3, gp, 0x2ce(718)",
             "ADDIW           ra, zero, 0xfffffff8(-8)",
-            "BNE             zero, t1, 0x8(8)",
+            "BNE             zero, t3, 0x8(8)",
             "ADDIW           ra, zero, 0x8(8)",
             "SD              t0, a0, 0x0(0)",
             "ADD             a0, a0, ra"
@@ -14434,9 +14434,9 @@
         "instruction_count": 10,
         "expected_asm": [
             "ANDI            ra, t0, 0xff(255)",
-            "LBU             t3, gp, 0x2ce(718)",
+            "LBU             t4, gp, 0x2ce(718)",
             "ADDIW           t1, zero, 0xffffffff(-1)",
-            "BNE             zero, t3, 0x8(8)",
+            "BNE             zero, t4, 0x8(8)",
             "ADDIW           t1, zero, 0x1(1)",
             "BEQ             s10, zero, 0x14(20)",
             "SB              ra, a0, 0x0(0)",
@@ -14450,9 +14450,9 @@
         "instruction_count": 10,
         "expected_asm": [
             "ZEXT.H          ra, t0",
-            "LBU             t3, gp, 0x2ce(718)",
+            "LBU             t4, gp, 0x2ce(718)",
             "ADDIW           t1, zero, 0xfffffffe(-2)",
-            "BNE             zero, t3, 0x8(8)",
+            "BNE             zero, t4, 0x8(8)",
             "ADDIW           t1, zero, 0x2(2)",
             "BEQ             s10, zero, 0x14(20)",
             "SH              ra, a0, 0x0(0)",
@@ -14466,9 +14466,9 @@
         "instruction_count": 10,
         "expected_asm": [
             "ADD.UW          ra, t0, zero",
-            "LBU             t3, gp, 0x2ce(718)",
+            "LBU             t4, gp, 0x2ce(718)",
             "ADDIW           t1, zero, 0xfffffffc(-4)",
-            "BNE             zero, t3, 0x8(8)",
+            "BNE             zero, t4, 0x8(8)",
             "ADDIW           t1, zero, 0x4(4)",
             "BEQ             s10, zero, 0x14(20)",
             "SW              ra, a0, 0x0(0)",
@@ -14481,9 +14481,9 @@
     "f348ab": {
         "instruction_count": 9,
         "expected_asm": [
-            "LBU             t1, gp, 0x2ce(718)",
+            "LBU             t3, gp, 0x2ce(718)",
             "ADDIW           ra, zero, 0xfffffff8(-8)",
-            "BNE             zero, t1, 0x8(8)",
+            "BNE             zero, t3, 0x8(8)",
             "ADDIW           ra, zero, 0x8(8)",
             "BEQ             s10, zero, 0x14(20)",
             "SD              t0, a0, 0x0(0)",
