@@ -1003,7 +1003,6 @@ void pull_registers_from_context(ThreadState* state, ucontext_t* uctx) {
 // dispatcher and the x86 RIP to the signal handler.
 void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uctx) {
     ThreadState* state = ThreadState::Get();
-    RegisteredSignal* handler = SignalHandlerTable::getRegisteredSignal(state->signal_table, sig);
 
     // While we *could* just jump to the handler and let the registers be
     // we pull them to ThreadState so we can construct the signal context using ThreadState instead of ucontext_t
@@ -1023,6 +1022,7 @@ void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uctx) {
         }
     }
 
+    RegisteredSignal* handler = SignalHandlerTable::getRegisteredSignal(state->signal_table, sig);
     SignalBehavior behavior = SignalBehavior::Handler;
     // Normally we passthrough SIG_DFL and SIG_IGN to the kernel
     // However for signals used by the emulator we must install a signal handler, so we need to handle
@@ -1422,7 +1422,7 @@ bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucontext_t*
     // Check the hint right after to make sure this is a hlt
     u32 next_instruction = *(((u32*)pc) + 1);
 
-    u32 expected_divzero, expected_int3, expected_ud2, expected_gp, expected_tf, expected_hwbp;
+    u32 expected_divzero, expected_int3, expected_ud2, expected_gp, expected_tf;
     {
         Assembler tas2((u8*)&expected_divzero, sizeof(u32));
         tas2.SLTIU(x0, x0, FELIX86_HINT_DIVZERO);
@@ -1509,9 +1509,9 @@ bool handle_sigptrace(ThreadState* current_state, siginfo_t* info, ucontext_t* c
         // We want to defer even an ignored signal, because it needs to cause a signal-delivery-stop on the tracer.
         // For these cases, we change the signal to sigptrace and pass the actual signal number in ptrace_page
         // This way we can manually defer the signal here and handle it in a safepoint
-        bool deferred = __atomic_load_n(&current_state->ptrace_page->force_defer.deferred, __ATOMIC_SEQ_CST);
+        bool deferred = __atomic_load_n(&current_state->ptrace_data.force_defer.deferred, __ATOMIC_SEQ_CST);
         if (!deferred) {
-            WARN("FELIX86_PTRACE_CODE_SIGSTOP, but ptrace_page->force_defer.deferred == false?");
+            WARN("FELIX86_PTRACE_CODE_SIGSTOP, but ptrace_data.force_defer.deferred == false?");
             return false;
         }
 
@@ -1523,16 +1523,16 @@ bool handle_sigptrace(ThreadState* current_state, siginfo_t* info, ucontext_t* c
         // the tracer will discard the SIGSTOP and wait for deferred to be false before sending it again
         // If this didn't happen, the tracer would overwrite the original_sig/original_info with the SIGSTOP info
         // before the tracee had a chance to defer the signal
-        int actual_sig = current_state->ptrace_page->force_defer.original_sig;
-        siginfo_t actual_info = current_state->ptrace_page->force_defer.original_info;
+        int actual_sig = current_state->ptrace_data.force_defer.original_sig;
+        siginfo_t actual_info = current_state->ptrace_data.force_defer.original_info;
         // PTRACE_SETSIGMASK which blocks our signals will not cause the original mask to be restored
         // after we're done, so we need to make sure to restore it properly after the signal handler exits
-        u64 actual_mask = current_state->ptrace_page->force_defer.original_mask;
+        u64 actual_mask = current_state->ptrace_data.force_defer.original_mask;
         context->uc_sigmask.__val[0] = actual_mask;
         GUESTPTRACELOG("Deferring injected signal %d on thread %d", actual_sig, gettid());
         defer_signal(current_state, actual_sig, &actual_info, context);
 
-        __atomic_store_n(&current_state->ptrace_page->force_defer.deferred, false, __ATOMIC_SEQ_CST);
+        __atomic_store_n(&current_state->ptrace_data.force_defer.deferred, false, __ATOMIC_SEQ_CST);
         return true;
     }
     default: {

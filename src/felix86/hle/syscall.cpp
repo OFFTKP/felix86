@@ -1614,8 +1614,8 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         std::string flags;
         std::string former_tracee;
         if (Ptrace::is_traced(state)) {
-            tracer = std::string("__FELIX86_PTRACE_TRACER=") + std::to_string(state->ptrace_page->constants.tracer_pid);
-            flags = std::string("__FELIX86_PTRACE_FLAGS=") + std::to_string(state->ptrace_page->constants.flags);
+            tracer = std::string("__FELIX86_PTRACE_TRACER=") + std::to_string(state->ptrace_data.constants.tracer_pid);
+            flags = std::string("__FELIX86_PTRACE_FLAGS=") + std::to_string(state->ptrace_data.constants.flags);
             former_tracee = std::string("__FELIX86_PTRACE_FORMER_TRACEE=") + std::to_string(gettid());
             envp.push_back(tracer.c_str());
             envp.push_back(flags.c_str());
@@ -1758,20 +1758,20 @@ void felix86_syscall(felix86_frame* frame) {
     u64 arg6 = state->GetGpr(X86_REF_R9);
 
     if (Ptrace::is_traced(state)) {
-        PtracePage* page = state->ptrace_page;
-        if (page->injected.cont_type == PTRACE_SYSCALL) {
+        PtraceData& data = state->ptrace_data;
+        if (data.injected.cont_type == PTRACE_SYSCALL) {
             int sig = SIGTRAP;
             siginfo_t info;
             memset(&info, 0, sizeof(siginfo_t));
             info.si_signo = SIGTRAP;
             info.si_code = SIGTRAP | 0x80; // TODO: check when do we insert 0x80 here
-            page->syscall_info.args[0] = arg1;
-            page->syscall_info.args[1] = arg2;
-            page->syscall_info.args[2] = arg3;
-            page->syscall_info.args[3] = arg4;
-            page->syscall_info.args[4] = arg5;
-            page->syscall_info.args[5] = arg6;
-            page->syscall_info.nr = syscall_number;
+            data.syscall_info.args[0] = arg1;
+            data.syscall_info.args[1] = arg2;
+            data.syscall_info.args[2] = arg3;
+            data.syscall_info.args[3] = arg4;
+            data.syscall_info.args[4] = arg5;
+            data.syscall_info.args[5] = arg6;
+            data.syscall_info.nr = syscall_number;
             Ptrace::raise_stop(StopType::SyscallEnterStop, sig, &info);
 
             syscall_number = state->GetGpr(X86_REF_RAX);
@@ -2026,15 +2026,15 @@ void felix86_syscall(felix86_frame* frame) {
     state->SetGpr(X86_REF_RAX, result);
 
     if (Ptrace::is_traced(state)) {
-        PtracePage* page = state->ptrace_page;
-        if (page->injected.cont_type == PTRACE_SYSCALL) {
+        PtraceData& data = state->ptrace_data;
+        if (data.injected.cont_type == PTRACE_SYSCALL) {
             int sig = SIGTRAP;
             siginfo_t info;
             memset(&info, 0, sizeof(siginfo_t));
             info.si_signo = SIGTRAP;
             info.si_code = SIGTRAP | 0x80; // TODO: check when do we insert 0x80 here
-            page->syscall_info.ret = result;
-            page->syscall_info.is_error = result < 0; // TODO: properly implement
+            data.syscall_info.ret = result;
+            data.syscall_info.is_error = result < 0; // TODO: properly implement
             Ptrace::raise_stop(StopType::SyscallExitStop, sig, &info);
         }
     }
@@ -2076,20 +2076,20 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
     ASSERT(!(arg6 & ~0xFFFF'FFFF));
 
     if (Ptrace::is_traced(state)) {
-        PtracePage* page = state->ptrace_page;
-        if (page->injected.cont_type == PTRACE_SYSCALL) {
+        PtraceData& data = state->ptrace_data;
+        if (data.injected.cont_type == PTRACE_SYSCALL) {
             int sig = SIGTRAP;
             siginfo_t info;
             memset(&info, 0, sizeof(siginfo_t));
             info.si_signo = SIGTRAP;
             info.si_code = SIGTRAP | 0x80; // TODO: check when do we insert 0x80 here
-            page->syscall_info.args[0] = arg1;
-            page->syscall_info.args[1] = arg2;
-            page->syscall_info.args[2] = arg3;
-            page->syscall_info.args[3] = arg4;
-            page->syscall_info.args[4] = arg5;
-            page->syscall_info.args[5] = arg6;
-            page->syscall_info.nr = syscall_number;
+            data.syscall_info.args[0] = arg1;
+            data.syscall_info.args[1] = arg2;
+            data.syscall_info.args[2] = arg3;
+            data.syscall_info.args[3] = arg4;
+            data.syscall_info.args[4] = arg5;
+            data.syscall_info.args[5] = arg6;
+            data.syscall_info.nr = syscall_number;
             Ptrace::raise_stop(StopType::SyscallEnterStop, sig, &info);
 
             syscall_number = state->GetGpr(X86_REF_RAX);
@@ -3315,15 +3315,15 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
     state->SetGpr(X86_REF_RAX, result);
 
     if (Ptrace::is_traced(state)) {
-        PtracePage* page = state->ptrace_page;
-        if (page->injected.cont_type == PTRACE_SYSCALL) {
+        PtraceData& data = state->ptrace_data;
+        if (data.injected.cont_type == PTRACE_SYSCALL) {
             int sig = SIGTRAP;
             siginfo_t info;
             memset(&info, 0, sizeof(siginfo_t));
             info.si_signo = SIGTRAP;
             info.si_code = SIGTRAP | 0x80; // TODO: check when do we insert 0x80 here
-            page->syscall_info.ret = result;
-            page->syscall_info.is_error = result < 0; // TODO: properly implement
+            data.syscall_info.ret = result;
+            data.syscall_info.is_error = result < 0; // TODO: properly implement
             Ptrace::raise_stop(StopType::SyscallExitStop, sig, &info);
         }
     }

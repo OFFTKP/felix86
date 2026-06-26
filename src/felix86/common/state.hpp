@@ -8,6 +8,7 @@
 #include "felix86/common/utility.hpp"
 #include "felix86/hle/cpuid.hpp"
 #include "felix86/hle/guest_types.hpp"
+#include "felix86/hle/ptrace.hpp"
 #include "felix86/hle/syscall.hpp"
 
 // We statically allocate 8 FPRs and 8 Vecs for x87 and MMX. But in x86 they share the same registers.
@@ -18,8 +19,6 @@ enum class x87State : u8 {
     x87 = 1,
     MMX = 2,
 };
-
-struct PtracePage;
 
 struct SignalQueueNode {
     siginfo_t info = {};
@@ -221,7 +220,7 @@ struct UserContext {
     biscuit::RMode rmode_sse{biscuit::RMode::RNE};
     biscuit::RMode rmode_x87{biscuit::RMode::RNE};
 
-    u64 GetFlags() {
+    u64 GetFlags() const {
         u64 flags = 0;
         flags |= cf;
         flags |= pf << 2;
@@ -309,8 +308,7 @@ struct ThreadState {
     u8* riscv_trampoline_storage = nullptr;
     u8* x86_trampoline_storage = nullptr;
 
-    u64 ptrace_fd = 0;
-    PtracePage* ptrace_page = nullptr;
+    PtraceData ptrace_data;
 
     u64 GetGpr(x86_ref_e ref) const {
         if (ref < X86_REF_RAX || ref > X86_REF_R15) {
@@ -478,8 +476,6 @@ struct ThreadState {
     static ThreadState* Create(ThreadState* copy_state = nullptr);
 
     static void Set(ThreadState* state);
-
-    static void CreatePtracePage(ThreadState* state);
 
     static ThreadState* Get();
 

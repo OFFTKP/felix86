@@ -56,7 +56,7 @@ enum class felix86_ptrace_request {
     felix86_PTRACE_GET_SYSCALL_USER_DISPATCH_CONFIG = 0x4211
 };
 
-enum class StopType : u16 {
+enum class StopType : u64 {
     NoStop = 0,
     SignalDeliveryStop = 0x4001,
     SyscallEnterStop,
@@ -66,19 +66,19 @@ enum class StopType : u16 {
 
 struct ThreadState;
 
-struct PtracePage {
+// TODO: find which are unused or can be removed
+struct PtraceData {
     // Written by tracee once during init
     struct {
-        ThreadState* state;
         pid_t tracer_pid;
         pid_t my_tgid;
         pid_t my_tid;
         u64 flags;
-        bool in_clone;
     } constants;
 
     // Written by tracee, read by tracer
     struct {
+        bool in_clone;
         bool stopped;
         bool mode32;
         StopType type;
@@ -111,16 +111,11 @@ struct PtracePage {
         int signal;
         siginfo_t info;
     } injected;
-    u8 reserved[4096 - sizeof(constants) - sizeof(stop_info) - sizeof(force_defer) - sizeof(syscall_info) - sizeof(injected)];
 };
-
-static_assert(sizeof(PtracePage) == 4096);
 
 namespace Ptrace {
 int wait4(pid_t pid, int* status, int flags, struct rusage* ru);
 i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data);
 void raise_stop(StopType stop, int& sig, siginfo_t* guest_info, int event = 0, u64 event_msg = 0);
 bool is_traced(ThreadState* state);
-PtracePage* get_remote_page(pid_t pid);
-void close_remote_page(PtracePage* page);
 } // namespace Ptrace

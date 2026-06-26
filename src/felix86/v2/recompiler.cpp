@@ -1934,7 +1934,6 @@ void Recompiler::writebackState() {
     }
 
     biscuit::GPR address = scratch();
-    ASSERT(address != t5); // reason: see invalidate_caller_thunk
 
     if (Extensions::VLEN == 256 && g_config.group_loadstore) {
         static_assert(sizeof(XmmReg) == 256 / 8);
@@ -1986,7 +1985,6 @@ void Recompiler::restoreState() {
     }
 
     biscuit::GPR address = scratch();
-    ASSERT(address != t5); // reason: see invalidate_caller_thunk
 
     if (Extensions::VLEN == 256 && g_config.group_loadstore) {
         static_assert(sizeof(XmmReg) == 256 / 8);

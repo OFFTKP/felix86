@@ -349,9 +349,8 @@ void Emulator::Start() {
         ASSERT(g_execve_process);
         u64 flags = std::atoi(options);
         ASSERT(flags != 0 || (options[0] == '0' && options[1] == '\0'));
-        PtracePage* page = main_state->ptrace_page;
-        page->constants.tracer_pid = std::atoi(tracer_env);
-        page->constants.flags = flags;
+        main_state->ptrace_data.constants.tracer_pid = std::atoi(tracer_env);
+        main_state->ptrace_data.constants.flags = flags;
         int former_tid = std::atoi(former_tracee);
         ASSERT(former_tid != 0);
 
@@ -376,16 +375,16 @@ void Emulator::Start() {
             WARN("Tracer didn't change our execve orig_rax to -1");
         }
 
-        if (page->injected.cont_type == PTRACE_SYSCALL) {
+        if (main_state->ptrace_data.injected.cont_type == PTRACE_SYSCALL) {
             int sig = SIGTRAP;
             siginfo_t info;
             memset(&info, 0, sizeof(siginfo_t));
             info.si_signo = SIGTRAP;
             info.si_code = SIGTRAP | 0x80; // TODO: check when do we insert 0x80 here
-            page->syscall_info.ret = 0;
-            page->syscall_info.is_error = false;
+            main_state->ptrace_data.syscall_info.ret = 0;
+            main_state->ptrace_data.syscall_info.is_error = false;
             Ptrace::raise_stop(StopType::SyscallExitStop, sig, &info);
-        } else if (page->injected.cont_type != PTRACE_CONT) {
+        } else if (main_state->ptrace_data.injected.cont_type != PTRACE_CONT) {
             WARN("Not PTRACE_CONT after execve-stop");
         }
     }

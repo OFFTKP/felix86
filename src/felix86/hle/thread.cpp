@@ -31,10 +31,8 @@ void* pthread_handler(void* args) {
         finished = &copy_me->new_tid;
     }
 
-    bool parent_traced = Ptrace::is_traced(clone_args.parent_state);
-    u64 parent_flags = clone_args.parent_state->ptrace_page->constants.flags;
-
     ThreadState* state = ThreadState::Create(clone_args.parent_state);
+    bool trace_clone = state->ptrace_data.constants.flags & PTRACE_O_TRACECLONE;
 
     if (clone_args.guest_flags & CLONE_SIGHAND) {
         // If CLONE_SIGHAND is set, the child and the parent share the same signal handler table
@@ -97,9 +95,14 @@ void* pthread_handler(void* args) {
     __atomic_store_n(finished, tid, __ATOMIC_SEQ_CST);
 
     LOG("Thread %ld started", tid);
-    if (parent_traced) {
-        state->ptrace_page->constants.flags = parent_flags;
-        WARN("Here");
+    if (Ptrace::is_traced(state) && trace_clone) {
+        int sig = SIGSTOP;
+        siginfo_t info;
+        memset(&info, 0, sizeof(siginfo_t));
+        Ptrace::raise_stop(StopType::SignalDeliveryStop, sig, &info);
+        if (sig != 0) {
+            WARN("Clone SIGSTOP not skipped: %d", sig);
+        }
     }
 
     Threads::StartThread(state);
@@ -189,9 +192,10 @@ long CloneMe(CloneArgs& host_clone_args) {
 
     bool trace_clone;
     ThreadState* state = ThreadState::Get();
-    trace_clone = state->ptrace_page->constants.flags & PTRACE_O_TRACECLONE;
-    if (trace_clone) {
-        ASSERT(state->ptrace_page->constants.tracer_pid);
+    trace_clone = state->ptrace_data.constants.flags & PTRACE_O_TRACECLONE;
+    if (Ptrace::is_traced(state) && trace_clone) {
+        WARN("Process %d is traced and runs clone with uncommon flags %s, needs glibc fork to work", gettid(),
+             flags_to_string(host_clone_args.guest_flags).c_str());
     }
 
     // We use this "tid" to check that the cloned process has finished
@@ -200,9 +204,7 @@ long CloneMe(CloneArgs& host_clone_args) {
     int host_flags = (host_clone_args.guest_flags & (~CLONE_SETTLS)) | CLONE_CHILD_CLEARTID;
 
     // Similar to fork handler, we need to signal to the tracer that the child SIGSTOP is to be skipped
-    ThreadState::Set(nullptr);
     long result = clone(clone_handler, (u8*)host_stack + 1024 * 1024, host_flags, &host_clone_args, nullptr, nullptr, &clone_tid);
-    ThreadState::Set(state);
 
     // Wait for the clone_handler to finish
     syscall(SYS_futex, &clone_tid, FUTEX_WAIT, -1, nullptr, nullptr, 0);
@@ -221,10 +223,10 @@ long CloneMe(CloneArgs& host_clone_args) {
     // Return the tid of the new thread that was started inside the clone_handler
     result = host_clone_args.new_tid;
 
-    if (trace_clone) {
+    if (Ptrace::is_traced(state) && trace_clone) {
         int sig = SIGTRAP;
         siginfo_t info;
-        memset(&info, 0, sizeof(sigset_t));
+        memset(&info, 0, sizeof(siginfo_t));
         Ptrace::raise_stop(StopType::EventStop, sig, &info, PTRACE_EVENT_CLONE, result);
     }
 
@@ -272,7 +274,11 @@ long NewCloneMe(CloneArgs& host_clone_args) {
     }
 
     pthread_t thread;
+    ThreadState* state = ThreadState::Get();
+    bool trace_clone = state->ptrace_data.constants.flags & PTRACE_O_TRACECLONE;
+    state->ptrace_data.stop_info.in_clone = true;
     pthread_create(&thread, &attr, pthread_handler, &host_clone_args);
+    state->ptrace_data.stop_info.in_clone = false;
     pthread_detach(thread);
 
     pthread_attr_destroy(&attr);
@@ -280,6 +286,13 @@ long NewCloneMe(CloneArgs& host_clone_args) {
     // Wait for the pthread_handler to finish initialization and set this flag
     while (!__atomic_load_n(&host_clone_args.new_tid, __ATOMIC_SEQ_CST))
         ;
+
+    if (Ptrace::is_traced(state) && trace_clone) {
+        int sig = SIGTRAP;
+        siginfo_t info;
+        memset(&info, 0, sizeof(siginfo_t));
+        Ptrace::raise_stop(StopType::EventStop, sig, &info, PTRACE_EVENT_CLONE, host_clone_args.new_tid);
+    }
 
     return host_clone_args.new_tid;
 }
@@ -293,16 +306,14 @@ long ForkMe(CloneArgs& host_clone_args) {
     ASSERT(!(host_clone_args.guest_flags & CLONE_VFORK));
     int parent_pid = getpid();
     ThreadState* state = ThreadState::Get();
-    u64 parent_traced = Ptrace::is_traced(state);
-    u64 parent_tracer = state->ptrace_page->constants.tracer_pid;
-    u64 parent_flags = state->ptrace_page->constants.flags;
+    u64 parent_flags = state->ptrace_data.constants.flags;
     bool trace_fork = parent_flags & PTRACE_O_TRACEFORK;
     // By setting ThreadState to null temporarily the tracer will know to skip the SIGSTOP the child starts with which will be re-raised
     // with raise_stop later after everything is initialized
-    ThreadState::Set(nullptr);
+    state->ptrace_data.stop_info.in_clone = true;
     long ret = syscall(SYS_clone, host_clone_args.guest_flags, nullptr, host_clone_args.parent_tid, host_clone_args.child_tid,
                        nullptr); // args are flipped in syscall
-    ThreadState::Set(state);
+    state->ptrace_data.stop_info.in_clone = false;
     ASSERT(ret >= 0);
 
     long result;
@@ -313,12 +324,6 @@ long ForkMe(CloneArgs& host_clone_args) {
         ASSERT(std::erase(g_process_globals.states, state) == 1);
         g_process_globals.initialize(); // New memory space, reinitialize the process globals
         g_process_globals.states.push_back(state);
-
-        // Generate a new ptrace page, as we reuse the ThreadState
-        ASSERT(state->ptrace_fd);
-        FD::unprotectAndClose(state->ptrace_fd);
-        ASSERT(munmap(state->ptrace_page, 4096) == 0);
-        ThreadState::CreatePtracePage(state);
 
         if (host_clone_args.new_rsp) {
             state->ctx.gprs[X86_REF_RSP] = host_clone_args.new_rsp;
@@ -333,12 +338,10 @@ long ForkMe(CloneArgs& host_clone_args) {
         int pid = getpid();
         SIGLOG("%d forked to %d", parent_pid, pid);
 
-        if (parent_traced && (parent_flags & PTRACE_O_TRACEFORK)) {
-            state->ptrace_page->constants.flags = parent_flags;
-            state->ptrace_page->constants.tracer_pid = parent_tracer;
+        if (Ptrace::is_traced(state) && trace_fork) {
             int sig = SIGSTOP;
             siginfo_t info;
-            memset(&info, 0, sizeof(sigset_t));
+            memset(&info, 0, sizeof(siginfo_t));
             Ptrace::raise_stop(StopType::SignalDeliveryStop, sig, &info);
             if (sig != 0) {
                 WARN("Fork SIGSTOP not skipped: %d", sig);
@@ -351,10 +354,10 @@ long ForkMe(CloneArgs& host_clone_args) {
         }
         result = ret; // This process just continues normally
 
-        if (trace_fork) {
+        if (Ptrace::is_traced(state) && trace_fork) {
             int sig = SIGTRAP;
             siginfo_t info;
-            memset(&info, 0, sizeof(sigset_t));
+            memset(&info, 0, sizeof(siginfo_t));
             Ptrace::raise_stop(StopType::EventStop, sig, &info, PTRACE_EVENT_FORK, ret);
         }
     }
@@ -370,15 +373,14 @@ long VForkMe(CloneArgs& args) {
     ASSERT(pipe2(pipes, O_CLOEXEC) != -1);
 
     ThreadState* state = ThreadState::Get();
-    u64 parent_traced = Ptrace::is_traced(state);
-    u64 parent_flags = state->ptrace_page->constants.flags;
+    u64 parent_flags = state->ptrace_data.constants.flags;
     bool trace_vfork = parent_flags & PTRACE_O_TRACEVFORK;
     bool trace_vfork_done = parent_flags & PTRACE_O_TRACEVFORKDONE;
 
     // Similar to fork handler, we need to signal to the tracer that the child SIGSTOP is to be skipped
-    ThreadState::Set(nullptr);
+    state->ptrace_data.stop_info.in_clone = true;
     long result = fork();
-    ThreadState::Set(state);
+    state->ptrace_data.stop_info.in_clone = false;
     ASSERT(result >= 0);
 
     if (result == 0) {
@@ -388,12 +390,6 @@ long VForkMe(CloneArgs& args) {
         int pid = getpid();
         SIGLOG("%d vforked to %d", parent_pid, pid);
         ThreadState* state = ThreadState::Get();
-
-        // Generate a new ptrace page, as we reuse the ThreadState
-        ASSERT(state->ptrace_fd);
-        FD::unprotectAndClose(state->ptrace_fd);
-        ASSERT(munmap(state->ptrace_page, 4096) == 0);
-        ThreadState::CreatePtracePage(state);
 
         // TODO: probably clean up states here, but it doesn't matter cus it gets execve'd anyway
         if (args.new_rsp) {
@@ -419,16 +415,21 @@ long VForkMe(CloneArgs& args) {
         while (ppoll(&pollfd, 1, nullptr, &mask) == -1 && errno == EINTR)
             ;
 
-        if (parent_traced) {
-            state->ptrace_page->constants.flags = parent_flags;
-            WARN("Here");
+        if (Ptrace::is_traced(state) && trace_vfork) {
+            int sig = SIGSTOP;
+            siginfo_t info;
+            memset(&info, 0, sizeof(siginfo_t));
+            Ptrace::raise_stop(StopType::SignalDeliveryStop, sig, &info);
+            if (sig != 0) {
+                WARN("Vfork SIGSTOP not skipped: %d", sig);
+            }
         }
     } else {
         int child_pid = result;
-        if (trace_vfork) {
+        if (Ptrace::is_traced(state) && trace_vfork) {
             int sig = SIGTRAP;
             siginfo_t info;
-            memset(&info, 0, sizeof(sigset_t));
+            memset(&info, 0, sizeof(siginfo_t));
             Ptrace::raise_stop(StopType::EventStop, sig, &info, PTRACE_EVENT_VFORK, child_pid);
         }
 
@@ -459,10 +460,10 @@ long VForkMe(CloneArgs& args) {
         // Close the read end now.
         close(pipes[0]);
 
-        if (trace_vfork_done) {
+        if (Ptrace::is_traced(state) && trace_vfork_done) {
             int sig = SIGTRAP;
             siginfo_t info;
-            memset(&info, 0, sizeof(sigset_t));
+            memset(&info, 0, sizeof(siginfo_t));
             Ptrace::raise_stop(StopType::EventStop, sig, &info, PTRACE_EVENT_VFORK_DONE, child_pid);
         }
     }

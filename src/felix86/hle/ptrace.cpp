@@ -7,10 +7,93 @@
 #include <sys/wait.h>
 #include "felix86/common/feature.hpp"
 #include "felix86/common/log.hpp"
-#include "felix86/hle/fd.hpp"
 #include "felix86/hle/ptrace.hpp"
 #include "felix86/hle/signals.hpp"
 #include "felix86/v2/recompiler.hpp"
+
+// This struct allows us to access a ThreadState on a different pid by reading the whole struct to a local
+// buffer and writing it back on the destructor. This is safe to do because this only happens when the tracer is stopped
+// Note: we need to manually call commit before calling PTRACE_CONT or similar restarting operations
+// Design note: Originally we used a separate page allocated from a memfd so we didn't have to writeback after allocating it
+// in our address space. However this would mean that each ThreadState would need a unique FD or a global fd + arena allocator which would
+// be harder to manage. Also occassionally we needed to access stuff outside of the ptrace page.
+// TODO: this assumes the emulator of the tracer and the tracee is the same version and doesn't change the offsets
+struct RemoteState {
+    RemoteState() : remote_state(nullptr), pid(0) {}
+
+    explicit RemoteState(void* remote_state, pid_t pid) : remote_state(remote_state), pid(pid) {
+        HOSTPTRACELOG("Getting remote state (%lx) from %d", remote_state, pid);
+        ASSERT(remote_state);
+        iovec local, remote;
+        local.iov_base = &data;
+        local.iov_len = sizeof(ThreadState);
+        remote.iov_base = remote_state;
+        remote.iov_len = sizeof(ThreadState);
+        int result = syscall(SYS_process_vm_readv, pid, &local, 1, &remote, 1, 0);
+        ASSERT(result == sizeof(ThreadState));
+    }
+
+    ~RemoteState() {
+        commit();
+    }
+
+    RemoteState(const RemoteState&) = delete;
+    RemoteState& operator=(const RemoteState&) = delete;
+    RemoteState(RemoteState&& other) = delete;
+    RemoteState& operator=(RemoteState&& other) {
+        if (this != &other) {
+            commit();
+            data = other.data;
+            remote_state = other.remote_state;
+            pid = other.pid;
+            other.remote_state = nullptr;
+        }
+        return *this;
+    }
+
+    ThreadState* operator->() {
+        return &data;
+    }
+    const ThreadState* operator->() const {
+        return &data;
+    }
+    ThreadState& operator*() {
+        return data;
+    }
+    const ThreadState& operator*() const {
+        return data;
+    }
+    explicit operator bool() const {
+        return remote_state != nullptr;
+    }
+
+    void commit() {
+        if (!remote_state)
+            return;
+        HOSTPTRACELOG("Commiting remote state (%lx) to %d", remote_state, pid);
+        iovec local, remote;
+        local.iov_base = &data;
+        local.iov_len = sizeof(ThreadState);
+        remote.iov_base = remote_state;
+        remote.iov_len = sizeof(ThreadState);
+        int result = syscall(SYS_process_vm_writev, pid, &local, 1, &remote, 1, 0);
+        ASSERT(result == sizeof(ThreadState));
+        release();
+    }
+
+    void release() {
+        remote_state = nullptr;
+    }
+
+    void* get() {
+        return remote_state;
+    }
+
+private:
+    ThreadState data;
+    void* remote_state = nullptr;
+    pid_t pid = 0;
+};
 
 struct x64_user_regs_struct {
     u64 r15;
@@ -260,7 +343,7 @@ static int __ptrace(__ptrace_request op, pid_t pid, void* addr, void* data) {
     return ::syscall(SYS_ptrace, op, pid, addr, data);
 }
 
-void* get_remote_state(pid_t pid) {
+RemoteState get_remote_state(pid_t pid) {
     riscv_user_regs_struct regs;
     struct iovec io;
     io.iov_base = &regs;
@@ -268,37 +351,22 @@ void* get_remote_state(pid_t pid) {
     int result = __ptrace(PTRACE_GETREGSET, pid, (void*)1, &io);
     int error = errno;
     if (result == -1 && error == ESRCH) {
-        HOSTPTRACELOG("Tried to get remote page of %d but it is not stopped", pid);
-        return nullptr;
+        HOSTPTRACELOG("Tried to get remote page of %d but it is not stopped or not traced", pid);
+        return RemoteState();
     }
     ASSERT_MSG(result == 0, "PTRACE_GETREGSET returned %d, errno: %d", result, error);
     ASSERT(io.iov_len == sizeof(regs));
-    return (void*)regs.gp;
+
+    void* remote_state_ptr = (void*)regs.gp;
+    if (!remote_state_ptr) {
+        return RemoteState();
+    }
+
+    return RemoteState(remote_state_ptr, pid);
 }
 
-void get_remote_ctx(UserContext* remote_ctx, PtracePage* remote_page, pid_t pid) {
-    iovec local, remote;
-    local.iov_base = remote_ctx;
-    local.iov_len = sizeof(UserContext);
-    remote.iov_base = (u8*)remote_page->constants.state + offsetof(ThreadState, ctx);
-    remote.iov_len = sizeof(UserContext);
-    int result = syscall(SYS_process_vm_readv, pid, &local, 1, &remote, 1, 0);
-    ASSERT(result == sizeof(UserContext));
-}
-
-void set_remote_ctx(UserContext* remote_ctx, PtracePage* remote_page, pid_t pid) {
-    iovec local, remote;
-    local.iov_base = remote_ctx;
-    local.iov_len = sizeof(UserContext);
-    remote.iov_base = (u8*)remote_page->constants.state + offsetof(ThreadState, ctx);
-    remote.iov_len = sizeof(UserContext);
-    int result = syscall(SYS_process_vm_writev, pid, &local, 1, &remote, 1, 0);
-    ASSERT(result == sizeof(UserContext));
-}
-
-int get_regs(bool tracer_mode32, PtracePage* remote_page, pid_t pid, void* data) {
-    UserContext remote_ctx;
-    get_remote_ctx(&remote_ctx, remote_page, pid);
+int get_regs(bool tracer_mode32, const RemoteState& remote_state, void* data) {
+    const UserContext& remote_ctx = remote_state->ctx;
     if (tracer_mode32) {
         x86_user_regs_struct* user = (x86_user_regs_struct*)data;
         user->eax = remote_ctx.gprs[X86_REF_RAX];
@@ -352,9 +420,8 @@ int get_regs(bool tracer_mode32, PtracePage* remote_page, pid_t pid, void* data)
     }
 }
 
-int set_regs(bool tracer_mode32, PtracePage* remote_page, pid_t pid, void* data) {
-    UserContext remote_ctx;
-    get_remote_ctx(&remote_ctx, remote_page, pid);
+int set_regs(bool tracer_mode32, RemoteState& remote_state, void* data) {
+    UserContext& remote_ctx = remote_state->ctx;
     if (tracer_mode32) {
         x86_user_regs_struct* user = (x86_user_regs_struct*)data;
         remote_ctx.gprs[X86_REF_RAX] = user->eax;
@@ -404,192 +471,7 @@ int set_regs(bool tracer_mode32, PtracePage* remote_page, pid_t pid, void* data)
         remote_ctx.orig_rax = user->orig_rax;
         remote_ctx.SetFlags(user->eflags);
     }
-    set_remote_ctx(&remote_ctx, remote_page, pid);
     return 0;
-}
-
-u64 user_to_threadstate_offset(int offset, bool mode32) {
-    const int debug_register_size = mode32 ? sizeof(u32) : sizeof(u64);
-    u64 debug_register_start = mode32 ? 252 : 848;
-    u64 debug_register_end = debug_register_start + debug_register_size * 8;
-    if (offset >= debug_register_start && offset < debug_register_end) {
-        int index = (offset - debug_register_start) / debug_register_size;
-        switch (index) {
-        case 0 ... 3: {
-            return offsetof(ThreadState, ctx.debug_register) + index * debug_register_size;
-        }
-        case 4: {
-            WARN("Accessing debug register 4, this shouldn't happen");
-            [[fallthrough]];
-        }
-        case 6: {
-            return offsetof(ThreadState, ctx.debug_status);
-        }
-        case 5: {
-            WARN("Accessing debug register 5, this shouldn't happen");
-            [[fallthrough]];
-        }
-        case 7: {
-            return offsetof(ThreadState, ctx.debug_control);
-        }
-        default: {
-            UNREACHABLE();
-        }
-        }
-    }
-
-    if (mode32) {
-        switch (offset) {
-        case offsetof(x86_user_regs_struct, ebx): {
-            return offsetof(ThreadState, ctx.gprs) + reg_index<X86_REF_RBX> * sizeof(u64);
-        }
-        case offsetof(x86_user_regs_struct, ecx): {
-            return offsetof(ThreadState, ctx.gprs) + reg_index<X86_REF_RCX> * sizeof(u64);
-        }
-        case offsetof(x86_user_regs_struct, edx): {
-            return offsetof(ThreadState, ctx.gprs) + reg_index<X86_REF_RDX> * sizeof(u64);
-        }
-        case offsetof(x86_user_regs_struct, esi): {
-            return offsetof(ThreadState, ctx.gprs) + reg_index<X86_REF_RSI> * sizeof(u64);
-        }
-        case offsetof(x86_user_regs_struct, edi): {
-            return offsetof(ThreadState, ctx.gprs) + reg_index<X86_REF_RDI> * sizeof(u64);
-        }
-        case offsetof(x86_user_regs_struct, ebp): {
-            return offsetof(ThreadState, ctx.gprs) + reg_index<X86_REF_RBP> * sizeof(u64);
-        }
-        case offsetof(x86_user_regs_struct, esp): {
-            return offsetof(ThreadState, ctx.gprs) + reg_index<X86_REF_RSP> * sizeof(u64);
-        }
-        case offsetof(x86_user_regs_struct, orig_eax): {
-            return offsetof(ThreadState, ctx.orig_rax);
-        }
-        case offsetof(x86_user_regs_struct, eax): {
-            return offsetof(ThreadState, ctx.gprs) + reg_index<X86_REF_RAX> * sizeof(u64);
-        }
-        case offsetof(x86_user_regs_struct, eip): {
-            return offsetof(ThreadState, ctx.rip);
-        }
-        // TODO: test these
-        case offsetof(x86_user_regs_struct, xds): {
-            return offsetof(ThreadState, ctx.ds);
-        }
-        case offsetof(x86_user_regs_struct, xss): {
-            return offsetof(ThreadState, ctx.ss);
-        }
-        case offsetof(x86_user_regs_struct, xcs): {
-            return offsetof(ThreadState, ctx.cs);
-        }
-        case offsetof(x86_user_regs_struct, xgs): {
-            return offsetof(ThreadState, ctx.gs);
-        }
-        case offsetof(x86_user_regs_struct, xfs): {
-            return offsetof(ThreadState, ctx.fs);
-        }
-        case offsetof(x86_user_regs_struct, xes): {
-            return offsetof(ThreadState, ctx.es);
-        }
-        case offsetof(x86_user_regs_struct, eflags): {
-            // Handled specially
-            UNREACHABLE();
-            return 0;
-        }
-        default: {
-            UNREACHABLE();
-            return 0;
-        }
-        }
-    } else {
-        switch (offset) {
-        case offsetof(x64_user_regs_struct, rax): {
-            return offsetof(ThreadState, ctx.gprs) + reg_index<X86_REF_RAX> * sizeof(u64);
-        }
-        case offsetof(x64_user_regs_struct, orig_rax): {
-            return offsetof(ThreadState, ctx.orig_rax);
-        }
-        case offsetof(x64_user_regs_struct, rcx): {
-            return offsetof(ThreadState, ctx.gprs) + reg_index<X86_REF_RCX> * sizeof(u64);
-        }
-        case offsetof(x64_user_regs_struct, rdx): {
-            return offsetof(ThreadState, ctx.gprs) + reg_index<X86_REF_RDX> * sizeof(u64);
-        }
-        case offsetof(x64_user_regs_struct, rbx): {
-            return offsetof(ThreadState, ctx.gprs) + reg_index<X86_REF_RBX> * sizeof(u64);
-        }
-        case offsetof(x64_user_regs_struct, rsp): {
-            return offsetof(ThreadState, ctx.gprs) + reg_index<X86_REF_RSP> * sizeof(u64);
-        }
-        case offsetof(x64_user_regs_struct, rbp): {
-            return offsetof(ThreadState, ctx.gprs) + reg_index<X86_REF_RBP> * sizeof(u64);
-        }
-        case offsetof(x64_user_regs_struct, rsi): {
-            return offsetof(ThreadState, ctx.gprs) + reg_index<X86_REF_RSI> * sizeof(u64);
-        }
-        case offsetof(x64_user_regs_struct, rdi): {
-            return offsetof(ThreadState, ctx.gprs) + reg_index<X86_REF_RDI> * sizeof(u64);
-        }
-        case offsetof(x64_user_regs_struct, r8): {
-            return offsetof(ThreadState, ctx.gprs) + reg_index<X86_REF_R8> * sizeof(u64);
-        }
-        case offsetof(x64_user_regs_struct, r9): {
-            return offsetof(ThreadState, ctx.gprs) + reg_index<X86_REF_R9> * sizeof(u64);
-        }
-        case offsetof(x64_user_regs_struct, r10): {
-            return offsetof(ThreadState, ctx.gprs) + reg_index<X86_REF_R10> * sizeof(u64);
-        }
-        case offsetof(x64_user_regs_struct, r11): {
-            return offsetof(ThreadState, ctx.gprs) + reg_index<X86_REF_R11> * sizeof(u64);
-        }
-        case offsetof(x64_user_regs_struct, r12): {
-            return offsetof(ThreadState, ctx.gprs) + reg_index<X86_REF_R12> * sizeof(u64);
-        }
-        case offsetof(x64_user_regs_struct, r13): {
-            return offsetof(ThreadState, ctx.gprs) + reg_index<X86_REF_R13> * sizeof(u64);
-        }
-        case offsetof(x64_user_regs_struct, r14): {
-            return offsetof(ThreadState, ctx.gprs) + reg_index<X86_REF_R14> * sizeof(u64);
-        }
-        case offsetof(x64_user_regs_struct, r15): {
-            return offsetof(ThreadState, ctx.gprs) + reg_index<X86_REF_R15> * sizeof(u64);
-        }
-        case offsetof(x64_user_regs_struct, rip): {
-            return offsetof(ThreadState, ctx.rip);
-        }
-        case offsetof(x64_user_regs_struct, es): {
-            return offsetof(ThreadState, ctx.es);
-        }
-        case offsetof(x64_user_regs_struct, ds): {
-            return offsetof(ThreadState, ctx.ds);
-        }
-        case offsetof(x64_user_regs_struct, cs): {
-            return offsetof(ThreadState, ctx.cs);
-        }
-        case offsetof(x64_user_regs_struct, gs): {
-            return offsetof(ThreadState, ctx.gs);
-        }
-        case offsetof(x64_user_regs_struct, fs): {
-            return offsetof(ThreadState, ctx.fs);
-        }
-        case offsetof(x64_user_regs_struct, ss): {
-            return offsetof(ThreadState, ctx.ss);
-        }
-        case offsetof(x64_user_regs_struct, gs_base): {
-            return offsetof(ThreadState, ctx.gsbase);
-        }
-        case offsetof(x64_user_regs_struct, fs_base): {
-            return offsetof(ThreadState, ctx.fsbase);
-        }
-        case offsetof(x64_user_regs_struct, eflags): {
-            // Handled specially
-            UNREACHABLE();
-            return 0;
-        }
-        default: {
-            UNREACHABLE();
-            return 0;
-        }
-        }
-    }
 }
 
 namespace Ptrace {
@@ -619,6 +501,7 @@ int wait4(pid_t pid, int* status, int flags, struct rusage* ru) {
                 HOSTPTRACELOG("%d continued", pid);
                 break;
             } else if (WIFSTOPPED(host_status)) {
+                RemoteState remote_state = get_remote_state(pid);
                 int sig = WSTOPSIG(host_status);
                 HOSTPTRACELOG("Host stop at pid %d, signal: %d, event: %d", pid, sig, (u8)(host_status >> 16));
                 if (sig == SIGTRAP) {
@@ -630,12 +513,12 @@ int wait4(pid_t pid, int* status, int flags, struct rusage* ru) {
                     u8 event = (host_status >> 16) & 0xFF;
                     if (event == PTRACE_EVENT_FORK || event == PTRACE_EVENT_CLONE) {
                         HOSTPTRACELOG("Skipping fork/clone event from %d", pid);
+                        remote_state.release(); // nothing to commit
                         int result = __ptrace(PTRACE_CONT, pid, 0, 0);
                         ASSERT(result == 0);
                         continue; // go back to waiting
                     }
 
-                    void* remote_state = get_remote_state(pid);
                     if (!remote_state) {
                         siginfo_t tracee_siginfo;
                         result = __ptrace(PTRACE_GETSIGINFO, pid, 0, &tracee_siginfo);
@@ -651,10 +534,14 @@ int wait4(pid_t pid, int* status, int flags, struct rusage* ru) {
                     }
                 }
 
+                if (!remote_state) {
+                    WARN("remote_state is null, this is unexpected. Status: %lx", host_status);
+                    break;
+                }
+
                 if (sig == SIGSTOP) {
                     // This may be the signal from forking/vforking/cloning, which we want to skip and re-raise as SIGPTRACE later
-                    void* remote_state = get_remote_state(pid);
-                    if (!remote_state) {
+                    if (remote_state->ptrace_data.stop_info.in_clone) {
                         HOSTPTRACELOG("Skipping clone SIGSTOP on %d", pid);
                         int result = __ptrace(PTRACE_CONT, pid, 0, 0);
                         ASSERT(result == 0);
@@ -663,25 +550,9 @@ int wait4(pid_t pid, int* status, int flags, struct rusage* ru) {
                 }
 
                 HOSTPTRACELOG("%d is stopped on signal %d", pid, sig);
-                PtracePage* remote_page = get_remote_page(pid);
-                if (!remote_page) {
-                    HOSTPTRACELOG("Process %d is stopped but has no remote page", pid);
-                    ASSERT(flags & WUNTRACED);
-                    break;
-                }
-
-                struct UnmapPage {
-                    explicit UnmapPage(PtracePage* page) : page(page) {}
-                    ~UnmapPage() {
-                        if (page) {
-                            close_remote_page(page);
-                        }
-                    }
-                    PtracePage* page;
-                } unmapper(remote_page);
 
                 pid_t our_pid = gettid();
-                pid_t expected_pid = remote_page->constants.tracer_pid;
+                pid_t expected_pid = remote_state->ptrace_data.constants.tracer_pid;
                 if (expected_pid != our_pid) {
                     HOSTPTRACELOG("Process %d is stopped but tracer_pid (%d) is not us (%d)", pid, expected_pid, our_pid);
                     break;
@@ -713,13 +584,14 @@ int wait4(pid_t pid, int* status, int flags, struct rusage* ru) {
                     HOSTPTRACELOG("Tracee %d in host signal-delivery-stop from signal %d", pid, sig);
                     if (sig == FELIX86_PTRACE_SIGNAL && tracee_siginfo.si_code == FELIX86_PTRACE_CODE_INSTOP) {
                         first_synchronous = false;
-                        ASSERT(remote_page->stop_info.stopped);
-                        GUESTPTRACELOG("%d has been observed entering stop of type %s", pid, stop_to_string(remote_page->stop_info.type));
+                        ASSERT(remote_state->ptrace_data.stop_info.stopped);
+                        GUESTPTRACELOG("%d has been observed entering stop of type %s", pid,
+                                       stop_to_string(remote_state->ptrace_data.stop_info.type));
                         host_status = 0x7f; // Stopped
                         static_assert(WIFSTOPPED(0x7f));
-                        host_status |= ((u32)remote_page->stop_info.signal & 0xFF) << 8;
-                        host_status |= (u32)remote_page->stop_info.ptrace_event << 16;
-                        memset(&remote_page->injected, 0, sizeof(remote_page->injected));
+                        host_status |= ((u32)remote_state->ptrace_data.stop_info.signal & 0xFF) << 8;
+                        host_status |= (u32)remote_state->ptrace_data.stop_info.ptrace_event << 16;
+                        memset(&remote_state->ptrace_data.injected, 0, sizeof(remote_state->ptrace_data.injected));
                         // Break out so the signal is not continued and the wait4 can return
                         break;
                     } else {
@@ -731,12 +603,8 @@ int wait4(pid_t pid, int* status, int flags, struct rusage* ru) {
                         // in those cases we want to inject sigptrace so that the signal will be deferred
                         // We don't capture SIG_IGN or SIG_DFL signals, we pass them to the host, it would cause wrong
                         // behavior to capture SIG_IGN if an ignored signal happens during a syscall
-                        ThreadState* remote_state_ptr = remote_page->constants.state;
-                        // TODO: this assumes the emulator of the tracer and the tracee is the same version and doesn't change the offset
-                        u64 signal_table_ptr;
-                        u64 offset = (u64)remote_state_ptr + offsetof(ThreadState, signal_table);
-                        r = __ptrace(PTRACE_PEEKDATA, pid, (void*)offset, &signal_table_ptr);
-                        ASSERT(r == 0);
+                        u64 signal_table_ptr = (u64)remote_state->signal_table;
+                        // We can't access the signal_table directly from remote_state
                         u64 handler;
                         u64 handler_offset = signal_table_ptr + sizeof(RegisteredSignal) * (sig - 1) + offsetof(RegisteredSignal, func);
                         r = __ptrace(PTRACE_PEEKDATA, pid, (void*)handler_offset, &handler);
@@ -753,31 +621,18 @@ int wait4(pid_t pid, int* status, int flags, struct rusage* ru) {
                         if (is_sigign_or_sigdfl) {
                             if (!is_synchronous) {
                                 HOSTPTRACELOG("Forcing signal %d to be deferred", sig);
-                                bool already_deferred = __atomic_test_and_set(&remote_page->force_defer.deferred, __ATOMIC_SEQ_CST);
-                                if (already_deferred) {
-                                    // Okay, this is a possible rare occurence. If we already deferred a signal to the tracee previously
-                                    // but it didn't finish its sigptrace signal handler yet, and it got another signal then we
-                                    // would be overwriting original_info/original_sig here. Since we mask all signals before deferring
-                                    // the only way this can happen is if it receives a SIGSTOP, which can't be masked
-                                    // We currently error, but if this becomes a real problem a solution would likely to be to
-                                    // discard the sigstop and force the tracee to wait after finishing (meaning wait after turning deferred to false)
-                                    // then while it's waiting there send a SIGSTOP, turn off the wait condition for the tracee,
-                                    // this way it will be forced to raise a signal-delivery-stop on SIGSTOP, which we will observe here
-                                    // and continue as normal to defer it
-                                    ASSERT(sig == SIGSTOP);
-                                    ERROR("Tracer is waiting for tracee %d to finish deferring its previous signal to raise SIGSTOP", pid);
-                                }
 
                                 // We need to force the tracee to defer this signal to a safepoint
                                 // SIG_IGN signals need to be injected as sigptrace because otherwise
                                 // they would be ignored in the tracee side, SIG_DFL signals same reason plus
                                 // the fact that the default behavior of stop would be bad to do, plus
                                 // we get to change SIGSTOP. So 3 birds with 1 stone.
-                                remote_page->force_defer.original_sig = sig;
-                                remote_page->force_defer.original_info = tracee_siginfo;
+                                remote_state->ptrace_data.force_defer.deferred = true;
+                                remote_state->ptrace_data.force_defer.original_sig = sig;
+                                remote_state->ptrace_data.force_defer.original_info = tracee_siginfo;
                                 u64 original_mask;
                                 r = __ptrace(PTRACE_GETSIGMASK, pid, (void*)sizeof(u64), &original_mask);
-                                remote_page->force_defer.original_mask = original_mask;
+                                remote_state->ptrace_data.force_defer.original_mask = original_mask;
                                 sig = FELIX86_PTRACE_SIGNAL;
                                 tracee_siginfo.si_code = FELIX86_PTRACE_CODE_DEFER;
                                 tracee_siginfo.si_signo = sig;
@@ -814,6 +669,8 @@ int wait4(pid_t pid, int* status, int flags, struct rusage* ru) {
                     UNREACHABLE();
                 }
 
+                // TODO: can probably be remote_state.release() if nothing changed on all paths to this point
+                remote_state.commit();
                 // Any other synchronous or asynchronous signal we just skip. Ptrace related stops are only observed on the guest on SIG53, which
                 // the tracee will raise itself when all the relevant data is prepared
                 r = __ptrace(PTRACE_CONT, pid, (void*)0, (void*)(u64)sig); // inject the signal
@@ -846,7 +703,7 @@ int wait4(pid_t pid, int* status, int flags, struct rusage* ru) {
 i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
     bool tracer_mode32 = ThreadState::Get()->ctx.Mode32();
     GUESTPTRACELOG("Operation %s on %d with addr=%lx and data=%lx", guest_op_to_string(op), pid, addr, data);
-    PtracePage* remote_page = nullptr;
+    RemoteState remote_state;
     switch (op) {
     // These are the only operations that don't need a stopped tracee
     case felix86_ptrace_request::felix86_PTRACE_TRACEME:
@@ -857,13 +714,13 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
         break;
     }
     default: {
-        remote_page = get_remote_page(pid);
-        if (!remote_page) {
-            HOSTPTRACELOG("Tried to run ptrace operation %d on %d, but it doesn't have a PtracePage", op, pid);
+        remote_state = get_remote_state(pid);
+        if (!remote_state) {
+            HOSTPTRACELOG("Tried to run ptrace operation %s on %d, but it is not stopped", guest_op_to_string(op), pid);
             return -ESRCH;
         }
 
-        if (!remote_page->stop_info.stopped) {
+        if (!remote_state->ptrace_data.stop_info.stopped) {
             // Not in an official stop, so return ESRCH and warn
             // This may be the case if the tracer doesn't properly waitpid, which should not happen in legit
             // applications. It may be the case we are actually in a "stop", but only due to host effects
@@ -872,45 +729,35 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
             return -ESRCH;
         }
 
-        if (remote_page->constants.tracer_pid != gettid()) {
-            WARN("Tracer pid (%d) and our pid (%d) mismatch?", gettid(), remote_page->constants.tracer_pid);
+        if (remote_state->ptrace_data.constants.tracer_pid != gettid()) {
+            WARN("Tracer pid (%d) and our pid (%d) mismatch?", gettid(), remote_state->ptrace_data.constants.tracer_pid);
             return -EPERM;
         }
 
-        bool differing_mode = tracer_mode32 != remote_page->stop_info.mode32;
+        bool differing_mode = tracer_mode32 != remote_state->ptrace_data.stop_info.mode32;
         if (differing_mode) {
             WARN_ONCE("Tracer %d is %s but tracee %d is %s", gettid(), tracer_mode32 ? "32-bit" : "64-bit", pid,
-                      remote_page->stop_info.mode32 ? "32-bit" : "64-bit");
+                      remote_state->ptrace_data.stop_info.mode32 ? "32-bit" : "64-bit");
         }
         break;
     }
     }
 
-    struct UnmapPage {
-        explicit UnmapPage(PtracePage* page) : page(page) {}
-        ~UnmapPage() {
-            if (page) {
-                close_remote_page(page);
-            }
-        }
-        PtracePage* page;
-    } unmapper(remote_page);
-
     switch (op) {
     case felix86_ptrace_request::felix86_PTRACE_TRACEME: {
-        ThreadState* state = ThreadState::Get();
-        if (Ptrace::is_traced(state)) {
-            HOSTPTRACELOG("TRACEME run when already being traced by %d", state->ptrace_page->constants.tracer_pid);
+        ThreadState* local_state = ThreadState::Get();
+        if (Ptrace::is_traced(local_state)) {
+            HOSTPTRACELOG("TRACEME run when already being traced by %d", local_state->ptrace_data.constants.tracer_pid);
             return -EPERM;
         }
 
         pid_t tracer = getppid();
-        state->ptrace_page->constants.tracer_pid = tracer;
+        local_state->ptrace_data.constants.tracer_pid = tracer;
         int result = __ptrace(PTRACE_TRACEME, 0, 0, 0);
         if (result != 0) {
             int error = -errno;
             GUESTPTRACELOG("TRACEME failed with %d", errno);
-            state->ptrace_page->constants.tracer_pid = 0;
+            local_state->ptrace_data.constants.tracer_pid = 0;
             return error;
         } else {
             GUESTPTRACELOG("Process %d is now being traced by %d", gettid(), tracer);
@@ -945,13 +792,13 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
                 ASSERT(__ptrace(PTRACE_CONT, pid, 0, (void*)(u64)WSTOPSIG(status)) == 0);
                 continue;
             } else {
-                remote_page = get_remote_page(pid);
-                ASSERT(remote_page);
-                ASSERT(remote_page->constants.tracer_pid == 0);
-                remote_page->constants.tracer_pid = gettid();
+                remote_state = get_remote_state(pid);
+                ASSERT(remote_state);
+                ASSERT(remote_state->ptrace_data.constants.tracer_pid == 0);
+                remote_state->ptrace_data.constants.tracer_pid = gettid();
                 // Re-raise the SIGSTOP so the guest can observe it and continue
-                ASSERT(tgkill(remote_page->constants.my_tgid, remote_page->constants.my_tid, SIGSTOP) == 0);
-                close_remote_page(remote_page);
+                ASSERT(tgkill(remote_state->ptrace_data.constants.my_tgid, remote_state->ptrace_data.constants.my_tid, SIGSTOP) == 0);
+                remote_state.commit();
                 ASSERT(__ptrace(PTRACE_CONT, pid, 0, 0) == 0);
                 break;
             }
@@ -959,65 +806,6 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
         return 0;
     }
     case felix86_ptrace_request::felix86_PTRACE_SEIZE: {
-        // // const u64 flags = (u64)data;
-        // // int result = __ptrace(PTRACE_SEIZE, pid, addr, data);
-        // // if (result != 0) {
-        // //     return result;
-        // // }
-
-        // // // Some programs send a signal like SIGSTOP first then attach with PTRACE_SEIZE
-        // // // These will be already stopped. So here we attempt to get the remote page without
-        // // // stopping the program ourselves. If we succeed, we can set the tracer_pid value without
-        // // // needing to PTRACE_INTERRUPT. We don't want to waitpid here because that would observe
-        // // // the stop when in reality we want the guest to observe it.
-        // // remote_page = get_remote_page(pid);
-        // // if (remote_page) {
-        // //     ASSERT(remote_page);
-        // //     ASSERT(remote_page->constants.tracer_pid == 0);
-        // //     remote_page->constants.tracer_pid = gettid();
-        // //     remote_page->constants.flags = flags;
-        // //     close_remote_page(remote_page);
-        // //     return 0;
-        // // }
-
-        // // // We send a PTRACE_INTERRUPT to set some remote_page values on the guest side
-        // // int r = __ptrace(PTRACE_INTERRUPT, pid, 0, 0);
-        // // if (r != 0) {
-        // //     WARN("Failed to send PTRACE_INTERRUPT on seized process %d", pid);
-        // //     return -ESRCH;
-        // // }
-
-        // // while (true) {
-        // //     int status;
-        // //     int r = waitpid(pid, &status, 0);
-        // //     if (r != pid) {
-        // //         WARN("Couldn't wait on %d after PTRACE_SEIZE", pid);
-        // //         return -ESRCH;
-        // //     }
-
-        // //     if (!WIFSTOPPED(status)) {
-        // //         WARN("Couldn't interrupt %d after PTRACE_SEIZE, status: %x", pid, status);
-        // //         return -ESRCH;
-        // //     }
-
-        // //     if (status >> 8 != (SIGTRAP | (PTRACE_EVENT_STOP << 8))) {
-        // //         // A different signal raced, reinject it until we hit our SIGSTOP
-        // //         // This is a known limitation of PTRACE_ATTACH
-        // //         WARN("Signal %d raced us to PTRACE_INTERRUPT", WSTOPSIG(status));
-        // //         ASSERT(__ptrace(PTRACE_CONT, pid, 0, (void*)(u64)WSTOPSIG(status)) == 0);
-        // //         continue;
-        // //     } else {
-        // //         remote_page = get_remote_page(pid);
-        // //         ASSERT(remote_page);
-        // //         ASSERT(remote_page->constants.tracer_pid == 0);
-        // //         remote_page->constants.tracer_pid = gettid();
-        // //         remote_page->constants.flags = flags;
-        // //         close_remote_page(remote_page);
-        // //         // Skip our PTRACE_INTERRUPT as the guest isn't supposed to see it
-        // //         ASSERT(__ptrace(PTRACE_CONT, pid, 0, 0) == 0);
-        // //         break;
-        // //     }
-        // }
         return -EINVAL;
     }
     case felix86_ptrace_request::felix86_PTRACE_DETACH: {
@@ -1027,11 +815,12 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
             return -EIO;
         }
 
-        remote_page->injected.signal = sig;
-        remote_page->injected.cont_type = PTRACE_DETACH;
+        remote_state->ptrace_data.injected.signal = sig;
+        remote_state->ptrace_data.injected.cont_type = PTRACE_DETACH;
         // Skip the host signal from raise_stop
-        remote_page->constants.tracer_pid = 0;
-        remote_page->constants.flags = 0;
+        remote_state->ptrace_data.constants.tracer_pid = 0;
+        remote_state->ptrace_data.constants.flags = 0;
+        remote_state.commit();
         int result = __ptrace(PTRACE_DETACH, pid, 0, 0);
         ASSERT(result == 0);
         return 0;
@@ -1045,25 +834,23 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
         x86_ptrace_syscall_info info;
         info.reserved = 0;
         info.flags = 0;
-        info.arch = remote_page->stop_info.mode32 ? AUDIT_ARCH_I386 : AUDIT_ARCH_X86_64;
-        UserContext ctx;
-        get_remote_ctx(&ctx, remote_page, pid);
-        info.instruction_pointer = ctx.rip;
-        info.stack_pointer = ctx.gprs[X86_REF_RSP - X86_REF_RAX];
+        info.arch = remote_state->ptrace_data.stop_info.mode32 ? AUDIT_ARCH_I386 : AUDIT_ARCH_X86_64;
+        info.instruction_pointer = remote_state->ctx.rip;
+        info.stack_pointer = remote_state->ctx.gprs[X86_REF_RSP - X86_REF_RAX];
 
         // TODO: seccomp stop
-        switch (remote_page->stop_info.type) {
+        switch (remote_state->ptrace_data.stop_info.type) {
         case StopType::SyscallEnterStop: {
             info.op = PTRACE_SYSCALL_INFO_ENTRY;
-            memcpy(info.entry.args, remote_page->syscall_info.args, sizeof(info.entry.args));
-            info.entry.nr = remote_page->syscall_info.nr;
+            memcpy(info.entry.args, remote_state->ptrace_data.syscall_info.args, sizeof(info.entry.args));
+            info.entry.nr = remote_state->ptrace_data.syscall_info.nr;
             ret_size = 80; // TODO: verify this size
             break;
         }
         case StopType::SyscallExitStop: {
             info.op = PTRACE_SYSCALL_INFO_EXIT;
-            info.exit.is_error = remote_page->syscall_info.is_error;
-            info.exit.rval = remote_page->syscall_info.ret;
+            info.exit.is_error = remote_state->ptrace_data.syscall_info.is_error;
+            info.exit.rval = remote_state->ptrace_data.syscall_info.ret;
             ret_size = 40; // TODO: verify this size
             break;
         }
@@ -1079,15 +866,15 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
         return ret_size;
     }
     case felix86_ptrace_request::felix86_PTRACE_GETSIGINFO: {
-        memcpy(data, &remote_page->stop_info.info, tracer_mode32 ? sizeof(siginfo_t) : sizeof(x86_siginfo_t));
+        memcpy(data, &remote_state->ptrace_data.stop_info.info, tracer_mode32 ? sizeof(x86_siginfo_t) : sizeof(siginfo_t));
         return 0;
     }
     case felix86_ptrace_request::felix86_PTRACE_SETSIGINFO: {
-        memcpy(&remote_page->stop_info.info, data, tracer_mode32 ? sizeof(siginfo_t) : sizeof(x86_siginfo_t));
+        memcpy(&remote_state->ptrace_data.stop_info.info, data, tracer_mode32 ? sizeof(x86_siginfo_t) : sizeof(siginfo_t));
         return 0;
     }
     case felix86_ptrace_request::felix86_PTRACE_GETEVENTMSG: {
-        memcpy(data, &remote_page->stop_info.event_msg, tracer_mode32 ? sizeof(u32) : sizeof(u64));
+        memcpy(data, &remote_state->ptrace_data.stop_info.event_msg, tracer_mode32 ? sizeof(u32) : sizeof(u64));
         return 0;
     }
     case felix86_ptrace_request::felix86_PTRACE_PEEKDATA:
@@ -1113,7 +900,7 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
             u64 aligned_addr = (u64)addr & ~0b111;
             u64 shift = (u64)addr & 0b111;
             result = __ptrace(PTRACE_PEEKDATA, pid, (void*)aligned_addr, &temp);
-            temp >>= shift;
+            temp >>= shift * 8;
         } else {
             result = __ptrace(PTRACE_PEEKDATA, pid, addr, &temp);
         }
@@ -1129,8 +916,8 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
         }
         return result;
     }
-    case felix86_ptrace_request::felix86_PTRACE_PEEKUSER: {
-        ASSERT(remote_page);
+    case felix86_ptrace_request::felix86_PTRACE_PEEKUSER:
+    case felix86_ptrace_request::felix86_PTRACE_POKEUSER: {
         u64 offset = (u64)addr;
         u64 oob = tracer_mode32 ? 284 : 912; // sizes of struct user in x86 32-bit and 64-bit
         if (offset >= oob) {
@@ -1138,60 +925,220 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
             return -EIO;
         }
 
-        u64 temp = 0;
-        int result = -EIO;
-        bool flags_offset = tracer_mode32 ? (offset == offsetof(x86_user_regs_struct, eflags)) : (offset == offsetof(x64_user_regs_struct, eflags));
-        if (flags_offset) {
-            UserContext remote_ctx;
-            get_remote_ctx(&remote_ctx, remote_page, pid);
-            temp = remote_ctx.GetFlags();
-            result = 0;
+        u64* target = nullptr;
+        bool is_flags = false;
+        bool is_poke = op == felix86_ptrace_request::felix86_PTRACE_POKEUSER;
+        if (tracer_mode32) {
+            switch (offset) {
+            case 252 + 0 * sizeof(u32):
+                target = &remote_state->ctx.debug_register[0];
+                break;
+            case 252 + 1 * sizeof(u32):
+                target = &remote_state->ctx.debug_register[1];
+                break;
+            case 252 + 2 * sizeof(u32):
+                target = &remote_state->ctx.debug_register[2];
+                break;
+            case 252 + 3 * sizeof(u32):
+                target = &remote_state->ctx.debug_register[3];
+                break;
+            case 252 + 4 * sizeof(u32):
+                WARN("Accessing debug register 4, this shouldn't happen");
+                [[fallthrough]];
+            case 252 + 6 * sizeof(u32):
+                target = &remote_state->ctx.debug_status;
+                break;
+            case 252 + 5 * sizeof(u32):
+                WARN("Accessing debug register 5, this shouldn't happen");
+                [[fallthrough]];
+            case 252 + 7 * sizeof(u32):
+                target = &remote_state->ctx.debug_control;
+                break;
+            case offsetof(x86_user_regs_struct, ebx):
+                target = &remote_state->ctx.gprs[reg_index<X86_REF_RBX>];
+                break;
+            case offsetof(x86_user_regs_struct, ecx):
+                target = &remote_state->ctx.gprs[reg_index<X86_REF_RCX>];
+                break;
+            case offsetof(x86_user_regs_struct, edx):
+                target = &remote_state->ctx.gprs[reg_index<X86_REF_RDX>];
+                break;
+            case offsetof(x86_user_regs_struct, esi):
+                target = &remote_state->ctx.gprs[reg_index<X86_REF_RSI>];
+                break;
+            case offsetof(x86_user_regs_struct, edi):
+                target = &remote_state->ctx.gprs[reg_index<X86_REF_RDI>];
+                break;
+            case offsetof(x86_user_regs_struct, ebp):
+                target = &remote_state->ctx.gprs[reg_index<X86_REF_RBP>];
+                break;
+            case offsetof(x86_user_regs_struct, esp):
+                target = &remote_state->ctx.gprs[reg_index<X86_REF_RSP>];
+                break;
+            case offsetof(x86_user_regs_struct, orig_eax):
+                target = &remote_state->ctx.orig_rax;
+                break;
+            case offsetof(x86_user_regs_struct, eax):
+                target = &remote_state->ctx.gprs[reg_index<X86_REF_RAX>];
+                break;
+            case offsetof(x86_user_regs_struct, eip):
+                target = &remote_state->ctx.rip;
+                break;
+            // TODO: test these
+            case offsetof(x86_user_regs_struct, xds):
+                target = &remote_state->ctx.ds;
+                break;
+            case offsetof(x86_user_regs_struct, xss):
+                target = &remote_state->ctx.ss;
+                break;
+            case offsetof(x86_user_regs_struct, xcs):
+                target = &remote_state->ctx.cs;
+                break;
+            case offsetof(x86_user_regs_struct, xgs):
+                target = &remote_state->ctx.gs;
+                break;
+            case offsetof(x86_user_regs_struct, xfs):
+                target = &remote_state->ctx.fs;
+                break;
+            case offsetof(x86_user_regs_struct, xes):
+                target = &remote_state->ctx.es;
+                break;
+            case offsetof(x86_user_regs_struct, eflags):
+                is_flags = true;
+                break;
+            default:
+                UNREACHABLE();
+                break;
+            }
         } else {
-            int threadstate_offset = user_to_threadstate_offset(offset, tracer_mode32);
-            u8* address = (u8*)remote_page->constants.state + threadstate_offset;
-            result = __ptrace(PTRACE_PEEKDATA, pid, address, &temp);
-            if (result == -1) {
-                result = -errno;
-                WARN("Failed to PEEKDATA on ThreadState: %d", result);
+            switch (offset) {
+            case 848 + 0 * sizeof(u64):
+                target = &remote_state->ctx.debug_register[0];
+                break;
+            case 848 + 1 * sizeof(u64):
+                target = &remote_state->ctx.debug_register[1];
+                break;
+            case 848 + 2 * sizeof(u64):
+                target = &remote_state->ctx.debug_register[2];
+                break;
+            case 848 + 3 * sizeof(u64):
+                target = &remote_state->ctx.debug_register[3];
+                break;
+            case 848 + 4 * sizeof(u64):
+                WARN("Accessing debug register 4, this shouldn't happen");
+                [[fallthrough]];
+            case 848 + 6 * sizeof(u64):
+                target = &remote_state->ctx.debug_status;
+                break;
+            case 848 + 5 * sizeof(u64):
+                WARN("Accessing debug register 5, this shouldn't happen");
+                [[fallthrough]];
+            case 848 + 7 * sizeof(u64):
+                target = &remote_state->ctx.debug_control;
+                break;
+            case offsetof(x64_user_regs_struct, rax):
+                target = &remote_state->ctx.gprs[reg_index<X86_REF_RAX>];
+                break;
+            case offsetof(x64_user_regs_struct, orig_rax):
+                target = &remote_state->ctx.orig_rax;
+                break;
+            case offsetof(x64_user_regs_struct, rcx):
+                target = &remote_state->ctx.gprs[reg_index<X86_REF_RCX>];
+                break;
+            case offsetof(x64_user_regs_struct, rdx):
+                target = &remote_state->ctx.gprs[reg_index<X86_REF_RDX>];
+                break;
+            case offsetof(x64_user_regs_struct, rbx):
+                target = &remote_state->ctx.gprs[reg_index<X86_REF_RBX>];
+                break;
+            case offsetof(x64_user_regs_struct, rsp):
+                target = &remote_state->ctx.gprs[reg_index<X86_REF_RSP>];
+                break;
+            case offsetof(x64_user_regs_struct, rbp):
+                target = &remote_state->ctx.gprs[reg_index<X86_REF_RBP>];
+                break;
+            case offsetof(x64_user_regs_struct, rsi):
+                target = &remote_state->ctx.gprs[reg_index<X86_REF_RSI>];
+                break;
+            case offsetof(x64_user_regs_struct, rdi):
+                target = &remote_state->ctx.gprs[reg_index<X86_REF_RDI>];
+                break;
+            case offsetof(x64_user_regs_struct, r8):
+                target = &remote_state->ctx.gprs[reg_index<X86_REF_R8>];
+                break;
+            case offsetof(x64_user_regs_struct, r9):
+                target = &remote_state->ctx.gprs[reg_index<X86_REF_R9>];
+                break;
+            case offsetof(x64_user_regs_struct, r10):
+                target = &remote_state->ctx.gprs[reg_index<X86_REF_R10>];
+                break;
+            case offsetof(x64_user_regs_struct, r11):
+                target = &remote_state->ctx.gprs[reg_index<X86_REF_R11>];
+                break;
+            case offsetof(x64_user_regs_struct, r12):
+                target = &remote_state->ctx.gprs[reg_index<X86_REF_R12>];
+                break;
+            case offsetof(x64_user_regs_struct, r13):
+                target = &remote_state->ctx.gprs[reg_index<X86_REF_R13>];
+                break;
+            case offsetof(x64_user_regs_struct, r14):
+                target = &remote_state->ctx.gprs[reg_index<X86_REF_R14>];
+                break;
+            case offsetof(x64_user_regs_struct, r15):
+                target = &remote_state->ctx.gprs[reg_index<X86_REF_R15>];
+                break;
+            case offsetof(x64_user_regs_struct, rip):
+                target = &remote_state->ctx.rip;
+                break;
+            case offsetof(x64_user_regs_struct, es):
+                target = &remote_state->ctx.es;
+                break;
+            case offsetof(x64_user_regs_struct, ds):
+                target = &remote_state->ctx.ds;
+                break;
+            case offsetof(x64_user_regs_struct, cs):
+                target = &remote_state->ctx.cs;
+                break;
+            case offsetof(x64_user_regs_struct, gs):
+                target = &remote_state->ctx.gs;
+                break;
+            case offsetof(x64_user_regs_struct, fs):
+                target = &remote_state->ctx.fs;
+                break;
+            case offsetof(x64_user_regs_struct, ss):
+                target = &remote_state->ctx.ss;
+                break;
+            case offsetof(x64_user_regs_struct, gs_base):
+                target = &remote_state->ctx.gsbase;
+                break;
+            case offsetof(x64_user_regs_struct, fs_base):
+                target = &remote_state->ctx.fsbase;
+                break;
+            case offsetof(x64_user_regs_struct, eflags):
+                is_flags = true;
+                break;
+            default:
+                UNREACHABLE();
+                break;
             }
         }
 
-        if (result == 0) {
-            if (tracer_mode32) {
-                memcpy(data, &temp, sizeof(u32));
+        const int size = tracer_mode32 ? sizeof(u32) : sizeof(u64);
+        if (is_flags) {
+            if (is_poke) {
+                remote_state->ctx.SetFlags((u64)data);
             } else {
-                memcpy(data, &temp, sizeof(u64));
+                u64 temp = remote_state->ctx.GetFlags();
+                memcpy(data, &temp, size);
+            }
+        } else if (target) {
+            if (is_poke) {
+                memcpy(target, &data, size);
+            } else {
+                memcpy(data, target, size);
             }
         }
-        return result;
-    }
-    case felix86_ptrace_request::felix86_PTRACE_POKEUSER: {
-        ASSERT(remote_page);
-        u64 offset = (u64)addr;
-        u64 oob = tracer_mode32 ? 284 : 912; // sizes of struct user in x86 32-bit and 64-bit
-        if (offset >= oob) {
-            WARN("Tried to PTRACE_POKEUSER out of bounds");
-            return -EIO;
-        }
-
-        int result = -EIO;
-        bool flags_offset = tracer_mode32 ? (offset == offsetof(x86_user_regs_struct, eflags)) : (offset == offsetof(x64_user_regs_struct, eflags));
-        if (flags_offset) {
-            UserContext remote_ctx;
-            get_remote_ctx(&remote_ctx, remote_page, pid);
-            remote_ctx.SetFlags((u64)data);
-            set_remote_ctx(&remote_ctx, remote_page, pid);
-            result = 0;
-        } else {
-            int threadstate_offset = user_to_threadstate_offset(offset, tracer_mode32);
-            u8* address = (u8*)remote_page->constants.state + threadstate_offset;
-            result = __ptrace(PTRACE_POKEDATA, pid, address, (void*)data);
-            if (result == -1) {
-                result = -errno;
-                WARN("Failed to POKEDATA on ThreadState: %d", result);
-            }
-        }
-        return result;
+        return 0;
     }
     case felix86_ptrace_request::felix86_PTRACE_POKEDATA:
     case felix86_ptrace_request::felix86_PTRACE_POKETEXT: {
@@ -1214,8 +1161,9 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
             return -EIO;
         }
 
-        remote_page->injected.signal = sig;
-        remote_page->injected.cont_type = PTRACE_CONT;
+        remote_state->ptrace_data.injected.signal = sig;
+        remote_state->ptrace_data.injected.cont_type = PTRACE_CONT;
+        remote_state.commit();
         // Skip the host signal from raise_stop
         int result = __ptrace(PTRACE_CONT, pid, 0, 0);
         ASSERT(result == 0);
@@ -1240,7 +1188,7 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
             GUESTPTRACELOG("PTRACE_SETOPTIONS failed with %d", error);
             return -error;
         } else {
-            remote_page->constants.flags = (u64)data;
+            remote_state->ptrace_data.constants.flags = (u64)data;
             return 0;
         }
     }
@@ -1251,9 +1199,10 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
             return -EIO;
         }
 
-        remote_page->injected.signal = sig;
-        remote_page->injected.cont_type = PTRACE_SINGLESTEP;
-        int result = __ptrace(PTRACE_CONT, pid, nullptr, data);
+        remote_state->ptrace_data.injected.signal = sig;
+        remote_state->ptrace_data.injected.cont_type = PTRACE_SINGLESTEP;
+        remote_state.commit();
+        int result = __ptrace(PTRACE_CONT, pid, 0, 0);
         ASSERT(result == 0);
         return 0;
     }
@@ -1263,7 +1212,7 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
             memset((u8*)data + 8, 0, (u64)addr - 8);
             size = 8;
         }
-        memcpy(data, &remote_page->stop_info.sigmask, size);
+        memcpy(data, &remote_state->ptrace_data.stop_info.sigmask, size);
         return 0;
     }
     case felix86_ptrace_request::felix86_PTRACE_SYSCALL: {
@@ -1271,8 +1220,9 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
             WARN("Data or addr not 0 during PTRACE_SYSCALL?");
         }
 
-        remote_page->injected.signal = 0;
-        remote_page->injected.cont_type = PTRACE_SYSCALL;
+        remote_state->ptrace_data.injected.signal = 0;
+        remote_state->ptrace_data.injected.cont_type = PTRACE_SYSCALL;
+        remote_state.commit();
         // Skip the host signal from raise_stop
         int result = __ptrace(PTRACE_CONT, pid, 0, 0);
         ASSERT(result == 0);
@@ -1283,7 +1233,7 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
         if (size > 8) {
             size = 8;
         }
-        memcpy(&remote_page->stop_info.sigmask, data, size);
+        memcpy(&remote_state->ptrace_data.stop_info.sigmask, data, size);
         return 0;
     }
     case felix86_ptrace_request::felix86_PTRACE_GETREGSET: {
@@ -1305,7 +1255,7 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
 #define NT_X86_XSAVE_LAYOUT 0x205
         switch ((u64)addr) {
         case NT_PRSTATUS: {
-            return get_regs(tracer_mode32, remote_page, pid, data);
+            return get_regs(tracer_mode32, remote_state, (void*)dest);
         }
         case NT_X86_XSTATE: {
             if (!is_feature_enabled(x86_feature::OSXSAVE)) {
@@ -1316,11 +1266,9 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
                 WARN("Partial NT_X86_XSTATE requested: %d", size);
             }
 
-            UserContext remote_ctx;
-            get_remote_ctx(&remote_ctx, remote_page, pid);
             constexpr size_t total_size = felix86_xsave_size();
             u8 buffer[total_size];
-            felix86_xsave(remote_ctx, buffer, true);
+            felix86_xsave(remote_state->ctx, buffer, true);
             // See update_regset_xstate_info
             *(u64*)(buffer + 464) = get_xfeature_enabled_mask();
             memcpy((void*)dest, buffer, size);
@@ -1333,10 +1281,10 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
         }
     }
     case felix86_ptrace_request::felix86_PTRACE_GETREGS: {
-        return get_regs(tracer_mode32, remote_page, pid, data);
+        return get_regs(tracer_mode32, remote_state, data);
     }
     case felix86_ptrace_request::felix86_PTRACE_SETREGS: {
-        return set_regs(tracer_mode32, remote_page, pid, data);
+        return set_regs(tracer_mode32, remote_state, data);
     }
     default: {
         ERROR("Unimplemented operation: %x", op);
@@ -1346,21 +1294,21 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
 }
 
 void raise_stop(StopType stop, int& sig, siginfo_t* guest_info, int event, u64 event_msg) {
-    ThreadState* state = ThreadState::Get();
-    PtracePage* page = state->ptrace_page;
-    bool old_tf = state->ctx.tf;
-    page->stop_info.mode32 = state->ctx.Mode32();
-    page->stop_info.type = stop;
-    page->stop_info.info = *guest_info;
-    page->stop_info.signal = sig;
-    if ((page->constants.flags & PTRACE_O_TRACESYSGOOD) && (stop == StopType::SyscallEnterStop || stop == StopType::SyscallExitStop)) {
-        page->stop_info.signal |= 0x80;
+    ThreadState* local_state = ThreadState::Get();
+    PtraceData& data = local_state->ptrace_data;
+    bool old_tf = local_state->ctx.tf;
+    data.stop_info.mode32 = local_state->ctx.Mode32();
+    data.stop_info.type = stop;
+    data.stop_info.info = *guest_info;
+    data.stop_info.signal = sig;
+    if ((data.constants.flags & PTRACE_O_TRACESYSGOOD) && (stop == StopType::SyscallEnterStop || stop == StopType::SyscallExitStop)) {
+        data.stop_info.signal |= 0x80;
     }
-    page->stop_info.ptrace_event = event;
-    page->stop_info.event_msg = event_msg;
-    page->stop_info.sigmask = state->signal_mask.__val[0];
-    page->stop_info.stopped = true;
-    memset(&page->injected, 0, sizeof(page->injected));
+    data.stop_info.ptrace_event = event;
+    data.stop_info.event_msg = event_msg;
+    data.stop_info.sigmask = local_state->signal_mask.__val[0];
+    data.stop_info.stopped = true;
+    memset(&data.injected, 0, sizeof(data.injected));
     auto tid = gettid();
     GUESTPTRACELOG("--- %d is raising %s with signal %s ---", tid, stop_to_string(stop), sigdescr_np(sig));
     siginfo_t info;
@@ -1373,43 +1321,43 @@ void raise_stop(StopType stop, int& sig, siginfo_t* guest_info, int event, u64 e
     int r = syscall(SYS_rt_tgsigqueueinfo, getpid(), tid, FELIX86_PTRACE_SIGNAL, &info);
     ASSERT_MSG(r == 0, "SYS_rt_tgsigqueueinfo failed with %d during raise_stop", errno);
 
-    switch (page->injected.cont_type) {
+    switch (data.injected.cont_type) {
     case PTRACE_CONT:
     case PTRACE_SYSCALL:
     case PTRACE_DETACH: {
         break;
     }
     case PTRACE_SINGLESTEP: {
-        state->recompiler->setSingleStepMode(SingleStepMode::PtraceSinglestep);
-        state->recompiler->clearCodeCache(state);
+        local_state->recompiler->setSingleStepMode(SingleStepMode::PtraceSinglestep);
+        local_state->recompiler->clearCodeCache(local_state);
         break;
     }
     default: {
-        WARN("Unknown cont_type: %d", page->injected.cont_type);
+        WARN("Unknown cont_type: %d", data.injected.cont_type);
         break;
     }
     }
 
     // Resumed by tracer...
-    memset(&page->stop_info, 0, sizeof(page->stop_info));
-    *guest_info = page->injected.info;
-    Signals::sigprocmask(state, SIG_SETMASK, &state->signal_mask, nullptr);
-    ASSERT(page->injected.signal >= 0);
-    sig = page->injected.signal;
+    memset(&data.stop_info, 0, sizeof(data.stop_info));
+    *guest_info = data.injected.info;
+    Signals::sigprocmask(local_state, SIG_SETMASK, &local_state->signal_mask, nullptr);
+    ASSERT(data.injected.signal >= 0);
+    sig = data.injected.signal;
 
     // Address space could've been changed in many ways, not only via POKEDATA but also process_vm_writev
     // and even /proc/<pid>/mem or /proc/<pid>/task/<pid>/mem + write syscalls
     // Since we don't currently track any of these, invalidate the entire code cache after restart
     Recompiler::invalidateRangeGlobal(0, UINT64_MAX & ~0xFFFull, "ptrace stop resumed");
 
-    state->recompiler->clearBreakpoints();
-    u64 debug_control = state->ctx.debug_control;
+    local_state->recompiler->clearBreakpoints();
+    u64 debug_control = local_state->ctx.debug_control;
     for (int i = 0; i < 4; i++) {
         u8 local_enabled = (debug_control >> (i * 2)) & 0b11;
         if (local_enabled == 0b00) {
             // Disabled...
         } else {
-            u64 address = state->ctx.debug_register[i];
+            u64 address = local_state->ctx.debug_register[i];
             u8 type = (debug_control >> (16 + 4 * i)) & 0b11;
             u8 length = (debug_control >> (18 + 4 * i)) & 0b11;
             if (type == 0b00) {
@@ -1418,55 +1366,20 @@ void raise_stop(StopType stop, int& sig, siginfo_t* guest_info, int event, u64 e
                 }
 
                 GUESTPTRACELOG("Added breakpoint at %lx", address);
-                state->recompiler->addBreakpoint(i, address);
+                local_state->recompiler->addBreakpoint(i, address);
             } else {
                 WARN("Ptrace watchpoint set at %lx but watchpoints are not currently supported", address);
             }
         }
     }
 
-    if (state->ctx.tf != old_tf) {
+    if (local_state->ctx.tf != old_tf) {
         WARN("Trap flag changed during stop");
-        felix86_tf_changed(state, state->ctx.tf);
+        felix86_tf_changed(local_state, local_state->ctx.tf);
     }
 }
 
 bool is_traced(ThreadState* state) {
-    return state->ptrace_page->constants.tracer_pid != 0;
-}
-
-PtracePage* get_remote_page(pid_t pid) {
-    // ThreadState is always in the gp register, whether the tracee is stopped in C++ or JIT code
-    // This means we can access it using PTRACE_PEEKUSER
-    // TODO: validate same version of felix86 is used across tracer/tracee first, using /proc/self/exe
-    // Get the remote memfd number, then open it here and map its contents in our address space
-    void* remote_state = get_remote_state(pid);
-    if (!remote_state) {
-        HOSTPTRACELOG("Remote ThreadState is nullptr, this shouldn't happen");
-        return nullptr;
-    }
-
-    i64 remote_fd;
-    int result = __ptrace(PTRACE_PEEKDATA, pid, (void*)((u64)remote_state + offsetof(ThreadState, ptrace_fd)), &remote_fd);
-    static_assert(Recompiler::threadStatePointer() == biscuit::gp);
-    ASSERT_MSG(result == 0, "PTRACE_PEEKDATA returned %d, errno: %d", result, errno);
-    ASSERT_MSG(remote_fd >= FD::min() && remote_fd <= FD::max(), "remote_fd is wrong");
-
-    // TODO: we should prefer a pidfd_getfd path, e.g. for no rootfs chroots that dont mount proc, needs >=6.9 kernel
-    char buffer[256];
-    int written = snprintf(buffer, sizeof(buffer), "/proc/%d/fd/%d", pid, (int)remote_fd);
-    ASSERT(written > 0 && written < sizeof(buffer));
-
-    int memfd = open(buffer, O_RDWR);
-    ASSERT(memfd >= 0);
-    void* remote_page = mmap(nullptr, sizeof(PtracePage), PROT_READ | PROT_WRITE, MAP_SHARED, memfd, 0);
-    ASSERT(remote_page != MAP_FAILED);
-    ASSERT(close(memfd) == 0);
-
-    return (PtracePage*)remote_page;
-}
-
-void close_remote_page(PtracePage* page) {
-    ASSERT(munmap(page, 4096) == 0);
+    return state->ptrace_data.constants.tracer_pid != 0;
 }
 } // namespace Ptrace
