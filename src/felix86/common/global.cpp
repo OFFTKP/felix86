@@ -16,7 +16,6 @@
 #include "felix86/common/info.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/perf.hpp"
-#include "felix86/common/state.hpp"
 #include "felix86/hle/fd.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/mmap.hpp"
@@ -54,6 +53,7 @@ bool g_testing = false;
 int g_output_fd = STDERR_FILENO;
 int g_rootfs_fd = 0;
 int g_original_rootfs_fd = -1;
+struct statx g_original_rootfs_statx{};
 
 u64 g_interpreter_start{};
 u64 g_interpreter_end{};
