@@ -76,6 +76,7 @@ extern int g_output_fd;
 extern std::string g_emulator_path;
 extern int g_rootfs_fd;          // rootfs with chroots
 extern int g_original_rootfs_fd; // rootfs without chroots
+extern struct statx g_original_rootfs_statx;
 extern u64 g_interpreter_start, g_interpreter_end;
 extern u64 g_executable_start, g_executable_end;
 extern const char* g_git_hash;
