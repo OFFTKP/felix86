@@ -90,62 +90,22 @@ int print_system_info() {
 
     fflush(stdout);
 
-    std::vector<const char*> args = {"neofetch", "cpu", nullptr};
-
+    std::vector<const char*> args = {"fastfetch", "--structure", "cpu:gpu:host:distro:kernel:wm:memory", "--logo", "none", nullptr};
     pid_t pid;
     int status;
     int ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
-    if (ok != 0)
-        goto error;
-    waitpid(pid, &status, 0);
-
-    args[1] = "gpu";
-    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
-    if (ok != 0)
-        goto error;
-    waitpid(pid, &status, 0);
-
-    args[1] = "model";
-    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
-    if (ok != 0)
-        goto error;
-    waitpid(pid, &status, 0);
-
-    args[1] = "distro";
-    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
-    if (ok != 0)
-        goto error;
-    waitpid(pid, &status, 0);
-
-    args[1] = "de";
-    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
-    if (ok != 0)
-        goto error;
-    waitpid(pid, &status, 0);
-
-    args[1] = "wm";
-    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
-    if (ok != 0)
-        goto error;
-    waitpid(pid, &status, 0);
-
-    args[1] = "kernel";
-    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
-    if (ok != 0)
-        goto error;
-    waitpid(pid, &status, 0);
-
-    args[1] = "memory";
-    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
-    if (ok != 0)
-        goto error;
-    waitpid(pid, &status, 0);
-
-    return 0;
-
-error:
-    printf("Please install neofetch for more information\n");
-    return ok;
+    if (ok != 0) {
+        printf("Please install fastfetch for more information\n");
+        return ok;
+    } else {
+        int result = waitpid(pid, &status, 0);
+        if (!(result == 0 && WIFEXITED(status) && WEXITSTATUS(status) == 0)) {
+            return 0;
+        } else {
+            printf("Failed to get info from fastfetch\n");
+            return 1;
+        }
+    }
 }
 
 void kill_all() {
