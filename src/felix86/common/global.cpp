@@ -53,6 +53,7 @@ bool g_testing = false;
 // g_output_fd should be replaced upon connecting to the server, however if an error occurs before then we should at least log it
 int g_output_fd = STDERR_FILENO;
 int g_rootfs_fd = 0;
+int g_original_rootfs_fd = -1;
 
 u64 g_interpreter_start{};
 u64 g_interpreter_end{};
@@ -348,16 +349,8 @@ void initialize_globals() {
 
     std::filesystem::path original_rootfs = g_config.rootfs_path;
     if (!g_config.no_rootfs) {
-        const char* guest_rootfs = getenv("__FELIX86_ROOTFS");
-        if (guest_rootfs) {
-            g_config.rootfs_path = guest_rootfs;
-        } else {
-            ASSERT(!g_execve_process);
-            ASSERT_MSG(!g_config.rootfs_path.empty(), "Empty rootfs path, please set using felix86 -s <PATH>");
-        }
-
         if (!std::filesystem::exists(g_config.rootfs_path)) {
-            ERROR("Rootfs path does <%s> not exist", g_config.rootfs_path.c_str());
+            ERROR("Rootfs path %s does not exist", g_config.rootfs_path.c_str());
         }
 
         std::string srootfs_path = g_config.rootfs_path.string();
@@ -370,6 +363,22 @@ void initialize_globals() {
         ASSERT_MSG(g_rootfs_fd > 0, "Failed to open rootfs directory");
         g_rootfs_fd = FD::moveToHighNumber(g_rootfs_fd);
         FD::protect(g_rootfs_fd);
+        g_original_rootfs_fd = dup(g_rootfs_fd);
+        ASSERT_MSG(g_original_rootfs_fd > 0, "Failed to dup g_rootfs_fd");
+        g_original_rootfs_fd = FD::moveToHighNumber(g_original_rootfs_fd);
+        FD::protect(g_original_rootfs_fd);
+
+        const char* guest_rootfs = getenv("__FELIX86_ROOTFS");
+        if (guest_rootfs) {
+            std::string rootfs = guest_rootfs;
+            if (rootfs != g_config.rootfs_path) {
+                g_config.rootfs_path = rootfs;
+                g_rootfs_fd = open(g_config.rootfs_path.c_str(), O_PATH | O_DIRECTORY);
+                ASSERT_MSG(g_rootfs_fd > 0, "Failed to open chrooted rootfs directory");
+                g_rootfs_fd = FD::moveToHighNumber(g_rootfs_fd);
+                FD::protect(g_rootfs_fd);
+            }
+        }
 
         ASSERT_MSG(g_config.rootfs_path.string().back() != '/', "Rootfs path should not end in '/'");
         ASSERT_MSG(Filesystem::FakeMount("/dev", original_rootfs / "dev"), "Failed to fake-mount /dev");
