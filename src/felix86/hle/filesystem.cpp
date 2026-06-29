@@ -37,9 +37,9 @@ void remove_if_found(std::string& path, const std::filesystem::path& rootfs) {
 }
 
 bool statx_inode_same(const struct statx* a, const struct statx* b) {
-    return (a && a->stx_mask != 0) && (b && b->stx_mask != 0) && FLAGS_SET(a->stx_mask, STATX_TYPE | STATX_INO) &&
-           FLAGS_SET(b->stx_mask, STATX_TYPE | STATX_INO) && ((a->stx_mode ^ b->stx_mode) & S_IFMT) == 0 && a->stx_dev_major == b->stx_dev_major &&
-           a->stx_dev_minor == b->stx_dev_minor && a->stx_ino == b->stx_ino && a->stx_mnt_id == b->stx_mnt_id;
+    return (a && a->stx_mask != 0) && (b && b->stx_mask != 0) && FLAGS_SET(a->stx_mask, STATX_TYPE | STATX_INO | STATX_MNT_ID) &&
+           FLAGS_SET(b->stx_mask, STATX_TYPE | STATX_INO | STATX_MNT_ID) && ((a->stx_mode ^ b->stx_mode) & S_IFMT) == 0 &&
+           a->stx_dev_major == b->stx_dev_major && a->stx_dev_minor == b->stx_dev_minor && a->stx_ino == b->stx_ino && a->stx_mnt_id == b->stx_mnt_id;
 }
 
 int generate_memfd(const char* path, int flags) {
@@ -942,11 +942,7 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
     int result = statx(g_rootfs_fd, "", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &root_statx);
     ASSERT(result == 0);
 
-    struct statx original_root_statx;
-    result = statx(g_original_rootfs_fd, "", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &original_root_statx);
-    ASSERT(result == 0);
-    bool is_chroot = !statx_inode_same(&root_statx, &original_root_statx);
-
+    bool is_chroot = !statx_inode_same(&root_statx, &g_original_rootfs_statx);
     int total_symlinks_resolved = 0; // goes up to 40 as per the kernel
     while (!components.empty()) {
         std::string current_component = components.front();
@@ -989,7 +985,7 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
                 // Also clear this since we are starting resolution from rootfs now
                 current_relative_path = ".";
                 continue;
-            } else if (is_chroot && statx_inode_same(&original_root_statx, &current_statx)) {
+            } else if (is_chroot && statx_inode_same(&g_original_rootfs_statx, &current_statx)) {
                 // If a file descriptor is held open after chrooting, it can be used with ".." to go behind the unchrooted rootfs
                 // So we need to ensure that a file descriptor can't be used to escape the original rootfs before chrooting
                 // Skip this component and point to original rootfs

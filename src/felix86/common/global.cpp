@@ -16,7 +16,6 @@
 #include "felix86/common/info.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/perf.hpp"
-#include "felix86/common/state.hpp"
 #include "felix86/hle/fd.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/mmap.hpp"
@@ -54,6 +53,7 @@ bool g_testing = false;
 int g_output_fd = STDERR_FILENO;
 int g_rootfs_fd = 0;
 int g_original_rootfs_fd = -1;
+struct statx g_original_rootfs_statx{};
 
 u64 g_interpreter_start{};
 u64 g_interpreter_end{};
@@ -367,17 +367,22 @@ void initialize_globals() {
         ASSERT_MSG(g_original_rootfs_fd > 0, "Failed to dup g_rootfs_fd");
         g_original_rootfs_fd = FD::moveToHighNumber(g_original_rootfs_fd);
         FD::protect(g_original_rootfs_fd);
+        int result = statx(g_original_rootfs_fd, "", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &g_original_rootfs_statx);
+        ASSERT(result == 0);
 
         const char* guest_rootfs = getenv("__FELIX86_ROOTFS");
         if (guest_rootfs) {
             std::string rootfs = guest_rootfs;
             if (rootfs != g_config.rootfs_path) {
                 g_config.rootfs_path = rootfs;
+                FD::unprotectAndClose(g_rootfs_fd);
                 g_rootfs_fd = open(g_config.rootfs_path.c_str(), O_PATH | O_DIRECTORY);
                 ASSERT_MSG(g_rootfs_fd > 0, "Failed to open chrooted rootfs directory");
                 g_rootfs_fd = FD::moveToHighNumber(g_rootfs_fd);
                 FD::protect(g_rootfs_fd);
             }
+        } else {
+            ASSERT(!g_execve_process);
         }
 
         ASSERT_MSG(g_config.rootfs_path.string().back() != '/', "Rootfs path should not end in '/'");
