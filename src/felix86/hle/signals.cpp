@@ -1171,7 +1171,6 @@ bool handle_safepoint(ThreadState* current_state, siginfo_t* info, ucontext_t* c
     if (current_instruction != expected_instruction) {
         // Not in a safepoint, don't handle signal now
         // Return. If no host signal handler picks up this signal, then it will be deferred
-        SIGLOG("Not expected instruction");
         return false;
     }
 
