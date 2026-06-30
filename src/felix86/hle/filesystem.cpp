@@ -37,9 +37,9 @@ void remove_if_found(std::string& path, const std::filesystem::path& rootfs) {
 }
 
 bool statx_inode_same(const struct statx* a, const struct statx* b) {
-    return (a && a->stx_mask != 0) && (b && b->stx_mask != 0) && FLAGS_SET(a->stx_mask, STATX_TYPE | STATX_INO | STATX_MNT_ID) &&
-           FLAGS_SET(b->stx_mask, STATX_TYPE | STATX_INO | STATX_MNT_ID) && ((a->stx_mode ^ b->stx_mode) & S_IFMT) == 0 &&
-           a->stx_dev_major == b->stx_dev_major && a->stx_dev_minor == b->stx_dev_minor && a->stx_ino == b->stx_ino && a->stx_mnt_id == b->stx_mnt_id;
+    return (a && a->stx_mask != 0) && (b && b->stx_mask != 0) && FLAGS_SET(a->stx_mask, STATX_TYPE | STATX_INO) &&
+           FLAGS_SET(b->stx_mask, STATX_TYPE | STATX_INO) && ((a->stx_mode ^ b->stx_mode) & S_IFMT) == 0 && a->stx_dev_major == b->stx_dev_major &&
+           a->stx_dev_minor == b->stx_dev_minor && a->stx_ino == b->stx_ino;
 }
 
 int generate_memfd(const char* path, int flags) {
