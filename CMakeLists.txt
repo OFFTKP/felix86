@@ -116,6 +116,7 @@ set(FELIX86_HLE_SOURCES
     src/felix86/hle/ioctl32.cpp
     src/felix86/hle/ipc32.cpp
     src/felix86/hle/mmap.cpp
+    src/felix86/hle/ptrace.cpp
     src/felix86/hle/seccomp.cpp
     src/felix86/hle/signals.cpp
     src/felix86/hle/socket32.cpp

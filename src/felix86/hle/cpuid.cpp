@@ -147,6 +147,10 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
             memcpy(&result.edx, g_config.manufacturer_id.data() + 4, 4);
             memcpy(&result.ecx, g_config.manufacturer_id.data() + 8, 4);
         }
+
+        if (is_feature_enabled(x86_feature::OSXSAVE) && result.eax < 0x0000000D) {
+            result.eax = 0x0000000D;
+        }
     }
 
     if (found && leaf == 0x00000001) {

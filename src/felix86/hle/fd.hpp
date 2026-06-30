@@ -3,6 +3,15 @@
 #include "felix86/common/types.hpp"
 
 struct FD {
+    // We move our emulator fds above this number
+    static constexpr int min() {
+        return 512;
+    }
+
+    static constexpr int max() {
+        return min() + 128;
+    }
+
     static void protect(int fd);
 
     static void unprotectAndClose(int fd);

@@ -23,5 +23,8 @@ void felix86_exit(int code) {
         sleep(40);
     }
 
+    if (g_config.abort_error) {
+        felix86_coredump();
+    }
     exit(code);
 }

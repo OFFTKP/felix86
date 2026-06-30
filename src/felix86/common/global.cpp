@@ -19,6 +19,7 @@
 #include "felix86/hle/fd.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/mmap.hpp"
+#include "felix86/hle/ptrace.hpp"
 #include "felix86/v2/handlers.hpp"
 
 using namespace biscuit;

@@ -13,6 +13,7 @@
 #include "felix86/common/utility.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/cpuid.hpp"
+#include "felix86/hle/ptrace.hpp"
 #include "felix86/v2/recompiler.hpp"
 #include "fmt/format.h"
 
@@ -744,9 +745,6 @@ void print_address(u64 address) {
     } else {
         VERBOSE("Lower bound not found for address: %lx", address);
     }
-
-    struct winsize w;
-    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 
     std::string filename = region.file;
     if (found) {
@@ -1707,4 +1705,19 @@ void felix86_coredump() {
 
     // A tracer may choose to ignore the signal but we must not return
     UNREACHABLE();
+}
+
+void felix86_raise_hardware_breakpoint(ThreadState* state, u64 rip, int index) {
+    state->SetRip(rip);
+    state->ctx.debug_status |= (1 << index);
+    int sig = SIGTRAP;
+    siginfo_t guest_info;
+    memset(&guest_info, 0, sizeof(guest_info));
+    guest_info.si_signo = SIGTRAP;
+    guest_info.si_code = TRAP_HWBKPT;
+    guest_info.si_addr = (void*)rip;
+    Ptrace::raise_stop(StopType::SignalDeliveryStop, sig, &guest_info, 0, 0);
+    if (sig != 0) {
+        WARN("Signal not skipped (%d) after hardware breakpoint?", sig);
+    }
 }

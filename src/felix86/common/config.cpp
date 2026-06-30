@@ -129,7 +129,10 @@ bool Config::initialize(bool ignore_envs) {
                     if (nuid && ngid) {
                         int result = chown(config_path.c_str(), nuid, ngid);
                         if (result == 0) {
-                            owner_changed = true;
+                            result = chown(config_dir.c_str(), nuid, ngid);
+                            if (result == 0) {
+                                owner_changed = true;
+                            }
                         }
                     }
                 }

@@ -77,6 +77,7 @@ static void setupMainStack(ThreadState* state) {
     const char* path = g_params.argv[0].c_str();
 
     std::shared_ptr<Elf> elf = g_fs->GetExecutable();
+    std::shared_ptr<Elf> interpreter = g_fs->GetInterpreter();
 
     // Initial process stack according to System V AMD64 ABI
     auto pair = Threads::AllocateStack(mode32);
@@ -128,7 +129,7 @@ static void setupMainStack(ThreadState* state) {
         {AT_CLKTCK, {getauxval(AT_CLKTCK)}},
         {AT_ENTRY, {elf->GetEntrypoint()}},
         {AT_PLATFORM, {(u64)platform_name}},
-        {AT_BASE, {(u64)elf->GetProgramBase()}},
+        {AT_BASE, {interpreter ? (u64)interpreter->GetProgramBase() : (u64)elf->GetProgramBase()}},
         {AT_FLAGS, {0}},
         {AT_UID, {getauxval(AT_UID)}},
         {AT_EUID, {getauxval(AT_EUID)}},
@@ -305,7 +306,7 @@ void Emulator::Start() {
         }
     }
 
-    main_state->signal_table = SignalHandlerTable::Create(nullptr);
+    main_state->signal_table = SignalHandlerTable::create(nullptr);
     main_state->SetRip(g_fs->GetEntrypoint());
 
     const char* mask = getenv("__FELIX86_SIGNAL_MASK");
@@ -337,6 +338,57 @@ void Emulator::Start() {
     if (fd != 0 || errno != ENOENT /* it's possible fd==0 is the execfd if all other fds are closed */) {
         close(fd);
     }
+
+    const char* tracer_env = getenv("__FELIX86_PTRACE_TRACER");
+    if (tracer_env) {
+        const char* options = getenv("__FELIX86_PTRACE_FLAGS");
+        const char* former_tracee = getenv("__FELIX86_PTRACE_FORMER_TRACEE");
+        ASSERT(options && former_tracee);
+        // We were being traced, we need to raise an execve-stop now that
+        // felix86 had the time to initialize
+        ASSERT(g_execve_process);
+        u64 flags = std::atoi(options);
+        ASSERT(flags != 0 || (options[0] == '0' && options[1] == '\0'));
+        main_state->ptrace_data.constants.tracer_pid = std::atoi(tracer_env);
+        main_state->ptrace_data.constants.flags = flags;
+        int former_tid = std::atoi(former_tracee);
+        ASSERT(former_tid != 0);
+
+        int event = 0;
+        u64 event_msg = 0;
+        if (flags & PTRACE_O_TRACEEXEC) {
+            event = PTRACE_EVENT_EXEC;
+            event_msg = former_tid;
+        }
+
+        // TODO: is siginfo_t reachable in event_exec?
+        int sig = SIGTRAP;
+        siginfo_t info;
+        memset(&info, 0, sizeof(siginfo_t));
+        info.si_code = SI_USER;
+        main_state->ctx.orig_rax = main_state->ctx.Mode32() ? (int)felix86_x86_32_execve : (int)felix86_x86_64_execve;
+        Ptrace::raise_stop(StopType::EventStop, sig, &info, event, event_msg);
+        if (sig != 0) {
+            ERROR("Injected signal during execve-stop, unimplemented");
+        }
+        if (main_state->ctx.orig_rax != -1ull) {
+            WARN("Tracer didn't change our execve orig_rax to -1");
+        }
+
+        if (main_state->ptrace_data.injected.cont_type == PTRACE_SYSCALL) {
+            int sig = SIGTRAP;
+            siginfo_t info;
+            memset(&info, 0, sizeof(siginfo_t));
+            info.si_signo = SIGTRAP;
+            info.si_code = SIGTRAP | 0x80; // TODO: check when do we insert 0x80 here
+            main_state->ptrace_data.syscall_info.ret = 0;
+            main_state->ptrace_data.syscall_info.is_error = false;
+            Ptrace::raise_stop(StopType::SyscallExitStop, sig, &info);
+        } else if (main_state->ptrace_data.injected.cont_type != PTRACE_CONT) {
+            WARN("Not PTRACE_CONT after execve-stop");
+        }
+    }
+
     Threads::StartThread(main_state);
     UNREACHABLE();
 }

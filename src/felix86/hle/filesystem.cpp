@@ -379,6 +379,10 @@ int Filesystem::LinkAt(int oldfd, const char* oldpath, int newfd, const char* ne
 }
 
 int Filesystem::Chdir(const char* filename) {
+    if (filename && std::string(filename) == "") {
+        return -ENOENT;
+    }
+
     FdPath fd_path = resolve(filename, true);
     if (fd_path.is_error()) {
         VERBOSE("Error while resolving path during chdir(%s), error: %s", filename, strerror(fd_path.get_errno()));

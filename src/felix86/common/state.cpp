@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <sys/mman.h>
 #include "felix86/common/state.hpp"
+#include "felix86/hle/fd.hpp"
+#include "felix86/hle/ptrace.hpp"
 #include "felix86/v2/recompiler.hpp"
 
 constexpr size_t trampoline_storage_size = 1024 * 512;
@@ -16,6 +18,10 @@ __attribute__((naked)) static void set_thread_state(ThreadState* state) {
 #endif
 }
 
+void ThreadState::Set(ThreadState* state) {
+    set_thread_state(state);
+}
+
 ThreadState* ThreadState::Create(ThreadState* copy_state) {
     // Allocate an extra page before ThreadState which will be used for signal deferring
     u8* state_memory = (u8*)mmap(nullptr, sizeof(ThreadState) + 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -24,6 +30,10 @@ ThreadState* ThreadState::Create(ThreadState* copy_state) {
     ThreadState* state = new (state_location) ThreadState;
     state->recompiler = new Recompiler;
     state->deferred_fault_page = state_memory;
+    VERBOSE("ThreadState* for %d is %lx", gettid(), state);
+    memset(&state->ptrace_data, 0, sizeof(state->ptrace_data));
+    state->ptrace_data.constants.my_tid = gettid();
+    state->ptrace_data.constants.my_tgid = getpid();
 
     sigemptyset(&state->signal_mask);
 
@@ -32,6 +42,8 @@ ThreadState* ThreadState::Create(ThreadState* copy_state) {
 
         state->alt_stack = copy_state->alt_stack;
         state->signal_mask = copy_state->signal_mask;
+        state->ptrace_data.constants.tracer_pid = copy_state->ptrace_data.constants.tracer_pid;
+        state->ptrace_data.constants.flags = copy_state->ptrace_data.constants.flags;
 
         // Currently unsupported, warn
         if (copy_state->deferred_signals != 0) {
@@ -49,7 +61,7 @@ ThreadState* ThreadState::Create(ThreadState* copy_state) {
 
     auto lock = g_process_globals.states_lock.lock();
     g_process_globals.states.push_back(state);
-    set_thread_state(state);
+    ThreadState::Set(state);
     return state;
 }
 

@@ -228,3 +228,5 @@ inline bool to_u64(u64* num, const char* str) {
 void felix86_tf_changed(ThreadState* state, bool tf);
 
 __attribute__((noreturn)) void felix86_coredump();
+
+void felix86_raise_hardware_breakpoint(ThreadState* state, u64 rip, int index);

@@ -46,6 +46,7 @@ enum class FlagMode {
 enum class SingleStepMode : u8 {
     None,
     TrapFlag,
+    PtraceSinglestep,
 };
 
 // This struct is for indicating within a block at which points a register contains a value of a guest register,
@@ -167,6 +168,10 @@ struct Recompiler {
     void restoreState();
 
     void enterDispatcher(ThreadState* state);
+
+    void addBreakpoint(int index, u64 address);
+
+    void clearBreakpoints();
 
     [[noreturn]] void exitDispatcher(felix86_frame* state);
 
@@ -454,6 +459,10 @@ struct Recompiler {
         return host_pc_map;
     }
 
+    u64 getRestoreState() {
+        return restore_state_handler;
+    }
+
     u64 getCompileNext() {
         return compile_next_handler;
     }
@@ -565,6 +574,8 @@ struct Recompiler {
     }
 
     void callPointer(u64 offset) {
+        ASSERT(offset >= offsetof(ThreadState, f80_to_64));
+        ASSERT(offset <= offsetof(ThreadState, felix86_exit_dispatcher));
         ASSERT(isScratch(t4));
         as.LD(t4, offset, threadStatePointer());
         as.JALR(t4);
@@ -749,6 +760,8 @@ private:
 
     void inlineSyscall(int sysno, int argcount);
 
+    bool checkIfBreakpoint(u64 rip);
+
     static void invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_block);
 
     biscuit::Assembler as{};
@@ -765,11 +778,15 @@ private:
     bool current_instruction_on_stack = false;
     bool current_block_big = false;
 
+    std::array<std::pair<bool, u64>, 4> breakpoints;
+
     void (*enter_dispatcher)(ThreadState*){};
 
     void (*exit_dispatcher)(felix86_frame*){};
 
     u64 compile_next_handler{};
+
+    u64 restore_state_handler{};
 
     u64 invalidate_caller_thunk{};
 
