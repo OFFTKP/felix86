@@ -1411,7 +1411,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         break;
     }
     case felix86_riscv64_waitid: {
-        WARN("waitid");
+        GUESTPTRACELOG("waitid is not implemented for ptrace");
         result = SYSCALL(waitid, arg1, arg2, arg3, arg4, arg5);
         break;
     }
@@ -1657,10 +1657,14 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         // Since we can't use PTRACE_O_TRACEEXEC because an execve trap can be the first stop a tracee gets
         // we set ThreadState (gp register) to null, and on the tracer side we can detect that the
         // remote gp is null and that this is a SIGTRAP, which means it's the execve SIGTRAP
+        // Note that we can't use in_clone here because the $gp register will point to uninitialized memory
+        // as the execve has loaded the new process
         ThreadState::Set(nullptr);
-        syscall(SYS_execve, executable.c_str(), &argv[0], envp.data());
+        result = syscall(SYS_execve, executable.c_str(), &argv[0], envp.data());
+        // If execve fails, set it back
+        ThreadState::Set(state);
 
-        ASSERT_MSG(false, "Error during execve: %s (executable: %s)", strerror(errno), executable.c_str());
+        ASSERT_MSG(false, "Error during execve: %d %s (executable: %s)", strerror(result), executable.c_str());
         break;
     }
     case felix86_riscv64_umask: {
@@ -2518,6 +2522,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                 host_rusage_ptr = &host_rusage;
             }
 
+            GUESTPTRACELOG("waitid is not implemented for ptrace");
             result = SYSCALL(waitid, arg1, arg2, host_siginfo_ptr, arg4, host_rusage_ptr);
 
             if (arg3) {
@@ -2708,7 +2713,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_waitpid: {
-            result = ::waitpid((pid_t)arg1, (int*)arg2, (int)arg3);
+            result = Ptrace::wait4((pid_t)arg1, (int*)arg2, (int)arg3, nullptr);
             break;
         }
         case felix86_x86_32_ioctl: {
