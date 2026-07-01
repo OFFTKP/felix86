@@ -539,6 +539,13 @@ int wait4(pid_t pid, int* status, int flags, struct rusage* ru) {
                     break;
                 }
 
+                if (remote_state->ptrace_data.constants.is_terminating) {
+                    // Tracee re-raised a terminating signal (see SignalBehavior::Terminate), allow it to terminate
+                    int result = __ptrace(PTRACE_CONT, pid, 0, 0);
+                    ASSERT(result == 0);
+                    continue;
+                }
+
                 if (sig == SIGSTOP) {
                     // This may be the signal from forking/vforking/cloning, which we want to skip and re-raise as SIGPTRACE later
                     if (remote_state->ptrace_data.stop_info.in_clone) {

@@ -74,6 +74,7 @@ struct PtraceData {
         pid_t my_tgid;
         pid_t my_tid;
         u64 flags;
+        bool is_terminating;
     } constants;
 
     // Written by tracee, read by tracer
