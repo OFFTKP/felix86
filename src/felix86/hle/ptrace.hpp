@@ -110,7 +110,6 @@ struct PtraceData {
     struct {
         int cont_type;
         int signal;
-        siginfo_t info;
     } injected;
 };
 

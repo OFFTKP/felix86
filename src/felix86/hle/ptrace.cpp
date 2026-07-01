@@ -1346,8 +1346,8 @@ void raise_stop(StopType stop, int& sig, siginfo_t* guest_info, int event, u64 e
     }
 
     // Resumed by tracer...
+    *guest_info = data.stop_info.info;
     memset(&data.stop_info, 0, sizeof(data.stop_info));
-    *guest_info = data.injected.info;
     Signals::sigprocmask(local_state, SIG_SETMASK, &local_state->signal_mask, nullptr);
     ASSERT(data.injected.signal >= 0);
     sig = data.injected.signal;
