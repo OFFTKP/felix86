@@ -541,7 +541,7 @@ int wait4(pid_t pid, int* status, int flags, struct rusage* ru) {
 
                 if (remote_state->ptrace_data.constants.is_terminating) {
                     // Tracee re-raised a terminating signal (see SignalBehavior::Terminate), allow it to terminate
-                    int result = __ptrace(PTRACE_CONT, pid, 0, 0);
+                    int result = __ptrace(PTRACE_CONT, pid, 0, (void*)(u64)WSTOPSIG(host_status));
                     ASSERT(result == 0);
                     continue;
                 }
