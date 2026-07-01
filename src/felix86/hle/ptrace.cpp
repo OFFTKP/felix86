@@ -539,6 +539,13 @@ int wait4(pid_t pid, int* status, int flags, struct rusage* ru) {
                     break;
                 }
 
+                if (remote_state->ptrace_data.constants.is_terminating) {
+                    // Tracee re-raised a terminating signal (see SignalBehavior::Terminate), allow it to terminate
+                    int result = __ptrace(PTRACE_CONT, pid, 0, (void*)(u64)WSTOPSIG(host_status));
+                    ASSERT(result == 0);
+                    continue;
+                }
+
                 if (sig == SIGSTOP) {
                     // This may be the signal from forking/vforking/cloning, which we want to skip and re-raise as SIGPTRACE later
                     if (remote_state->ptrace_data.stop_info.in_clone) {
@@ -809,13 +816,18 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
         return -EINVAL;
     }
     case felix86_ptrace_request::felix86_PTRACE_DETACH: {
-        i64 sig = (i64)data;
+        int sig = (i32)(u64)data;
         if (sig < 0) {
             WARN("PTRACE_DETACH with negative signal: %d", sig);
             return -EIO;
         }
 
-        remote_state->ptrace_data.injected.signal = sig;
+        // TODO: merge all the conts into one function so it also sets the siginfo when not setsiginfo'd
+        if (data != 0 || addr != 0) {
+            WARN("Data or addr not 0 during PTRACE_DETACH?");
+        }
+
+        remote_state->ptrace_data.stop_info.signal = sig;
         remote_state->ptrace_data.injected.cont_type = PTRACE_DETACH;
         // Skip the host signal from raise_stop
         remote_state->ptrace_data.constants.tracer_pid = 0;
@@ -870,6 +882,7 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
         return 0;
     }
     case felix86_ptrace_request::felix86_PTRACE_SETSIGINFO: {
+        remote_state->ptrace_data.injected.siginfo_changed = true;
         memcpy(&remote_state->ptrace_data.stop_info.info, data, tracer_mode32 ? sizeof(x86_siginfo_t) : sizeof(siginfo_t));
         return 0;
     }
@@ -1155,13 +1168,27 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
         return result;
     }
     case felix86_ptrace_request::felix86_PTRACE_CONT: {
-        i64 sig = (i64)data;
+        int sig = (i32)(u64)data;
         if (sig < 0) {
             WARN("PTRACE_CONT with negative signal: %d", sig);
             return -EIO;
         }
 
-        remote_state->ptrace_data.injected.signal = sig;
+        if (sig != remote_state->ptrace_data.stop_info.signal && !remote_state->ptrace_data.injected.siginfo_changed) {
+            // When the signal is changed and the siginfo isn't changed via PTRACE_SETSIGINFO
+            // the siginfo value is changed as seen in signal.c SEND_SIG_NOINFO
+            siginfo_t info;
+            memset(&info, 0, sizeof(info));
+            info.si_code = SI_USER;
+            info.si_errno = 0;
+            info.si_signo = sig;
+            info.si_pid = gettid();
+            info.si_uid = getuid();
+            remote_state->ptrace_data.injected.siginfo_changed = true;
+            remote_state->ptrace_data.stop_info.info = info;
+        }
+
+        remote_state->ptrace_data.stop_info.signal = sig;
         remote_state->ptrace_data.injected.cont_type = PTRACE_CONT;
         remote_state.commit();
         // Skip the host signal from raise_stop
@@ -1199,7 +1226,11 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
             return -EIO;
         }
 
-        remote_state->ptrace_data.injected.signal = sig;
+        if (data != 0 || addr != 0) {
+            WARN("Data or addr not 0 during PTRACE_SINGLESTEP?");
+        }
+
+        remote_state->ptrace_data.stop_info.signal = sig;
         remote_state->ptrace_data.injected.cont_type = PTRACE_SINGLESTEP;
         remote_state.commit();
         int result = __ptrace(PTRACE_CONT, pid, 0, 0);
@@ -1220,7 +1251,7 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
             WARN("Data or addr not 0 during PTRACE_SYSCALL?");
         }
 
-        remote_state->ptrace_data.injected.signal = 0;
+        remote_state->ptrace_data.stop_info.signal = 0;
         remote_state->ptrace_data.injected.cont_type = PTRACE_SYSCALL;
         remote_state.commit();
         // Skip the host signal from raise_stop
@@ -1339,11 +1370,11 @@ void raise_stop(StopType stop, int& sig, siginfo_t* guest_info, int event, u64 e
     }
 
     // Resumed by tracer...
+    *guest_info = data.stop_info.info;
+    ASSERT(data.stop_info.signal >= 0);
+    sig = data.stop_info.signal;
     memset(&data.stop_info, 0, sizeof(data.stop_info));
-    *guest_info = data.injected.info;
     Signals::sigprocmask(local_state, SIG_SETMASK, &local_state->signal_mask, nullptr);
-    ASSERT(data.injected.signal >= 0);
-    sig = data.injected.signal;
 
     // Address space could've been changed in many ways, not only via POKEDATA but also process_vm_writev
     // and even /proc/<pid>/mem or /proc/<pid>/task/<pid>/mem + write syscalls

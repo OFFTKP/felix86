@@ -1060,6 +1060,7 @@ void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uctx) {
         sigemptyset(&set);
         sigaddset(&set, sig);
         ASSERT(syscall(SYS_rt_sigprocmask, SIG_UNBLOCK, &set, nullptr, sizeof(u64)) == 0);
+        state->ptrace_data.constants.is_terminating = true;
         syscall(SYS_tgkill, getpid(), gettid(), sig);
         UNREACHABLE();
         break;
