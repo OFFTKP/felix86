@@ -109,7 +109,7 @@ struct PtraceData {
     // Written by tracer, read by tracee
     struct {
         int cont_type;
-        int signal;
+        bool siginfo_changed;
     } injected;
 };
 
