@@ -809,7 +809,7 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
         return -EINVAL;
     }
     case felix86_ptrace_request::felix86_PTRACE_DETACH: {
-        i64 sig = (i64)data;
+        int sig = (i32)(u64)data;
         if (sig < 0) {
             WARN("PTRACE_DETACH with negative signal: %d", sig);
             return -EIO;
@@ -1155,7 +1155,7 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
         return result;
     }
     case felix86_ptrace_request::felix86_PTRACE_CONT: {
-        i64 sig = (i64)data;
+        int sig = (i32)(u64)data;
         if (sig < 0) {
             WARN("PTRACE_CONT with negative signal: %d", sig);
             return -EIO;
