@@ -329,13 +329,16 @@ long ForkMe(CloneArgs& host_clone_args) {
             state->ctx.gprs[X86_REF_RSP] = host_clone_args.new_rsp;
         }
 
+        int pid = getpid();
+        state->ptrace_data.constants.my_tgid = pid;
+        state->ptrace_data.constants.my_tid = gettid();
+
         if (host_clone_args.guest_flags & CLONE_SETTLS) {
             state->SetTLS(host_clone_args.new_tls);
         }
 
         // it's fine to just return to felix86_syscall, which will set the result to 0 and continue execution
         // in this new process
-        int pid = getpid();
         SIGLOG("%d forked to %d", parent_pid, pid);
 
         if (Ptrace::is_traced(state) && trace_fork) {
