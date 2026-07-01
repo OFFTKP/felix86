@@ -822,6 +822,11 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
             return -EIO;
         }
 
+        // TODO: merge all the conts into one function so it also sets the siginfo when not setsiginfo'd
+        if (data != 0 || addr != 0) {
+            WARN("Data or addr not 0 during PTRACE_DETACH?");
+        }
+
         remote_state->ptrace_data.stop_info.signal = sig;
         remote_state->ptrace_data.injected.cont_type = PTRACE_DETACH;
         // Skip the host signal from raise_stop
