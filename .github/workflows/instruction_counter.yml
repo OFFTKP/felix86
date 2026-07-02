@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y build-essential cmake libxbyak-dev
+          sudo apt install -y build-essential cmake libxbyak-dev nasm
       - name: Configure
         run: cmake -B ${{ github.workspace }}/build -DBUILD_INSTRUCTION_COUNTER=ON -DFELIX86_BUILD_THUNKING=OFF -DCMAKE_BUILD_TYPE=Release
       - name: Build
