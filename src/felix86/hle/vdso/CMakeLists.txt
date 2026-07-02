@@ -20,9 +20,21 @@ else()
     message(FATAL_ERROR "Unknown architecture")
 endif()
 
-find_program(CROSS_LD "${FELIX86_X86_CROSS}ld" REQUIRED)
-find_program(CROSS_STRIP "${FELIX86_X86_CROSS}strip" REQUIRED)
-find_program(CROSS_READELF "${FELIX86_X86_CROSS}readelf" REQUIRED)
+find_program(CROSS_LD "${FELIX86_X86_CROSS}ld")
+find_program(CROSS_STRIP "${FELIX86_X86_CROSS}strip")
+find_program(CROSS_READELF "${FELIX86_X86_CROSS}readelf")
+
+if(NOT CROSS_LD)
+    message(FATAL_ERROR "Could not find ${FELIX86_X86_CROSS}ld, set FELIX86_X86_CROSS to an x86-64 binutils prefix")
+endif()
+
+if(NOT CROSS_STRIP)
+    message(FATAL_ERROR "Could not find ${FELIX86_X86_CROSS}strip, set FELIX86_X86_CROSS to an x86-64 binutils prefix")
+endif()
+
+if(NOT CROSS_READELF)
+    message(FATAL_ERROR "Could not find ${FELIX86_X86_CROSS}readelf, set FELIX86_X86_CROSS to an x86-64 binutils prefix")
+endif()
 
 add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/x64_vdso.c
