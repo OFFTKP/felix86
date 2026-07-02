@@ -38,6 +38,7 @@ felix86 relies on several great projects:
 - [fmt](https://github.com/fmtlib/fmt) for string formatting
 - [nlohmann/json](https://github.com/nlohmann/json) for JSON parsing
 - [tomlc17](https://github.com/cktan/tomlc17) for TOML parsing
+- [berkeley-softfloat-3](https://github.com/ucb-bar/berkeley-softfloat-3) for x87 80-bit float emulation
 
 We also use binary tests from other projects to verify correct behavior and prevent regressions.    
 [You can find these tests here.](https://github.com/felix86-emu/binary_tests)
