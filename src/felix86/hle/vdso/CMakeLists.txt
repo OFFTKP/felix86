@@ -10,18 +10,18 @@ else()
 endif()
 
 if(FELIX86_X86_CROSS)
-    find_program(CROSS_LD "${FELIX86_X86_CROSS}-ld")
-    find_program(CROSS_STRIP "${FELIX86_X86_CROSS}-strip")
-    find_program(CROSS_READELF "${FELIX86_X86_CROSS}-readelf")
+    find_program(CROSS_LD "${FELIX86_X86_CROSS}-ld" REQUIRED)
+    find_program(CROSS_STRIP "${FELIX86_X86_CROSS}-strip" REQUIRED)
+    find_program(CROSS_READELF "${FELIX86_X86_CROSS}-readelf" REQUIRED)
 else()
     message("Cross-compiler not used for VDSO")
     find_program(CROSS_LD ld REQUIRED)
-    find_program(CROSS_STRIP strip)
-    find_program(CROSS_READELF readelf)
+    find_program(CROSS_STRIP strip REQUIRED)
+    find_program(CROSS_READELF readelf REQUIRED)
 endif()
 
 add_custom_command(
-    OUTPUT x64_vdso.c
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/x64_vdso.c
     COMMAND ${NASM} -f elf64 ${CMAKE_CURRENT_SOURCE_DIR}/x64-linux-vdso.asm -o x64-linux-vdso.o
     COMMAND ${CROSS_LD} -shared --hash-style=both
             -T ${CMAKE_CURRENT_SOURCE_DIR}/x64-vdso-version.map
@@ -33,6 +33,7 @@ add_custom_command(
     COMMAND ${CROSS_READELF} -h x64-linux-vdso.so.1 | grep -q "Machine:.*X86-64"
     COMMAND ${CROSS_READELF} -h x64-linux-vdso.so.1 | grep -q "Type:.*DYN"
     COMMAND ${CROSS_READELF} -d x64-linux-vdso.so.1 | grep -q "HASH"
+    COMMAND ${CROSS_READELF} -d x64-linux-vdso.so.1 | grep -q "GNU_HASH"
     COMMAND ${CROSS_READELF} -d x64-linux-vdso.so.1 | grep -q "SYMTAB"
     COMMAND ${CROSS_READELF} -d x64-linux-vdso.so.1 | grep -q "STRTAB"
     COMMAND ${CROSS_READELF} -d x64-linux-vdso.so.1 | grep -q "VERSYM"
@@ -40,10 +41,10 @@ add_custom_command(
     COMMAND ${CROSS_READELF} -d x64-linux-vdso.so.1 | grep -q "STRSZ"
     COMMAND ${CROSS_READELF} -d x64-linux-vdso.so.1 | grep -q "SONAME"
     COMMAND ${CROSS_STRIP} -s x64-linux-vdso.so.1
-    COMMAND ${XXD} -i x64-linux-vdso.so.1 x64_vdso.c
+    COMMAND ${XXD} -i x64-linux-vdso.so.1 ${CMAKE_CURRENT_BINARY_DIR}/x64_vdso.c
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/x64-linux-vdso.asm
             ${CMAKE_CURRENT_SOURCE_DIR}/x64-vdso-version.map
     COMMENT "Building and validating x64_vdso.c"
 )
 
-add_library(x64_vdso STATIC x64_vdso.c)
+add_library(x64_vdso STATIC ${CMAKE_CURRENT_BINARY_DIR}/x64_vdso.c)
