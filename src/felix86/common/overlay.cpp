@@ -19,6 +19,10 @@ void Overlays::addOverlay(const char* lib_name, const std::filesystem::path& des
 }
 
 const char* Overlays::isOverlay(int fd, const char* pathname) {
+    if (!pathname) {
+        return nullptr;
+    }
+
     std::filesystem::path path = pathname;
     if (path.is_relative()) {
         if (fd != AT_FDCWD) {
