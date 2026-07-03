@@ -1766,8 +1766,8 @@ FAST_HANDLE(CALL) {
             rec.readMemory(ripreg, address, 0, bit32 ? X86_SIZE_DWORD : X86_SIZE_QWORD);
             rec.readMemory(new_cs, address, bit32 ? 4 : 8, X86_SIZE_WORD);
             as.LHU(old_cs, offsetof(ThreadState, ctx.cs), Recompiler::threadStatePointer());
-            rec.writeMemory(scratch, rsp, 0, rec.stackWidth());
-            rec.writeMemory(old_cs, rsp, rec.stackPointerSize(), rec.stackWidth());
+            rec.writeMemory(scratch, rsp, 0, bit32 ? X86_SIZE_DWORD : X86_SIZE_QWORD);
+            rec.writeMemory(old_cs, rsp, bit32 ? 4 : 8, bit32 ? X86_SIZE_DWORD : X86_SIZE_QWORD);
             rec.popScratch();
 
             rec.writebackState();
