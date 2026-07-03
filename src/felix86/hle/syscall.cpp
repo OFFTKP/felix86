@@ -1990,6 +1990,7 @@ void felix86_syscall(felix86_frame* frame) {
             switch (arg1) {
             case felix86_x86_64_ARCH_SET_GS: {
                 if (arg2 > mmap_max_addr()) {
+                    WARN("Passing bad address to ARCH_SET_GS: %lx", arg2);
                     errno = EPERM; // TODO: when result is reworked, remove this
                     result = -EPERM;
                     break;
@@ -2002,6 +2003,7 @@ void felix86_syscall(felix86_frame* frame) {
             }
             case felix86_x86_64_ARCH_SET_FS: {
                 if (arg2 > mmap_max_addr()) {
+                    WARN("Passing bad address to ARCH_SET_FS: %lx", arg2);
                     errno = EPERM; // TODO: when result is reworked, remove this
                     result = -EPERM;
                     break;
