@@ -85,6 +85,17 @@ void SetCmpFlags(u64 rip, Recompiler& rec, Assembler& as, biscuit::GPR dst, bisc
     }
 }
 
+void EmitUD(Recompiler& rec, Assembler& as) {
+    as.SD(x0, 0, x0);
+    // This hint will tell the handle_synchronous signal handler to change si_code to SI_KERNEL
+    // which is the behavior on x86
+    as.SLTIU(x0, x0, FELIX86_HINT_UD2);
+    // Unreachable
+    as.C_UNDEF();
+    as.C_UNDEF();
+    rec.stopCompiling();
+}
+
 void CMOV(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
     biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
     biscuit::GPR src;
@@ -1732,14 +1743,7 @@ FAST_HANDLE(INSD) {
 
 FAST_HANDLE(UD2) {
     WARN_ONCE("UD2 instruction being compiled?");
-    as.SD(x0, 0, x0);
-    // This hint will tell the handle_synchronous signal handler to change si_code to SI_KERNEL
-    // which is the behavior on x86
-    as.SLTIU(x0, x0, FELIX86_HINT_UD2);
-    // Unreachable
-    as.C_UNDEF();
-    as.C_UNDEF();
-    rec.stopCompiling();
+    EmitUD(rec, as);
 }
 
 FAST_HANDLE(CALL) {
@@ -4297,14 +4301,7 @@ FAST_HANDLE(SYSCALL) {
 
     if (MODE32) {
         WARN("Syscall instruction compiled during 32-bit mode");
-        as.SD(x0, 0, x0);
-        // This hint will tell the handle_synchronous signal handler to change si_code to SI_KERNEL
-        // which is the behavior on x86
-        as.SLTIU(x0, x0, FELIX86_HINT_UD2);
-        // Unreachable
-        as.C_UNDEF();
-        as.C_UNDEF();
-        rec.stopCompiling();
+        return EmitUD(rec, as);
     }
 
     if (Seccomp::hasFilters() && !g_config.seccomp_always_allow) {
@@ -4365,6 +4362,16 @@ FAST_HANDLE(SYSCALL) {
     if (MODE32) {
         ASSERT(rec.getCurrentRipregValue() <= UINT32_MAX);
     }
+}
+
+FAST_HANDLE(SYSENTER) {
+    WARN("SYSENTER being compiled?");
+    EmitUD(rec, as);
+}
+
+FAST_HANDLE(SYSEXIT) {
+    WARN("SYSEXIT being compiled?");
+    EmitUD(rec, as);
 }
 
 FAST_HANDLE(MOVZX) {
