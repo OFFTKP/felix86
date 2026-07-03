@@ -562,6 +562,13 @@ int Filesystem::Chroot(const char* path) {
         return -EINVAL;
     }
 
+    // First, try a chroot("/") to see if we have permission to chroot
+    int result = syscall(SYS_chroot, "/");
+    if (result == -1) {
+        WARN("Tried to chroot(%s) but has no permission to chroot", path);
+        return -errno;
+    }
+
     // Note: We'd like to move the new root inside g_mounts_path like in pivot_root, but it's not possible:
     //    - Unlike pivot_root, chroot's new root doesn't need to be a mount
     //    - Chroot requires CAP_SYS_CHROOT instead of CAP_SYS_ADMIN, so there may be programs that can chroot but not mount
