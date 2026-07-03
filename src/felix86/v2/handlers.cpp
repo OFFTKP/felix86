@@ -1833,28 +1833,26 @@ FAST_HANDLE(CALL) {
 FAST_HANDLE(RET) {
     rec.popCalltrace();
 
-    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        if (operands[0].size == 64 + 16 || operands[0].size == 32 + 16) {
-            WARN("Far return detected at %lx", rip);
-            bool bit32 = operands[0].size == 32 + 16;
-            biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
-            biscuit::GPR new_cs = rec.scratch();
-            biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
-            rec.readMemory(ripreg, rsp, 0, bit32 ? X86_SIZE_DWORD : X86_SIZE_QWORD);
-            rec.readMemory(new_cs, rsp, bit32 ? 4 : 8, X86_SIZE_WORD);
-            as.ADDI(rsp, rsp, bit32 ? 8 : 16);
-            rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
+    if (instruction.opcode == 0xCB) {
+        WARN("Far return detected at %lx", rip);
+        bool bit32 = MODE32;
+        biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+        biscuit::GPR new_cs = rec.scratch();
+        biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
+        rec.readMemory(ripreg, rsp, 0, bit32 ? X86_SIZE_DWORD : X86_SIZE_QWORD);
+        rec.readMemory(new_cs, rsp, bit32 ? 4 : 8, X86_SIZE_WORD);
+        as.ADDI(rsp, rsp, bit32 ? 8 : 16);
+        rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
 
-            rec.writebackState();
-            as.MV(a1, new_cs);
-            as.LI(a2, ZYDIS_REGISTER_CS);
-            as.MV(a0, rec.threadStatePointer());
-            rec.callPointer(offsetof(ThreadState, felix86_set_segment));
-            rec.restoreState();
-            rec.backToDispatcher();
-            rec.stopCompiling();
-            return;
-        }
+        rec.writebackState();
+        as.MV(a1, new_cs);
+        as.LI(a2, ZYDIS_REGISTER_CS);
+        as.MV(a0, rec.threadStatePointer());
+        rec.callPointer(offsetof(ThreadState, felix86_set_segment));
+        rec.restoreState();
+        rec.backToDispatcher();
+        rec.stopCompiling();
+        return;
     }
 
     biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
