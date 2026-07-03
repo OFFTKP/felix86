@@ -1756,21 +1756,22 @@ FAST_HANDLE(CALL) {
             biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
             as.ADDI(rsp, rsp, -rec.stackPointerSize() * 2);
             rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
-            biscuit::GPR cs = rec.scratch();
+            biscuit::GPR old_cs = rec.scratch();
+            biscuit::GPR new_cs = rec.scratch();
             biscuit::GPR scratch = rec.scratch();
-            as.LHU(cs, offsetof(ThreadState, ctx.cs), Recompiler::threadStatePointer());
             biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
             u64 return_address_offset = (rip - rec.getCurrentRipregValue()) + instruction.length;
             rec.addi(scratch, ripreg, return_address_offset);
-            rec.writeMemory(scratch, rsp, 0, rec.stackWidth());
-            rec.writeMemory(cs, rsp, rec.stackPointerSize(), rec.stackWidth());
-            rec.popScratch();
-
             biscuit::GPR address = rec.lea(&operands[0]);
             rec.readMemory(ripreg, address, 0, bit32 ? X86_SIZE_DWORD : X86_SIZE_QWORD);
-            rec.readMemory(cs, address, bit32 ? 4 : 8, X86_SIZE_WORD);
+            rec.readMemory(new_cs, address, bit32 ? 4 : 8, X86_SIZE_WORD);
+            as.LHU(old_cs, offsetof(ThreadState, ctx.cs), Recompiler::threadStatePointer());
+            rec.writeMemory(scratch, rsp, 0, rec.stackWidth());
+            rec.writeMemory(old_cs, rsp, rec.stackPointerSize(), rec.stackWidth());
+            rec.popScratch();
+
             rec.writebackState();
-            as.MV(a1, cs);
+            as.MV(a1, new_cs);
             as.LI(a2, ZYDIS_REGISTER_CS);
             as.MV(a0, rec.threadStatePointer());
             rec.callPointer(offsetof(ThreadState, felix86_set_segment));
