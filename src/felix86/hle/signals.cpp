@@ -415,6 +415,10 @@ static u32 get_reg_trapno(u64 host_pc, int sig, siginfo_t* info, ucontext_t* uct
         return 1;
     }
 
+    if (sig == SIGILL && info->si_code == ILL_ILLOPN) {
+        return 6; // UD
+    }
+
     if (sig != SIGSEGV) {
         return 0;
     }

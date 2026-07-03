@@ -85,6 +85,17 @@ void SetCmpFlags(u64 rip, Recompiler& rec, Assembler& as, biscuit::GPR dst, bisc
     }
 }
 
+void EmitUD(Recompiler& rec, Assembler& as) {
+    as.SD(x0, 0, x0);
+    // This hint will tell the handle_synchronous signal handler to change si_code to SI_KERNEL
+    // which is the behavior on x86
+    as.SLTIU(x0, x0, FELIX86_HINT_UD2);
+    // Unreachable
+    as.C_UNDEF();
+    as.C_UNDEF();
+    rec.stopCompiling();
+}
+
 void CMOV(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
     biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
     biscuit::GPR src;
@@ -1732,18 +1743,44 @@ FAST_HANDLE(INSD) {
 
 FAST_HANDLE(UD2) {
     WARN_ONCE("UD2 instruction being compiled?");
-    as.SD(x0, 0, x0);
-    // This hint will tell the handle_synchronous signal handler to change si_code to SI_KERNEL
-    // which is the behavior on x86
-    as.SLTIU(x0, x0, FELIX86_HINT_UD2);
-    // Unreachable
-    as.C_UNDEF();
-    as.C_UNDEF();
-    rec.stopCompiling();
+    EmitUD(rec, as);
 }
 
 FAST_HANDLE(CALL) {
     rec.pushCalltrace();
+
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        if (operands[0].size == 64 + 16 || operands[0].size == 32 + 16) {
+            WARN("Far call detected at %lx", rip);
+            bool bit32 = operands[0].size == 32 + 16;
+            biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
+            biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+            biscuit::GPR old_cs = rec.scratch();
+            biscuit::GPR new_cs = rec.scratch();
+            biscuit::GPR scratch = rec.scratch();
+            u64 return_address_offset = (rip - rec.getCurrentRipregValue()) + instruction.length;
+            rec.addi(scratch, ripreg, return_address_offset);
+            biscuit::GPR address = rec.lea(&operands[0]);
+            rec.readMemory(ripreg, address, 0, bit32 ? X86_SIZE_DWORD : X86_SIZE_QWORD);
+            rec.readMemory(new_cs, address, bit32 ? 4 : 8, X86_SIZE_WORD);
+            as.LHU(old_cs, offsetof(ThreadState, ctx.cs), Recompiler::threadStatePointer());
+            as.ADDI(rsp, rsp, bit32 ? -8 : -16);
+            rec.writeMemory(scratch, rsp, 0, bit32 ? X86_SIZE_DWORD : X86_SIZE_QWORD);
+            rec.writeMemory(old_cs, rsp, bit32 ? 4 : 8, bit32 ? X86_SIZE_DWORD : X86_SIZE_QWORD);
+            rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
+            rec.popScratch();
+
+            rec.writebackState();
+            as.MV(a1, new_cs);
+            as.LI(a2, ZYDIS_REGISTER_CS);
+            as.MV(a0, rec.threadStatePointer());
+            rec.callPointer(offsetof(ThreadState, felix86_set_segment));
+            rec.restoreState();
+            rec.backToDispatcher();
+            rec.stopCompiling();
+            return;
+        }
+    }
 
     switch (operands[0].type) {
     case ZYDIS_OPERAND_TYPE_REGISTER:
@@ -1796,6 +1833,28 @@ FAST_HANDLE(CALL) {
 FAST_HANDLE(RET) {
     rec.popCalltrace();
 
+    if (instruction.opcode == 0xCB) {
+        WARN("Far return detected at %lx", rip);
+        bool bit32 = MODE32;
+        biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+        biscuit::GPR new_cs = rec.scratch();
+        biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
+        rec.readMemory(ripreg, rsp, 0, bit32 ? X86_SIZE_DWORD : X86_SIZE_QWORD);
+        rec.readMemory(new_cs, rsp, bit32 ? 4 : 8, X86_SIZE_WORD);
+        as.ADDI(rsp, rsp, bit32 ? 8 : 16);
+        rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
+
+        rec.writebackState();
+        as.MV(a1, new_cs);
+        as.LI(a2, ZYDIS_REGISTER_CS);
+        as.MV(a0, rec.threadStatePointer());
+        rec.callPointer(offsetof(ThreadState, felix86_set_segment));
+        rec.restoreState();
+        rec.backToDispatcher();
+        rec.stopCompiling();
+        return;
+    }
+
     biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
     biscuit::GPR scratch = rec.scratch();
     rec.readMemory(scratch, rsp, 0, rec.stackWidth());
@@ -1817,7 +1876,6 @@ FAST_HANDLE(RET) {
 }
 
 FAST_HANDLE(IRETD) {
-    ASSERT(MODE32);
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
     as.LI(a1, 0);
@@ -4293,6 +4351,14 @@ FAST_HANDLE(CPUID) {
 }
 
 FAST_HANDLE(SYSCALL) {
+    // Flush any potential x87 and MMX state so we can insert a safepoint
+    rec.flushX87();
+
+    if (MODE32) {
+        WARN("Syscall instruction compiled during 32-bit mode");
+        return EmitUD(rec, as);
+    }
+
     if (Seccomp::hasFilters() && !g_config.seccomp_always_allow) {
         if (MODE32) {
             ERROR("Seccomp during 32-bit program");
@@ -4308,9 +4374,6 @@ FAST_HANDLE(SYSCALL) {
             return;
         }
     }
-
-    // Flush any potential x87 and MMX state so we can insert a safepoint
-    rec.flushX87();
 
     u64 offset = rip - rec.getCurrentRipregValue();
     biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
@@ -4354,6 +4417,16 @@ FAST_HANDLE(SYSCALL) {
     if (MODE32) {
         ASSERT(rec.getCurrentRipregValue() <= UINT32_MAX);
     }
+}
+
+FAST_HANDLE(SYSENTER) {
+    WARN("SYSENTER being compiled?");
+    EmitUD(rec, as);
+}
+
+FAST_HANDLE(SYSEXIT) {
+    WARN("SYSEXIT being compiled?");
+    EmitUD(rec, as);
 }
 
 FAST_HANDLE(MOVZX) {

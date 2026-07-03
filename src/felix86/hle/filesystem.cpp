@@ -562,6 +562,13 @@ int Filesystem::Chroot(const char* path) {
         return -EINVAL;
     }
 
+    // First, try a chroot("/") to see if we have permission to chroot
+    int result = syscall(SYS_chroot, "/");
+    if (result == -1) {
+        WARN("Tried to chroot(%s) but has no permission to chroot", path);
+        return -errno;
+    }
+
     // Note: We'd like to move the new root inside g_mounts_path like in pivot_root, but it's not possible:
     //    - Unlike pivot_root, chroot's new root doesn't need to be a mount
     //    - Chroot requires CAP_SYS_CHROOT instead of CAP_SYS_ADMIN, so there may be programs that can chroot but not mount
@@ -576,7 +583,7 @@ int Filesystem::Chroot(const char* path) {
     // we will do without
     std::filesystem::path final_path;
     std::filesystem::path dir = create_unique_mount_path();
-    int result = ::mount(fd_path.full_path(), dir.c_str(), nullptr, MS_BIND, nullptr);
+    result = ::mount(fd_path.full_path(), dir.c_str(), nullptr, MS_BIND, nullptr);
     if (result == 0) {
         final_path = dir;
     } else {

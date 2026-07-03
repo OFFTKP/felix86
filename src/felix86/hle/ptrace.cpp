@@ -486,11 +486,7 @@ int wait4(pid_t pid, int* status, int flags, struct rusage* ru) {
             // If something like -EINTR is returned, the syscall will be restarted guest side, if necessary, so we don't restart it here
             break; // NOTE: felix86_syscall will get the actual value through errno
         } else if (result > 0) {
-            if (pid == -1) {
-                pid = result;
-            } else {
-                ASSERT(pid == result);
-            }
+            pid = result;
             if (WIFEXITED(host_status)) {
                 HOSTPTRACELOG("%d exited", pid);
                 break;
