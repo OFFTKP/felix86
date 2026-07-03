@@ -1817,7 +1817,6 @@ FAST_HANDLE(RET) {
 }
 
 FAST_HANDLE(IRETD) {
-    // ASSERT(MODE32);
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
     as.LI(a1, 0);
@@ -4293,6 +4292,21 @@ FAST_HANDLE(CPUID) {
 }
 
 FAST_HANDLE(SYSCALL) {
+    // Flush any potential x87 and MMX state so we can insert a safepoint
+    rec.flushX87();
+
+    if (MODE32) {
+        WARN("Syscall instruction compiled during 32-bit mode");
+        as.SD(x0, 0, x0);
+        // This hint will tell the handle_synchronous signal handler to change si_code to SI_KERNEL
+        // which is the behavior on x86
+        as.SLTIU(x0, x0, FELIX86_HINT_UD2);
+        // Unreachable
+        as.C_UNDEF();
+        as.C_UNDEF();
+        rec.stopCompiling();
+    }
+
     if (Seccomp::hasFilters() && !g_config.seccomp_always_allow) {
         if (MODE32) {
             ERROR("Seccomp during 32-bit program");
@@ -4308,9 +4322,6 @@ FAST_HANDLE(SYSCALL) {
             return;
         }
     }
-
-    // Flush any potential x87 and MMX state so we can insert a safepoint
-    rec.flushX87();
 
     u64 offset = rip - rec.getCurrentRipregValue();
     biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
