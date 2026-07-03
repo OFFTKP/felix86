@@ -144,6 +144,8 @@ inline bool is_subpath(const std::filesystem::path& path, const std::filesystem:
 
 u64 mmap_min_addr();
 
+u64 mmap_max_addr();
+
 void felix86_set_segment(ThreadState* state, u64 value, int segment);
 
 void felix86_fprem(ThreadState* state);
@@ -230,3 +232,5 @@ void felix86_tf_changed(ThreadState* state, bool tf);
 __attribute__((noreturn)) void felix86_coredump();
 
 void felix86_raise_hardware_breakpoint(ThreadState* state, u64 rip, int index);
+
+bool felix86_address_check(void* address);

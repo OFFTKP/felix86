@@ -901,6 +901,12 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
             return FdPath::create(fd, nullptr);
         }
 
+        if (!felix86_address_check((void*)path)) {
+            ASSERT(path != nullptr);
+            WARN("Tried to resolve bad path pointer: %lx", path);
+            return FdPath::error(EFAULT);
+        }
+
         if (path[0] == 0) {
             return FdPath::create(fd, path);
         }

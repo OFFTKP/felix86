@@ -21,7 +21,7 @@ struct NullablePath {
     }
     NullablePath(const std::filesystem::path& path) : path(path) {}
 
-    const char* get_str() {
+    const char* get_str() const {
         if (is_null) {
             return nullptr;
         } else {
@@ -36,7 +36,11 @@ private:
 
 struct FdPath {
     static FdPath create(int fd, const NullablePath& path) {
-        ASSERT(fd == AT_FDCWD || fd >= 0);
+        if (fd != AT_FDCWD && fd < 0) {
+            WARN("Passed bad file descriptor: %d %s", fd, path.get_str() ? path.get_str() : "(null)");
+            return FdPath::error(ENOENT);
+        }
+
         FdPath ret;
         ret.fd_path = std::make_pair(fd, path);
         return ret;

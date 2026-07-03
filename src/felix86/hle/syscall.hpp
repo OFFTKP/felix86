@@ -88,7 +88,7 @@ constexpr static const char* x64_get_name(int syscall) {
 #include "felix86/hle/syscalls_x86_64.inc"
 #undef X
     default:
-        ASSERT_MSG(false, "%d is not a syscall", syscall);
+        WARN("%d is not a known syscall", syscall);
         return nullptr;
     }
 #undef X
@@ -102,7 +102,7 @@ constexpr static const char* x86_get_name(int syscall) {
 #include "felix86/hle/syscalls_x86_32.inc"
 #undef X
     default:
-        ASSERT_MSG(false, "%d is not a syscall", syscall);
+        WARN("%d is not a known syscall", syscall);
         return nullptr;
     }
 #undef X

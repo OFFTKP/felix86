@@ -1301,9 +1301,7 @@ bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, ucontext_t
         // These would usually manifest as jump to null page or to a bogus address with upper bits set
         // So we check those conditions here and collect important info that may be difficult to obtain
         // from inside the coredump
-        biscuit::CPUInfo info;
-        u64 max_address = info.GetHighestVirtualAddress();
-        if (pc < mmap_min_addr() || (pc & ~max_address)) {
+        if (pc < mmap_min_addr() || (pc & ~mmap_max_addr())) {
             WARN("Jump to bad address: %lx", pc);
             WARN("RIP: %lx", current_state->ctx.rip);
             BlockMetadata& meta = current_state->recompiler->getBlockMetadata(current_state->ctx.rip);

@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include "Zydis/Decoder.h"
 #include "Zydis/Disassembler.h"
+#include "biscuit/cpuinfo.hpp"
 #include "felix86/common/elf.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/state.hpp"
@@ -1274,6 +1275,14 @@ u64 mmap_min_addr() {
     return addr;
 }
 
+u64 mmap_max_addr() {
+    static u64 addr = []() {
+        biscuit::CPUInfo info;
+        return info.GetHighestVirtualAddress();
+    }();
+    return addr;
+}
+
 void felix86_set_segment(ThreadState* state, u64 value, int segment) {
     int index = value >> 3;
     u32 base = state->gdt[index];
@@ -1720,4 +1729,13 @@ void felix86_raise_hardware_breakpoint(ThreadState* state, u64 rip, int index) {
     if (sig != 0) {
         WARN("Signal not skipped (%d) after hardware breakpoint?", sig);
     }
+}
+
+// TODO: Eventually this needs to do actual address space checking when we implement that
+// Returns false if an address is bad
+bool felix86_address_check(void* address) {
+    if (address != nullptr && ((u64)address < mmap_min_addr() || (u64)address > mmap_max_addr())) {
+        return false;
+    }
+    return true;
 }

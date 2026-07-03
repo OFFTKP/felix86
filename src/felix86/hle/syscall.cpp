@@ -1826,6 +1826,11 @@ void felix86_syscall(felix86_frame* frame) {
             result = ::time((time_t*)arg1);
             break;
         }
+        case felix86_x86_64_get_kernel_syms: {
+            // Deprecated syscall
+            result = -ENOSYS;
+            break;
+        }
         case felix86_x86_64_pause: {
             WARN("Entering pause");
             // Similar to sigsuspend, but in this case pause doesn't take a mask like sigsuspend.
@@ -1984,12 +1989,26 @@ void felix86_syscall(felix86_frame* frame) {
         case felix86_x86_64_arch_prctl: {
             switch (arg1) {
             case felix86_x86_64_ARCH_SET_GS: {
+                if (arg2 > mmap_max_addr()) {
+                    WARN("Passing bad address to ARCH_SET_GS: %lx", arg2);
+                    errno = EPERM; // TODO: when result is reworked, remove this
+                    result = -EPERM;
+                    break;
+                }
+
                 state->ctx.gs = 0;
                 state->ctx.gsbase = arg2;
                 result = 0;
                 break;
             }
             case felix86_x86_64_ARCH_SET_FS: {
+                if (arg2 > mmap_max_addr()) {
+                    WARN("Passing bad address to ARCH_SET_FS: %lx", arg2);
+                    errno = EPERM; // TODO: when result is reworked, remove this
+                    result = -EPERM;
+                    break;
+                }
+
                 state->ctx.fs = 0;
                 state->ctx.fsbase = arg2;
                 result = 0;
@@ -2015,7 +2034,10 @@ void felix86_syscall(felix86_frame* frame) {
         }
         default: {
             result = -ENOSYS;
-            ERROR("Unimplemented syscall %s (%d)", x64_get_name(syscall_number), (int)syscall_number);
+            const char* name = x64_get_name(syscall_number);
+            if (name) {
+                ERROR("Unimplemented syscall %s (%d)", name, (int)syscall_number);
+            }
             break;
         }
         }
@@ -3305,7 +3327,10 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         }
         default: {
             result = -ENOSYS;
-            ERROR("Unimplemented syscall %s (%d)", x86_get_name(syscall_number), (int)syscall_number);
+            const char* name = x86_get_name(syscall_number);
+            if (name) {
+                ERROR("Unimplemented syscall %s (%d)", name, (int)syscall_number);
+            }
             break;
         }
         }
