@@ -1817,7 +1817,7 @@ FAST_HANDLE(RET) {
 }
 
 FAST_HANDLE(IRETD) {
-    ASSERT(MODE32);
+    // ASSERT(MODE32);
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
     as.LI(a1, 0);
