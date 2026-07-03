@@ -1754,7 +1754,6 @@ FAST_HANDLE(CALL) {
             WARN("Far call detected at %lx", rip);
             bool bit32 = operands[0].size == 32 + 16;
             biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
-            rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
             biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
             biscuit::GPR old_cs = rec.scratch();
             biscuit::GPR new_cs = rec.scratch();
@@ -1768,6 +1767,7 @@ FAST_HANDLE(CALL) {
             as.ADDI(rsp, rsp, bit32 ? -8 : -16);
             rec.writeMemory(scratch, rsp, 0, bit32 ? X86_SIZE_DWORD : X86_SIZE_QWORD);
             rec.writeMemory(old_cs, rsp, bit32 ? 4 : 8, bit32 ? X86_SIZE_DWORD : X86_SIZE_QWORD);
+            rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
             rec.popScratch();
 
             rec.writebackState();
