@@ -64,6 +64,49 @@ struct auxv32_t {
     u32 a_val;
 };
 
+static bool initializeMmMap(prctl_mm_map& map) {
+    char buffer[4096];
+    int fd = open("/proc/self/stat", O_RDONLY);
+    if (fd == -1) {
+        return false;
+    }
+
+    ssize_t bytes = read(fd, buffer, sizeof(buffer));
+    close(fd);
+
+    if (bytes < 0) {
+        return false;
+    }
+
+    buffer[std::min((size_t)bytes, sizeof(buffer) - 1)] = 0;
+
+    // Thank you FEX
+    int items_read = sscanf(buffer,
+                            "%*d %*s %*c %*d %*d "      // 1 to 5
+                            "%*d %*d %*d %*u %*u "      // 6 to 10
+                            "%*u %*u %*u %*u %*u "      // 11 to 15
+                            "%*d %*d %*d %*d %*d "      // 16 to 20
+                            "%*d %*u %*u %*d %*u "      // 21 to 25
+                            "%llu %llu %llu %*u %*u "   // 26 to 30
+                            "%*u %*u %*u %*u %*u "      // 31 to 35
+                            "%*u %*u %*d %*d %*u "      // 36 to 40
+                            "%*u %*u %*u %*d %llu "     // 40 to 45
+                            "%llu %llu %llu %llu %llu " // 46 to 50
+                            "%llu",                     // 51
+                            &map.start_code, &map.end_code, &map.start_stack, &map.start_data, &map.end_data, &map.start_brk, &map.arg_start,
+                            &map.arg_end, &map.env_start, &map.env_end);
+
+    if (items_read != 10) {
+        return false;
+    }
+
+    map.brk = reinterpret_cast<uint64_t>(sbrk(0));
+    map.auxv = NULL;
+    map.auxv_size = 0;
+    map.exe_fd = -1;
+    return true;
+}
+
 static void setupMainStack(ThreadState* state) {
     bool mode32 = state->ctx.Mode32();
     ssize_t argc = g_params.argv.size();
@@ -93,20 +136,24 @@ static void setupMainStack(ThreadState* state) {
     const char* platform_name = (const char*)rsp;
 
     // wine-preloader actually relies on us pushing these in this order
+    u64 arg_end = rsp;
     for (ssize_t i = argc - 1; i >= 0; i--) {
         rsp = stack_push_string(rsp, g_params.argv[i].c_str());
         argv_addresses[i] = rsp;
     }
+    u64 arg_start = rsp;
 
     size_t envc = g_params.envp.size();
     std::vector<u64> envp_addresses;
     envp_addresses.resize(envc);
 
+    u64 env_end = rsp;
     for (size_t i = 0; i < envc; i++) {
         const char* env = g_params.envp[i].c_str();
         rsp = stack_push_string(rsp, env);
         envp_addresses[i] = rsp;
     }
+    u64 env_start = rsp;
 
     // Align up, to 16 bytes
     if (rsp & 0xF) {
@@ -190,7 +237,6 @@ static void setupMainStack(ThreadState* state) {
 
     // End of environment variables
     rsp = stack_push(rsp, 0);
-
     for (int i = envc - 1; i >= 0; i--) {
         rsp = stack_push(rsp, envp_addresses[i]);
     }
@@ -207,6 +253,20 @@ static void setupMainStack(ThreadState* state) {
     ASSERT_MSG(rsp == final_rsp, "%lx == %lx", rsp, final_rsp);
     if (rsp & 0xF) {
         ERROR("Stack not aligned to 16 bytes");
+    }
+
+    prctl_mm_map map;
+    if (initializeMmMap(map)) {
+        map.arg_start = arg_start;
+        map.arg_end = arg_end;
+        map.env_start = env_start;
+        map.env_end = env_end;
+        int result = prctl(PR_SET_MM, PR_SET_MM_MAP, &map, sizeof(prctl_mm_map), 0L);
+        if (result != 0) {
+            WARN("Failed to run PR_SET_MM_MAP");
+        }
+    } else {
+        WARN("Failed to read /proc/self/stat");
     }
 
     u64 rsp_guest = rsp;
