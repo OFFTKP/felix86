@@ -1984,12 +1984,24 @@ void felix86_syscall(felix86_frame* frame) {
         case felix86_x86_64_arch_prctl: {
             switch (arg1) {
             case felix86_x86_64_ARCH_SET_GS: {
+                if (arg2 > mmap_max_addr()) {
+                    errno = EPERM; // TODO: when result is reworked, remove this
+                    result = -EPERM;
+                    break;
+                }
+
                 state->ctx.gs = 0;
                 state->ctx.gsbase = arg2;
                 result = 0;
                 break;
             }
             case felix86_x86_64_ARCH_SET_FS: {
+                if (arg2 > mmap_max_addr()) {
+                    errno = EPERM; // TODO: when result is reworked, remove this
+                    result = -EPERM;
+                    break;
+                }
+
                 state->ctx.fs = 0;
                 state->ctx.fsbase = arg2;
                 result = 0;

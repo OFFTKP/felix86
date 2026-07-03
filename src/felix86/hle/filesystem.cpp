@@ -901,7 +901,7 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
             return FdPath::create(fd, nullptr);
         }
 
-        if ((u64)path < mmap_min_addr()) {
+        if (!felix86_address_check((void*)path)) {
             ASSERT(path != nullptr);
             WARN("Tried to resolve bad path pointer: %lx", path);
             return FdPath::error(EFAULT);
