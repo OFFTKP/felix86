@@ -1190,8 +1190,6 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
 
         remote_state->ptrace_data.stop_info.signal = sig;
         remote_state->ptrace_data.injected.cont_type = PTRACE_CONT;
-        if (!remote_state->ptrace_data.stop_info.stopped) {
-        }
         remote_state.commit();
         // Skip the host signal from raise_stop
         int result = __ptrace(PTRACE_CONT, pid, 0, 0);
