@@ -725,11 +725,10 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
 
         if (!remote_state->ptrace_data.stop_info.stopped) {
             // Not in an official stop, so return ESRCH and warn
-            // This may be the case if the tracer doesn't properly waitpid, which should not happen in legit
-            // applications. It may be the case we are actually in a "stop", but only due to host effects
-            // and we don't want to run ptrace operations that require stopping at that time
-            HOSTPTRACELOG("Tried to run ptrace operation %d on %d, but it is not guest stopped", op, pid);
-            return -ESRCH;
+            // This may happen if a different thread than the tracer was already run a waitpid on the tracee
+            // We want to try to run the operation anyway, but this may be a host-side stop
+            // If this is a host signal-delivery-stop then we need to not raise the next guest signal-delivery-stop...
+            WARN("Tried to run ptrace operation %s on %d, but it is not guest stopped", guest_op_to_string(op), pid);
         }
 
         if (remote_state->ptrace_data.constants.tracer_pid != gettid()) {
@@ -1170,6 +1169,11 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
             return -EIO;
         }
 
+        if (sig > 0 && !remote_state->ptrace_data.stop_info.stopped) {
+            // TODO: handle this properly
+            WARN("Tracee is not guest stopped but continued with signal, this will cause a second signal-delivery-stop");
+        }
+
         if (sig != remote_state->ptrace_data.stop_info.signal && !remote_state->ptrace_data.injected.siginfo_changed) {
             // When the signal is changed and the siginfo isn't changed via PTRACE_SETSIGINFO
             // the siginfo value is changed as seen in signal.c SEND_SIG_NOINFO
@@ -1186,6 +1190,8 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
 
         remote_state->ptrace_data.stop_info.signal = sig;
         remote_state->ptrace_data.injected.cont_type = PTRACE_CONT;
+        if (!remote_state->ptrace_data.stop_info.stopped) {
+        }
         remote_state.commit();
         // Skip the host signal from raise_stop
         int result = __ptrace(PTRACE_CONT, pid, 0, 0);
