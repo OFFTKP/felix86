@@ -719,7 +719,7 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
     default: {
         remote_state = get_remote_state(pid);
         if (!remote_state) {
-            HOSTPTRACELOG("Tried to run ptrace operation %s on %d, but it is not stopped", guest_op_to_string(op), pid);
+            HOSTPTRACELOG("Tried to run ptrace operation %s on %d, but it is not stopped or not traced by us", guest_op_to_string(op), pid);
             return -ESRCH;
         }
 
