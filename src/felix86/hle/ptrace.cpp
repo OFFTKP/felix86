@@ -719,17 +719,15 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
     default: {
         remote_state = get_remote_state(pid);
         if (!remote_state) {
-            HOSTPTRACELOG("Tried to run ptrace operation %s on %d, but it is not stopped", guest_op_to_string(op), pid);
+            HOSTPTRACELOG("Tried to run ptrace operation %s on %d, but it is not stopped or not traced by us", guest_op_to_string(op), pid);
             return -ESRCH;
         }
 
         if (!remote_state->ptrace_data.stop_info.stopped) {
             // Not in an official stop, so return ESRCH and warn
-            // This may be the case if the tracer doesn't properly waitpid, which should not happen in legit
-            // applications. It may be the case we are actually in a "stop", but only due to host effects
-            // and we don't want to run ptrace operations that require stopping at that time
-            HOSTPTRACELOG("Tried to run ptrace operation %d on %d, but it is not guest stopped", op, pid);
-            return -ESRCH;
+            // This may happen if a different thread than the tracer was already run a waitpid on the tracee
+            // We want to try to run the operation anyway, but this may be a host-side stop
+            WARN("Tried to run ptrace operation %s on %d, but it is not guest stopped", guest_op_to_string(op), pid);
         }
 
         if (remote_state->ptrace_data.constants.tracer_pid != gettid()) {
@@ -1168,6 +1166,12 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
         if (sig < 0) {
             WARN("PTRACE_CONT with negative signal: %d", sig);
             return -EIO;
+        }
+
+        if (sig > 0 && !remote_state->ptrace_data.stop_info.stopped) {
+            // If this is a host signal-delivery-stop then we need to not raise the next guest signal-delivery-stop...
+            // TODO: handle this properly
+            WARN("Tracee is not guest stopped but continued with signal, this will cause a second signal-delivery-stop");
         }
 
         if (sig != remote_state->ptrace_data.stop_info.signal && !remote_state->ptrace_data.injected.siginfo_changed) {
