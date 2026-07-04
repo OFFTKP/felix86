@@ -727,7 +727,6 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
             // Not in an official stop, so return ESRCH and warn
             // This may happen if a different thread than the tracer was already run a waitpid on the tracee
             // We want to try to run the operation anyway, but this may be a host-side stop
-            // If this is a host signal-delivery-stop then we need to not raise the next guest signal-delivery-stop...
             WARN("Tried to run ptrace operation %s on %d, but it is not guest stopped", guest_op_to_string(op), pid);
         }
 
@@ -1170,6 +1169,7 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
         }
 
         if (sig > 0 && !remote_state->ptrace_data.stop_info.stopped) {
+            // If this is a host signal-delivery-stop then we need to not raise the next guest signal-delivery-stop...
             // TODO: handle this properly
             WARN("Tracee is not guest stopped but continued with signal, this will cause a second signal-delivery-stop");
         }
