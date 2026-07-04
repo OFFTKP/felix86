@@ -1662,6 +1662,11 @@ int Signals::sigprocmask(ThreadState* state, int how, sigset_t* set, sigset_t* o
     sigset_t old_guest_set = state->signal_mask;
     int result = 0;
     if (set) {
+        if (!felix86_address_check(set)) {
+            WARN("Bad address for set during sigprocmask: %lx", set);
+            return -EFAULT;
+        }
+
         if (how == SIG_BLOCK) {
             sigorset(&state->signal_mask, &state->signal_mask, set);
         } else if (how == SIG_UNBLOCK) {
@@ -1707,6 +1712,11 @@ int Signals::sigprocmask(ThreadState* state, int how, sigset_t* set, sigset_t* o
     }
 
     if (oldset) {
+        if (!felix86_address_check(oldset)) {
+            WARN("Bad address for oldset during sigprocmask: %lx", oldset);
+            return -EFAULT;
+        }
+
         memcpy(oldset, &old_guest_set, sizeof(u64));
     }
 
