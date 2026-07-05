@@ -43,8 +43,8 @@ static char doc[] = "felix86 - a userspace x86 and x86_64 emulator for RISC-V";
 static char args_doc[] = "TARGET_BINARY [TARGET_ARGS...]";
 
 static struct argp_option options[] = {
-    {"shell", 5, 0, 0, "Enter the rootfs through a shell"},
-    {"shell-debug", 6, 0, 0, "Enter the rootfs through a shell, enable logging"},
+    {"shell", 5, "PROGRAM", OPTION_ARG_OPTIONAL, "Enter the rootfs through a shell"},
+    {"shell-debug", 6, "PROGRAM", OPTION_ARG_OPTIONAL, "Enter the rootfs through a shell, enable logging"},
     {"info", 'i', 0, 0, "Print system info"},
     {"configs", 'c', 0, 0, "Print the emulator configurations"},
     {"kill-all", 'k', 0, 0, "Kill all open emulator instances"},
@@ -93,7 +93,7 @@ int print_system_info() {
     std::vector<const char*> args = {"fastfetch", "--structure", "cpu:gpu:host:distro:kernel:wm:memory", "--logo", "none", nullptr};
     pid_t pid;
     int status;
-    int ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    int ok = posix_spawnp(&pid, "fastfetch", nullptr, nullptr, (char**)args.data(), environ);
     if (ok != 0) {
         printf("Please install fastfetch for more information\n");
         return ok;
@@ -282,12 +282,18 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             ps1 = "PS1=felix86 > ";
         }
 
-        char* const argv[4] = {
-            self.data(),
-            path_string.data(),
-            norc.empty() ? nullptr : norc.data(),
-            nullptr,
-        };
+        std::string c = "-c";
+        std::vector<char*> argv;
+        argv.push_back(self.data());
+        argv.push_back(path_string.data());
+        if (!norc.empty()) {
+            argv.push_back(norc.data());
+        }
+        if (arg && arg[0] != 0) {
+            argv.push_back(c.data());
+            argv.push_back(arg);
+        }
+        argv.push_back(nullptr);
 
         std::string quiet = "FELIX86_QUIET=1";
         std::vector<char*> envp;
@@ -306,7 +312,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         }
         envp.push_back(nullptr);
 
-        (void)execve(self.c_str(), argv, envp.data());
+        (void)execve(self.c_str(), argv.data(), envp.data());
         printf("Failed to start %s, error: %s\n", path_string.c_str(), strerror(errno));
         exit(1);
         break;
