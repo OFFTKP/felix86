@@ -283,19 +283,17 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         }
 
         std::string c = "-c";
-        std::string program;
-        if (arg && arg[0] != 0) {
-            program = arg;
+        std::vector<char*> argv;
+        argv.push_back(self.data());
+        argv.push_back(path_string.data());
+        if (!norc.empty()) {
+            argv.push_back(norc.data());
         }
-
-        char* const argv[6] = {
-            self.data(),
-            path_string.data(),
-            norc.empty() ? nullptr : norc.data(),
-            program.empty() ? nullptr : c.data(),
-            program.empty() ? nullptr : program.data(),
-            nullptr,
-        };
+        if (arg && arg[0] != 0) {
+            argv.push_back(c.data());
+            argv.push_back(arg);
+        }
+        argv.push_back(nullptr);
 
         std::string quiet = "FELIX86_QUIET=1";
         std::vector<char*> envp;
@@ -314,7 +312,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         }
         envp.push_back(nullptr);
 
-        (void)execve(self.c_str(), argv, envp.data());
+        (void)execve(self.c_str(), argv.data(), envp.data());
         printf("Failed to start %s, error: %s\n", path_string.c_str(), strerror(errno));
         exit(1);
         break;
