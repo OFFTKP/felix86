@@ -282,13 +282,19 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             ps1 = "PS1=felix86 > ";
         }
 
+        std::string c = "-c";
         std::string program;
         if (arg && arg[0] != 0) {
-            program = "-c \"" + std::string(arg) + "\"";
+            program = arg;
         }
 
-        char* const argv[5] = {
-            self.data(), path_string.data(), norc.empty() ? nullptr : norc.data(), program.empty() ? nullptr : program.data(), nullptr,
+        char* const argv[6] = {
+            self.data(),
+            path_string.data(),
+            norc.empty() ? nullptr : norc.data(),
+            program.empty() ? nullptr : c.data(),
+            program.empty() ? nullptr : program.data(),
+            nullptr,
         };
 
         std::string quiet = "FELIX86_QUIET=1";
