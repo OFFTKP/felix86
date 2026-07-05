@@ -93,7 +93,7 @@ int print_system_info() {
     std::vector<const char*> args = {"fastfetch", "--structure", "cpu:gpu:host:distro:kernel:wm:memory", "--logo", "none", nullptr};
     pid_t pid;
     int status;
-    int ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    int ok = posix_spawnp(&pid, "fastfetch", nullptr, nullptr, (char**)args.data(), environ);
     if (ok != 0) {
         printf("Please install fastfetch for more information\n");
         return ok;
