@@ -944,12 +944,6 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
     }
 
     std::filesystem::path resolve_me = std::filesystem::path(path).relative_path();
-
-    // If there's trailing slashes it will cause empty components which we'll remove
-    while (resolve_me.filename().empty()) {
-        resolve_me = resolve_me.parent_path();
-    }
-
     std::deque<std::string> components;
     for (auto& entry : resolve_me) {
         components.push_back(entry);
