@@ -43,8 +43,8 @@ static char doc[] = "felix86 - a userspace x86 and x86_64 emulator for RISC-V";
 static char args_doc[] = "TARGET_BINARY [TARGET_ARGS...]";
 
 static struct argp_option options[] = {
-    {"shell", 5, 0, 0, "Enter the rootfs through a shell"},
-    {"shell-debug", 6, 0, 0, "Enter the rootfs through a shell, enable logging"},
+    {"shell", 5, "PROGRAM", OPTION_ARG_OPTIONAL, "Enter the rootfs through a shell"},
+    {"shell-debug", 6, "PROGRAM", OPTION_ARG_OPTIONAL, "Enter the rootfs through a shell, enable logging"},
     {"info", 'i', 0, 0, "Print system info"},
     {"configs", 'c', 0, 0, "Print the emulator configurations"},
     {"kill-all", 'k', 0, 0, "Kill all open emulator instances"},
@@ -284,7 +284,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
 
         std::string program;
         if (arg && arg[0] != 0) {
-            program = "-c " + std::string(arg);
+            program = "-c \"" + std::string(arg) + "\"";
         }
 
         char* const argv[5] = {
