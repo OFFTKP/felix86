@@ -10651,6 +10651,7 @@ FAST_HANDLE(PUSHFQ) {
 }
 
 FAST_HANDLE(POPFQ) {
+    WARN("POPFQ at %lx", rip);
     rec.flushX87(); // It's possible we have to run C++ code if trap flag is set, so flush here
     int size = instruction.operand_width;
     biscuit::GPR flags = rec.scratch();
