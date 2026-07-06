@@ -1,6 +1,7 @@
 #include <array>
 #include <span>
 #include <fcntl.h>
+#include <sys/syscall.h>
 #include "felix86/common/config.hpp"
 #include "felix86/common/feature.hpp"
 #include "felix86/common/global.hpp"
