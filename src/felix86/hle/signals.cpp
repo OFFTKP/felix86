@@ -1122,7 +1122,7 @@ static void defer_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx
     }
     u64 pc = get_pc(ctx);
     RegisteredSignal* signal = SignalHandlerTable::getRegisteredSignal(state->signal_table, sig);
-    if (state->in_restartable_syscall && (signal->flags & SA_RESTART) && *((u32*)(pc - 4)) == ecall && get_regs(ctx)[biscuit::a0.Index()] == -EINTR) {
+    if (state->in_restartable_syscall && (signal->flags & SA_RESTART) && *((u32*)(pc - 4)) == ecall && get_regs(ctx)[biscuit::a0.Index()] == static_cast<u64>(-EINTR)) {
         state->should_restart_syscall = true;
     }
     state->deferred_signals |= 1ull << index;
