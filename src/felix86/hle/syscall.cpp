@@ -364,7 +364,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
                 }
                 sockaddr_un addr = {0};
                 addr.sun_family = AF_UNIX;
-                strncpy(addr.sun_path, socket_path.full_path(), sizeof(addr.sun_path));
+                strncpy(addr.sun_path, socket_path.full_path(), sizeof(addr.sun_path) - 1);
                 size_t addrlen = offsetof(sockaddr_un, sun_path) + strlen(addr.sun_path) + 1;
 
                 result = SYSCALL(bind, arg1, &addr, addrlen);
@@ -969,7 +969,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
                 }
                 sockaddr_un addr = {0};
                 addr.sun_family = AF_UNIX;
-                strncpy(addr.sun_path, socket_path.full_path(), sizeof(addr.sun_path));
+                strncpy(addr.sun_path, socket_path.full_path(), sizeof(addr.sun_path) - 1);
                 size_t addrlen = offsetof(sockaddr_un, sun_path) + strlen(addr.sun_path) + 1;
 
                 result = SYSCALL(connect, arg1, &addr, addrlen);
