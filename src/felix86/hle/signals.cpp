@@ -249,7 +249,7 @@ struct x64_rt_sigframe {
     // fp state follows here
 };
 
-struct x86_sigcontext_32 {
+struct __attribute__((packed)) x86_sigcontext_32 {
     u16 gs, __gsh;
     u16 fs, __fsh;
     u16 es, __esh;
