@@ -437,7 +437,7 @@ struct ThreadState {
     int SetUserDesc(x86_user_desc* udesc) {
         ASSERT(udesc);
         u32 index = udesc->entry_number;
-        if (index == -1) {
+        if (index == -1u) {
             for (int i = 12; i < 15; i++) {
                 if (gdt[i] == 0) {
                     index = i;
@@ -445,7 +445,7 @@ struct ThreadState {
                 }
             }
 
-            if (index == -1) {
+            if (index == -1u) {
                 WARN("Failed search for empty gdt slot");
                 return -ESRCH;
             }

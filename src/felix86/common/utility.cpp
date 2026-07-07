@@ -1406,7 +1406,7 @@ std::string felix86_maps() {
     char buffer[PATH_MAX];
     std::string srootfs_path = g_config.rootfs_path;
     while (std::getline(ifs, line)) {
-        int result = sscanf(line.c_str(), "%*lx-%*lx %*s %*s %*s %*s %s", buffer);
+        int result = sscanf(line.c_str(), "%*x-%*x %*s %*s %*s %*s %s", buffer);
         if (result == 1) {
             if (line.find(srootfs_path) != std::string::npos) {
                 // Remove rootfs path from the line, if it exists

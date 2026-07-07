@@ -437,7 +437,7 @@ Config Config::load(const std::filesystem::path& path, bool ignore_envs) {
 
 #define X(group, type, name, default_value, env_name, description)                                                                                   \
     {                                                                                                                                                \
-        bool loaded = false;                                                                                                                         \
+        [[maybe_unused]] bool loaded = false;                                                                                                        \
         const char* env = getenv(#env_name);                                                                                                         \
         if (env && !ignore_envs) {                                                                                                                   \
             loaded = loadFromEnv<type>(config, config.name, env);                                                                                    \

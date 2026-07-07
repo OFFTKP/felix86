@@ -54,7 +54,6 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffixed-gp")
 endif()
 
-
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 cmake_policy(SET CMP0083 NEW)
 include(CheckPIESupported)
@@ -81,9 +80,6 @@ if (FELIX86_BUILD_THUNKING)
 else()
     message("Building without thunking support")
 endif()
-
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=implicit-fallthrough -Werror=incompatible-pointer-types -Wall -fPIE")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=implicit-fallthrough -Wall -Werror=switch -fPIE")
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
@@ -167,6 +163,9 @@ add_library(felix86_core STATIC)
 target_sources(felix86_core PRIVATE ${FELIX86_CORE_SOURCES})
 target_include_directories(felix86_core PUBLIC ${FELIX86_INCLUDES})
 target_link_libraries(felix86_core PUBLIC Zydis fmt tomlc17 biscuit berkeley-softfloat git_version x64_vdso)
+
+target_compile_options(felix86_core PRIVATE -Wall -Werror=implicit-fallthrough -Werror=switch -fPIE)
+target_compile_options(felix86_core PRIVATE $<$<COMPILE_LANGUAGE:C>:-Werror=incompatible-pointer-types>)
 
 if (FELIX86_MONTHLY_RELEASE)
     message("Building as a monthly release")
