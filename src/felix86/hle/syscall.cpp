@@ -2165,6 +2165,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
     } else if (syscall_number == felix86_x86_32_sigreturn) {
         STRACE("sigreturn: {}");
         Signals::sigreturn(frame->state, false);
+        return;
     }
 
     Result result;
