@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <system_error>
 #include <fcntl.h>
+#include <linux/limits.h>
 #include <linux/openat2.h>
 #include <sys/inotify.h>
 #include <sys/mman.h>
@@ -544,9 +545,10 @@ std::filesystem::path create_unique_mount_path() {
     }
 
     std::filesystem::path path = g_mounts_path / ("mount." + std::to_string(gettid()) + ".XXXXXX");
-    char buffer[PATH_MAX];
+    char buffer[PATH_MAX + 1];
     ASSERT(path.string().size() < PATH_MAX);
     strncpy(buffer, path.c_str(), PATH_MAX);
+    buffer[PATH_MAX] = 0;
     char* dir = mkdtemp(buffer);
     ASSERT_MSG(dir == buffer, "Couldn't mkdtemp at %s", buffer);
     return dir;
