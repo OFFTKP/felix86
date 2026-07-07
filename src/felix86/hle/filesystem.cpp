@@ -1127,7 +1127,7 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
                         ASSERT(result2 < 0 && result1 > 0);
 
                         // So this is a magic-link. Append it to the path without resolving it and continue to the next component
-                        ASSERT(result2_error == ELOOP); // this is how openat2 should fail when a component is a magic-link
+                        ASSERT_MSG(result2_error == ELOOP, "Unexpected error during openat2: %d", result2_error);
 
                         // Finally do what we need, don't resolve and append it to the path
                         current_relative_path = current_relative_path / current_component;
