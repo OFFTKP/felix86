@@ -3227,7 +3227,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                         }
                         sockaddr_un addr = {0};
                         addr.sun_family = AF_UNIX;
-                        strncpy(addr.sun_path, socket_path.full_path(), sizeof(addr.sun_path));
+                        strncpy(addr.sun_path, socket_path.full_path(), sizeof(addr.sun_path) - 1);
                         size_t addrlen = offsetof(sockaddr_un, sun_path) + strlen(addr.sun_path) + 1;
 
                         result = ::bind(args[0], (sockaddr*)&addr, addrlen);
@@ -3250,7 +3250,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                         }
                         sockaddr_un addr = {0};
                         addr.sun_family = AF_UNIX;
-                        strncpy(addr.sun_path, socket_path.full_path(), sizeof(addr.sun_path));
+                        strncpy(addr.sun_path, socket_path.full_path(), sizeof(addr.sun_path) - 1);
                         size_t addrlen = offsetof(sockaddr_un, sun_path) + strlen(addr.sun_path) + 1;
 
                         result = ::connect(args[0], (sockaddr*)&addr, addrlen);
