@@ -8,4 +8,4 @@ enum ExitReason : uint8_t {
     EXIT_REASON_GUEST_CODE_FINISHED = 4,
 };
 
-void felix86_exit(int code);
+[[noreturn]] void felix86_exit(int code);
