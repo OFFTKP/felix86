@@ -109,12 +109,13 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
         } else {
             int fd = open("/proc/device-tree/cpus/cpu@0/model", O_RDONLY);
             if (fd != -1) {
-                char buffer[48];
+                char fmt[] = "%s on %s";
+                char buffer[sizeof(cpu_name) - sizeof(fmt)];
                 int bytes_read = read(fd, buffer, sizeof(buffer) - 1);
                 if (bytes_read != -1) {
                     buffer[bytes_read] = 0;
                     std::string version = get_version_full();
-                    snprintf(cpu_name, sizeof(cpu_name), "%s on %s", version.c_str(), buffer);
+                    snprintf(cpu_name, sizeof(cpu_name), fmt, version.c_str(), buffer);
                     cpu_name_set = true;
                 }
                 ASSERT(close(fd) == 0);
