@@ -22,7 +22,6 @@
 #include "felix86/emulator.hpp"
 #include "felix86/hle/signals.hpp"
 #include "felix86/hle/thunks.hpp"
-#include "tomlc17.h"
 
 #if !defined(__riscv)
 #pragma message("You are compiling for x86-64, felix86 should only be compiled for RISC-V, are you sure you want to do this?")
@@ -46,10 +45,10 @@ static char doc[] = "felix86 - a userspace x86 and x86_64 emulator for RISC-V";
 static char args_doc[] = "TARGET_BINARY [TARGET_ARGS...]";
 
 static struct argp_option options[] = {
-    {"shell", 0, "PROGRAM", OPTION_ARG_OPTIONAL, "Enter the rootfs through a shell"},
-    {"shell-debug", -1, "PROGRAM", OPTION_ARG_OPTIONAL, "Enter the rootfs through a shell, enable logging"},
-    {"get-config", -2, "<GROUP.CONFIG>", 0, "Get a config value from the local felix configuration file. Format is '<group.config>'"},
-    {"set-config", -3, "<GROUP.CONFIG>=<VALUE>", 0, "Set a config value and store it into the local felix configuration. Format is '<group.config> <value>'"},
+    {"shell", -1, "PROGRAM", OPTION_ARG_OPTIONAL, "Enter the rootfs through a shell"},
+    {"shell-debug", -2, "PROGRAM", OPTION_ARG_OPTIONAL, "Enter the rootfs through a shell, enable logging"},
+    {"get-config", -3, "<GROUP.CONFIG>", 0, "Get a config value from the local felix configuration file. Format is '<group.config>'"},
+    {"set-config", -4, "<GROUP.CONFIG>=<VALUE>", 0, "Set a config value and store it into the local felix configuration. Format is '<group.config>=<value>'"},
     {"info", 'i', 0, 0, "Print system info"},
     {"configs", 'c', 0, 0, "Print the emulator configurations"},
     {"kill-all", 'k', 0, 0, "Kill all open emulator instances"},
@@ -191,11 +190,11 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     bool shell_logging = false;
 
     switch (key) {
-    case 0: {
+    case -1: {
         shell_logging = true;
         [[fallthrough]];
     }
-    case -1: {
+    case -2: {
         std::error_code ec;
         Config::initialize();
         if (!g_config.no_rootfs) {
@@ -322,7 +321,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         exit(1);
         break;
     }
-    case -2: {
+    case -3: {
         // get-config
         ASSERT(Config::initialize(true));
         std::string group{};
@@ -346,14 +345,14 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         std::optional<std::string> get = g_config.getConfigString(group.c_str(), field.c_str());
         if (get.has_value()) {
             printf("%s\n", get.value().c_str());
-            exit(1);
+            exit(0);
         } else {
             ERROR("%s.%s is not a valid config tuple\n", group.c_str(), field.c_str());
         }
 
         break;
     }
-    case -3: {
+    case -4: {
         // set-config
         ASSERT(Config::initialize(true));
         std::string group{};
@@ -365,14 +364,14 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             group.push_back(c); 
         }
         if (c != '.' || group.empty()) {
-            ERROR("expected argument to get-config to be in the format of '<GROUP.CONFIG>=<VALUE>'");
+            ERROR("expected argument to set-config to be in the format of '<GROUP.CONFIG>=<VALUE>'");
         }
 
         while(arg != NULL && (c = *arg++) && c != '=') {
             field.push_back(c); 
         }
         if (c != '=' || field.empty()) {
-            ERROR("expected argument to get-config to be in the format of '<GROUP.CONFIG>=<VALUE>'");
+            ERROR("expected argument to set-config to be in the format of '<GROUP.CONFIG>=<VALUE>'");
         }
 
         while(arg != NULL && (c = *arg++)) {
@@ -382,7 +381,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
 
         if (g_config.setConfigString(group.c_str(), field.c_str(), value.c_str())) {
             Config::save(g_config.path(), g_config);
-            exit(1);
+            exit(0);
         } else {
             ERROR("%s.%s is not a valid config tuple, or %s is not a valid value for the configuration\n", group.c_str(), field.c_str(), value.c_str());
         }
