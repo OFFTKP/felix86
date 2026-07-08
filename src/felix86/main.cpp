@@ -1,3 +1,5 @@
+#include <cstddef>
+#include <cstdio>
 #include <fstream>
 #include <argp.h>
 #include <dirent.h>
@@ -20,6 +22,7 @@
 #include "felix86/emulator.hpp"
 #include "felix86/hle/signals.hpp"
 #include "felix86/hle/thunks.hpp"
+#include "tomlc17.h"
 
 #if !defined(__riscv)
 #pragma message("You are compiling for x86-64, felix86 should only be compiled for RISC-V, are you sure you want to do this?")
@@ -43,8 +46,10 @@ static char doc[] = "felix86 - a userspace x86 and x86_64 emulator for RISC-V";
 static char args_doc[] = "TARGET_BINARY [TARGET_ARGS...]";
 
 static struct argp_option options[] = {
-    {"shell", 5, "PROGRAM", OPTION_ARG_OPTIONAL, "Enter the rootfs through a shell"},
-    {"shell-debug", 6, "PROGRAM", OPTION_ARG_OPTIONAL, "Enter the rootfs through a shell, enable logging"},
+    {"shell", 0, "PROGRAM", OPTION_ARG_OPTIONAL, "Enter the rootfs through a shell"},
+    {"shell-debug", -1, "PROGRAM", OPTION_ARG_OPTIONAL, "Enter the rootfs through a shell, enable logging"},
+    {"get-config", -2, "<GROUP.CONFIG>", 0, "Get a config value from the local felix configuration file. Format is '<group.config>'"},
+    {"set-config", -3, "<GROUP.CONFIG>=<VALUE>", 0, "Set a config value and store it into the local felix configuration. Format is '<group.config> <value>'"},
     {"info", 'i', 0, 0, "Print system info"},
     {"configs", 'c', 0, 0, "Print the emulator configurations"},
     {"kill-all", 'k', 0, 0, "Kill all open emulator instances"},
@@ -186,11 +191,11 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     bool shell_logging = false;
 
     switch (key) {
-    case 6: {
+    case 0: {
         shell_logging = true;
         [[fallthrough]];
     }
-    case 5: {
+    case -1: {
         std::error_code ec;
         Config::initialize();
         if (!g_config.no_rootfs) {
@@ -315,6 +320,73 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         (void)execve(self.c_str(), argv.data(), envp.data());
         printf("Failed to start %s, error: %s\n", path_string.c_str(), strerror(errno));
         exit(1);
+        break;
+    }
+    case -2: {
+        // get-config
+        ASSERT(Config::initialize(true));
+        std::string group{};
+        std::string field{};
+
+        char c = 0;
+        while(arg != NULL && (c = *arg++) && c != '.') {
+            group.push_back(c); 
+        }
+        if (c != '.' || group.empty()) {
+            ERROR("expected argument to get-config to be in the format of '<GROUP.CONFIG>'");
+        }
+
+        while(arg != NULL && (c = *arg++)) {
+            field.push_back(c); 
+        }
+        if (field.empty()) {
+            ERROR("expected argument to get-config to be in the format of '<GROUP.CONFIG>'");
+        }
+
+        std::optional<std::string> get = g_config.getConfigString(group.c_str(), field.c_str());
+        if (get.has_value()) {
+            printf("%s\n", get.value().c_str());
+            exit(1);
+        } else {
+            ERROR("%s.%s is not a valid config tuple\n", group.c_str(), field.c_str());
+        }
+
+        break;
+    }
+    case -3: {
+        // set-config
+        ASSERT(Config::initialize(true));
+        std::string group{};
+        std::string field{};
+        std::string value{};
+
+        char c = 0;
+        while(arg != NULL && (c = *arg++) && c != '.') {
+            group.push_back(c); 
+        }
+        if (c != '.' || group.empty()) {
+            ERROR("expected argument to get-config to be in the format of '<GROUP.CONFIG>=<VALUE>'");
+        }
+
+        while(arg != NULL && (c = *arg++) && c != '=') {
+            field.push_back(c); 
+        }
+        if (c != '=' || field.empty()) {
+            ERROR("expected argument to get-config to be in the format of '<GROUP.CONFIG>=<VALUE>'");
+        }
+
+        while(arg != NULL && (c = *arg++)) {
+            value.push_back(c); 
+        }        
+        // value can be an empty string
+
+        if (g_config.setConfigString(group.c_str(), field.c_str(), value.c_str())) {
+            Config::save(g_config.path(), g_config);
+            exit(1);
+        } else {
+            ERROR("%s.%s is not a valid config tuple, or %s is not a valid value for the configuration\n", group.c_str(), field.c_str(), value.c_str());
+        }
+
         break;
     }
     case 'i': {
