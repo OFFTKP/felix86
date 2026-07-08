@@ -3552,7 +3552,6 @@ void Recompiler::popX87() {
 
         popScratch();
         popScratch();
-        popScratch();
     }
 
     x87_reg_cache[0].loaded = false;

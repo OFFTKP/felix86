@@ -38,7 +38,7 @@ void felix86_fsave_16(const UserContext& ctx, void* address) {
     }
 
     data->cw = ctx.fpu_cw;
-    data->tw = tw_8_to_16(ctx.tw);
+    data->tw = tw_8_to_16(ctx.fpu_tw);
     data->sw = (ctx.fpu_top << 11) | (ctx.fpu_sw & ~(0b111 << 11));
 
     // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
@@ -63,7 +63,7 @@ void felix86_fsave_32(const UserContext& ctx, void* address) {
     }
 
     data->cw = ctx.fpu_cw;
-    data->tw = tw_8_to_16(ctx.tw);
+    data->tw = tw_8_to_16(ctx.fpu_tw);
     data->sw = (ctx.fpu_top << 11) | (ctx.fpu_sw & ~(0b111 << 11));
 
     // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
@@ -78,7 +78,7 @@ void felix86_frstor_16(UserContext& ctx, void* address) {
 
     ctx.fpu_top = (data->sw >> 11) & 0b111;
     ctx.fpu_cw = data->cw;
-    ctx.tw = tw_16_to_8(data->tw);
+    ctx.fpu_tw = tw_16_to_8(data->tw);
     ctx.fpu_sw = data->sw;
     ctx.rmode_x87 = rounding_mode(x86RoundingMode((ctx.fpu_cw >> 10) & 0b11));
 
@@ -97,7 +97,7 @@ void felix86_frstor_32(UserContext& ctx, void* address) {
 
     ctx.fpu_top = (data->sw >> 11) & 0b111;
     ctx.fpu_cw = data->cw;
-    ctx.tw = tw_16_to_8(data->tw);
+    ctx.fpu_tw = tw_16_to_8(data->tw);
     ctx.fpu_sw = data->sw;
     ctx.rmode_x87 = rounding_mode(x86RoundingMode((ctx.fpu_cw >> 10) & 0b11));
 
@@ -137,7 +137,7 @@ void felix86_fxsave(const UserContext& ctx, void* address, bool save_x87, bool s
             }
         }
 
-        data->ftw = ctx.tw;
+        data->ftw = ctx.fpu_tw;
         data->fcw = ctx.fpu_cw;
         data->fsw = (ctx.fpu_top << 11) | (ctx.fpu_sw & ~(0b111 << 11));
 
@@ -165,7 +165,7 @@ void felix86_fxrstor(UserContext& ctx, void* address, bool restore_x87, bool res
     }
 
     if (restore_x87) {
-        ctx.tw = data->ftw;
+        ctx.fpu_tw = data->ftw;
         ctx.fpu_cw = data->fcw;
         ctx.fpu_sw = data->fsw;
         ctx.fpu_top = (data->fsw >> 11) & 7;
