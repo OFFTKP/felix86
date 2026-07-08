@@ -26,7 +26,7 @@ struct fenv_data_32 {
 
 static_assert(sizeof(fenv_data_32) == 28);
 
-u8 tw_16_to_8(u16 tw) {
+static u8 tw_16_to_8(u16 tw) {
     u8 ret = 0;
     for (int i = 0; i < 8; i++) {
         if (((tw >> (i * 2)) & 0b11) == 0b11) {
@@ -37,7 +37,7 @@ u8 tw_16_to_8(u16 tw) {
 }
 
 // TODO: check for zero/nan
-u16 tw_8_to_16(u8 tw) {
+static u16 tw_8_to_16(u8 tw) {
     u16 ret = 0;
     for (int i = 0; i < 8; i++) {
         if (((tw >> i) & 0b1) == 0b1) {
