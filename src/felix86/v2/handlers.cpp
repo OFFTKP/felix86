@@ -8574,7 +8574,7 @@ FAST_HANDLE(EMMS) {
     // Set FPU tag word to empty
     biscuit::GPR ones = rec.scratch();
     as.LI(ones, -1);
-    as.SH(ones, offsetof(ThreadState, ctx.fpu_tw), rec.threadStatePointer());
+    as.SB(ones, offsetof(ThreadState, ctx.fpu_tw), rec.threadStatePointer());
     rec.switchToX87();
 }
 
@@ -11950,7 +11950,7 @@ FAST_HANDLE(FNINIT) {
     as.SH(temp, offsetof(ThreadState, ctx.fpu_cw), Recompiler::threadStatePointer());
 
     as.LI(temp, -1);
-    as.SH(temp, offsetof(ThreadState, ctx.fpu_tw), Recompiler::threadStatePointer());
+    as.SB(temp, offsetof(ThreadState, ctx.fpu_tw), Recompiler::threadStatePointer());
 
     as.SB(x0, offsetof(ThreadState, ctx.fpu_top), Recompiler::threadStatePointer());
 

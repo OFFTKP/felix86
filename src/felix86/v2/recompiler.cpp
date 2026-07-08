@@ -661,10 +661,9 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
         if (is_mmx) {
             if (!ran_mmx_once) {
                 // Set FPU tag word to valid for the first MMX instruction in this block
-                as.SH(x0, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
+                as.SB(x0, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
             }
             ran_mmx_once = true;
-            ASSERT_MSG(Extensions::V, "TODO: Implement MMX for no RVV");
             WARN_ONCE("This program makes use of MMX");
             if (local_x87_state != x87State::MMX) {
                 if (local_x87_state == x87State::x87) {
@@ -807,7 +806,7 @@ void Recompiler::flushX87() {
                 top = getTOP();
                 tag_word = scratch();
                 if (x87_reg_cache[i].modify_tag) {
-                    as.LHU(tag_word, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
+                    as.LBU(tag_word, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
                     tag_dirty = true;
                 }
                 top_got = true;
@@ -822,10 +821,7 @@ void Recompiler::flushX87() {
             if (x87_reg_cache[i].modify_tag) {
                 ASSERT(pushed_this_block > 0);
                 ASSERT(tag_word != x0);
-                as.LI(address, 0b11);
-                as.SLLI(st, st, 1);
-                as.SLL(address, address, st);
-                as.ANDN(tag_word, tag_word, address);
+                as.BCLR(tag_word, tag_word, st);
             }
             x87_dirty = true;
         }
@@ -851,7 +847,7 @@ void Recompiler::flushX87() {
 
     if (top_got) {
         if (tag_dirty) {
-            as.SH(tag_word, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
+            as.SB(tag_word, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
         }
         popScratch();
         popScratch();
@@ -3544,20 +3540,15 @@ void Recompiler::popX87() {
     } else {
         // Popping more than we push, needs manual top/ftw adjustment
         biscuit::GPR ftw = scratch();
-        biscuit::GPR mask = scratch();
         biscuit::GPR top = getTOP();
 
-        as.LI(mask, 0b11);
-        as.SLLI(ftw, top, 1);
-        as.SLL(mask, mask, ftw);
+        as.LHU(ftw, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
+        as.BSET(ftw, ftw, top);
+        as.SH(ftw, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
 
         as.ADDI(top, top, 1);
         as.ANDI(top, top, 0b111);
         setTOP(top);
-
-        as.LHU(ftw, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
-        as.OR(ftw, ftw, mask);
-        as.SH(ftw, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
 
         popScratch();
         popScratch();
