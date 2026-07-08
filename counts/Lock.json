@@ -187,7 +187,7 @@
             "ANDI            t2, t3, 0x3(3)",
             "ADDIW           t4, zero, 0x3(3)",
             "BNE             t2, t4, 0x28(40)",
-            "ADDI            t2, gp, 0x3b8(952)",
+            "ADDI            t2, gp, 0x3c8(968)",
             "ADDIW           t4, zero, 0x1(1)",
             "AMOADD.D        zero, t2, t4, aq, rl",
             "FENCE          ",
@@ -344,7 +344,7 @@
             "LWU             t4, ra, 0x0(0)",
             "SW              t1, ra, 0x0(0)",
             "FENCE          ",
-            "ADDI            t2, gp, 0x3b8(952)",
+            "ADDI            t2, gp, 0x3c8(968)",
             "ADDIW           t3, zero, 0x1(1)",
             "AMOADD.D        zero, t2, t3, aq, rl",
             "ADD.UW          t0, t4, zero"
@@ -364,7 +364,7 @@
             "LD              t3, ra, 0x0(0)",
             "SD              t0, ra, 0x0(0)",
             "FENCE          ",
-            "ADDI            t4, gp, 0x3b8(952)",
+            "ADDI            t4, gp, 0x3c8(968)",
             "ADDIW           t1, zero, 0x1(1)",
             "AMOADD.D        zero, t4, t1, aq, rl",
             "ADDI            t0, t3, 0x0(0)"

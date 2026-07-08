@@ -864,79 +864,79 @@ bool felix86_btc(u64 address, i64 offset) {
 
 void felix86_fsin(ThreadState* state) {
     double boop;
-    memcpy(&boop, &state->ctx.fp[TOP(0)], sizeof(double));
+    memcpy(&boop, &state->ctx.st[TOP(0)], sizeof(double));
     double result = ::sin(boop);
-    memcpy(&state->ctx.fp[TOP(0)], &result, sizeof(double));
+    memcpy(&state->ctx.st[TOP(0)], &result, sizeof(double));
     state->ctx.fpu_sw &= ~C2_BIT;
 }
 
 void felix86_fcos(ThreadState* state) {
     double boop;
-    memcpy(&boop, &state->ctx.fp[TOP(0)], sizeof(double));
+    memcpy(&boop, &state->ctx.st[TOP(0)], sizeof(double));
     double result = ::cos(boop);
-    memcpy(&state->ctx.fp[TOP(0)], &result, sizeof(double));
+    memcpy(&state->ctx.st[TOP(0)], &result, sizeof(double));
     state->ctx.fpu_sw &= ~C2_BIT;
 }
 
 void felix86_fsincos(ThreadState* state) {
     double boop;
-    memcpy(&boop, &state->ctx.fp[TOP(0)], sizeof(double));
+    memcpy(&boop, &state->ctx.st[TOP(0)], sizeof(double));
     state->ctx.fpu_top -= 1;
     state->ctx.fpu_top &= 0b111;
     state->ctx.fpu_tw &= ~(0b1 << state->ctx.fpu_top);
-    sincos(boop, (double*)&state->ctx.fp[TOP(1)], (double*)&state->ctx.fp[TOP(0)]);
+    sincos(boop, (double*)&state->ctx.st[TOP(1)], (double*)&state->ctx.st[TOP(0)]);
     state->ctx.fpu_sw &= ~C2_BIT;
 }
 
 void felix86_fptan(ThreadState* state) {
     double st0;
-    memcpy(&st0, &state->ctx.fp[TOP(0)], sizeof(double));
+    memcpy(&st0, &state->ctx.st[TOP(0)], sizeof(double));
     double result = ::tan(st0);
-    memcpy(&state->ctx.fp[TOP(0)], &result, sizeof(double));
+    memcpy(&state->ctx.st[TOP(0)], &result, sizeof(double));
     state->ctx.fpu_sw &= ~C2_BIT;
 }
 
 void felix86_fpatan(ThreadState* state) {
     double st0, st1;
-    memcpy(&st0, &state->ctx.fp[TOP(0)], sizeof(double));
-    memcpy(&st1, &state->ctx.fp[TOP(1)], sizeof(double));
+    memcpy(&st0, &state->ctx.st[TOP(0)], sizeof(double));
+    memcpy(&st1, &state->ctx.st[TOP(1)], sizeof(double));
     double result = ::atan2(st1, st0);
-    memcpy(&state->ctx.fp[TOP(1)], &result, sizeof(double));
+    memcpy(&state->ctx.st[TOP(1)], &result, sizeof(double));
 }
 
 void felix86_f2xm1(ThreadState* state) {
     double st0;
-    memcpy(&st0, &state->ctx.fp[TOP(0)], sizeof(double));
+    memcpy(&st0, &state->ctx.st[TOP(0)], sizeof(double));
     double result = ::expm1(M_LN2 * st0);
-    memcpy(&state->ctx.fp[TOP(0)], &result, sizeof(double));
+    memcpy(&state->ctx.st[TOP(0)], &result, sizeof(double));
 }
 
 void felix86_fscale(ThreadState* state) {
     double st0, st1, result;
-    memcpy(&st0, &state->ctx.fp[TOP(0)], sizeof(double));
+    memcpy(&st0, &state->ctx.st[TOP(0)], sizeof(double));
     if (st0 == 0) {
         result = 0.0;
     } else {
-        memcpy(&st1, &state->ctx.fp[TOP(1)], sizeof(double));
+        memcpy(&st1, &state->ctx.st[TOP(1)], sizeof(double));
         result = st0 * ::exp2(trunc(st1));
     }
-    memcpy(&state->ctx.fp[TOP(0)], &result, sizeof(double));
+    memcpy(&state->ctx.st[TOP(0)], &result, sizeof(double));
 }
 
 void felix86_fyl2x(ThreadState* state) {
     double st0, st1;
-    memcpy(&st0, &state->ctx.fp[TOP(0)], sizeof(double));
-    memcpy(&st1, &state->ctx.fp[TOP(1)], sizeof(double));
+    memcpy(&st0, &state->ctx.st[TOP(0)], sizeof(double));
+    memcpy(&st1, &state->ctx.st[TOP(1)], sizeof(double));
     double result = st1 * log2(st0);
-    memcpy(&state->ctx.fp[TOP(1)], &result, sizeof(double));
+    memcpy(&state->ctx.st[TOP(1)], &result, sizeof(double));
 }
 
 void felix86_fyl2xp1(ThreadState* state) {
     double st0, st1;
-    memcpy(&st0, &state->ctx.fp[TOP(0)], sizeof(double));
-    memcpy(&st1, &state->ctx.fp[TOP(1)], sizeof(double));
+    memcpy(&st0, &state->ctx.st[TOP(0)], sizeof(double));
+    memcpy(&st1, &state->ctx.st[TOP(1)], sizeof(double));
     double result = (st1 * log1p(st0)) / M_LN2;
-    memcpy(&state->ctx.fp[TOP(1)], &result, sizeof(double));
+    memcpy(&state->ctx.st[TOP(1)], &result, sizeof(double));
 }
 
 template <class Int, int Count = 128 / (sizeof(Int) * 8), int UpperBound = Count - 1 /* 7 or 15 */, u32 Mask = (1u << Count) - 1u>
@@ -1286,8 +1286,8 @@ void felix86_set_segment(ThreadState* state, u64 value, int segment) {
 }
 
 void felix86_fprem(ThreadState* state) {
-    const u64 st0 = state->ctx.fp[TOP(0)];
-    const u64 st1 = state->ctx.fp[TOP(1)];
+    const u64 st0 = state->ctx.st[TOP(0)].significand;
+    const u64 st1 = state->ctx.st[TOP(1)].significand;
     double st0d, st1d;
     memcpy(&st0d, &st0, 8);
     memcpy(&st1d, &st1, 8);
@@ -1309,11 +1309,11 @@ void felix86_fprem(ThreadState* state) {
     }
 
     // Writeback the new ST(0) value
-    memcpy(&state->ctx.fp[TOP(0)], &st0d, 8);
+    memcpy(&state->ctx.st[TOP(0)], &st0d, 8);
 }
 
 void felix86_fxam(ThreadState* state) {
-    u64 st0 = state->ctx.fp[TOP(0)];
+    u64 st0 = state->ctx.st[TOP(0)].significand;
     bool sign = st0 >> 63;
     double st0d;
     memcpy(&st0d, &st0, 8);

@@ -814,8 +814,12 @@ void Recompiler::flushX87() {
             int index = i - pushed_this_block;
             as.ADDI(st, top, index);
             as.ANDI(st, st, 0b111);
-            as.SH3ADD(address, st, threadStatePointer());
-            as.FSD(x87_reg_cache[i].reg, offsetof(ThreadState, ctx.fp), address);
+            // Quick multiply by sizeof(Float80)
+            as.SH2ADD(address, st, st);
+            as.SLLI(address, address, 1);
+            static_assert(sizeof(ThreadState::ctx.st[0]) == sizeof(Float80) && sizeof(Float80) == 10);
+            as.ADD(address, address, threadStatePointer());
+            as.FSD(x87_reg_cache[i].reg, offsetof(ThreadState, ctx.st), address);
 
             if (x87_reg_cache[i].modify_tag) {
                 ASSERT(pushed_this_block > 0);
@@ -839,7 +843,7 @@ void Recompiler::flushX87() {
             ASSERT(mmx_reg_cache[i].loaded);
             setVectorState(SEW::E64, 1);
             biscuit::Vec vec = mmx_reg_cache[i].reg;
-            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, ctx.fp) + i * 8);
+            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, ctx.st) + i * sizeof(Float80));
             as.VSE64(vec, address);
         }
     }
@@ -3140,8 +3144,12 @@ biscuit::FPR Recompiler::getST(int index, bool dirty) {
         as.ADDI(top, top, index - pushed_this_block);
         as.ANDI(top, top, 0b111);
     }
-    as.SH3ADD(address, top, threadStatePointer());
-    as.FLD(x87_reg_cache[index].reg, offsetof(ThreadState, ctx.fp), address);
+    // Quick multiply by sizeof(Float80)
+    as.SH2ADD(top, top, top);
+    as.SLLI(top, top, 1);
+    static_assert(sizeof(ThreadState::ctx.st[0]) == sizeof(Float80) && sizeof(Float80) == 10);
+    as.ADD(address, top, threadStatePointer());
+    as.FLD(x87_reg_cache[index].reg, offsetof(ThreadState, ctx.st), address);
 
     popScratch();
     popScratch();

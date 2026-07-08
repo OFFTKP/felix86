@@ -53,10 +53,10 @@ void felix86_fsave_16(const UserContext& ctx, void* address) {
     for (int i = 0; i < 8; i++) {
         if (is_mmx) {
             u16 ones = 0xFFFF;
-            memcpy(&data->st[i], &ctx.fp[i], sizeof(double));
+            memcpy(&data->st[i], &ctx.st[i].significand, sizeof(double));
             memcpy(&data->st[i].exponent, &ones, sizeof(u16));
         } else {
-            Float80 f80 = f64_to_80(ctx.fp[i]);
+            Float80 f80 = f64_to_80(ctx.st[i].significand);
             memcpy(&data->st[i], &f80, sizeof(Float80));
         }
     }
@@ -78,10 +78,10 @@ void felix86_fsave_32(const UserContext& ctx, void* address) {
     for (int i = 0; i < 8; i++) {
         if (is_mmx) {
             u16 ones = 0xFFFF;
-            memcpy(&data->st[i], &ctx.fp[i], sizeof(double));
+            memcpy(&data->st[i], &ctx.st[i], sizeof(double));
             memcpy(&data->st[i].exponent, &ones, sizeof(u16));
         } else {
-            Float80 f80 = f64_to_80(ctx.fp[i]);
+            Float80 f80 = f64_to_80(ctx.st[i].significand);
             memcpy(&data->st[i], &f80, sizeof(Float80));
         }
     }
@@ -108,10 +108,10 @@ void felix86_frstor_16(UserContext& ctx, void* address) {
 
     for (int i = 0; i < 8; i++) {
         if (ctx.fpu_cw & 0x8000) {
-            memcpy(&ctx.fp[i], &data->st[i], sizeof(double));
+            memcpy(&ctx.st[i], &data->st[i], sizeof(double));
         } else {
             double f64 = f80_to_64(&data->st[i]);
-            memcpy(&ctx.fp[i], &f64, sizeof(double));
+            memcpy(&ctx.st[i], &f64, sizeof(double));
         }
     }
 }
@@ -127,10 +127,10 @@ void felix86_frstor_32(UserContext& ctx, void* address) {
 
     for (int i = 0; i < 8; i++) {
         if (ctx.fpu_cw & 0x8000) {
-            memcpy(&ctx.fp[i], &data->st[i], sizeof(double));
+            memcpy(&ctx.st[i], &data->st[i], sizeof(double));
         } else {
             double f64 = f80_to_64(&data->st[i]);
-            memcpy(&ctx.fp[i], &f64, sizeof(double));
+            memcpy(&ctx.st[i], &f64, sizeof(double));
         }
     }
 }
@@ -149,14 +149,14 @@ void felix86_fxsave(const UserContext& ctx, void* address, bool save_x87, bool s
     if (save_x87) {
         for (int i = 0; i < 8; i++) {
             if (is_x87) {
-                Float80 f80 = f64_to_80(ctx.fp[i]);
+                Float80 f80 = f64_to_80(ctx.st[i].significand);
                 memcpy(&data->st[i].st[0], &f80, sizeof(Float80));
             } else {
                 if (!is_mmx) {
                     WARN("Unknown x87 state during fxsave");
                 }
                 u16 ones = 0xFFFF;
-                memcpy(&data->st[i].st[0], &ctx.fp[i], sizeof(double));
+                memcpy(&data->st[i].st[0], &ctx.st[i].significand, sizeof(u64));
                 memcpy(&data->st[i].st[8], &ones, sizeof(u16));
             }
         }
@@ -196,10 +196,10 @@ void felix86_fxrstor(UserContext& ctx, void* address, bool restore_x87, bool res
 
         for (int i = 0; i < 8; i++) {
             if (ctx.fpu_cw & 0x8000) {
-                memcpy(&ctx.fp[i], &data->st[i].st[0], sizeof(double));
+                memcpy(&ctx.st[i], &data->st[i].st[0], sizeof(double));
             } else {
                 double f64 = f80_to_64((Float80*)&data->st[i].st[0]);
-                memcpy(&ctx.fp[i], &f64, sizeof(double));
+                memcpy(&ctx.st[i], &f64, sizeof(double));
             }
         }
 

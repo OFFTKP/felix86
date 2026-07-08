@@ -547,7 +547,7 @@
     "660f2fdc": {
         "instruction_count": 15,
         "expected_asm": [
-            "SB              zero, gp, 0x2ca(714)",
+            "SB              zero, gp, 0x2da(730)",
             "ADDIW           s9, zero, 0x0(0)",
             "ADDIW           s8, zero, 0x0(0)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
@@ -559,7 +559,7 @@
             "FLT.D           s5, f28, f29",
             "AND             ra, ra, t1",
             "XORI            ra, ra, 0x1(1)",
-            "SB              ra, gp, 0x2c9(713)",
+            "SB              ra, gp, 0x2d9(729)",
             "OR              s5, s5, ra",
             "OR              s7, s7, ra"
         ],
@@ -568,7 +568,7 @@
     "660f2fd2": {
         "instruction_count": 15,
         "expected_asm": [
-            "SB              zero, gp, 0x2ca(714)",
+            "SB              zero, gp, 0x2da(730)",
             "ADDIW           s9, zero, 0x0(0)",
             "ADDIW           s8, zero, 0x0(0)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
@@ -580,7 +580,7 @@
             "FLT.D           s5, f28, f29",
             "AND             ra, ra, t1",
             "XORI            ra, ra, 0x1(1)",
-            "SB              ra, gp, 0x2c9(713)",
+            "SB              ra, gp, 0x2d9(729)",
             "OR              s5, s5, ra",
             "OR              s7, s7, ra"
         ],
@@ -589,7 +589,7 @@
     "660f2f0f": {
         "instruction_count": 15,
         "expected_asm": [
-            "SB              zero, gp, 0x2ca(714)",
+            "SB              zero, gp, 0x2da(730)",
             "ADDIW           s9, zero, 0x0(0)",
             "ADDIW           s8, zero, 0x0(0)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
@@ -601,7 +601,7 @@
             "FLT.D           s5, f28, f29",
             "AND             t1, t1, t3",
             "XORI            t1, t1, 0x1(1)",
-            "SB              t1, gp, 0x2c9(713)",
+            "SB              t1, gp, 0x2d9(729)",
             "OR              s5, s5, t1",
             "OR              s7, s7, t1"
         ],
@@ -610,7 +610,7 @@
     "660f2edc": {
         "instruction_count": 15,
         "expected_asm": [
-            "SB              zero, gp, 0x2ca(714)",
+            "SB              zero, gp, 0x2da(730)",
             "ADDIW           s9, zero, 0x0(0)",
             "ADDIW           s8, zero, 0x0(0)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
@@ -622,7 +622,7 @@
             "FLT.D           s5, f28, f29",
             "AND             ra, ra, t1",
             "XORI            ra, ra, 0x1(1)",
-            "SB              ra, gp, 0x2c9(713)",
+            "SB              ra, gp, 0x2d9(729)",
             "OR              s5, s5, ra",
             "OR              s7, s7, ra"
         ],
@@ -631,7 +631,7 @@
     "660f2ed2": {
         "instruction_count": 15,
         "expected_asm": [
-            "SB              zero, gp, 0x2ca(714)",
+            "SB              zero, gp, 0x2da(730)",
             "ADDIW           s9, zero, 0x0(0)",
             "ADDIW           s8, zero, 0x0(0)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
@@ -643,7 +643,7 @@
             "FLT.D           s5, f28, f29",
             "AND             ra, ra, t1",
             "XORI            ra, ra, 0x1(1)",
-            "SB              ra, gp, 0x2c9(713)",
+            "SB              ra, gp, 0x2d9(729)",
             "OR              s5, s5, ra",
             "OR              s7, s7, ra"
         ],
@@ -652,7 +652,7 @@
     "660f2e0f": {
         "instruction_count": 15,
         "expected_asm": [
-            "SB              zero, gp, 0x2ca(714)",
+            "SB              zero, gp, 0x2da(730)",
             "ADDIW           s9, zero, 0x0(0)",
             "ADDIW           s8, zero, 0x0(0)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
@@ -664,7 +664,7 @@
             "FLT.D           s5, f28, f29",
             "AND             t1, t1, t3",
             "XORI            t1, t1, 0x1(1)",
-            "SB              t1, gp, 0x2c9(713)",
+            "SB              t1, gp, 0x2d9(729)",
             "OR              s5, s5, t1",
             "OR              s7, s7, t1"
         ],
