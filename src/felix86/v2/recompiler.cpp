@@ -3542,9 +3542,9 @@ void Recompiler::popX87() {
         biscuit::GPR ftw = scratch();
         biscuit::GPR top = getTOP();
 
-        as.LHU(ftw, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
+        as.LBU(ftw, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
         as.BSET(ftw, ftw, top);
-        as.SH(ftw, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
+        as.SB(ftw, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
 
         as.ADDI(top, top, 1);
         as.ANDI(top, top, 0b111);
