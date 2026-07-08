@@ -473,28 +473,28 @@ bool Config::loadProfile(Config& config, const std::filesystem::path& profile) {
 }
 
 template <typename T>
-std::string stringify(const T& value) {
+std::string stringify_toml(const T& value) {
     static_assert(false);
     return "";
 }
 
 template <>
-std::string stringify<std::string>(const std::string& value) {
+std::string stringify_toml<std::string>(const std::string& value) {
     return '\"' + value + '\"';
 }
 
 template <>
-std::string stringify<std::filesystem::path>(const std::filesystem::path& value) {
+std::string stringify_toml<std::filesystem::path>(const std::filesystem::path& value) {
     return '\"' + value.string() + '\"';
 }
 
 template <>
-std::string stringify<bool>(const bool& value) {
+std::string stringify_toml<bool>(const bool& value) {
     return value ? "true" : "false";
 }
 
 template <>
-std::string stringify<u64>(const u64& value) {
+std::string stringify_toml<u64>(const u64& value) {
     return fmt::format("{:#x}", value);
 }
 
@@ -511,7 +511,7 @@ void Config::save(const std::filesystem::path& path, const Config& config, bool 
         toml += "# " #name " (" #type ")\n";                                                                                                         \
         toml += "# Description: " description "\n";                                                                                                  \
         toml += "# Environment variable: " #env_name "\n";                                                                                           \
-        toml += #name " = " + stringify<type>(config.name) + "\n\n";                                                                                 \
+        toml += #name " = " + stringify_toml<type>(config.name) + "\n\n";                                                                            \
     }
 #include "config.inc"
 #undef X
@@ -535,6 +535,32 @@ static std::string lowercase(const char* str) {
     return s;
 }
 
+template <typename T>
+std::string stringify_shell(const T& value) {
+    static_assert(false);
+    return "";
+}
+
+template <>
+std::string stringify_shell<std::string>(const std::string& value) {
+    return value;
+}
+
+template <>
+std::string stringify_shell<std::filesystem::path>(const std::filesystem::path& value) {
+    return value;
+}
+
+template <>
+std::string stringify_shell<bool>(const bool& value) {
+    return value ? "true" : "false";
+}
+
+template <>
+std::string stringify_shell<u64>(const u64& value) {
+    return fmt::format("{:#x}", value);
+}
+
 std::optional<std::string> Config::getConfigString(const char* group, const char* field) {
     // cmp_group and cmp_name are marked 'static' to avoid initializing more than once (first call of function). This is thread safe.
 #define X(group_, type_, name_, ...)                                                                                                                 \
@@ -542,7 +568,7 @@ std::optional<std::string> Config::getConfigString(const char* group, const char
         static const std::string cmp_group = lowercase(#group_);                                                                                     \
         static const std::string cmp_name = lowercase(#name_);                                                                                       \
         if (strcmp(group, cmp_group.c_str()) == 0 && strcmp(field, cmp_name.c_str()) == 0) {                                                         \
-            return std::optional{stringify<type_>(this->name_)};                                                                                     \
+            return std::optional{stringify_shell<type_>(this->name_)};                                                                               \
         }                                                                                                                                            \
     }
 #include "config.inc"
