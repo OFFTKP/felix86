@@ -205,8 +205,8 @@ struct UserContext {
     u64 esbase{};
     u32 mxcsr{0x1F80}; // default value
     u16 fpu_cw{};
-    u16 fpu_tw{};
     u16 fpu_sw{};
+    u8 fpu_tw{};
     u8 fpu_top{};
     u64 orig_rax{};
 
