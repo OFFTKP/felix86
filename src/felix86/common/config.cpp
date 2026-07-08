@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <filesystem>
+#include <optional>
 #include <system_error>
 #include <pwd.h>
 #include <sys/types.h>
@@ -244,7 +245,7 @@ bool Config::initialize(bool ignore_envs) {
         }
     }
 
-    // g_config can be changed, c_initial_config won't be changed
+    // g_config can be changed, g_initial_config won't be changed
     g_initial_config = g_config;
 
 #define X(group, type, name, default_value, env_name, description)                                                                                   \
@@ -353,18 +354,18 @@ bool loadFromToml(const toml_result_t& toml, const char* group, const char* name
 }
 
 template <typename Type>
-bool loadFromEnv(Config& config, Type& value, const char* env) {
+bool setFromString(Config& config, Type& value, const char* str) {
     if constexpr (std::is_same_v<Type, bool>) {
-        value = is_truthy(env);
+        value = is_truthy(str);
         return true;
     } else if constexpr (std::is_same_v<Type, u64>) {
-        value = get_int(env);
+        value = get_int(str);
         return true;
     } else if constexpr (std::is_same_v<Type, std::filesystem::path>) {
-        value = env;
+        value = str;
         return true;
     } else if constexpr (std::is_same_v<Type, std::string>) {
-        value = env;
+        value = str;
         return true;
     } else {
         static_assert(false);
@@ -407,7 +408,7 @@ void Config::initializeChild() {
 #define X(group, type, name, default_value, env_name, description)                                                                                   \
     {                                                                                                                                                \
         bool loaded = false;                                                                                                                         \
-        loaded = loadFromEnv<type>(config, config.name, env_map.at(#env_name).c_str());                                                              \
+        loaded = setFromString<type>(config, config.name, env_map.at(#env_name).c_str());                                                            \
         if (!loaded) {                                                                                                                               \
             ERROR("Failed to load option " #env_name);                                                                                               \
         }                                                                                                                                            \
@@ -440,7 +441,7 @@ Config Config::load(const std::filesystem::path& path, bool ignore_envs) {
         [[maybe_unused]] bool loaded = false;                                                                                                        \
         const char* env = getenv(#env_name);                                                                                                         \
         if (env && !ignore_envs) {                                                                                                                   \
-            loaded = loadFromEnv<type>(config, config.name, env);                                                                                    \
+            loaded = setFromString<type>(config, config.name, env);                                                                                  \
         } else if (!no_config_path) {                                                                                                                \
             loaded = loadFromToml<type>(result, #group, #name, config.name);                                                                         \
         }                                                                                                                                            \
@@ -472,28 +473,28 @@ bool Config::loadProfile(Config& config, const std::filesystem::path& profile) {
 }
 
 template <typename T>
-std::string stringify(const T& value) {
+std::string stringify_toml(const T& value) {
     static_assert(false);
     return "";
 }
 
 template <>
-std::string stringify<std::string>(const std::string& value) {
+std::string stringify_toml<std::string>(const std::string& value) {
     return '\"' + value + '\"';
 }
 
 template <>
-std::string stringify<std::filesystem::path>(const std::filesystem::path& value) {
+std::string stringify_toml<std::filesystem::path>(const std::filesystem::path& value) {
     return '\"' + value.string() + '\"';
 }
 
 template <>
-std::string stringify<bool>(const bool& value) {
+std::string stringify_toml<bool>(const bool& value) {
     return value ? "true" : "false";
 }
 
 template <>
-std::string stringify<u64>(const u64& value) {
+std::string stringify_toml<u64>(const u64& value) {
     return fmt::format("{:#x}", value);
 }
 
@@ -510,7 +511,7 @@ void Config::save(const std::filesystem::path& path, const Config& config, bool 
         toml += "# " #name " (" #type ")\n";                                                                                                         \
         toml += "# Description: " description "\n";                                                                                                  \
         toml += "# Environment variable: " #env_name "\n";                                                                                           \
-        toml += #name " = " + stringify<type>(config.name) + "\n\n";                                                                                 \
+        toml += #name " = " + stringify_toml<type>(config.name) + "\n\n";                                                                            \
     }
 #include "config.inc"
 #undef X
@@ -524,4 +525,68 @@ void Config::save(const std::filesystem::path& path, const Config& config, bool 
     ofs << "# You may change any values here, or their respective environment variable\n";
     ofs << "# The environment variables override the values here\n\n";
     ofs << toml;
+}
+
+static std::string lowercase(const char* str) {
+    std::string s(str);
+    for_each(s.begin(), s.end(), [](char& c) {
+        c = tolower(c);
+    });
+    return s;
+}
+
+template <typename T>
+std::string stringify_shell(const T& value) {
+    static_assert(false);
+    return "";
+}
+
+template <>
+std::string stringify_shell<std::string>(const std::string& value) {
+    return value;
+}
+
+template <>
+std::string stringify_shell<std::filesystem::path>(const std::filesystem::path& value) {
+    return value;
+}
+
+template <>
+std::string stringify_shell<bool>(const bool& value) {
+    return value ? "true" : "false";
+}
+
+template <>
+std::string stringify_shell<u64>(const u64& value) {
+    return fmt::format("{:#x}", value);
+}
+
+std::optional<std::string> Config::getConfigString(const char* group, const char* field) {
+    // cmp_group and cmp_name are marked 'static' to avoid initializing more than once (first call of function). This is thread safe.
+#define X(group_, type_, name_, ...)                                                                                                                 \
+    {                                                                                                                                                \
+        static const std::string cmp_group = lowercase(#group_);                                                                                     \
+        static const std::string cmp_name = lowercase(#name_);                                                                                       \
+        if (strcmp(group, cmp_group.c_str()) == 0 && strcmp(field, cmp_name.c_str()) == 0) {                                                         \
+            return std::optional{stringify_shell<type_>(this->name_)};                                                                               \
+        }                                                                                                                                            \
+    }
+#include "config.inc"
+#undef X
+    return std::optional<std::string>{};
+}
+
+bool Config::setConfigString(const char* group, const char* field, const char* value) {
+    // cmp_group and cmp_name are marked 'static' to avoid initializing more than once (first call of function). This is thread safe.
+#define X(group_, type_, name_, ...)                                                                                                                 \
+    {                                                                                                                                                \
+        static const std::string cmp_group = lowercase(#group_);                                                                                     \
+        static const std::string cmp_name = lowercase(#name_);                                                                                       \
+        if (strcmp(group, cmp_group.c_str()) == 0 && strcmp(field, cmp_name.c_str()) == 0) {                                                         \
+            return setFromString<type_>(*this, this->name_, value);                                                                                  \
+        }                                                                                                                                            \
+    }
+#include "config.inc"
+#undef X
+    return false;
 }

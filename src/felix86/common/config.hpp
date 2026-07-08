@@ -6,6 +6,7 @@
 #pragma once
 
 #include <filesystem>
+#include <optional>
 #include "felix86/common/types.hpp"
 
 struct Config {
@@ -23,6 +24,10 @@ struct Config {
     std::filesystem::path path() const {
         return config_path;
     }
+
+    std::optional<std::string> getConfigString(const char* group, const char* field);
+    /// Returns 'true' if a config value was updated, otherwise return `false`.
+    bool setConfigString(const char* group, const char* field, const char* value);
 
     [[nodiscard]] static Config load(const std::filesystem::path& path, bool ignore_envs = false);
     static bool loadProfile(Config& config, const std::filesystem::path& profile);
