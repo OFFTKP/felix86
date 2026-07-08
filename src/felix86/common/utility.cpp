@@ -24,30 +24,6 @@
 
 #define TOP(x) ((state->ctx.fpu_top + x) & 0b111)
 
-struct fenv_data_16 {
-    u16 cw;
-    u16 sw;
-    u16 tw;
-    u16 fip;
-    u16 fcs;
-    u16 fdp;
-    u16 fds;
-};
-
-static_assert(sizeof(fenv_data_16) == 14);
-
-struct fenv_data_32 {
-    u16 cw = 0;
-    alignas(u32) u16 sw = 0;
-    alignas(u32) u16 tw = 0;
-    u32 fip = 0;
-    u32 unused = 0;
-    u32 fdp = 0;
-    u32 fds = 0;
-};
-
-static_assert(sizeof(fenv_data_32) == 28);
-
 /* Libdivide LICENSE
 
 
@@ -334,38 +310,6 @@ void felix86_iret(struct ThreadState* state, bool iretq) {
     state->SetRip(rip);
     cs &= 0xFFFF;
     felix86_set_segment(state, cs, ZYDIS_REGISTER_CS);
-}
-
-void felix86_fstenv_16(ThreadState* state, u64 address) {
-    fenv_data_16* env = (fenv_data_16*)address;
-    env->cw = state->ctx.fpu_cw;
-    env->tw = state->ctx.fpu_tw;
-    env->sw = (state->ctx.fpu_top << 11) | (state->ctx.fpu_sw & ~(0b111 << 11));
-}
-
-void felix86_fstenv_32(ThreadState* state, u64 address) {
-    fenv_data_32* env = (fenv_data_32*)address;
-    env->cw = state->ctx.fpu_cw;
-    env->tw = state->ctx.fpu_tw;
-    env->sw = (state->ctx.fpu_top << 11) | (state->ctx.fpu_sw & ~(0b111 << 11));
-}
-
-void felix86_fldenv_16(struct ThreadState* state, u64 address) {
-    fenv_data_16* env = (fenv_data_16*)address;
-    state->ctx.fpu_cw = env->cw;
-    state->ctx.fpu_tw = env->tw;
-    state->ctx.fpu_sw = env->sw;
-    state->ctx.fpu_top = (env->sw >> 11) & 0b111;
-    state->ctx.rmode_x87 = rounding_mode(x86RoundingMode((state->ctx.fpu_cw >> 10) & 0b11));
-}
-
-void felix86_fldenv_32(struct ThreadState* state, u64 address) {
-    fenv_data_32* env = (fenv_data_32*)address;
-    state->ctx.fpu_cw = env->cw;
-    state->ctx.fpu_tw = env->tw;
-    state->ctx.fpu_sw = env->sw;
-    state->ctx.fpu_top = (env->sw >> 11) & 0b111;
-    state->ctx.rmode_x87 = rounding_mode(x86RoundingMode((state->ctx.fpu_cw >> 10) & 0b11));
 }
 
 void felix86_pmaddwd(i16* dst, i16* src) {
@@ -938,7 +882,8 @@ void felix86_fsincos(ThreadState* state) {
     double boop;
     memcpy(&boop, &state->ctx.fp[TOP(0)], sizeof(double));
     state->ctx.fpu_top -= 1;
-    state->ctx.fpu_tw &= ~(0b11 << (state->ctx.fpu_top * 2));
+    state->ctx.fpu_top &= 0b111;
+    state->ctx.fpu_tw &= ~(0b1 << state->ctx.fpu_top);
     sincos(boop, (double*)&state->ctx.fp[TOP(1)], (double*)&state->ctx.fp[TOP(0)]);
     state->ctx.fpu_sw &= ~C2_BIT;
 }
@@ -1369,8 +1314,7 @@ void felix86_fxam(ThreadState* state) {
     double st0d;
     memcpy(&st0d, &st0, 8);
 
-    u16 mask = 0b11 << state->ctx.fpu_top;
-
+    u16 mask = 0b1 << state->ctx.fpu_top;
     u8 c3c2c0;
     if ((state->ctx.fpu_tw & mask) == mask) {
         c3c2c0 = 0b101;
