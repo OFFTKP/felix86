@@ -354,18 +354,18 @@ bool loadFromToml(const toml_result_t& toml, const char* group, const char* name
 }
 
 template <typename Type>
-bool setFromString(Config& config, Type& value, const char* env) {
+bool setFromString(Config& config, Type& value, const char* str) {
     if constexpr (std::is_same_v<Type, bool>) {
-        value = is_truthy(env);
+        value = is_truthy(str);
         return true;
     } else if constexpr (std::is_same_v<Type, u64>) {
-        value = get_int(env);
+        value = get_int(str);
         return true;
     } else if constexpr (std::is_same_v<Type, std::filesystem::path>) {
-        value = env;
+        value = str;
         return true;
     } else if constexpr (std::is_same_v<Type, std::string>) {
-        value = env;
+        value = str;
         return true;
     } else {
         static_assert(false);
