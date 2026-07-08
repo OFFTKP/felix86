@@ -36,14 +36,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "platform.h"
 #include "internals.h"
-#include "specialize.h"
+#include "platform.h"
 #include "softfloat.h"
+#include "specialize.h"
 
-int_fast64_t extF80_to_i64_r_minMag( extFloat80_t a, bool exact )
-{
-    union { struct extFloat80M s; extFloat80_t f; } uA;
+int_fast64_t extF80_to_i64_r_minMag(extFloat80_t a, bool exact) {
+    union {
+        struct extFloat80M s;
+        extFloat80_t f;
+    } uA;
     uint_fast16_t uiA64;
     int_fast32_t exp;
     uint_fast64_t sig;
@@ -52,43 +54,35 @@ int_fast64_t extF80_to_i64_r_minMag( extFloat80_t a, bool exact )
     int_fast64_t absZ;
 
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
+     *------------------------------------------------------------------------*/
     uA.f = a;
     uiA64 = uA.s.signExp;
-    exp = expExtF80UI64( uiA64 );
+    exp = expExtF80UI64(uiA64);
     sig = uA.s.signif;
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
+     *------------------------------------------------------------------------*/
     shiftDist = 0x403E - exp;
-    if ( 64 <= shiftDist ) {
-        if ( exact && (exp | sig) ) {
-            softfloat_exceptionFlags |= softfloat_flag_inexact;
+    if (64 <= shiftDist) {
+        if (exact && (exp | sig)) {
+            softfloat_raiseFlags(softfloat_flag_inexact);
         }
         return 0;
     }
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
-    sign = signExtF80UI64( uiA64 );
-    if ( shiftDist <= 0 ) {
-        if (
-            (uiA64 == packToExtF80UI64( 1, 0x403E ))
-                && (sig == UINT64_C( 0x8000000000000000 ))
-        ) {
-            return -INT64_C( 0x7FFFFFFFFFFFFFFF ) - 1;
+     *------------------------------------------------------------------------*/
+    sign = signExtF80UI64(uiA64);
+    if (shiftDist <= 0) {
+        if ((uiA64 == packToExtF80UI64(1, 0x403E)) && (sig == UINT64_C(0x8000000000000000))) {
+            return -INT64_C(0x7FFFFFFFFFFFFFFF) - 1;
         }
-        softfloat_raiseFlags( softfloat_flag_invalid );
-        return
-            (exp == 0x7FFF) && (sig & UINT64_C( 0x7FFFFFFFFFFFFFFF ))
-                ? i64_fromNaN
-                : sign ? i64_fromNegOverflow : i64_fromPosOverflow;
+        softfloat_raiseFlags(softfloat_flag_invalid);
+        return (exp == 0x7FFF) && (sig & UINT64_C(0x7FFFFFFFFFFFFFFF)) ? i64_fromNaN : sign ? i64_fromNegOverflow : i64_fromPosOverflow;
     }
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
-    absZ = sig>>shiftDist;
-    if ( exact && (uint64_t) (sig<<(-shiftDist & 63)) ) {
-        softfloat_exceptionFlags |= softfloat_flag_inexact;
+     *------------------------------------------------------------------------*/
+    absZ = sig >> shiftDist;
+    if (exact && (uint64_t)(sig << (-shiftDist & 63))) {
+        softfloat_raiseFlags(softfloat_flag_inexact);
     }
     return sign ? -absZ : absZ;
-
 }
-

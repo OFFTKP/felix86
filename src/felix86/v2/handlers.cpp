@@ -37,7 +37,8 @@ void felix86_cpuid(ThreadState* state);
 
 #define HAS_REP (instruction.attributes & (ZYDIS_ATTRIB_HAS_REP | ZYDIS_ATTRIB_HAS_REPZ | ZYDIS_ATTRIB_HAS_REPNZ))
 
-static void UnimplementedHandler(Recompiler& rec, u64 rip, biscuit::Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands) {
+static void UnimplementedHandler(Recompiler& rec, u64 rip, biscuit::Assembler& as, ZydisDecodedInstruction& instruction,
+                                 ZydisDecodedOperand* operands) {
     ZydisDisassembledInstruction disassembled;
     auto mode = MODE32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
     if (ZYAN_SUCCESS(ZydisDisassembleIntel(mode, rip, (u8*)rip, 15, &disassembled))) {
@@ -52,7 +53,7 @@ static void UnimplementedHandler(Recompiler& rec, u64 rip, biscuit::Assembler& a
 #undef X
 
 static void SetCmpFlags(u64 rip, Recompiler& rec, Assembler& as, biscuit::GPR dst, biscuit::GPR src, biscuit::GPR result, x86_size_e size,
-                 bool zext_src = false, bool always_emit = false) {
+                        bool zext_src = false, bool always_emit = false) {
     if (always_emit || rec.shouldEmitFlag(rip, X86_REF_CF)) {
         biscuit::GPR test = rec.scratch();
         if (zext_src) {
@@ -364,8 +365,8 @@ enum CmpPredicate {
 };
 
 static void OP_noflags_destreg(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands,
-                        void (Assembler::*func64)(biscuit::GPR, biscuit::GPR, biscuit::GPR),
-                        void (Assembler::*func32)(biscuit::GPR, biscuit::GPR, biscuit::GPR)) {
+                               void (Assembler::*func64)(biscuit::GPR, biscuit::GPR, biscuit::GPR),
+                               void (Assembler::*func32)(biscuit::GPR, biscuit::GPR, biscuit::GPR)) {
     biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
     biscuit::GPR src;
     if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
@@ -428,9 +429,9 @@ static void OP_noflags_destreg(Recompiler& rec, u64 rip, Assembler& as, ZydisDec
 }
 
 static void OP_noflags_destreg_srcimm(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands,
-                               void (Assembler::*func64_i)(biscuit::GPR, biscuit::GPR, int32_t),
-                               void (Assembler::*func32_i)(biscuit::GPR, biscuit::GPR, int32_t),
-                               void (Assembler::*func64)(biscuit::GPR, biscuit::GPR, biscuit::GPR), int32_t src_imm) {
+                                      void (Assembler::*func64_i)(biscuit::GPR, biscuit::GPR, int32_t),
+                                      void (Assembler::*func32_i)(biscuit::GPR, biscuit::GPR, int32_t),
+                                      void (Assembler::*func64)(biscuit::GPR, biscuit::GPR, biscuit::GPR), int32_t src_imm) {
     biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
     ASSERT(IsValidSigned12BitImm(src_imm));
     switch (instruction.operand_width) {
@@ -477,8 +478,8 @@ static void OP_noflags_destreg_srcimm(Recompiler& rec, u64 rip, Assembler& as, Z
 }
 
 static void SHIFT_noflags(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands,
-                   void (Assembler::*func64)(biscuit::GPR, biscuit::GPR, biscuit::GPR),
-                   void (Assembler::*func32)(biscuit::GPR, biscuit::GPR, biscuit::GPR)) {
+                          void (Assembler::*func64)(biscuit::GPR, biscuit::GPR, biscuit::GPR),
+                          void (Assembler::*func32)(biscuit::GPR, biscuit::GPR, biscuit::GPR)) {
     biscuit::GPR result;
     biscuit::GPR dst;
     biscuit::GPR shift;
@@ -2206,6 +2207,8 @@ FAST_HANDLE(AAS) {
 }
 
 FAST_HANDLE(NOP) {}
+
+FAST_HANDLE(FNOP) {}
 
 FAST_HANDLE(ENDBR32) {}
 
@@ -5992,12 +5995,12 @@ static void ROUND(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstructi
 
     biscuit::GPR max = rec.scratch();
     if (sew == SEW::E32) {
-        as.LI(max, 0x8000'0000 - 1);
-        as.FCVT_S_W(max_f, max);
+        as.LI(max, 0x4B000000);
+        as.FMV_W_X(max_f, max);
         as.FNEG_S(min_f, max_f);
     } else {
-        as.LI(max, 0x8000'0000'0000'0000 - 1);
-        as.FCVT_D_L(max_f, max);
+        as.LI(max, 0x4330'0000'0000'0000);
+        as.FMV_D_X(max_f, max);
         as.FNEG_D(min_f, max_f);
     }
     rec.popScratch();
@@ -6008,7 +6011,6 @@ static void ROUND(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstructi
     if (!dyn_round) {
         as.FSRM(old_rounding, new_rounding);
     }
-    biscuit::Vec temp = rec.scratchVec();
     biscuit::Vec result = rec.scratchVec();
     // If the values are bigger than the maximum integer or smaller than the minimum, the VFCVT_X_F would overflow
     // Since at this point floats can't have a fractional part, they are already integers and thus should preserve the original value
@@ -6017,9 +6019,9 @@ static void ROUND(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstructi
     as.VMFGT(temp_mask, src, min_f);
     as.VMAND(v0, v0, temp_mask);
     rec.v0Modified();
-    as.VFCVT_X_F(temp, src);
-    as.VFCVT_F_X(result, temp);
-    as.VMERGE(result, src, result);
+    as.VMV1R(result, src);
+    as.VFCVT_X_F(result, result, VecMask::Yes);
+    as.VFCVT_F_X(result, result, VecMask::Yes);
 
     // There's sign differences when rounding towards zero. For example, round(-0.5) becomes -0.0 in x86, 0.0 in RISC-V
     // So we restore the sign bit after rounding
@@ -8688,7 +8690,7 @@ FAST_HANDLE(CMPXCHG) {
 }
 
 static void SCALAR(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen,
-            void (Assembler::*func)(Vec, Vec, Vec, VecMask)) {
+                   void (Assembler::*func)(Vec, Vec, Vec, VecMask)) {
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
     rec.setVectorState(sew, vlen);
@@ -8697,7 +8699,7 @@ static void SCALAR(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruct
 }
 
 static void SCALAR(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen,
-            void (Assembler::*func)(Vec, Vec, VecMask)) {
+                   void (Assembler::*func)(Vec, Vec, VecMask)) {
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
     rec.setVectorState(sew, vlen);
@@ -11545,7 +11547,7 @@ FAST_HANDLE(FILD) {
 }
 
 static void OP(void (Assembler::*func)(FPR, FPR, FPR, RMode), Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction,
-        ZydisDecodedOperand* operands, bool pop, bool reverse = false) {
+               ZydisDecodedOperand* operands, bool pop, bool reverse = false) {
     biscuit::FPR lhs = rec.getST(&operands[0]);
     biscuit::FPR rhs = rec.getST(&operands[1]);
 
@@ -11840,7 +11842,19 @@ FAST_HANDLE(FWAIT) {
 }
 
 FAST_HANDLE(FFREE) {
-    WARN("FFREE encountered, treating as NOP");
+    ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].reg.value >= ZYDIS_REGISTER_ST0 &&
+           operands[0].reg.value <= ZYDIS_REGISTER_ST7);
+    biscuit::GPR tag = rec.scratch();
+    biscuit::GPR top = rec.getTOP();
+    as.ADDI(top, top, operands[0].reg.value - ZYDIS_REGISTER_ST0);
+    as.ANDI(top, top, 0b111);
+    as.LBU(tag, offsetof(ThreadState, ctx.fpu_tw), Recompiler::threadStatePointer());
+    as.BSET(tag, tag, top);
+    as.SB(tag, offsetof(ThreadState, ctx.fpu_tw), Recompiler::threadStatePointer());
+}
+
+FAST_HANDLE(FFREEP) {
+    ERROR("FFREEP is unimplemented for reduced precision");
 }
 
 FAST_HANDLE(FPREM) {
@@ -11848,6 +11862,22 @@ FAST_HANDLE(FPREM) {
     as.MV(a0, rec.threadStatePointer());
     rec.callPointer(offsetof(ThreadState, felix86_fprem));
     rec.restoreState();
+}
+
+FAST_HANDLE(FPREM1) {
+    ERROR("FPREM1 is unimplemented for reduced precision");
+}
+
+FAST_HANDLE(FXTRACT) {
+    ERROR("FXTRACT is unimplemented for reduced precision");
+}
+
+FAST_HANDLE(FINCSTP) {
+    ERROR("FINCSTP is unimplemented for reduced precision");
+}
+
+FAST_HANDLE(FDECSTP) {
+    ERROR("FDECSTP is unimplemented for reduced precision");
 }
 
 FAST_HANDLE(F2XM1) {
@@ -11906,7 +11936,10 @@ FAST_HANDLE(FNSTENV) {
 
 FAST_HANDLE(FNSTSW) {
     biscuit::GPR temp = rec.scratch();
+    biscuit::GPR top = rec.getTOP();
     as.LHU(temp, offsetof(ThreadState, ctx.fpu_sw), rec.threadStatePointer());
+    as.SLLI(top, top, 11);
+    as.OR(temp, temp, top);
     rec.setGPR(&operands[0], temp);
 }
 
@@ -12054,6 +12087,14 @@ FAST_HANDLE(FCOMIP) {
 
 FAST_HANDLE(FUCOMIP) {
     FCOMI(rec, as, operands, true);
+}
+
+FAST_HANDLE(FICOM) {
+    ERROR("FICOM is unimplemented in reduced precision mode");
+}
+
+FAST_HANDLE(FICOMP) {
+    ERROR("FICOMP is unimplemented in reduced precision mode");
 }
 
 static void FCOM(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, int pop_count) {
@@ -12257,6 +12298,7 @@ FAST_HANDLE(FNINIT) {
     as.SB(temp, offsetof(ThreadState, ctx.fpu_tw), Recompiler::threadStatePointer());
 
     as.SB(x0, offsetof(ThreadState, ctx.fpu_top), Recompiler::threadStatePointer());
+    as.SH(x0, offsetof(ThreadState, ctx.fpu_sw), Recompiler::threadStatePointer());
 
     // FINIT sets it to nearest neighbor which happens to be 0 in both x86 and RISC-V
     as.FSRM(x0);
@@ -12352,6 +12394,350 @@ FAST_HANDLE(FRSTOR) {
     }
     rec.restoreState();
 }
+
+using x87_zero_operand_t = void (*)(ThreadState*);
+using x87_one_operand_t = void (*)(ThreadState*, extFloat80_t*, int);
+using x87_two_operand_t = void (*)(ThreadState*, extFloat80_t*, extFloat80_t*, int);
+
+template <class Func>
+inline static void x87_Operation(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, Func operation,
+                                 int offset) {
+    if (true) {
+        // TODO: only writeback if we didn't already in the previous instr
+        rec.writebackState();
+    }
+
+#define GET_OP(num)                                                                                                                                  \
+    if (operands[num].type == ZYDIS_OPERAND_TYPE_REGISTER) {                                                                                         \
+        biscuit::GPR top = rec.getTOP();                                                                                                             \
+        as.ADDI(top, top, operands[num].reg.value - ZYDIS_REGISTER_ST0);                                                                             \
+        as.ANDI(top, top, 0b111);                                                                                                                    \
+        as.SH2ADD(top, top, top);                                                                                                                    \
+        as.SLLI(top, top, 1);                                                                                                                        \
+        ASSERT(operands[num].reg.value >= ZYDIS_REGISTER_ST0 && operands[num].reg.value <= ZYDIS_REGISTER_ST7);                                      \
+        as.ADD(top, top, Recompiler::threadStatePointer());                                                                                          \
+        as.ADDI(biscuit::GPR(a##num.Index() + 1), top, offsetof(ThreadState, ctx.st));                                                               \
+        rec.popScratch();                                                                                                                            \
+    } else if (operands[num].type == ZYDIS_OPERAND_TYPE_MEMORY) {                                                                                    \
+        biscuit::GPR addr = rec.lea(&operands[num]);                                                                                                 \
+        as.MV(biscuit::GPR(a##num.Index() + 1), addr);                                                                                               \
+    } else {                                                                                                                                         \
+        UNREACHABLE();                                                                                                                               \
+    }
+    if constexpr (std::is_same_v<Func, x87_zero_operand_t>) {
+        // No operands to load
+    } else if constexpr (std::is_same_v<Func, x87_two_operand_t>) {
+        GET_OP(0);
+        GET_OP(1);
+        if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+            as.LI(a3, operands[0].size);
+        } else {
+            ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER);
+            as.LI(a3, 0);
+        }
+        ASSERT(operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER);
+    } else if constexpr (std::is_same_v<Func, x87_one_operand_t>) {
+        GET_OP(0);
+        if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+            as.LI(a2, operands[0].size);
+        } else {
+            ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER);
+            as.LI(a2, 0);
+        }
+    } else {
+        static_assert(false);
+    }
+#undef GET_OP
+    as.MV(a0, Recompiler::threadStatePointer());
+    rec.callPointer(offset);
+
+    if (true) {
+        // TODO: only restore if next instr isn't x87
+        rec.restoreState();
+    }
+}
+
+#define X87_HANDLE(name)                                                                                                                             \
+    FAST_HANDLE(name##_80) {                                                                                                                         \
+        x87_Operation(rec, as, instruction, operands, felix86_x87_##name, offsetof(ThreadState, felix86_x87_##name));                                \
+    }
+
+FAST_HANDLE(FNSTCW_80) {
+    fast_FNSTCW(rec, rip, as, instruction, operands);
+}
+
+FAST_HANDLE(FLDCW_80) {
+    fast_FLDCW(rec, rip, as, instruction, operands);
+}
+
+FAST_HANDLE(FNCLEX_80) {
+    fast_FNCLEX(rec, rip, as, instruction, operands);
+}
+
+FAST_HANDLE(FXSAVE_80) {
+    fast_FXSAVE(rec, rip, as, instruction, operands);
+}
+
+FAST_HANDLE(FXSAVE64_80) {
+    fast_FXSAVE64(rec, rip, as, instruction, operands);
+}
+
+FAST_HANDLE(FXRSTOR_80) {
+    fast_FXRSTOR(rec, rip, as, instruction, operands);
+}
+
+FAST_HANDLE(FXRSTOR64_80) {
+    fast_FXRSTOR64(rec, rip, as, instruction, operands);
+}
+
+FAST_HANDLE(FWAIT_80) {
+    WARN("FWAIT encountered, treating as NOP");
+}
+
+X87_HANDLE(FLD);
+
+X87_HANDLE(FILD);
+
+X87_HANDLE(FST);
+
+X87_HANDLE(FSTP);
+
+X87_HANDLE(FDIV);
+
+X87_HANDLE(FDIVP);
+
+X87_HANDLE(FIDIV);
+
+X87_HANDLE(FDIVR);
+
+X87_HANDLE(FDIVRP);
+
+X87_HANDLE(FIDIVR);
+
+X87_HANDLE(FMUL);
+
+X87_HANDLE(FMULP);
+
+X87_HANDLE(FIMUL);
+
+X87_HANDLE(FABS);
+
+X87_HANDLE(FADD);
+
+X87_HANDLE(FADDP);
+
+X87_HANDLE(FIADD);
+
+X87_HANDLE(FSUB);
+
+X87_HANDLE(FSUBP);
+
+X87_HANDLE(FISUB);
+
+X87_HANDLE(FSUBR);
+
+X87_HANDLE(FSUBRP);
+
+X87_HANDLE(FISUBR);
+
+X87_HANDLE(FSQRT);
+
+X87_HANDLE(FSIN);
+
+X87_HANDLE(FCOS);
+
+X87_HANDLE(FSINCOS);
+
+X87_HANDLE(FPATAN);
+
+X87_HANDLE(FPTAN);
+
+X87_HANDLE(FPREM);
+
+X87_HANDLE(FPREM1);
+
+X87_HANDLE(FINCSTP);
+
+X87_HANDLE(FDECSTP);
+
+FAST_HANDLE(FNSTSW_80) {
+    fast_FNSTSW(rec, rip, as, instruction, operands);
+}
+
+FAST_HANDLE(FNSTENV_80) {
+    fast_FNSTENV(rec, rip, as, instruction, operands);
+}
+
+FAST_HANDLE(FLDENV_80) {
+    fast_FLDENV(rec, rip, as, instruction, operands);
+}
+
+X87_HANDLE(FXCH);
+
+X87_HANDLE(FTST);
+
+X87_HANDLE(FCOM);
+
+X87_HANDLE(FCOMP);
+
+X87_HANDLE(FCOMPP);
+
+X87_HANDLE(FUCOM);
+
+X87_HANDLE(FUCOMP);
+
+X87_HANDLE(FUCOMPP);
+
+X87_HANDLE(FCOMI);
+
+X87_HANDLE(FCOMIP);
+
+X87_HANDLE(FUCOMI);
+
+X87_HANDLE(FUCOMIP);
+
+X87_HANDLE(FICOM);
+
+X87_HANDLE(FICOMP);
+
+X87_HANDLE(FRNDINT);
+
+X87_HANDLE(F2XM1);
+
+X87_HANDLE(FYL2X);
+
+X87_HANDLE(FYL2XP1);
+
+X87_HANDLE(FSCALE);
+
+X87_HANDLE(FXTRACT);
+
+X87_HANDLE(FLDZ);
+
+X87_HANDLE(FLD1);
+
+X87_HANDLE(FLDL2T);
+
+X87_HANDLE(FLDL2E);
+
+X87_HANDLE(FLDPI);
+
+X87_HANDLE(FLDLG2);
+
+X87_HANDLE(FLDLN2);
+
+X87_HANDLE(FIST);
+
+X87_HANDLE(FISTP);
+
+X87_HANDLE(FISTTP);
+
+X87_HANDLE(FCHS);
+
+void FCMOV_80(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, biscuit::GPR cond) {
+    biscuit::GPR temp1 = rec.scratch();
+    biscuit::GPR temp2 = rec.scratch();
+    biscuit::Label not_true;
+    as.BEQZ(cond, &not_true);
+    x86_ref_e src = rec.zydisToRef(operands[1].reg.value);
+    ASSERT(src >= X86_REF_ST0 && src <= X86_REF_ST7);
+    int index = src - X86_REF_ST0;
+    biscuit::GPR top = rec.getTOP();
+    biscuit::GPR top0 = rec.scratch();
+    biscuit::GPR topi = rec.scratch();
+    as.ADDI(topi, top, index);
+    as.ANDI(topi, topi, 0b111);
+    as.MV(top0, top);
+    as.SH2ADD(top0, top0, top0);
+    as.SLLI(top0, top0, 1);
+    as.SH2ADD(topi, topi, topi);
+    as.SLLI(topi, topi, 1);
+    as.ADD(top0, top0, Recompiler::threadStatePointer());
+    as.ADD(topi, topi, Recompiler::threadStatePointer());
+    as.LD(temp1, offsetof(ThreadState, ctx.st), topi);
+    as.LWU(temp2, offsetof(ThreadState, ctx.st) + sizeof(u64), topi);
+    as.SD(temp1, offsetof(ThreadState, ctx.st), top0);
+    as.SW(temp2, offsetof(ThreadState, ctx.st) + sizeof(u64), top0);
+    as.LBU(temp1, offsetof(ThreadState, ctx.fpu_tw), Recompiler::threadStatePointer());
+    as.BCLR(temp1, temp1, top);
+    as.SB(temp1, offsetof(ThreadState, ctx.fpu_tw), Recompiler::threadStatePointer());
+    as.Bind(&not_true);
+}
+
+FAST_HANDLE(FCMOVB_80) {
+    biscuit::GPR cf = rec.flag(X86_REF_CF);
+    FCMOV_80(rec, as, operands, cf);
+}
+
+FAST_HANDLE(FCMOVE_80) {
+    biscuit::GPR zf = rec.flag(X86_REF_ZF);
+    FCMOV_80(rec, as, operands, zf);
+}
+
+FAST_HANDLE(FCMOVBE_80) {
+    biscuit::GPR cf = rec.flag(X86_REF_CF);
+    biscuit::GPR zf = rec.flag(X86_REF_ZF);
+    biscuit::GPR cond = rec.scratch();
+    as.OR(cond, cf, zf);
+    FCMOV_80(rec, as, operands, cond);
+}
+
+FAST_HANDLE(FCMOVU_80) {
+    biscuit::GPR pf = rec.flag(X86_REF_PF);
+    FCMOV_80(rec, as, operands, pf);
+}
+
+FAST_HANDLE(FCMOVNB_80) {
+    biscuit::GPR cf = rec.flag(X86_REF_CF);
+    biscuit::GPR cond = rec.scratch();
+    as.XORI(cond, cf, 1);
+    FCMOV_80(rec, as, operands, cond);
+}
+
+FAST_HANDLE(FCMOVNE_80) {
+    biscuit::GPR zf = rec.flag(X86_REF_ZF);
+    biscuit::GPR cond = rec.scratch();
+    as.XORI(cond, zf, 1);
+    FCMOV_80(rec, as, operands, cond);
+}
+
+FAST_HANDLE(FCMOVNBE_80) {
+    biscuit::GPR cf = rec.flag(X86_REF_CF);
+    biscuit::GPR zf = rec.flag(X86_REF_ZF);
+    biscuit::GPR cond = rec.scratch();
+    as.OR(cond, cf, zf);
+    as.XORI(cond, cond, 1);
+    FCMOV_80(rec, as, operands, cond);
+}
+
+FAST_HANDLE(FCMOVNU_80) {
+    biscuit::GPR pf = rec.flag(X86_REF_PF);
+    biscuit::GPR cond = rec.scratch();
+    as.XORI(cond, pf, 1);
+    FCMOV_80(rec, as, operands, cond);
+}
+
+FAST_HANDLE(FNINIT_80) {
+    fast_FNINIT(rec, rip, as, instruction, operands);
+}
+
+X87_HANDLE(FXAM);
+
+FAST_HANDLE(FNSAVE_80) {
+    fast_FNSAVE(rec, rip, as, instruction, operands);
+}
+
+FAST_HANDLE(FRSTOR_80) {
+    fast_FRSTOR(rec, rip, as, instruction, operands);
+}
+
+FAST_HANDLE(FFREE_80) {
+    fast_FFREE(rec, rip, as, instruction, operands);
+}
+
+X87_HANDLE(FFREEP);
+
+#undef X87_HANDLE
 
 FAST_HANDLE(INT3) {
     WARN_ONCE("INT3 instruction being compiled?");
@@ -14782,7 +15168,7 @@ FAST_HANDLE(VPMOVSXDQ) {
 }
 
 static void VGATHER(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int elements,
-             bool sign_extend_index) {
+                    bool sign_extend_index) {
     if (operands[1].mem.base == ZYDIS_REGISTER_NONE) {
         WARN("VGATHER with base == x0");
     }
@@ -16293,7 +16679,7 @@ FAST_HANDLE(VPHMINPOSUW) {
 }
 
 static void VPSHIFT_imm(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int elements,
-                 bool left) {
+                        bool left) {
     bool is_xmms = !instruction.raw.vex.L;
     biscuit::Vec dst = is_xmms ? rec.scratchVec() : rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
@@ -16322,7 +16708,7 @@ static void VPSHIFT_imm(Recompiler& rec, Assembler& as, ZydisDecodedInstruction&
 }
 
 static void VPSHIFT_reg(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int elements,
-                 bool left) {
+                        bool left) {
     bool is_xmms = !instruction.raw.vex.L;
     biscuit::Vec dst = is_xmms ? rec.scratchVec() : rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
@@ -16530,7 +16916,8 @@ FAST_HANDLE(VPSRAW) {
     }
 }
 
-static void VFMADD(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int length, int order) {
+static void VFMADD(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int length,
+                   int order) {
     bool is_xmms = !instruction.raw.vex.L;
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src2 = rec.getVec(&operands[1]);
@@ -16560,7 +16947,8 @@ static void VFMADD(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& inst
     rec.setVec(&operands[0], dst);
 }
 
-static void VFNMADD(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int length, int order) {
+static void VFNMADD(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int length,
+                    int order) {
     bool is_xmms = !instruction.raw.vex.L;
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src2 = rec.getVec(&operands[1]);
@@ -16590,7 +16978,8 @@ static void VFNMADD(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& ins
     rec.setVec(&operands[0], dst);
 }
 
-static void VFMSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int length, int order) {
+static void VFMSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int length,
+                   int order) {
     bool is_xmms = !instruction.raw.vex.L;
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src2 = rec.getVec(&operands[1]);
@@ -16620,7 +17009,8 @@ static void VFMSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& inst
     rec.setVec(&operands[0], dst);
 }
 
-static void VFNMSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int length, int order) {
+static void VFNMSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int length,
+                    int order) {
     bool is_xmms = !instruction.raw.vex.L;
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src2 = rec.getVec(&operands[1]);
@@ -16650,8 +17040,8 @@ static void VFNMSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& ins
     rec.setVec(&operands[0], dst);
 }
 
-static void VFMADDSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int length, int order,
-               bool reverse) {
+static void VFMADDSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int length,
+                      int order, bool reverse) {
     bool is_xmms = !instruction.raw.vex.L;
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src2 = rec.getVec(&operands[1]);
@@ -16804,7 +17194,7 @@ void Handlers::initialize() {
 // When we support 80-bit mode, this will be changed
 #define X(name)
 #define SIMD(name)
-#define X87(name) Handlers::ptr_##name = fast_##name;
+#define X87(name) Handlers::ptr_##name = g_config.reduced_precision ? fast_##name : fast_##name##_80;
 #define AVX(name)
 #include "handlers.inc"
 #undef X

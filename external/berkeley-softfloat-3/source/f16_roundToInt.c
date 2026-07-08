@@ -36,13 +36,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "platform.h"
 #include "internals.h"
-#include "specialize.h"
+#include "platform.h"
 #include "softfloat.h"
+#include "specialize.h"
 
-float16_t f16_roundToInt( float16_t a, uint_fast8_t roundingMode, bool exact )
-{
+float16_t f16_roundToInt(float16_t a, uint_fast8_t roundingMode, bool exact) {
     union ui16_f16 uA;
     uint_fast16_t uiA;
     int_fast8_t exp;
@@ -50,71 +49,75 @@ float16_t f16_roundToInt( float16_t a, uint_fast8_t roundingMode, bool exact )
     union ui16_f16 uZ;
 
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
+     *------------------------------------------------------------------------*/
     uA.f = a;
     uiA = uA.ui;
-    exp = expF16UI( uiA );
+    exp = expF16UI(uiA);
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
-    if ( exp <= 0xE ) {
-        if ( !(uint16_t) (uiA<<1) ) return a;
-        if ( exact ) softfloat_exceptionFlags |= softfloat_flag_inexact;
-        uiZ = uiA & packToF16UI( 1, 0, 0 );
-        switch ( roundingMode ) {
-         case softfloat_round_near_even:
-            if ( !fracF16UI( uiA ) ) break;
-         case softfloat_round_near_maxMag:
-            if ( exp == 0xE ) uiZ |= packToF16UI( 0, 0xF, 0 );
+     *------------------------------------------------------------------------*/
+    if (exp <= 0xE) {
+        if (!(uint16_t)(uiA << 1))
+            return a;
+        if (exact)
+            softfloat_raiseFlags(softfloat_flag_inexact);
+        uiZ = uiA & packToF16UI(1, 0, 0);
+        switch (roundingMode) {
+        case softfloat_round_near_even:
+            if (!fracF16UI(uiA))
+                break;
+        case softfloat_round_near_maxMag:
+            if (exp == 0xE)
+                uiZ |= packToF16UI(0, 0xF, 0);
             break;
-         case softfloat_round_min:
-            if ( uiZ ) uiZ = packToF16UI( 1, 0xF, 0 );
+        case softfloat_round_min:
+            if (uiZ)
+                uiZ = packToF16UI(1, 0xF, 0);
             break;
-         case softfloat_round_max:
-            if ( !uiZ ) uiZ = packToF16UI( 0, 0xF, 0 );
+        case softfloat_round_max:
+            if (!uiZ)
+                uiZ = packToF16UI(0, 0xF, 0);
             break;
 #ifdef SOFTFLOAT_ROUND_ODD
-         case softfloat_round_odd:
-            uiZ |= packToF16UI( 0, 0xF, 0 );
+        case softfloat_round_odd:
+            uiZ |= packToF16UI(0, 0xF, 0);
             break;
 #endif
         }
         goto uiZ;
     }
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
-    if ( 0x19 <= exp ) {
-        if ( (exp == 0x1F) && fracF16UI( uiA ) ) {
-            uiZ = softfloat_propagateNaNF16UI( uiA, 0 );
+     *------------------------------------------------------------------------*/
+    if (0x19 <= exp) {
+        if ((exp == 0x1F) && fracF16UI(uiA)) {
+            uiZ = softfloat_propagateNaNF16UI(uiA, 0);
             goto uiZ;
         }
         return a;
     }
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
+     *------------------------------------------------------------------------*/
     uiZ = uiA;
-    lastBitMask = (uint_fast16_t) 1<<(0x19 - exp);
+    lastBitMask = (uint_fast16_t)1 << (0x19 - exp);
     roundBitsMask = lastBitMask - 1;
-    if ( roundingMode == softfloat_round_near_maxMag ) {
-        uiZ += lastBitMask>>1;
-    } else if ( roundingMode == softfloat_round_near_even ) {
-        uiZ += lastBitMask>>1;
-        if ( !(uiZ & roundBitsMask) ) uiZ &= ~lastBitMask;
-    } else if (
-        roundingMode
-            == (signF16UI( uiZ ) ? softfloat_round_min : softfloat_round_max)
-    ) {
+    if (roundingMode == softfloat_round_near_maxMag) {
+        uiZ += lastBitMask >> 1;
+    } else if (roundingMode == softfloat_round_near_even) {
+        uiZ += lastBitMask >> 1;
+        if (!(uiZ & roundBitsMask))
+            uiZ &= ~lastBitMask;
+    } else if (roundingMode == (signF16UI(uiZ) ? softfloat_round_min : softfloat_round_max)) {
         uiZ += roundBitsMask;
     }
     uiZ &= ~roundBitsMask;
-    if ( uiZ != uiA ) {
+    if (uiZ != uiA) {
 #ifdef SOFTFLOAT_ROUND_ODD
-        if ( roundingMode == softfloat_round_odd ) uiZ |= lastBitMask;
+        if (roundingMode == softfloat_round_odd)
+            uiZ |= lastBitMask;
 #endif
-        if ( exact ) softfloat_exceptionFlags |= softfloat_flag_inexact;
+        if (exact)
+            softfloat_raiseFlags(softfloat_flag_inexact);
     }
- uiZ:
+uiZ:
     uZ.ui = uiZ;
     return uZ.f;
-
 }
-

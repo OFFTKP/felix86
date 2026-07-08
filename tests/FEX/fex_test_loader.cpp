@@ -177,14 +177,22 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
     if (regs.find(#x) != regs.end()) {                                                                                                               \
         int base = 10;                                                                                                                               \
         std::string str;                                                                                                                             \
+        std::string str2;                                                                                                                            \
         if (regs[#x].is_array()) {                                                                                                                   \
             str = regs[#x][0].get<std::string>();                                                                                                    \
+            if (regs[#x].size() == 2) {                                                                                                              \
+                str2 = regs[#x][1].get<std::string>();                                                                                               \
+            }                                                                                                                                        \
         } else {                                                                                                                                     \
             str = regs[#x].get<std::string>();                                                                                                       \
         }                                                                                                                                            \
         if (str.size() > 2 && str[0] == '0' && str[1] == 'x')                                                                                        \
             base = 16;                                                                                                                               \
-        expected_mm[X86_REF_##x - X86_REF_MM0] = std::stoull(str, nullptr, base);                                                                    \
+        if (!str2.empty()) {                                                                                                                         \
+            expected_st[X86_REF_##x - X86_REF_MM0] = std::make_pair<u64, u16>(std::stoull(str, nullptr, base), std::stoull(str2, nullptr, base));    \
+        } else {                                                                                                                                     \
+            expected_mm[X86_REF_##x - X86_REF_MM0] = std::stoull(str, nullptr, base);                                                                \
+        }                                                                                                                                            \
     }
         fill(MM0);
         fill(MM1);
@@ -212,6 +220,13 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
     // 1 page at 0xC000'0000 for stack
     // According to the example assembly this is configurable but haven't found a test that configures it
     memory_mappings.push_back({0xC000'0000, 4096});
+
+    if (j.find("Env") != j.end()) {
+        std::unordered_map<std::string, std::string> env = j["Env"].get<std::unordered_map<std::string, std::string>>();
+        if (env.find("FEX_X87REDUCEDPRECISION") != env.end()) {
+            config.reduced_precision = true;
+        }
+    }
 
     if (j.find("MemoryRegions") != j.end()) {
         std::unordered_map<std::string, std::string> memory_regions;
@@ -294,6 +309,19 @@ void FEXTestLoader::Validate() {
             u64 actual = state->GetMm(ref);
             CATCH_INFO(fmt::format("Checking {}", print_guest_register(ref)));
             CATCH_REQUIRE(expected == actual);
+        }
+    }
+
+    for (size_t i = 0; i < expected_st.size(); i++) {
+        auto& pexpected = expected_st[i];
+        if (pexpected.has_value()) {
+            auto [expected64, expected16] = *pexpected;
+            auto val64 = state->ctx.st[i].significand;
+            auto val16 = state->ctx.st[i].exponent;
+            x86_ref_e ref = (x86_ref_e)(X86_REF_MM0 + i);
+            CATCH_INFO(fmt::format("Checking {}, value: {:x} {:x}", print_guest_register(ref), val64, val16));
+            CATCH_REQUIRE(expected64 == val64);
+            CATCH_REQUIRE(expected16 == val16);
         }
     }
 

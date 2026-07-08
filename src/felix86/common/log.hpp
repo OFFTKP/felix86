@@ -19,6 +19,7 @@
 #define ANSI_COLOR_BLACK_ON_GREEN "\x1b[30;42m"
 #define ANSI_COLOR_BLACK_ON_ORANGE "\x1b[30;43m"
 #define ANSI_COLOR_BLACK_ON_PINK "\x1b[30;45m"
+#define ANSI_COLOR_BLACK_ON_WHITE "\x1b[30;47m"
 
 #ifndef SOURCE_PATH_SIZE
 #pragma message("SOURCE_PATH_SIZE was not defined correctly")
@@ -58,6 +59,13 @@ private:
     do {                                                                                                                                             \
         if (!g_config.quiet && g_config.print_smc) {                                                                                                 \
             Logger::log(ANSI_COLOR_BLACK_ON_GREEN format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                      \
+        }                                                                                                                                            \
+    } while (0)
+
+#define X87LOG(format, ...)                                                                                                                          \
+    do {                                                                                                                                             \
+        if (!g_config.quiet) {                                                                                                                       \
+            Logger::log(ANSI_COLOR_BLACK_ON_WHITE format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                      \
         }                                                                                                                                            \
     } while (0)
 

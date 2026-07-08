@@ -36,13 +36,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "platform.h"
 #include "internals.h"
-#include "specialize.h"
+#include "platform.h"
 #include "softfloat.h"
+#include "specialize.h"
 
-int_fast64_t f128_to_i64_r_minMag( float128_t a, bool exact )
-{
+int_fast64_t f128_to_i64_r_minMag(float128_t a, bool exact) {
     union ui128_f128 uA;
     uint_fast64_t uiA64, uiA0;
     bool sign;
@@ -53,61 +52,54 @@ int_fast64_t f128_to_i64_r_minMag( float128_t a, bool exact )
     int_fast64_t absZ;
 
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
+     *------------------------------------------------------------------------*/
     uA.f = a;
     uiA64 = uA.ui.v64;
-    uiA0  = uA.ui.v0;
-    sign  = signF128UI64( uiA64 );
-    exp   = expF128UI64( uiA64 );
-    sig64 = fracF128UI64( uiA64 );
-    sig0  = uiA0;
+    uiA0 = uA.ui.v0;
+    sign = signF128UI64(uiA64);
+    exp = expF128UI64(uiA64);
+    sig64 = fracF128UI64(uiA64);
+    sig0 = uiA0;
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
+     *------------------------------------------------------------------------*/
     shiftDist = 0x402F - exp;
-    if ( shiftDist < 0 ) {
+    if (shiftDist < 0) {
         /*--------------------------------------------------------------------
-        *--------------------------------------------------------------------*/
-        if ( shiftDist < -14 ) {
-            if (
-                   (uiA64 == UINT64_C( 0xC03E000000000000 ))
-                && (sig0 < UINT64_C( 0x0002000000000000 ))
-            ) {
-                if ( exact && sig0 ) {
-                    softfloat_exceptionFlags |= softfloat_flag_inexact;
+         *--------------------------------------------------------------------*/
+        if (shiftDist < -14) {
+            if ((uiA64 == UINT64_C(0xC03E000000000000)) && (sig0 < UINT64_C(0x0002000000000000))) {
+                if (exact && sig0) {
+                    softfloat_raiseFlags(softfloat_flag_inexact);
                 }
-                return -INT64_C( 0x7FFFFFFFFFFFFFFF ) - 1;
+                return -INT64_C(0x7FFFFFFFFFFFFFFF) - 1;
             }
-            softfloat_raiseFlags( softfloat_flag_invalid );
-            return
-                (exp == 0x7FFF) && (sig64 | sig0) ? i64_fromNaN
-                    : sign ? i64_fromNegOverflow : i64_fromPosOverflow;
+            softfloat_raiseFlags(softfloat_flag_invalid);
+            return (exp == 0x7FFF) && (sig64 | sig0) ? i64_fromNaN : sign ? i64_fromNegOverflow : i64_fromPosOverflow;
         }
         /*--------------------------------------------------------------------
-        *--------------------------------------------------------------------*/
-        sig64 |= UINT64_C( 0x0001000000000000 );
+         *--------------------------------------------------------------------*/
+        sig64 |= UINT64_C(0x0001000000000000);
         negShiftDist = -shiftDist;
-        absZ = sig64<<negShiftDist | sig0>>(shiftDist & 63);
-        if ( exact && (uint64_t) (sig0<<negShiftDist) ) {
-            softfloat_exceptionFlags |= softfloat_flag_inexact;
+        absZ = sig64 << negShiftDist | sig0 >> (shiftDist & 63);
+        if (exact && (uint64_t)(sig0 << negShiftDist)) {
+            softfloat_raiseFlags(softfloat_flag_inexact);
         }
     } else {
         /*--------------------------------------------------------------------
-        *--------------------------------------------------------------------*/
-        if ( 49 <= shiftDist ) {
-            if ( exact && (exp | sig64 | sig0) ) {
-                softfloat_exceptionFlags |= softfloat_flag_inexact;
+         *--------------------------------------------------------------------*/
+        if (49 <= shiftDist) {
+            if (exact && (exp | sig64 | sig0)) {
+                softfloat_raiseFlags(softfloat_flag_inexact);
             }
             return 0;
         }
         /*--------------------------------------------------------------------
-        *--------------------------------------------------------------------*/
-        sig64 |= UINT64_C( 0x0001000000000000 );
-        absZ = sig64>>shiftDist;
-        if ( exact && (sig0 || (absZ<<shiftDist != sig64)) ) {
-            softfloat_exceptionFlags |= softfloat_flag_inexact;
+         *--------------------------------------------------------------------*/
+        sig64 |= UINT64_C(0x0001000000000000);
+        absZ = sig64 >> shiftDist;
+        if (exact && (sig0 || (absZ << shiftDist != sig64))) {
+            softfloat_raiseFlags(softfloat_flag_inexact);
         }
     }
     return sign ? -absZ : absZ;
-
 }
-

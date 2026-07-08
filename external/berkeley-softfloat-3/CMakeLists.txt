@@ -313,5 +313,7 @@ target_sources(berkeley-softfloat PRIVATE
   source/RISCV/s_commonNaNToF128UI.c
   source/RISCV/s_propagateNaNF128UI.c
 )
-target_include_directories(berkeley-softfloat PRIVATE source/include source/RISCV)
-target_compile_definitions(berkeley-softfloat PRIVATE LITTLEENDIAN=1 INLINE=inline SOFTFLOAT_BUILTIN_CLZ=1 SOFTFLOAT_INTRINSIC_INT128=1 SOFTFLOAT_FAST_INT64=1)
+target_include_directories(berkeley-softfloat PRIVATE source/RISCV)
+target_include_directories(berkeley-softfloat PUBLIC  source/include)
+target_compile_definitions(berkeley-softfloat PUBLIC LITTLEENDIAN=1 SOFTFLOAT_BUILTIN_CLZ=1 SOFTFLOAT_INTRINSIC_INT128=1 SOFTFLOAT_FAST_INT64=1)
+target_compile_definitions(berkeley-softfloat PRIVATE INLINE=inline)

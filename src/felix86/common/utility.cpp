@@ -1720,3 +1720,53 @@ pid_t get_tracer_pid() {
 
     return (pid_t)pid_val;
 }
+
+// These definitions are used by softfloat
+extern "C" u8 softfloat_getRoundPrecision() {
+    ThreadState* state = ThreadState::Get();
+    if (!state->use_precision_control) {
+        return 80;
+    }
+
+    u8 precision = (state->ctx.fpu_cw >> 8) & 0b11;
+    switch (precision) {
+    case 0:
+        return 32;
+    case 2:
+        return 64;
+    case 3:
+        return 80;
+    }
+    WARN("Invalid precision in x87 control word");
+    return 80;
+}
+
+extern "C" u8 softfloat_getRoundingMode() {
+    ThreadState* state = ThreadState::Get();
+    u8 rounding = (state->ctx.fpu_cw >> 10) & 0b11;
+    switch (rounding) {
+    case 0:
+        return softfloat_round_near_even;
+    case 1:
+        return softfloat_round_min;
+    case 2:
+        return softfloat_round_max;
+    case 3:
+        return softfloat_round_minMag;
+    }
+    UNREACHABLE();
+    return 0;
+}
+
+extern "C" void softfloat_raiseFlags(u8 flags) {
+    ThreadState* state = ThreadState::Get();
+    if (flags & ~1) {
+        WARN("Raising unhandled exceptions: %x", flags);
+    }
+    switch (flags) {
+    case softfloat_flag_invalid: {
+        state->ctx.fpu_sw |= 1 << 0;
+        break;
+    }
+    }
+}
