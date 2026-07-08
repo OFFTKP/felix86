@@ -49,6 +49,10 @@ jobs:
           mkdir -p ${{ github.workspace }}/artifact
           mkdir -p ${{ github.workspace }}/artifact/lib
           cp ${{ github.workspace }}/build/felix86 ${{ github.workspace }}/artifact/
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            curl -fsSL -o ${{ github.workspace }}/artifact/felix86.png https://cdn.felix86.com/images/felix86.png
+            echo "a35e3508794644729aee70bfd7ee3a6e041eb63da7c2724d920e6fe5756d29a0  ${{ github.workspace }}/artifact/felix86.png" | sha256sum -c -
+          fi
           mv ${{ github.workspace }}/src/felix86/hle/guest_libs/build/x86_64-linux-gnu ${{ github.workspace }}/artifact/lib
           mkdir -p ${{ github.workspace }}/test
           cp ${{ github.workspace }}/build/felix86_test ${{ github.workspace }}/test/
