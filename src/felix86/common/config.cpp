@@ -529,9 +529,7 @@ void Config::save(const std::filesystem::path& path, const Config& config, bool 
 
 static std::string lowercase(const char* str) {
     std::string s(str);
-    for_each(s.begin(), s.end(), [](char& c) {
-        c = tolower(c);
-    });
+    for_each(s.begin(), s.end(), [](char& c) { c = tolower(c); });
     return s;
 }
 
@@ -562,12 +560,14 @@ std::string stringify_shell<u64>(const u64& value) {
 }
 
 std::optional<std::string> Config::getConfigString(const char* group, const char* field) {
+    std::string group_lower = lowercase(group);
+    std::string field_lower = lowercase(field);
     // cmp_group and cmp_name are marked 'static' to avoid initializing more than once (first call of function). This is thread safe.
 #define X(group_, type_, name_, ...)                                                                                                                 \
     {                                                                                                                                                \
         static const std::string cmp_group = lowercase(#group_);                                                                                     \
         static const std::string cmp_name = lowercase(#name_);                                                                                       \
-        if (strcmp(group, cmp_group.c_str()) == 0 && strcmp(field, cmp_name.c_str()) == 0) {                                                         \
+        if (group_lower == cmp_group && field_lower == cmp_name) {                                                                                   \
             return std::optional{stringify_shell<type_>(this->name_)};                                                                               \
         }                                                                                                                                            \
     }
@@ -577,12 +577,14 @@ std::optional<std::string> Config::getConfigString(const char* group, const char
 }
 
 bool Config::setConfigString(const char* group, const char* field, const char* value) {
+    std::string group_lower = lowercase(group);
+    std::string field_lower = lowercase(field);
     // cmp_group and cmp_name are marked 'static' to avoid initializing more than once (first call of function). This is thread safe.
 #define X(group_, type_, name_, ...)                                                                                                                 \
     {                                                                                                                                                \
         static const std::string cmp_group = lowercase(#group_);                                                                                     \
         static const std::string cmp_name = lowercase(#name_);                                                                                       \
-        if (strcmp(group, cmp_group.c_str()) == 0 && strcmp(field, cmp_name.c_str()) == 0) {                                                         \
+        if (group_lower == cmp_group && field_lower == cmp_name) {                                                                                   \
             return setFromString<type_>(*this, this->name_, value);                                                                                  \
         }                                                                                                                                            \
     }
