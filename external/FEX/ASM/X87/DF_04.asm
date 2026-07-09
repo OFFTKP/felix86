@@ -99,6 +99,7 @@ movups xmm11, [rel .res_data_11]
 
 hlt
 
+align 4096
 .cw:
 dw 0
 

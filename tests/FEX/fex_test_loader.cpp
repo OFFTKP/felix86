@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <fstream>
 #include <sys/mman.h>
 #include <sys/wait.h>
@@ -44,8 +45,17 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
         ERROR("Failed to find end of JSON in file: %s", spath.c_str());
     }
 
+    std::string include_path;
+    include_path.resize(PATH_MAX);
+    int res = readlink("/proc/self/exe", include_path.data(), include_path.size());
+    if (res == -1) {
+        perror("readlink");
+        exit(1);
+    }
+    include_path = (std::filesystem::path(include_path).parent_path() / "ASM/Includes").string();
+
     const char* argv[] = {
-        "nasm", spath.c_str(), "-fbin", "-o", "/dev/stdout", nullptr,
+        "nasm", spath.c_str(), "-i", include_path.c_str(), "-fbin", "-o", "/dev/stdout", nullptr,
     };
 
     // Run the nasm as a separate process, read the output from stdout
@@ -101,10 +111,15 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
 #define fill(x)                                                                                                                                      \
     if (regs.find(#x) != regs.end()) {                                                                                                               \
         int base = 10;                                                                                                                               \
-        std::string str = regs[#x].get<std::string>();                                                                                               \
+        std::string str;                                                                                                                             \
+        if (regs[#x].is_array()) {                                                                                                                   \
+            str = regs[#x][0].get<std::string>();                                                                                                    \
+        } else {                                                                                                                                     \
+            str = regs[#x].get<std::string>();                                                                                                       \
+        }                                                                                                                                            \
         if (str.size() > 2 && str[0] == '0' && str[1] == 'x')                                                                                        \
             base = 16;                                                                                                                               \
-        expected_gpr[X86_REF_##x - X86_REF_RAX] = std::stoull(regs[#x].get<std::string>(), nullptr, base);                                           \
+        expected_gpr[X86_REF_##x - X86_REF_RAX] = std::stoull(str, nullptr, base);                                                                   \
     }
         fill(RAX);
         fill(RCX);
@@ -161,10 +176,15 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
 #define fill(x)                                                                                                                                      \
     if (regs.find(#x) != regs.end()) {                                                                                                               \
         int base = 10;                                                                                                                               \
-        std::string str = regs[#x].get<std::string>();                                                                                               \
+        std::string str;                                                                                                                             \
+        if (regs[#x].is_array()) {                                                                                                                   \
+            str = regs[#x][0].get<std::string>();                                                                                                    \
+        } else {                                                                                                                                     \
+            str = regs[#x].get<std::string>();                                                                                                       \
+        }                                                                                                                                            \
         if (str.size() > 2 && str[0] == '0' && str[1] == 'x')                                                                                        \
             base = 16;                                                                                                                               \
-        expected_mm[X86_REF_##x - X86_REF_MM0] = std::stoull(regs[#x].get<std::string>(), nullptr, base);                                            \
+        expected_mm[X86_REF_##x - X86_REF_MM0] = std::stoull(str, nullptr, base);                                                                    \
     }
         fill(MM0);
         fill(MM1);
@@ -186,8 +206,8 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
     // 16 pages at 0xe000'0000
     memory_mappings.push_back({0xE000'0000, 16 * 4096});
 
-    // 2 pages at 0xe800'f000
-    memory_mappings.push_back({0xE800'F000, 2 * 4096});
+    // 2 pages at 0xe800'0000
+    memory_mappings.push_back({0xE800'0000, 2 * 4096});
 
     // 1 page at 0xC000'0000 for stack
     // According to the example assembly this is configurable but haven't found a test that configures it

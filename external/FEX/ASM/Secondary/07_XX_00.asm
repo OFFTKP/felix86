@@ -14,6 +14,7 @@ movzx rax, word [rel data]
 mov rbx, qword [rel data + 2]
 hlt
 
+align 4096
 data:
 ; Limit
 dw 0

@@ -4,7 +4,8 @@
   "RegData": {
     "RAX": "0",
     "RCX": "0",
-    "RDI": "0xE0000100"
+    "RDI": "0xE8000100",
+    "R11": "0"
   },
 
   "MemoryRegions": {
@@ -15,7 +16,7 @@
 bits 64
 
 ; Starting address to store to
-mov rdi, 0xe0000000
+mov rdi, 0xe8000000
 
 ; How many elements we want to store
 ; Additional just in case STOS continues past for some reason
@@ -43,7 +44,7 @@ repne stosq
 
 ; Now read the data back and ensure it is zero
 
-mov r14, 0xe0000000
+mov r14, 0xe8000000
 mov r13, 0x20
 mov r12, 0
 mov r11, 0

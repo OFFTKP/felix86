@@ -1,13 +1,14 @@
 %ifdef CONFIG
 {
   "RegData": {
-      "RAX": "4",
-      "RDX": "16",
+      "RAX": ["4"],
+      "RDX": ["16"],
       "XMM0": ["0x00060F000F000D01", "0x0000000000070007"],
       "XMM1": ["0x3111313131311111", "0x0000000000313131"],
       "XMM2": ["0x005A0041007A0061", "0x55AACCBBFF223344"],
       "XMM3": ["0x006500200027003F", "0x00210065004F0065"]
-  }
+  },
+  "HostFeatures": ["SSE4.2"]
 }
 %endif
 bits 64
@@ -119,7 +120,7 @@ movaps xmm1, [rel .flags]
 
 hlt
 
-align 32
+align 4096
 .data:
 dq 0x998877665A417A61 ; "azAZ" (followed by junk)
 dq 0x55AACCBBFF223344

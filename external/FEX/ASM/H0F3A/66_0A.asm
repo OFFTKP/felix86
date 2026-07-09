@@ -9,7 +9,8 @@
     "XMM5": ["0xbf00000000000000", "0xbfc000003fc00000"],
     "XMM6": ["0xbf0000003f800000", "0xbfc000003fc00000"],
     "XMM7": ["0xbf00000000000000", "0xbfc000003fc00000"]
-  }
+  },
+  "HostFeatures": ["SSE4.1"]
 }
 %endif
 bits 64
@@ -61,7 +62,7 @@ roundss xmm7, [rdx + 8 * 0], 00000100b
 
 hlt
 
-align 16
+align 4096
 .data:
 dd 0.5, -0.5, 1.5, -1.5
 dq 0, 0

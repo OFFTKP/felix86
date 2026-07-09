@@ -5,7 +5,8 @@
       "XMM1": ["0x1919313131311111", "0x0000000039393939"],
       "XMM2": ["0x306F000030443057", "0x000030443057697D"],
       "XMM3": ["0x306F8A9E672C65E5", "0x00003044305796E3"]
-  }
+  },
+  "HostFeatures": ["SSE4.2"]
 }
 %endif
 bits 64
@@ -113,7 +114,7 @@ movaps xmm1, [rel .flags]
 
 hlt
 
-align 32
+align 4096
 .data:
 dq 0x6550206F6F006C6C ; "ll" with junk following it
 dq 0x21212121656C706F

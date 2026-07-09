@@ -7,7 +7,8 @@
     "XMM3": ["0x0000000000000078", "0x7800000000000077"],
     "XMM4": ["0x0000000000000078", "0"],
     "XMM5": ["0x0000000000000078", "0"]
-  }
+  },
+  "HostFeatures": ["SSE4.1"]
 }
 %endif
 bits 64
@@ -43,7 +44,8 @@ pextrb [rbx + rcx], xmm0, 0
 movaps xmm5, [rbx + rcx]
 
 hlt
-align 32
+
+align 4096
 .data:
 dq 0x7172737475767778
 dq 0x4142434445464748

@@ -1,0 +1,25 @@
+%ifdef CONFIG
+{
+  "RegData": {
+    "MM6": ["0x8000000000000000", "0x3FFF"],
+    "MM7": ["0x8000000000000000", "0x4000"]
+  }
+}
+%endif
+bits 64
+
+; Tests undocumented fxch implementation at 0xdd, 0xc8+i
+
+mov rdx, 0xe0000000
+
+mov eax, 0x3f800000 ; 1.0
+mov [rdx + 8 * 0], eax
+mov eax, 0x40000000 ; 2.0
+mov [rdx + 8 * 1], eax
+
+fld dword [rdx + 8 * 0]
+fld dword [rdx + 8 * 1]
+
+db 0xdd, 0xc9
+
+hlt

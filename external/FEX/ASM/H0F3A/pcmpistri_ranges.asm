@@ -5,7 +5,8 @@
       "XMM1": ["0x3111313131311111", "0x0000001818313131"],
       "XMM2": ["0x005A0041007A0061", "0x55AACCBBFF220000"],
       "XMM3": ["0x0065002000270000", "0x00210065004F0065"]
-  }
+  },
+  "HostFeatures": ["SSE4.2"]
 }
 %endif
 bits 64
@@ -121,7 +122,7 @@ movaps xmm1, [rel .flags]
 
 hlt
 
-align 32
+align 4096
 .data:
 dq 0x998877005A417A61 ; "azAZ" (followed by junk)
 dq 0x55AACCBBFF223344

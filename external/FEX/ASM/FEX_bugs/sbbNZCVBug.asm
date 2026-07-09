@@ -77,6 +77,7 @@ movzx ebx, dl
 
 hlt
 
+align 4096
 .current_x:
 dq 1
 

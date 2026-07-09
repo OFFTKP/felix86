@@ -401,6 +401,16 @@ struct Recompiler {
         }
     }
 
+    void cmov(biscuit::GPR dst, biscuit::GPR true_value, biscuit::GPR false_value, biscuit::GPR cond) {
+        biscuit::GPR tmp1 = scratch();
+        biscuit::GPR tmp2 = scratch();
+        as.CZERO_NEZ(tmp1, false_value, cond);
+        as.CZERO_EQZ(tmp2, true_value, cond);
+        as.OR(dst, tmp1, tmp2);
+        popScratch();
+        popScratch();
+    }
+
     bool setVectorState(SEW sew, int elem_count, LMUL grouping = LMUL::M1);
 
     void sextb(biscuit::GPR dest, biscuit::GPR src);
