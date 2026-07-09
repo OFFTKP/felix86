@@ -15,7 +15,8 @@
       "XMM12": ["0x0000000000000000", "0xFFFF00000000FFFF"],
       "XMM13": ["0x0000000000000010", "0x0000000000000000"],
       "XMM14": ["0x0000000000000000", "0x000000000000FFFF"]
-  }
+  },
+  "HostFeatures": ["SSE4.2"]
 }
 %endif
 bits 64
@@ -121,7 +122,7 @@ movaps xmm1, [rel .flags]
 
 hlt
 
-align 32
+align 4096
 .data:
 dq 0x6463626144434241 ; "ABCDabcd"
 dq 0x6C6B6A694C4B4A00 ; "\0JKLijkl"

@@ -4,9 +4,6 @@
     "XMM0":  ["0x4142434445464748", "0x0"],
     "XMM1":  ["0x4142434445464748", "0x0"],
     "XMM2":  ["0x4142434445464748", "0x5152535455565758"]
-  },
-  "MemoryRegions": {
-    "0x100000000": "4096"
   }
 }
 %endif
@@ -27,7 +24,8 @@ mov [rdx + 8 * 5], rax
 
 movapd xmm2, [rdx + 8 * 0]
 
-movq xmm0, xmm2
+; movq xmm0, xmm2
+db 0x66, 0x0f, 0xd6, 11_010_000b
 movq [rdx + 8 * 2], xmm2
 movapd xmm1, [rdx + 8 * 2]
 

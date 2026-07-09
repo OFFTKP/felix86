@@ -1,6 +1,6 @@
 %ifdef CONFIG
 {
-  "HostFeatures": ["AFP"],
+  "HostFeatures": ["AFP", "AVX"],
   "RegData": {
     "XMM0": ["0x0108000040e00000", "0xd1d2d3d4d5d6d7d8", "0", "0"],
     "XMM1": ["0x00cfffff40e00000", "0xd1d2d3d4d5d6d7d8", "0", "0"]
@@ -24,7 +24,7 @@ ldmxcsr [rel .data_mxcsr]
 vaddps xmm1, xmm1, xmm2
 
 hlt
-align 32
+align 4096
 
 .data_three:
 dd 3.0, 0x00cfffff

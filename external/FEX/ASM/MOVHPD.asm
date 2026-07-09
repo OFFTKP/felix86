@@ -5,9 +5,6 @@
     "RAX": "0xDEADBEEFBAD0DAD1",
     "RCX": "0xDEADBEEFBAD0DAD1",
     "XMM0": ["0", "0xDEADBEEFBAD0DAD1"]
-  },
-  "MemoryRegions": {
-    "0x100000000": "4096"
   }
 }
 %endif
@@ -17,7 +14,7 @@ bits 64
 mov rax, 0xDEADBEEFBAD0DAD1
 
 ; Starting address to store to
-mov rdi, 0xe0000000
+mov rdi, 0xe8000000
 
 pxor xmm0, xmm0
 pxor xmm1, xmm1

@@ -10,7 +10,8 @@
     "XMM6": ["0x755ae99230a898c3", "0x3d209d2dd4bad59f"],
     "XMM7": ["0x3a670269bb42b2f8", "0x05173dbeda9e86ab"],
     "XMM8": ["0x275bf419e2f3b099", "0x276d21a284ab2912"]
-  }
+  },
+  "HostFeatures": ["XSAVE"]
 }
 %endif
 bits 64
@@ -110,7 +111,8 @@ movups xmm7, [rel .temp_x87_result + (3 * 16)]
 movups xmm8, [rel .temp_x87_result + (4 * 16)]
 
 hlt
-align 32
+
+align 4096
 
 .temp_x87_result:
 times (16 * 8) db 0

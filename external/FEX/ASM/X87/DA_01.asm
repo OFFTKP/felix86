@@ -3,9 +3,6 @@
   "RegData": {
     "XMM0":  ["0x8000000000000000", "0x4000"],
     "XMM1":  ["0x8000000000000000", "0xC000"]
-  },
-  "MemoryRegions": {
-    "0x100000000": "4096"
   }
 }
 %endif
@@ -36,6 +33,7 @@ movups xmm1, [rel data2]
 
 hlt
 
+align 4096
 data2:
 dq 0
 dq 0

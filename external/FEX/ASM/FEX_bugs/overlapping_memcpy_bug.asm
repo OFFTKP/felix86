@@ -8,7 +8,8 @@
   },
   "MemoryRegions": {
     "0xf0000000": "4096"
-  }
+  },
+  "HostFeatures": ["SSE4.1"]
 }
 %endif
 bits 64
@@ -84,6 +85,7 @@ mov edx, dword [rel .results + (4 * 3)]
 
 hlt
 
+align 4096
 .results:
 dd 0, 0, 0, 0, 0, 0, 0, 0
 ; 4096 bytes of random data.

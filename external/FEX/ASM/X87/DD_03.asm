@@ -3,9 +3,6 @@
   "RegData": {
     "RAX": "0x4000000000000000",
     "MM7": ["0x8000000000000000", "0x3FFF"]
-  },
-  "MemoryRegions": {
-    "0x100000000": "4096"
   }
 }
 %endif
@@ -24,7 +21,7 @@ fld tword [rdx + 8 * 0]
 
 hlt
 
-align 8
+align 4096
 data:
   dt 2.0
   dq 0

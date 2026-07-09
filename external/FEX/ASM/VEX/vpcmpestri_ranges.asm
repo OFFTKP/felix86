@@ -2,8 +2,8 @@
 {
   "HostFeatures": ["AVX"],
   "RegData": {
-      "RAX": "4",
-      "RDX": "16",
+      "RAX": ["4"],
+      "RDX": ["16"],
       "XMM0": ["0x00060F000F000D01", "0x0000000000070007", "0x0000000000000000", "0x0000000000000000"],
       "XMM1": ["0x3111313131311111", "0x0000000000313131", "0x0000000000000000", "0x0000000000000000"],
       "XMM2": ["0x005A0041007A0061", "0x55AACCBBFF223344", "0xAAAAAAAAAAAAAAAA", "0xBBBBBBBBBBBBBBBB"],
@@ -120,7 +120,7 @@ vmovaps ymm1, [rel .flags]
 
 hlt
 
-align 32
+align 4096
 .data:
 dq 0x998877665A417A61 ; "azAZ" (followed by junk)
 dq 0x55AACCBBFF223344

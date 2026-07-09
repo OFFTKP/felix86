@@ -6,9 +6,7 @@
     "MM3": "0x0",
     "MM4": "0x5152535455565758"
   },
-  "MemoryRegions": {
-    "0x100000000": "4096"
-  }
+  "HostFeatures": ["SSSE3"]
 }
 %endif
 bits 64

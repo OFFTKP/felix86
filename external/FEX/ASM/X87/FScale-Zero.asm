@@ -12,17 +12,6 @@
 %endif
 bits 64
 
-section .data
-    neg_zero dq 0x8000000000000000   ; -0.0
-
-section .bss
-  align 8
-  intstor resq 1
-
-section .text
-global _start
-
-_start:
 ; scale by zero (st1 == 0)
 mov rax, 0
 mov qword [rel intstor], rax
@@ -84,3 +73,8 @@ fst qword [rel intstor]
 mov r13, [rel intstor]
 
 hlt
+
+align 4096
+neg_zero: dq 0x8000000000000000   ; -0.0
+
+intstor: dq 0

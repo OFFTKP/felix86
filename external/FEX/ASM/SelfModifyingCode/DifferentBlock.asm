@@ -8,6 +8,8 @@
 %endif
 bits 64
 
+mov rsp, 0xe000_1000
+
 jmp main
 
 patched_op:

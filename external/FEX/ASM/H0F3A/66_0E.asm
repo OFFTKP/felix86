@@ -11,7 +11,8 @@
     "XMM7": ["0x944c0a76f8f69004", "0xb29bfeda8b8db7bc"],
     "XMM8": ["0x10c41fa17837c17f", "0x099224327e5e296c"],
     "XMM9": ["0x48510f254d2fa47f", "0x2b5774313a974886"]
-  }
+  },
+  "HostFeatures": ["SSE4.1"]
 }
 %endif
 bits 64
@@ -53,7 +54,7 @@ crc32 rax, qword [rel .data_temp + 8]
 
 hlt
 
-align 16
+align 4096
 ; 256bytes of random data
 .data:
 db 0x7f, 0xa4, 0x2f, 0x4d, 0x25, 0x0f, 0x51, 0x48, 0x86, 0x48, 0x97, 0x3a, 0x31, 0x74, 0x57, 0x2b

@@ -4,13 +4,16 @@
     "R15": "0xFFFFFFFFFFFFFF47",
     "R14": "0xFFFFFFFFFFFFFF57",
     "R13": "0xFFFFFFFFFFFFFF67"
-  },
-  "MemoryRegions": {
-    "0x100000000": "4096"
   }
 }
 %endif
 bits 64
+
+; Save FS/GS
+rdfsbase rax
+mov [rel .data_backup], rax
+rdgsbase rax
+mov [rel .data_backup + 8], rax
 
 mov rbx, 0xe0000000
 lea r9, [rbx + 8 * 1]
@@ -42,4 +45,15 @@ mov rbx, 0
 gs xlat
 mov r13, rax
 
+; Restore FS/GS
+mov rax, [rel .data_backup]
+wrfsbase rax
+mov rax, [rel .data_backup + 8]
+wrgsbase rax
+
 hlt
+
+align 4096
+.data_backup:
+dq 0
+dq 0

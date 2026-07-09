@@ -9,15 +9,12 @@
     "RSI": "0x6",
     "RDI": "0x7",
     "R15": "0x8"
-  },
-  "MemoryRegions": {
-    "0x100000000": "4096"
   }
 }
 %endif
 bits 64
 
-mov r15, 0xe0000080
+mov rsp, 0xe0000080
 
 mov rax, 1
 mov rbx, 2

@@ -30,8 +30,7 @@ foreach(ASM_SRC ${ASM_SOURCES})
   add_custom_command(OUTPUT ${TMP_FILE}
     DEPENDS "${ASM_SRC}"
     COMMAND "cp" ARGS "${ASM_SRC}" "${TMP_FILE}"
-    COMMAND "sed" ARGS "-i" "-e" "\'1s;^;BITS 64\\n;\'" "-e" "\'\$\$a\\ret\\n\'" "${TMP_FILE}"
-    )
+    COMMAND "sed" ARGS "-i" "-e" "\'1s;^;BITS 64\\n;\'" "-e" "\'\$\$a\\ret\\n\'" "${TMP_FILE}")
 
   set(OUTPUT_NAME "${OUTPUT_ASM_FOLDER}/${ASM_NAME}.bin")
   set(OUTPUT_CONFIG_NAME "${OUTPUT_ASM_FOLDER}/${ASM_NAME}.config.bin")
@@ -51,26 +50,23 @@ foreach(ASM_SRC ${ASM_SOURCES})
   # Format is "<Test Arguments>" "<Test Name>" "<Test Type>"
 
   set(TEST_ARGS)
-  if (_M_ARM_64 OR ENABLE_VIXL_SIMULATOR)
+  if (ARCHITECTURE_arm64 OR ENABLE_VIXL_SIMULATOR)
     list(APPEND TEST_ARGS
-      "--no-silentlog -g -n 1   --no-multiblock"   "jit_1"     "jit"
-      "--no-silentlog -g -n 500 --no-multiblock"   "jit_500"   "jit"
-      "--no-silentlog -g -n 500 --multiblock"      "jit_500_m" "jit"
-      )
+      "FEX_SILENTLOG=0 FEX_DUMPGPRS=1 FEX_MAXINST=1 FEX_MULTIBLOCK=0 FEX_TSOENABLED=0"   "jit_1"     "jit"
+      "FEX_SILENTLOG=0 FEX_DUMPGPRS=1 FEX_MAXINST=500 FEX_MULTIBLOCK=0 FEX_TSOENABLED=0" "jit_500"   "jit"
+      "FEX_SILENTLOG=0 FEX_DUMPGPRS=1 FEX_MAXINST=500 FEX_MULTIBLOCK=1 FEX_TSOENABLED=0" "jit_500_m" "jit")
   endif()
 
   if (ENABLE_VIXL_SIMULATOR)
     set(CPU_CLASS Simulator)
-  elseif (_M_X86_64)
-    list(APPEND TEST_ARGS
-      "--no-silentlog -g"       "host"      "host"
-      )
+  elseif (ARCHITECTURE_x86_64)
+    list(APPEND TEST_ARGS "FEX_SILENTLOG=0 FEX_DUMPGPRS=1" "host" "host")
   endif()
 
-  if (NOT MINGW_BUILD)
-    set (LAUNCH_PROGRAM "${CMAKE_BINARY_DIR}/Bin/TestHarnessRunner")
+  if (NOT MINGW)
+    set(LAUNCH_PROGRAM "${CMAKE_BINARY_DIR}/Bin/TestHarnessRunner")
   else()
-    set (LAUNCH_PROGRAM "wine" "${CMAKE_BINARY_DIR}/Bin/TestHarnessRunner.exe")
+    set(LAUNCH_PROGRAM "wine" "${CMAKE_BINARY_DIR}/Bin/TestHarnessRunner.exe")
   endif()
 
   list(LENGTH TEST_ARGS ARG_COUNT)
@@ -79,15 +75,15 @@ foreach(ASM_SRC ${ASM_SOURCES})
     math(EXPR TEST_NAME_INDEX "${Index}+1")
     math(EXPR TEST_TYPE_INDEX "${Index}+2")
 
-    list(GET TEST_ARGS ${Index} ARGS)
+    list(GET TEST_ARGS ${Index} FEX_ARGS)
     list(GET TEST_ARGS ${TEST_NAME_INDEX} TEST_DESC)
     list(GET TEST_ARGS ${TEST_TYPE_INDEX} TEST_TYPE)
 
     set(TEST_NAME "${TEST_DESC}/Test_64Bit_${REL_TEST_ASM}")
-    string(REPLACE " " ";" ARGS_LIST ${ARGS})
+    string(REPLACE " " ";" FEX_ARGS_LIST ${FEX_ARGS})
 
     if (TEST_NAME MATCHES "SelfModifyingCode")
-      list(APPEND ARGS_LIST "--smcchecks=full")
+      list(APPEND FEX_ARGS_LIST "FEX_SMCCHECKS=full")
     endif()
 
     add_test(NAME ${TEST_NAME}
@@ -98,9 +94,8 @@ foreach(ASM_SRC ${ASM_SOURCES})
       "${CMAKE_SOURCE_DIR}/unittests/ASM/Disabled_Tests_${TEST_TYPE}"
       "${CMAKE_SOURCE_DIR}/unittests/ASM/Disabled_Tests_${CPU_CLASS}"
       "Test_${REL_TEST_ASM}"
+      "${TEST_NAME}"
       ${LAUNCH_PROGRAM}
-      ${ARGS_LIST}
-      "--"
       "${OUTPUT_NAME}" "${OUTPUT_CONFIG_NAME}")
     # This will cause the ASM tests to fail if it can't find the TestHarness or ASMN files
     # Prety crap way to work around the fact that tests can't have a build dependency in a different directory
@@ -109,27 +104,25 @@ foreach(ASM_SRC ${ASM_SOURCES})
     set_property(TEST ${TEST_NAME} APPEND PROPERTY DEPENDS "${OUTPUT_NAME}")
     set_property(TEST ${TEST_NAME} APPEND PROPERTY DEPENDS "${OUTPUT_CONFIG_NAME}")
     set_property(TEST ${TEST_NAME} APPEND PROPERTY SKIP_RETURN_CODE 125)
-    if (MINGW_BUILD)
+    set_property(TEST ${TEST_NAME} APPEND PROPERTY ENVIRONMENT ${FEX_ARGS_LIST})
+    if (MINGW)
       # Ensure the DOS region can be allocated.
-      set_property(TEST ${TEST_NAME} PROPERTY ENVIRONMENT "WINEPRELOADRESERVE=10000-110000")
+      set_property(TEST ${TEST_NAME} APPEND PROPERTY ENVIRONMENT "WINEPRELOADRESERVE=10000-110000")
     endif()
   endforeach()
 
 endforeach()
 
-add_custom_target(asm_files ALL
-  DEPENDS "${ASM_DEPENDS}")
+add_custom_target(asm_files ALL DEPENDS "${ASM_DEPENDS}")
 
-add_custom_target(
-  64bit_asm_tests
+add_custom_target(64bit_asm_tests
   WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
   USES_TERMINAL
   DEPENDS asm_files
   DEPENDS "${CMAKE_BINARY_DIR}/Bin/TestHarnessRunner"
   COMMAND "ctest" "--output-on-failure" "--timeout" "302" ${TEST_JOB_FLAG} "-R" "\.*64Bit\.*.asm$$")
 
-add_custom_target(
-  asm_tests
+add_custom_target(asm_tests
   WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
   USES_TERMINAL
   DEPENDS asm_files
