@@ -10915,8 +10915,13 @@ FAST_HANDLE(POPFQ) {
     as.MV(a0, Recompiler::threadStatePointer());
     rec.callPointer(offsetof(ThreadState, felix86_tf_changed));
     rec.restoreState();
-    rec.stopCompiling(); // important to be above the backToDispatcher
-    rec.backToDispatcher();
+    const u64 off = rec.getCompileNext() - (u64)as.GetCursorPointer();
+    ASSERT(IsValid2GBImm(offset));
+    const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(off) + 0x800) >> 12) & 0xFFFFF);
+    const auto lo12 = static_cast<int32_t>(off << 20) >> 20;
+    ASSERT(rec.isScratch(t6));
+    as.AUIPC(t6, hi20);
+    as.JR(t6, lo12);
     as.Bind(&tf_not_changed);
 }
 
