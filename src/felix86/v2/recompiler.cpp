@@ -717,7 +717,6 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
             flushX87();
             biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
             u64 offset = rip - getCurrentRipregValue();
-            ASSERT(offset != 0);
             setCurrentRipregValue(getCurrentRipregValue() + offset);
             addi(ripreg, ripreg, offset);
             if (single_step != SingleStepMode::None) {

@@ -217,7 +217,7 @@ void* guest_malloc(size_t size) noexcept {
     ASSERT(felix86_guest_malloc);
     return felix86_guest_malloc(size);
 }
-static_assert(std::is_same_v<decltype(guest_malloc), decltype(malloc)>);
+static_assert(std::is_same_v<decltype(&guest_malloc), void*(*)(size_t) noexcept>);
 
 void* guestToHostDisplay(void* guest_display) {
     if (guest_display == 0) {
