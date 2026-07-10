@@ -1899,6 +1899,23 @@ FAST_HANDLE(RET) {
 }
 
 FAST_HANDLE(IRETD) {
+    biscuit::GPR new_cs = rec.scratch();
+    biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, X86_SIZE_QWORD);
+    rec.readMemory(new_cs, rsp, 4, X86_SIZE_WORD);
+    biscuit::GPR tmp = rec.scratch();
+    biscuit::Label cs_ok;
+    as.XORI(tmp, new_cs, 0x23);
+    as.BEQZ(tmp, &cs_ok);
+    as.XORI(tmp, new_cs, 0x33);
+    as.BEQZ(tmp, &cs_ok);
+    as.SD(x0, 0, x0);
+    as.SLTIU(x0, x0, FELIX86_HINT_GP);
+    as.C_UNDEF();
+    as.C_UNDEF();
+    as.Bind(&cs_ok);
+    rec.popScratch();
+    rec.popScratch();
+
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
     as.LI(a1, 0);
@@ -1909,6 +1926,23 @@ FAST_HANDLE(IRETD) {
 }
 
 FAST_HANDLE(IRETQ) {
+    biscuit::GPR new_cs = rec.scratch();
+    biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, X86_SIZE_QWORD);
+    rec.readMemory(new_cs, rsp, 8, X86_SIZE_WORD);
+    biscuit::GPR tmp = rec.scratch();
+    biscuit::Label cs_ok;
+    as.XORI(tmp, new_cs, 0x23);
+    as.BEQZ(tmp, &cs_ok);
+    as.XORI(tmp, new_cs, 0x33);
+    as.BEQZ(tmp, &cs_ok);
+    as.SD(x0, 0, x0);
+    as.SLTIU(x0, x0, FELIX86_HINT_GP);
+    as.C_UNDEF();
+    as.C_UNDEF();
+    as.Bind(&cs_ok);
+    rec.popScratch();
+    rec.popScratch();
+
     ASSERT(!MODE32);
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
