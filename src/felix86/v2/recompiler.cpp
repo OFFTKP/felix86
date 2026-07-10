@@ -2090,6 +2090,7 @@ void Recompiler::scanAhead(u64 rip) {
         ZydisMnemonic mnemonic = decode(rip, instruction, operands, true);
         if (mnemonic == ZYDIS_MNEMONIC_INVALID) {
             instruction.mnemonic = ZYDIS_MNEMONIC_UD2;
+            mnemonic = ZYDIS_MNEMONIC_UD2;
             break;
         }
 
