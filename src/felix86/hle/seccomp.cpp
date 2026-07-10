@@ -273,7 +273,7 @@ void BPFJit::compileInstruction(const x64_sock_filter& instruction, int index) {
     // TODO: a filter with tgkill and a filter with kill right after won't work correctly
     case BPF_RET: {
         if (BPF_SRC(code) == BPF_K) {
-            switch (instruction.k) {
+            switch (instruction.k & SECCOMP_RET_ACTION_FULL) {
             case SECCOMP_RET_KILL_PROCESS: {
                 as.LI(x1, (u64)kill_process);
                 as.JALR(x1);
