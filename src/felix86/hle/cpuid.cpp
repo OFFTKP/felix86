@@ -178,6 +178,7 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
         bit_set(result.ebx, 5, is_feature_enabled(x86_feature::AVX2));
         bit_set(result.ebx, 3, is_feature_enabled(x86_feature::BMI1));
         bit_set(result.ebx, 8, is_feature_enabled(x86_feature::BMI2));
+        bit_set(result.ebx, 19, is_feature_enabled(x86_feature::ADX));
     }
 
     if (leaf == 0x0000'000D) {

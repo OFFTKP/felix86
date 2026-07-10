@@ -25,6 +25,7 @@ enum class x86_feature {
     RDTSCP,
     LZCNT_POPCNT,
     MOVBE,
+    ADX,
 };
 
 u64 get_xfeature_enabled_mask();
