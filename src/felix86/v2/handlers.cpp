@@ -8594,6 +8594,7 @@ void SCALAR(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& in
 }
 
 FAST_HANDLE(EMMS) {
+    rec.flushX87();
     // Set FPU tag word to empty
     biscuit::GPR ones = rec.scratch();
     as.LI(ones, -1);
