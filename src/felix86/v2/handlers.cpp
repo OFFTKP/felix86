@@ -12326,7 +12326,14 @@ FAST_HANDLE(INT) {
     } else if (operands[0].imm.value.u == 3) {
         fast_INT3(rec, rip, as, instruction, operands);
     } else {
-        ERROR("INT encountered with unknown immediate: %d", operands[0].imm.value.u);
+        WARN("INT encountered with unknown immediate: %d", operands[0].imm.value.u);
+        as.SD(x0, 0, x0);
+        // This hint will tell the handle_synchronous signal handler to change si_code from SEGV_MAPERR to SI_KERNEL
+        // which is the behavior on x86
+        as.SLTIU(x0, x0, FELIX86_HINT_GP);
+        // Unreachable
+        as.C_UNDEF();
+        as.C_UNDEF();
     }
 
     if (MODE32) {
