@@ -240,9 +240,11 @@ void BPFJit::compileInstruction(const x64_sock_filter& instruction, int index) {
                 break;
             }
             case SECCOMP_RET_KILL_THREAD: {
+                as.LI(a7, felix86_riscv64_gettid);
+                as.ECALL();
+                as.MV(a1, a0);
                 as.LI(a7, felix86_riscv64_tgkill);
                 as.LI(a0, getpid());
-                as.LI(a1, gettid());
                 as.LI(a2, SIGKILL);
                 as.ECALL();
                 as.LI(x1, (u64)felix86_crash_and_burn);
