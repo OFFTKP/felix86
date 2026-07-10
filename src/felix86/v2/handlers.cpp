@@ -7307,8 +7307,16 @@ FAST_HANDLE(ADOX) {
     as.ADD(result_2, result, of);
 
     if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
-        printf("Emitting flag\n");
-        rec.updateOverflowAdc(dst, src, result_2, size);
+        // ADOX sets the OF flag based on unsigned addition, unlike ADD/ADC
+        biscuit::GPR temp = rec.scratch();
+        biscuit::GPR temp2 = rec.scratch();
+        rec.zext(temp, result, size);
+        rec.zext(temp2, result_2, size);
+        as.SLTU(temp, temp, dst);
+        as.SLTU(temp2, temp2, of);
+        as.OR(of, temp, temp2);
+        rec.popScratch();
+        rec.popScratch();
     }
 
     rec.setGPR(&operands[0], result_2);
