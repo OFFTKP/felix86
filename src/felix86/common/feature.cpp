@@ -89,6 +89,9 @@ bool is_feature_enabled(x86_feature feature) {
     case x86_feature::RDTSCP: {
         return true;
     }
+    case x86_feature::ADX: {
+        return is_feature_enabled(x86_feature::AVX2);
+    }
     }
     UNREACHABLE();
     return false;

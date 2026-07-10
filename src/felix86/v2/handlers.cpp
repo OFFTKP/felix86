@@ -7279,6 +7279,40 @@ FAST_HANDLE(MULX) {
     }
 }
 
+FAST_HANDLE(ADCX) {
+    x86_size_e size = rec.getSize(&operands[0]);
+    biscuit::GPR dst = rec.getGPR(&operands[0]);
+    biscuit::GPR src = rec.getGPR(&operands[1]);
+    biscuit::GPR cf = rec.flag(X86_REF_CF);
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR result_2 = rec.scratch();
+    as.ADD(result, dst, src);
+    as.ADD(result_2, result, cf);
+
+    if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
+        rec.updateCarryAdc(dst, result, result_2, size);
+    }
+
+    rec.setGPR(&operands[0], result_2);
+}
+
+FAST_HANDLE(ADOX) {
+    x86_size_e size = rec.getSize(&operands[0]);
+    biscuit::GPR dst = rec.getGPR(&operands[0]);
+    biscuit::GPR src = rec.getGPR(&operands[1]);
+    biscuit::GPR of = rec.flag(X86_REF_OF);
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR result_2 = rec.scratch();
+    as.ADD(result, dst, src);
+    as.ADD(result_2, result, of);
+
+    if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
+        rec.updateOverflowAdc(dst, src, result_2, size);
+    }
+
+    rec.setGPR(&operands[0], result_2);
+}
+
 // The implementations of PEXT and PDEP are adapted from ZP7
 // ZP7 (Zach's Peppy Parallel-Prefix-Popcountin' PEXT/PDEP Polyfill)
 //
