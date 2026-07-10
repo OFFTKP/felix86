@@ -111,6 +111,7 @@ static void __attribute__((noreturn)) kill_process() {
 }
 
 static void trap(u16 retval, x64_seccomp_data* secdata) {
+    PLAIN("Here\n");
     struct sigaction sa;
     ASSERT(sigaction(SIGSYS, nullptr, &sa) == 0);
     if (sa.sa_sigaction == (decltype(sa.sa_sigaction))SIG_IGN) {
