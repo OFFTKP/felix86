@@ -2087,7 +2087,12 @@ void Recompiler::scanAhead(u64 rip) {
     while (true) {
         instructions.push_back({});
         auto& [instruction, operands] = instructions.back();
-        ZydisMnemonic mnemonic = decode(rip, instruction, operands);
+        ZydisMnemonic mnemonic = decode(rip, instruction, operands, true);
+        if (mnemonic == ZYDIS_MNEMONIC_INVALID) {
+            instruction.mnemonic = ZYDIS_MNEMONIC_UD2;
+            break;
+        }
+
         if (is_single_step) {
             break;
         }
