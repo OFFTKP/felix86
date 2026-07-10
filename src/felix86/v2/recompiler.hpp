@@ -221,6 +221,10 @@ struct Recompiler {
         single_step = mode;
     }
 
+    SingleStepMode getSingleStepMode() {
+        return single_step;
+    }
+
     // TODO: move these elsewhere
     static x86_ref_e zydisToRef(ZydisRegister reg);
 

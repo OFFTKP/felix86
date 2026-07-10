@@ -10984,13 +10984,11 @@ FAST_HANDLE(POPFQ) {
     as.MV(a0, Recompiler::threadStatePointer());
     rec.callPointer(offsetof(ThreadState, felix86_tf_changed));
     rec.restoreState();
-    const u64 off = rec.getCompileNext() - (u64)as.GetCursorPointer();
-    ASSERT(IsValid2GBImm(offset));
-    const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(off) + 0x800) >> 12) & 0xFFFFF);
-    const auto lo12 = static_cast<int32_t>(off << 20) >> 20;
-    ASSERT(rec.isScratch(t6));
-    as.AUIPC(t6, hi20);
-    as.JR(t6, lo12);
+    // Ugly disabling of a check in backToDispatcher so it emits the default path
+    SingleStepMode mode = rec.getSingleStepMode();
+    rec.setSingleStepMode(SingleStepMode::None);
+    rec.backToDispatcher();
+    rec.setSingleStepMode(mode);
     as.Bind(&tf_not_changed);
 }
 
