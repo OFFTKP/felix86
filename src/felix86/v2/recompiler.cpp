@@ -2059,7 +2059,10 @@ void Recompiler::backToDispatcher() {
     } else {
         ASSERT(isScratch(t6));
         as.LD(t6, offsetof(ThreadState, recompiler), threadStatePointer());
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winvalid-offsetof"
         as.LD(t6, offsetof(Recompiler, compile_next_handler), t6);
+#pragma GCC diagnostic pop
         as.JR(t6);
     }
 }

@@ -10915,6 +10915,7 @@ FAST_HANDLE(POPFQ) {
     as.MV(a0, Recompiler::threadStatePointer());
     rec.callPointer(offsetof(ThreadState, felix86_tf_changed));
     rec.restoreState();
+    rec.stopCompiling(); // important to be above the backToDispatcher
     rec.backToDispatcher();
     as.Bind(&tf_not_changed);
 }
