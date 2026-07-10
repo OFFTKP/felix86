@@ -7307,6 +7307,7 @@ FAST_HANDLE(ADOX) {
     as.ADD(result_2, result, of);
 
     if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
+        printf("Emitting flag\n");
         rec.updateOverflowAdc(dst, src, result_2, size);
     }
 
