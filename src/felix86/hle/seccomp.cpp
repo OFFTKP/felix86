@@ -3,6 +3,7 @@
 #include <linux/audit.h>
 #include <linux/bpf_common.h>
 #include <linux/seccomp.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 #include "biscuit/assembler.hpp"
 #include "felix86/common/config.hpp"
@@ -13,6 +14,22 @@
 #include "felix86/hle/seccomp.hpp"
 #include "felix86/hle/syscall.hpp"
 #include "felix86/v2/recompiler.hpp"
+
+static void __attribute__((noreturn)) kill_thread() {
+    signal(SIGSYS, SIG_DFL);
+    u64 full = -1ull;
+    ASSERT(syscall(SYS_rt_sigprocmask, SIG_UNBLOCK, &full, nullptr, sizeof(u64)) == 0);
+    tgkill(getpid(), gettid(), SIGSYS);
+    UNREACHABLE();
+}
+
+static void __attribute__((noreturn)) kill_process() {
+    signal(SIGSYS, SIG_DFL);
+    u64 full = -1ull;
+    ASSERT(syscall(SYS_rt_sigprocmask, SIG_UNBLOCK, &full, nullptr, sizeof(u64)) == 0);
+    kill(getpid(), SIGSYS);
+    UNREACHABLE();
+}
 
 static u64 g_filter_index = 0;
 static std::vector<u8> g_filter_instructions{};
@@ -229,29 +246,14 @@ void BPFJit::compileInstruction(const x64_sock_filter& instruction, int index) {
         if (BPF_SRC(code) == BPF_K) {
             switch (instruction.k) {
             case SECCOMP_RET_KILL_PROCESS: {
-                as.LI(a7, felix86_riscv64_getpid);
-                as.ECALL();
-                as.LI(a7, felix86_riscv64_kill);
-                as.LI(a1, SIGKILL);
-                as.ECALL();
-                as.LI(x1, (u64)felix86_crash_and_burn);
+                as.LI(x1, (u64)kill_process);
                 as.JALR(x1);
                 as.C_UNDEF();
                 as.C_UNDEF();
                 break;
             }
             case SECCOMP_RET_KILL_THREAD: {
-                as.LI(a7, felix86_riscv64_getpid);
-                as.ECALL();
-                as.MV(t0, a0);
-                as.LI(a7, felix86_riscv64_gettid);
-                as.ECALL();
-                as.MV(a1, a0);
-                as.MV(a0, t0);
-                as.LI(a7, felix86_riscv64_tgkill);
-                as.LI(a2, SIGKILL);
-                as.ECALL();
-                as.LI(x1, (u64)felix86_crash_and_burn);
+                as.LI(x1, (u64)kill_thread);
                 as.JALR(x1);
                 as.C_UNDEF();
                 as.C_UNDEF();
