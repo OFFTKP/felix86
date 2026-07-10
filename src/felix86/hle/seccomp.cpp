@@ -12,27 +12,18 @@
 #include "felix86/common/state.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/hle/seccomp.hpp"
-#include "felix86/hle/syscall.hpp"
+#include "felix86/hle/signals.hpp"
 #include "felix86/v2/recompiler.hpp"
-
-static void __attribute__((noreturn)) kill_thread() {
-    signal(SIGSYS, SIG_DFL);
-    u64 full = -1ull;
-    ASSERT(syscall(SYS_rt_sigprocmask, SIG_UNBLOCK, &full, nullptr, sizeof(u64)) == 0);
-    tgkill(getpid(), gettid(), SIGSYS);
-    UNREACHABLE();
-}
-
-static void __attribute__((noreturn)) kill_process() {
-    signal(SIGSYS, SIG_DFL);
-    u64 full = -1ull;
-    ASSERT(syscall(SYS_rt_sigprocmask, SIG_UNBLOCK, &full, nullptr, sizeof(u64)) == 0);
-    kill(getpid(), SIGSYS);
-    UNREACHABLE();
-}
 
 static u64 g_filter_index = 0;
 static std::vector<u8> g_filter_instructions{};
+
+struct x64_seccomp_data {
+    u32 nr;
+    u32 arch;
+    u64 rip;
+    u64 args[6];
+};
 
 struct x64_sock_filter {
     u16 code;
@@ -44,13 +35,6 @@ struct x64_sock_filter {
 struct x64_sock_fprog {
     u16 len;
     const x64_sock_filter* array;
-};
-
-struct x64_seccomp_data {
-    u32 nr;
-    u32 arch;
-    u64 rip;
-    u64 args[6];
 };
 
 struct BPFJit {
@@ -109,6 +93,51 @@ static_assert(Recompiler::isScratch(x28));
 static_assert(Recompiler::isScratch(x29));
 static_assert(Recompiler::isScratch(x30));
 static_assert(Recompiler::isScratch(x31));
+
+static void __attribute__((noreturn)) kill_thread() {
+    signal(SIGSYS, SIG_DFL);
+    u64 full = -1ull;
+    ASSERT(syscall(SYS_rt_sigprocmask, SIG_UNBLOCK, &full, nullptr, sizeof(u64)) == 0);
+    tgkill(getpid(), gettid(), SIGSYS);
+    UNREACHABLE();
+}
+
+static void __attribute__((noreturn)) kill_process() {
+    signal(SIGSYS, SIG_DFL);
+    u64 full = -1ull;
+    ASSERT(syscall(SYS_rt_sigprocmask, SIG_UNBLOCK, &full, nullptr, sizeof(u64)) == 0);
+    kill(getpid(), SIGSYS);
+    UNREACHABLE();
+}
+
+static void trap(u16 retval, x64_seccomp_data* secdata) {
+    struct sigaction sa;
+    ASSERT(sigaction(SIGSYS, nullptr, &sa) == 0);
+    if (sa.sa_sigaction == (decltype(sa.sa_sigaction))SIG_IGN) {
+        sa.sa_sigaction = (decltype(sa.sa_sigaction))SIG_DFL;
+        ASSERT(sigaction(SIGSYS, &sa, nullptr) == 0);
+    }
+
+    sigset_t old_set;
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, SIGSYS);
+    Signals::sigprocmask(ThreadState::Get(), SIG_UNBLOCK, &set, &old_set);
+    if (sigismember(&old_set, SIGSYS)) {
+        WARN("SIGSYS was blocked during SECCOMP_RET_TRAP?");
+    }
+
+    siginfo_t info;
+    memset(&info, 0, sizeof(info));
+    info.si_signo = SIGSYS;
+    info.si_errno = retval;
+    info.si_code = SYS_SECCOMP;
+    info.si_call_addr = (void*)(secdata->rip + 2);
+    info.si_syscall = secdata->nr;
+    info.si_arch = secdata->arch;
+    // Will be deferred and return, handled at safepoint before syscall
+    ASSERT(syscall(SYS_rt_tgsigqueueinfo, getpid(), gettid(), SIGSYS, &info) == 0);
+}
 
 void BPFJit::compileInstruction(const x64_sock_filter& instruction, int index) {
     Label& label = labels[index];
@@ -257,6 +286,20 @@ void BPFJit::compileInstruction(const x64_sock_filter& instruction, int index) {
                 as.JALR(x1);
                 as.C_UNDEF();
                 as.C_UNDEF();
+                break;
+            }
+            case SECCOMP_RET_TRAP: {
+                as.ADDI(sp, sp, -32);
+                as.SD(a0, 0, sp);
+                as.SD(a1, 8, sp);
+                as.LI(a0, code & SECCOMP_RET_DATA);
+                as.MV(a1, pointer);
+                as.LI(x1, (u64)trap);
+                as.JALR(x1);
+                as.LD(a1, 8, sp);
+                as.LD(a0, 0, sp);
+                as.ADDI(sp, sp, 32);
+                as.J(&end_of_program);
                 break;
             }
             case SECCOMP_RET_LOG: {
