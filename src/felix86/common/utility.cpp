@@ -1234,11 +1234,15 @@ void felix86_set_segment(ThreadState* state, u64 value, int segment) {
 
     switch (segment) {
     case ZYDIS_REGISTER_CS: {
-        bool old_mode32 = state->ctx.Mode32();
+        u8 old_cs = state->ctx.cs;
         state->ctx.cs = value;
         state->ctx.csbase = base;
-        bool new_mode32 = state->ctx.Mode32();
-        if (old_mode32 != new_mode32) {
+        u8 new_cs = state->ctx.cs;
+        if (new_cs != 0x33 && new_cs != 0x22) {
+            WARN("Invalid cs %x during %lx", state->ctx.cs, state->ctx.rip);
+        }
+
+        if (old_cs != new_cs) {
             WARN("Mode32 switched during %lx", state->ctx.rip);
             // Technically there could be a code segment that runs on both 32-bit and 64-bit
             // and we'd need to clear the code cache on switch or have separate 32-bit and 64-bit

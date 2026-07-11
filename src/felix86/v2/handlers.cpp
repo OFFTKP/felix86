@@ -1763,6 +1763,18 @@ FAST_HANDLE(CALL) {
             biscuit::GPR address = rec.lea(&operands[0]);
             rec.readMemory(ripreg, address, 0, bit32 ? X86_SIZE_DWORD : X86_SIZE_QWORD);
             rec.readMemory(new_cs, address, bit32 ? 4 : 8, X86_SIZE_WORD);
+            biscuit::GPR tmp = rec.scratch();
+            biscuit::Label cs_ok;
+            as.XORI(tmp, new_cs, 0x23);
+            as.BEQZ(tmp, &cs_ok);
+            as.XORI(tmp, new_cs, 0x33);
+            as.BEQZ(tmp, &cs_ok);
+            as.SD(x0, 0, x0);
+            as.SLTIU(x0, x0, FELIX86_HINT_GP);
+            as.C_UNDEF();
+            as.C_UNDEF();
+            as.Bind(&cs_ok);
+            rec.popScratch();
             as.LHU(old_cs, offsetof(ThreadState, ctx.cs), Recompiler::threadStatePointer());
             as.ADDI(rsp, rsp, bit32 ? -8 : -16);
             rec.writeMemory(scratch, rsp, 0, bit32 ? X86_SIZE_DWORD : X86_SIZE_QWORD);
@@ -1841,9 +1853,20 @@ FAST_HANDLE(RET) {
         biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
         rec.readMemory(ripreg, rsp, 0, bit32 ? X86_SIZE_DWORD : X86_SIZE_QWORD);
         rec.readMemory(new_cs, rsp, bit32 ? 4 : 8, X86_SIZE_WORD);
+        biscuit::GPR tmp = rec.scratch();
+        biscuit::Label cs_ok;
+        as.XORI(tmp, new_cs, 0x23);
+        as.BEQZ(tmp, &cs_ok);
+        as.XORI(tmp, new_cs, 0x33);
+        as.BEQZ(tmp, &cs_ok);
+        as.SD(x0, 0, x0);
+        as.SLTIU(x0, x0, FELIX86_HINT_GP);
+        as.C_UNDEF();
+        as.C_UNDEF();
+        as.Bind(&cs_ok);
+        rec.popScratch();
         as.ADDI(rsp, rsp, bit32 ? 8 : 16);
         rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
-
         rec.writebackState();
         as.MV(a1, new_cs);
         as.LI(a2, ZYDIS_REGISTER_CS);
@@ -1876,6 +1899,23 @@ FAST_HANDLE(RET) {
 }
 
 FAST_HANDLE(IRETD) {
+    biscuit::GPR new_cs = rec.scratch();
+    biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, X86_SIZE_QWORD);
+    rec.readMemory(new_cs, rsp, 4, X86_SIZE_WORD);
+    biscuit::GPR tmp = rec.scratch();
+    biscuit::Label cs_ok;
+    as.XORI(tmp, new_cs, 0x23);
+    as.BEQZ(tmp, &cs_ok);
+    as.XORI(tmp, new_cs, 0x33);
+    as.BEQZ(tmp, &cs_ok);
+    as.SD(x0, 0, x0);
+    as.SLTIU(x0, x0, FELIX86_HINT_GP);
+    as.C_UNDEF();
+    as.C_UNDEF();
+    as.Bind(&cs_ok);
+    rec.popScratch();
+    rec.popScratch();
+
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
     as.LI(a1, 0);
@@ -1886,6 +1926,23 @@ FAST_HANDLE(IRETD) {
 }
 
 FAST_HANDLE(IRETQ) {
+    biscuit::GPR new_cs = rec.scratch();
+    biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, X86_SIZE_QWORD);
+    rec.readMemory(new_cs, rsp, 8, X86_SIZE_WORD);
+    biscuit::GPR tmp = rec.scratch();
+    biscuit::Label cs_ok;
+    as.XORI(tmp, new_cs, 0x23);
+    as.BEQZ(tmp, &cs_ok);
+    as.XORI(tmp, new_cs, 0x33);
+    as.BEQZ(tmp, &cs_ok);
+    as.SD(x0, 0, x0);
+    as.SLTIU(x0, x0, FELIX86_HINT_GP);
+    as.C_UNDEF();
+    as.C_UNDEF();
+    as.Bind(&cs_ok);
+    rec.popScratch();
+    rec.popScratch();
+
     ASSERT(!MODE32);
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
@@ -2701,6 +2758,18 @@ FAST_HANDLE(JMP) {
             biscuit::GPR cs = rec.scratch();
             rec.readMemory(ripreg, address, 0, bit32 ? X86_SIZE_DWORD : X86_SIZE_QWORD);
             rec.readMemory(cs, address, bit32 ? 4 : 8, X86_SIZE_WORD);
+            biscuit::GPR tmp = rec.scratch();
+            biscuit::Label cs_ok;
+            as.XORI(tmp, cs, 0x23);
+            as.BEQZ(tmp, &cs_ok);
+            as.XORI(tmp, cs, 0x33);
+            as.BEQZ(tmp, &cs_ok);
+            as.SD(x0, 0, x0);
+            as.SLTIU(x0, x0, FELIX86_HINT_GP);
+            as.C_UNDEF();
+            as.C_UNDEF();
+            as.Bind(&cs_ok);
+            rec.popScratch();
             rec.writebackState();
             as.MV(a1, cs);
             as.LI(a2, ZYDIS_REGISTER_CS);
@@ -10915,7 +10984,11 @@ FAST_HANDLE(POPFQ) {
     as.MV(a0, Recompiler::threadStatePointer());
     rec.callPointer(offsetof(ThreadState, felix86_tf_changed));
     rec.restoreState();
+    // Ugly disabling of a check in backToDispatcher so it emits the default path
+    SingleStepMode mode = rec.getSingleStepMode();
+    rec.setSingleStepMode(SingleStepMode::None);
     rec.backToDispatcher();
+    rec.setSingleStepMode(mode);
     as.Bind(&tf_not_changed);
 }
 

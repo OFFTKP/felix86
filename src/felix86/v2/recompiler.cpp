@@ -717,7 +717,6 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
             flushX87();
             biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
             u64 offset = rip - getCurrentRipregValue();
-            ASSERT(offset != 0);
             setCurrentRipregValue(getCurrentRipregValue() + offset);
             addi(ripreg, ripreg, offset);
             if (single_step != SingleStepMode::None) {
@@ -2060,7 +2059,10 @@ void Recompiler::backToDispatcher() {
     } else {
         ASSERT(isScratch(t6));
         as.LD(t6, offsetof(ThreadState, recompiler), threadStatePointer());
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winvalid-offsetof"
         as.LD(t6, offsetof(Recompiler, compile_next_handler), t6);
+#pragma GCC diagnostic pop
         as.JR(t6);
     }
 }
@@ -2087,7 +2089,13 @@ void Recompiler::scanAhead(u64 rip) {
     while (true) {
         instructions.push_back({});
         auto& [instruction, operands] = instructions.back();
-        ZydisMnemonic mnemonic = decode(rip, instruction, operands);
+        ZydisMnemonic mnemonic = decode(rip, instruction, operands, true);
+        if (mnemonic == ZYDIS_MNEMONIC_INVALID) {
+            instruction.mnemonic = ZYDIS_MNEMONIC_UD2;
+            mnemonic = ZYDIS_MNEMONIC_UD2;
+            break;
+        }
+
         if (is_single_step) {
             break;
         }
