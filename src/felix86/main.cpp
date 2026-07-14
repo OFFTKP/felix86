@@ -1,5 +1,6 @@
 #include <cstddef>
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <optional>
 #include <argp.h>
@@ -301,6 +302,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         }
         argv.push_back(nullptr);
 
+        std::string shell_history = "HISTFILE=";
         std::string quiet = "FELIX86_QUIET=1";
         std::vector<char*> envp;
         char** envs = environ;
@@ -316,6 +318,14 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         if (!shell_logging) {
             envp.push_back(quiet.data());
         }
+        if (!g_config.shell_history_path.empty()) {
+            std::filesystem::path shell_history_file;
+            shell_history_file += home;
+            shell_history_file += "/";
+            shell_history_file += g_config.shell_history_path.c_str();
+            shell_history += shell_history_file.string();            
+        }
+        envp.push_back(shell_history.data());
         envp.push_back(nullptr);
 
         (void)execve(self.c_str(), argv.data(), envp.data());
