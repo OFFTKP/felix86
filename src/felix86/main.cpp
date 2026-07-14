@@ -326,8 +326,8 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             }
             shell_history_file += g_config.shell_history_path.c_str();
             shell_history += shell_history_file.string();            
+            envp.push_back(shell_history.data());
         }
-        envp.push_back(shell_history.data());
         envp.push_back(nullptr);
 
         (void)execve(self.c_str(), argv.data(), envp.data());
