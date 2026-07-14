@@ -442,8 +442,10 @@ Config Config::load(const std::filesystem::path& path, bool ignore_envs) {
         const char* env = getenv(#env_name);                                                                                                         \
         if (env && !ignore_envs) {                                                                                                                   \
             loaded = setFromString<type>(config, config.name, env);                                                                                  \
+            if (loaded) config.src.name = ConfigSource::Env;                                                                                         \
         } else if (!no_config_path) {                                                                                                                \
             loaded = loadFromToml<type>(result, #group, #name, config.name);                                                                         \
+            if (loaded) config.src.name = ConfigSource::File;                                                                                        \
         }                                                                                                                                            \
     }
 #include "config.inc"
@@ -575,6 +577,39 @@ std::optional<std::string> Config::getConfigString(const char* group, const char
 #undef X
     return std::optional<std::string>{};
 }
+
+std::optional<ConfigSource> Config::getConfigSource(const char* group, const char* field) {
+    std::string group_lower = lowercase(group);
+    std::string field_lower = lowercase(field);
+    // cmp_group and cmp_name are marked 'static' to avoid initializing more than once (first call of function). This is thread safe.
+#define X(group_, type_, name_, ...)                                                                                                                 \
+    {                                                                                                                                                \
+        static const std::string cmp_group = lowercase(#group_);                                                                                     \
+        static const std::string cmp_name = lowercase(#name_);                                                                                       \
+        if (group_lower == cmp_group && field_lower == cmp_name) {                                                                                   \
+            return std::optional{this->src.name_};                                                                                                   \
+        }                                                                                                                                            \
+    }
+#include "config.inc"
+#undef X
+    return std::optional<ConfigSource>{};
+}
+
+std::optional<std::string> Config::getConfigSourceString(const char* group, const char* field) {
+    std::optional<ConfigSource> src = getConfigSource(group, field);
+    if (src.has_value()) {
+        const char* s = "";
+        switch (src.value()) {
+            case ConfigSource::Default: s = "default"; break;
+            case ConfigSource::Env: s = "env"; break;
+            case ConfigSource::File: s = "file"; break;
+        }
+        return std::optional<std::string>(s);
+    } else {
+        return std::optional<std::string>();
+    }
+}
+
 
 bool Config::setConfigString(const char* group, const char* field, const char* value) {
     std::string group_lower = lowercase(group);

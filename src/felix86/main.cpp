@@ -1,6 +1,7 @@
 #include <cstddef>
 #include <cstdio>
 #include <fstream>
+#include <optional>
 #include <argp.h>
 #include <dirent.h>
 #include <fcntl.h>
@@ -478,7 +479,10 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         current_group = #group;                                                                                                                      \
         printf("\n[%s]\n", current_group.c_str());                                                                                                   \
     }                                                                                                                                                \
-    fmt::print("{} {} = {} (default: {}) -- Environment variable: {}\n", #type, #name, g_config.name, #def, #env);
+    fmt::print(                                                                                                                                      \
+        "{} {} = {} (default: {}, src: {}) -- Environment variable: {}\n",                                                                           \
+        #type, #name, g_config.name, #def, g_config.getConfigSourceString(#group, #name).value_or(""), #env                                          \
+    );
 #include "felix86/common/config.inc"
 #undef X
         exit(0);

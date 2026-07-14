@@ -9,6 +9,13 @@
 #include <optional>
 #include "felix86/common/types.hpp"
 
+/// Represents where the configuration was sourced from.
+enum class ConfigSource {
+    File,
+    Env,
+    Default,
+};
+
 struct Config {
 #define X(group, type, name, value, ...) type name = value;
 #include "config.inc"
@@ -26,6 +33,8 @@ struct Config {
     }
 
     std::optional<std::string> getConfigString(const char* group, const char* field);
+    std::optional<ConfigSource> getConfigSource(const char* group, const char* field);
+    std::optional<std::string> getConfigSourceString(const char* group, const char* field);
     /// Returns 'true' if a config value was updated, otherwise return `false`.
     bool setConfigString(const char* group, const char* field, const char* value);
 
@@ -42,6 +51,12 @@ private:
     std::filesystem::path config_path;
 
     friend void addToEnvironment(Config& config, const char* env_name, const char* env);
+
+    struct {
+    #define X(group, type, name, value, ...) ConfigSource name = ConfigSource::Default;
+    #include "config.inc"
+    #undef X
+    } src;
 };
 
 extern Config g_config;
