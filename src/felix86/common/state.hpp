@@ -176,7 +176,7 @@ typedef enum : u8 {
 struct UserContext {
     u64 gprs[16]{};
     u64 rip{};
-    u64 fp[8]{}; // we support 64-bit precision instead of 80-bit for speed and simplicity
+    Float80 st[8]{};
     XmmReg xmm[16]{};
     bool cf{};
     bool pf{};
@@ -406,7 +406,7 @@ struct ThreadState {
             return {};
         }
 
-        return ctx.fp[ref - X86_REF_MM0];
+        return ctx.st[ref - X86_REF_MM0].significand;
     }
 
     void SetMm(x86_ref_e ref, u64 value) {
@@ -415,7 +415,7 @@ struct ThreadState {
             return;
         }
 
-        ctx.fp[ref - X86_REF_MM0] = value;
+        ctx.st[ref - X86_REF_MM0].significand = value;
     }
 
     u64 GetRip() const {

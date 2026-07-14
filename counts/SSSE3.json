@@ -598,18 +598,18 @@
     "0f381cdc": {
         "instruction_count": 13,
         "expected_asm": [
-            "ADDI            ra, gp, 0xa0(160)",
+            "ADDI            ra, gp, 0xa6(166)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v11, ra, none, 1",
-            "ADDI            ra, gp, 0xa8(168)",
+            "ADDI            ra, gp, 0xb0(176)",
             "VLE64.V         v12, ra, none, 1",
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VRSUB.VX        v2, v12, zero, none",
             "VMAX.VV         v11, v12, v2, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0xa0(160)",
+            "ADDI            t1, gp, 0xa6(166)",
             "VSE64.V         v11, t1, none, 1",
-            "ADDI            t1, gp, 0xa8(168)",
+            "ADDI            t1, gp, 0xb0(176)",
             "VSE64.V         v12, t1, none, 1"
         ],
         "disassembly": "pabsb mm3, mm4"
@@ -617,14 +617,14 @@
     "0f381cd2": {
         "instruction_count": 9,
         "expected_asm": [
-            "ADDI            ra, gp, 0x98(152)",
+            "ADDI            ra, gp, 0x9c(156)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v10, ra, none, 1",
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VRSUB.VX        v2, v10, zero, none",
             "VMAX.VV         v10, v10, v2, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x98(152)",
+            "ADDI            t1, gp, 0x9c(156)",
             "VSE64.V         v10, t1, none, 1"
         ],
         "disassembly": "pabsb mm2, mm2"
@@ -632,7 +632,7 @@
     "0f381c0f": {
         "instruction_count": 11,
         "expected_asm": [
-            "ADDI            ra, gp, 0x90(144)",
+            "ADDI            ra, gp, 0x92(146)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v9, ra, none, 1",
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
@@ -641,7 +641,7 @@
             "VRSUB.VX        v3, v2, zero, none",
             "VMAX.VV         v9, v2, v3, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x90(144)",
+            "ADDI            t1, gp, 0x92(146)",
             "VSE64.V         v9, t1, none, 1"
         ],
         "disassembly": "pabsb mm1, [rdi]"
@@ -649,18 +649,18 @@
     "0f381ddc": {
         "instruction_count": 13,
         "expected_asm": [
-            "ADDI            ra, gp, 0xa0(160)",
+            "ADDI            ra, gp, 0xa6(166)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v11, ra, none, 1",
-            "ADDI            ra, gp, 0xa8(168)",
+            "ADDI            ra, gp, 0xb0(176)",
             "VLE64.V         v12, ra, none, 1",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VRSUB.VX        v2, v12, zero, none",
             "VMAX.VV         v11, v12, v2, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0xa0(160)",
+            "ADDI            t1, gp, 0xa6(166)",
             "VSE64.V         v11, t1, none, 1",
-            "ADDI            t1, gp, 0xa8(168)",
+            "ADDI            t1, gp, 0xb0(176)",
             "VSE64.V         v12, t1, none, 1"
         ],
         "disassembly": "pabsw mm3, mm4"
@@ -668,14 +668,14 @@
     "0f381dd2": {
         "instruction_count": 9,
         "expected_asm": [
-            "ADDI            ra, gp, 0x98(152)",
+            "ADDI            ra, gp, 0x9c(156)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v10, ra, none, 1",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VRSUB.VX        v2, v10, zero, none",
             "VMAX.VV         v10, v10, v2, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x98(152)",
+            "ADDI            t1, gp, 0x9c(156)",
             "VSE64.V         v10, t1, none, 1"
         ],
         "disassembly": "pabsw mm2, mm2"
@@ -683,7 +683,7 @@
     "0f381d0f": {
         "instruction_count": 11,
         "expected_asm": [
-            "ADDI            ra, gp, 0x90(144)",
+            "ADDI            ra, gp, 0x92(146)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v9, ra, none, 1",
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
@@ -692,7 +692,7 @@
             "VRSUB.VX        v3, v2, zero, none",
             "VMAX.VV         v9, v2, v3, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x90(144)",
+            "ADDI            t1, gp, 0x92(146)",
             "VSE64.V         v9, t1, none, 1"
         ],
         "disassembly": "pabsw mm1, [rdi]"
@@ -700,18 +700,18 @@
     "0f381edc": {
         "instruction_count": 13,
         "expected_asm": [
-            "ADDI            ra, gp, 0xa0(160)",
+            "ADDI            ra, gp, 0xa6(166)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v11, ra, none, 1",
-            "ADDI            ra, gp, 0xa8(168)",
+            "ADDI            ra, gp, 0xb0(176)",
             "VLE64.V         v12, ra, none, 1",
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
             "VRSUB.VX        v2, v12, zero, none",
             "VMAX.VV         v11, v12, v2, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0xa0(160)",
+            "ADDI            t1, gp, 0xa6(166)",
             "VSE64.V         v11, t1, none, 1",
-            "ADDI            t1, gp, 0xa8(168)",
+            "ADDI            t1, gp, 0xb0(176)",
             "VSE64.V         v12, t1, none, 1"
         ],
         "disassembly": "pabsd mm3, mm4"
@@ -719,14 +719,14 @@
     "0f381ed2": {
         "instruction_count": 9,
         "expected_asm": [
-            "ADDI            ra, gp, 0x98(152)",
+            "ADDI            ra, gp, 0x9c(156)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v10, ra, none, 1",
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
             "VRSUB.VX        v2, v10, zero, none",
             "VMAX.VV         v10, v10, v2, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x98(152)",
+            "ADDI            t1, gp, 0x9c(156)",
             "VSE64.V         v10, t1, none, 1"
         ],
         "disassembly": "pabsd mm2, mm2"
@@ -734,7 +734,7 @@
     "0f381e0f": {
         "instruction_count": 11,
         "expected_asm": [
-            "ADDI            ra, gp, 0x90(144)",
+            "ADDI            ra, gp, 0x92(146)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v9, ra, none, 1",
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
@@ -743,7 +743,7 @@
             "VRSUB.VX        v3, v2, zero, none",
             "VMAX.VV         v9, v2, v3, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x90(144)",
+            "ADDI            t1, gp, 0x92(146)",
             "VSE64.V         v9, t1, none, 1"
         ],
         "disassembly": "pabsd mm1, [rdi]"
@@ -751,10 +751,10 @@
     "0f3808dc": {
         "instruction_count": 17,
         "expected_asm": [
-            "ADDI            ra, gp, 0xa0(160)",
+            "ADDI            ra, gp, 0xa6(166)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v11, ra, none, 1",
-            "ADDI            ra, gp, 0xa8(168)",
+            "ADDI            ra, gp, 0xb0(176)",
             "VLE64.V         v12, ra, none, 1",
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VMSLT.VX        v0, v12, zero, none",
@@ -764,9 +764,9 @@
             "VXOR.VV         v2, v2, v2, v0.t",
             "VMV1R.V         v11, v2",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0xa0(160)",
+            "ADDI            t1, gp, 0xa6(166)",
             "VSE64.V         v11, t1, none, 1",
-            "ADDI            t1, gp, 0xa8(168)",
+            "ADDI            t1, gp, 0xb0(176)",
             "VSE64.V         v12, t1, none, 1"
         ],
         "disassembly": "psignb mm3, mm4"
@@ -774,7 +774,7 @@
     "0f3808d2": {
         "instruction_count": 13,
         "expected_asm": [
-            "ADDI            ra, gp, 0x98(152)",
+            "ADDI            ra, gp, 0x9c(156)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v10, ra, none, 1",
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
@@ -785,7 +785,7 @@
             "VXOR.VV         v2, v2, v2, v0.t",
             "VMV1R.V         v10, v2",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x98(152)",
+            "ADDI            t1, gp, 0x9c(156)",
             "VSE64.V         v10, t1, none, 1"
         ],
         "disassembly": "psignb mm2, mm2"
@@ -793,7 +793,7 @@
     "0f38080f": {
         "instruction_count": 15,
         "expected_asm": [
-            "ADDI            ra, gp, 0x90(144)",
+            "ADDI            ra, gp, 0x92(146)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v9, ra, none, 1",
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
@@ -806,7 +806,7 @@
             "VXOR.VV         v2, v2, v2, v0.t",
             "VMV1R.V         v9, v2",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x90(144)",
+            "ADDI            t1, gp, 0x92(146)",
             "VSE64.V         v9, t1, none, 1"
         ],
         "disassembly": "psignb mm1, [rdi]"
@@ -814,10 +814,10 @@
     "0f3809dc": {
         "instruction_count": 17,
         "expected_asm": [
-            "ADDI            ra, gp, 0xa0(160)",
+            "ADDI            ra, gp, 0xa6(166)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v11, ra, none, 1",
-            "ADDI            ra, gp, 0xa8(168)",
+            "ADDI            ra, gp, 0xb0(176)",
             "VLE64.V         v12, ra, none, 1",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VMSLT.VX        v0, v12, zero, none",
@@ -827,9 +827,9 @@
             "VXOR.VV         v2, v2, v2, v0.t",
             "VMV1R.V         v11, v2",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0xa0(160)",
+            "ADDI            t1, gp, 0xa6(166)",
             "VSE64.V         v11, t1, none, 1",
-            "ADDI            t1, gp, 0xa8(168)",
+            "ADDI            t1, gp, 0xb0(176)",
             "VSE64.V         v12, t1, none, 1"
         ],
         "disassembly": "psignw mm3, mm4"
@@ -837,7 +837,7 @@
     "0f3809d2": {
         "instruction_count": 13,
         "expected_asm": [
-            "ADDI            ra, gp, 0x98(152)",
+            "ADDI            ra, gp, 0x9c(156)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v10, ra, none, 1",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
@@ -848,7 +848,7 @@
             "VXOR.VV         v2, v2, v2, v0.t",
             "VMV1R.V         v10, v2",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x98(152)",
+            "ADDI            t1, gp, 0x9c(156)",
             "VSE64.V         v10, t1, none, 1"
         ],
         "disassembly": "psignw mm2, mm2"
@@ -856,7 +856,7 @@
     "0f38090f": {
         "instruction_count": 15,
         "expected_asm": [
-            "ADDI            ra, gp, 0x90(144)",
+            "ADDI            ra, gp, 0x92(146)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v9, ra, none, 1",
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
@@ -869,7 +869,7 @@
             "VXOR.VV         v2, v2, v2, v0.t",
             "VMV1R.V         v9, v2",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x90(144)",
+            "ADDI            t1, gp, 0x92(146)",
             "VSE64.V         v9, t1, none, 1"
         ],
         "disassembly": "psignw mm1, [rdi]"
@@ -877,10 +877,10 @@
     "0f380adc": {
         "instruction_count": 17,
         "expected_asm": [
-            "ADDI            ra, gp, 0xa0(160)",
+            "ADDI            ra, gp, 0xa6(166)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v11, ra, none, 1",
-            "ADDI            ra, gp, 0xa8(168)",
+            "ADDI            ra, gp, 0xb0(176)",
             "VLE64.V         v12, ra, none, 1",
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
             "VMSLT.VX        v0, v12, zero, none",
@@ -890,9 +890,9 @@
             "VXOR.VV         v2, v2, v2, v0.t",
             "VMV1R.V         v11, v2",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0xa0(160)",
+            "ADDI            t1, gp, 0xa6(166)",
             "VSE64.V         v11, t1, none, 1",
-            "ADDI            t1, gp, 0xa8(168)",
+            "ADDI            t1, gp, 0xb0(176)",
             "VSE64.V         v12, t1, none, 1"
         ],
         "disassembly": "psignd mm3, mm4"
@@ -900,7 +900,7 @@
     "0f380ad2": {
         "instruction_count": 13,
         "expected_asm": [
-            "ADDI            ra, gp, 0x98(152)",
+            "ADDI            ra, gp, 0x9c(156)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v10, ra, none, 1",
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
@@ -911,7 +911,7 @@
             "VXOR.VV         v2, v2, v2, v0.t",
             "VMV1R.V         v10, v2",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x98(152)",
+            "ADDI            t1, gp, 0x9c(156)",
             "VSE64.V         v10, t1, none, 1"
         ],
         "disassembly": "psignd mm2, mm2"
@@ -919,7 +919,7 @@
     "0f380a0f": {
         "instruction_count": 15,
         "expected_asm": [
-            "ADDI            ra, gp, 0x90(144)",
+            "ADDI            ra, gp, 0x92(146)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v9, ra, none, 1",
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
@@ -932,7 +932,7 @@
             "VXOR.VV         v2, v2, v2, v0.t",
             "VMV1R.V         v9, v2",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x90(144)",
+            "ADDI            t1, gp, 0x92(146)",
             "VSE64.V         v9, t1, none, 1"
         ],
         "disassembly": "psignd mm1, [rdi]"
@@ -940,10 +940,10 @@
     "0f3800dc": {
         "instruction_count": 15,
         "expected_asm": [
-            "ADDI            t1, gp, 0xa0(160)",
+            "ADDI            t1, gp, 0xa6(166)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v11, t1, none, 1",
-            "ADDI            t1, gp, 0xa8(168)",
+            "ADDI            t1, gp, 0xb0(176)",
             "VLE64.V         v12, t1, none, 1",
             "ADDIW           ra, zero, 0x87(135)",
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
@@ -951,9 +951,9 @@
             "VRGATHER.VV     v2, v11, v3, none",
             "VMV1R.V         v11, v2",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0xa0(160)",
+            "ADDI            t1, gp, 0xa6(166)",
             "VSE64.V         v11, t1, none, 1",
-            "ADDI            t1, gp, 0xa8(168)",
+            "ADDI            t1, gp, 0xb0(176)",
             "VSE64.V         v12, t1, none, 1"
         ],
         "disassembly": "pshufb mm3, mm4"
@@ -961,7 +961,7 @@
     "0f3800d2": {
         "instruction_count": 11,
         "expected_asm": [
-            "ADDI            t1, gp, 0x98(152)",
+            "ADDI            t1, gp, 0x9c(156)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v10, t1, none, 1",
             "ADDIW           ra, zero, 0x87(135)",
@@ -970,7 +970,7 @@
             "VRGATHER.VV     v2, v10, v3, none",
             "VMV1R.V         v10, v2",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x98(152)",
+            "ADDI            t1, gp, 0x9c(156)",
             "VSE64.V         v10, t1, none, 1"
         ],
         "disassembly": "pshufb mm2, mm2"
@@ -978,7 +978,7 @@
     "0f38000f": {
         "instruction_count": 12,
         "expected_asm": [
-            "ADDI            t1, gp, 0x90(144)",
+            "ADDI            t1, gp, 0x92(146)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v9, t1, none, 1",
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
@@ -988,7 +988,7 @@
             "VRGATHER.VV     v2, v9, v3, none",
             "VMV1R.V         v9, v2",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x90(144)",
+            "ADDI            t1, gp, 0x92(146)",
             "VSE64.V         v9, t1, none, 1"
         ],
         "disassembly": "pshufb mm1, [rdi]"
@@ -996,10 +996,10 @@
     "0f380bdc": {
         "instruction_count": 17,
         "expected_asm": [
-            "ADDI            ra, gp, 0xa0(160)",
+            "ADDI            ra, gp, 0xa6(166)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v11, ra, none, 1",
-            "ADDI            ra, gp, 0xa8(168)",
+            "ADDI            ra, gp, 0xb0(176)",
             "VLE64.V         v12, ra, none, 1",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VWMUL.VV        v2, v11, v12, none",
@@ -1009,9 +1009,9 @@
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v11, v2, 0x1(1), none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0xa0(160)",
+            "ADDI            t1, gp, 0xa6(166)",
             "VSE64.V         v11, t1, none, 1",
-            "ADDI            t1, gp, 0xa8(168)",
+            "ADDI            t1, gp, 0xb0(176)",
             "VSE64.V         v12, t1, none, 1"
         ],
         "disassembly": "pmulhrsw mm3, mm4"
@@ -1019,7 +1019,7 @@
     "0f380bd2": {
         "instruction_count": 13,
         "expected_asm": [
-            "ADDI            ra, gp, 0x98(152)",
+            "ADDI            ra, gp, 0x9c(156)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v10, ra, none, 1",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
@@ -1030,7 +1030,7 @@
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v10, v2, 0x1(1), none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x98(152)",
+            "ADDI            t1, gp, 0x9c(156)",
             "VSE64.V         v10, t1, none, 1"
         ],
         "disassembly": "pmulhrsw mm2, mm2"
@@ -1038,7 +1038,7 @@
     "0f380b0f": {
         "instruction_count": 15,
         "expected_asm": [
-            "ADDI            ra, gp, 0x90(144)",
+            "ADDI            ra, gp, 0x92(146)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v9, ra, none, 1",
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
@@ -1051,7 +1051,7 @@
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v9, v2, 0x1(1), none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x90(144)",
+            "ADDI            t1, gp, 0x92(146)",
             "VSE64.V         v9, t1, none, 1"
         ],
         "disassembly": "pmulhrsw mm1, [rdi]"
@@ -1059,10 +1059,10 @@
     "0f3804dc": {
         "instruction_count": 17,
         "expected_asm": [
-            "ADDI            ra, gp, 0xa0(160)",
+            "ADDI            ra, gp, 0xa6(166)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v11, ra, none, 1",
-            "ADDI            ra, gp, 0xa8(168)",
+            "ADDI            ra, gp, 0xb0(176)",
             "VLE64.V         v12, ra, none, 1",
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VWMULSU.VV      v2, v12, v11, none",
@@ -1072,9 +1072,9 @@
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VSADD.VV        v11, v4, v6, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0xa0(160)",
+            "ADDI            t1, gp, 0xa6(166)",
             "VSE64.V         v11, t1, none, 1",
-            "ADDI            t1, gp, 0xa8(168)",
+            "ADDI            t1, gp, 0xb0(176)",
             "VSE64.V         v12, t1, none, 1"
         ],
         "disassembly": "pmaddubsw mm3, mm4"
@@ -1082,7 +1082,7 @@
     "0f3804d2": {
         "instruction_count": 13,
         "expected_asm": [
-            "ADDI            ra, gp, 0x98(152)",
+            "ADDI            ra, gp, 0x9c(156)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v10, ra, none, 1",
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
@@ -1093,7 +1093,7 @@
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VSADD.VV        v10, v4, v6, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x98(152)",
+            "ADDI            t1, gp, 0x9c(156)",
             "VSE64.V         v10, t1, none, 1"
         ],
         "disassembly": "pmaddubsw mm2, mm2"
@@ -1101,7 +1101,7 @@
     "0f38040f": {
         "instruction_count": 15,
         "expected_asm": [
-            "ADDI            ra, gp, 0x90(144)",
+            "ADDI            ra, gp, 0x92(146)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v9, ra, none, 1",
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
@@ -1114,7 +1114,7 @@
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VSADD.VV        v9, v4, v6, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x90(144)",
+            "ADDI            t1, gp, 0x92(146)",
             "VSE64.V         v9, t1, none, 1"
         ],
         "disassembly": "pmaddubsw mm1, [rdi]"
@@ -1122,10 +1122,10 @@
     "0f3805dc": {
         "instruction_count": 17,
         "expected_asm": [
-            "ADDI            ra, gp, 0xa0(160)",
+            "ADDI            ra, gp, 0xa6(166)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v11, ra, none, 1",
-            "ADDI            ra, gp, 0xa8(168)",
+            "ADDI            ra, gp, 0xb0(176)",
             "VLE64.V         v12, ra, none, 1",
             "VSETIVLI        zero, 16, e16, m2, tu, mu",
             "VMV1R.V         v2, v11",
@@ -1135,9 +1135,9 @@
             "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
             "VSUB.VV         v11, v6, v7, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0xa0(160)",
+            "ADDI            t1, gp, 0xa6(166)",
             "VSE64.V         v11, t1, none, 1",
-            "ADDI            t1, gp, 0xa8(168)",
+            "ADDI            t1, gp, 0xb0(176)",
             "VSE64.V         v12, t1, none, 1"
         ],
         "disassembly": "phsubw mm3, mm4"
@@ -1145,7 +1145,7 @@
     "0f3805d2": {
         "instruction_count": 13,
         "expected_asm": [
-            "ADDI            ra, gp, 0x98(152)",
+            "ADDI            ra, gp, 0x9c(156)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v10, ra, none, 1",
             "VSETIVLI        zero, 16, e16, m2, tu, mu",
@@ -1156,7 +1156,7 @@
             "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
             "VSUB.VV         v10, v6, v7, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x98(152)",
+            "ADDI            t1, gp, 0x9c(156)",
             "VSE64.V         v10, t1, none, 1"
         ],
         "disassembly": "phsubw mm2, mm2"
@@ -1164,7 +1164,7 @@
     "0f38050f": {
         "instruction_count": 16,
         "expected_asm": [
-            "ADDI            ra, gp, 0x90(144)",
+            "ADDI            ra, gp, 0x92(146)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v9, ra, none, 1",
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
@@ -1178,7 +1178,7 @@
             "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
             "VSUB.VV         v9, v6, v7, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x90(144)",
+            "ADDI            t1, gp, 0x92(146)",
             "VSE64.V         v9, t1, none, 1"
         ],
         "disassembly": "phsubw mm1, [rdi]"
@@ -1186,10 +1186,10 @@
     "0f3806dc": {
         "instruction_count": 18,
         "expected_asm": [
-            "ADDI            t1, gp, 0xa0(160)",
+            "ADDI            t1, gp, 0xa6(166)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v11, t1, none, 1",
-            "ADDI            t1, gp, 0xa8(168)",
+            "ADDI            t1, gp, 0xb0(176)",
             "VLE64.V         v12, t1, none, 1",
             "VSETIVLI        zero, 8, e32, m2, tu, mu",
             "VMV1R.V         v2, v11",
@@ -1200,9 +1200,9 @@
             "VNSRL.WX        v7, v2, ra, none",
             "VSUB.VV         v11, v6, v7, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0xa0(160)",
+            "ADDI            t1, gp, 0xa6(166)",
             "VSE64.V         v11, t1, none, 1",
-            "ADDI            t1, gp, 0xa8(168)",
+            "ADDI            t1, gp, 0xb0(176)",
             "VSE64.V         v12, t1, none, 1"
         ],
         "disassembly": "phsubd mm3, mm4"
@@ -1210,7 +1210,7 @@
     "0f3806d2": {
         "instruction_count": 14,
         "expected_asm": [
-            "ADDI            t1, gp, 0x98(152)",
+            "ADDI            t1, gp, 0x9c(156)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v10, t1, none, 1",
             "VSETIVLI        zero, 8, e32, m2, tu, mu",
@@ -1222,7 +1222,7 @@
             "VNSRL.WX        v7, v2, ra, none",
             "VSUB.VV         v10, v6, v7, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x98(152)",
+            "ADDI            t1, gp, 0x9c(156)",
             "VSE64.V         v10, t1, none, 1"
         ],
         "disassembly": "phsubd mm2, mm2"
@@ -1230,7 +1230,7 @@
     "0f38060f": {
         "instruction_count": 17,
         "expected_asm": [
-            "ADDI            t1, gp, 0x90(144)",
+            "ADDI            t1, gp, 0x92(146)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v9, t1, none, 1",
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
@@ -1245,7 +1245,7 @@
             "VNSRL.WX        v7, v2, ra, none",
             "VSUB.VV         v9, v6, v7, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x90(144)",
+            "ADDI            t1, gp, 0x92(146)",
             "VSE64.V         v9, t1, none, 1"
         ],
         "disassembly": "phsubd mm1, [rdi]"
@@ -1253,10 +1253,10 @@
     "0f3807dc": {
         "instruction_count": 17,
         "expected_asm": [
-            "ADDI            ra, gp, 0xa0(160)",
+            "ADDI            ra, gp, 0xa6(166)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v11, ra, none, 1",
-            "ADDI            ra, gp, 0xa8(168)",
+            "ADDI            ra, gp, 0xb0(176)",
             "VLE64.V         v12, ra, none, 1",
             "VSETIVLI        zero, 16, e16, m2, tu, mu",
             "VMV1R.V         v2, v11",
@@ -1266,9 +1266,9 @@
             "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
             "VSSUB.VV        v11, v6, v7, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0xa0(160)",
+            "ADDI            t1, gp, 0xa6(166)",
             "VSE64.V         v11, t1, none, 1",
-            "ADDI            t1, gp, 0xa8(168)",
+            "ADDI            t1, gp, 0xb0(176)",
             "VSE64.V         v12, t1, none, 1"
         ],
         "disassembly": "phsubsw mm3, mm4"
@@ -1276,7 +1276,7 @@
     "0f3807d2": {
         "instruction_count": 13,
         "expected_asm": [
-            "ADDI            ra, gp, 0x98(152)",
+            "ADDI            ra, gp, 0x9c(156)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v10, ra, none, 1",
             "VSETIVLI        zero, 16, e16, m2, tu, mu",
@@ -1287,7 +1287,7 @@
             "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
             "VSSUB.VV        v10, v6, v7, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x98(152)",
+            "ADDI            t1, gp, 0x9c(156)",
             "VSE64.V         v10, t1, none, 1"
         ],
         "disassembly": "phsubsw mm2, mm2"
@@ -1295,7 +1295,7 @@
     "0f38070f": {
         "instruction_count": 16,
         "expected_asm": [
-            "ADDI            ra, gp, 0x90(144)",
+            "ADDI            ra, gp, 0x92(146)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v9, ra, none, 1",
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
@@ -1309,7 +1309,7 @@
             "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
             "VSSUB.VV        v9, v6, v7, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x90(144)",
+            "ADDI            t1, gp, 0x92(146)",
             "VSE64.V         v9, t1, none, 1"
         ],
         "disassembly": "phsubsw mm1, [rdi]"
@@ -1317,10 +1317,10 @@
     "0f3801dc": {
         "instruction_count": 17,
         "expected_asm": [
-            "ADDI            ra, gp, 0xa0(160)",
+            "ADDI            ra, gp, 0xa6(166)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v11, ra, none, 1",
-            "ADDI            ra, gp, 0xa8(168)",
+            "ADDI            ra, gp, 0xb0(176)",
             "VLE64.V         v12, ra, none, 1",
             "VSETIVLI        zero, 16, e16, m2, tu, mu",
             "VMV1R.V         v2, v11",
@@ -1330,9 +1330,9 @@
             "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
             "VADD.VV         v11, v6, v7, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0xa0(160)",
+            "ADDI            t1, gp, 0xa6(166)",
             "VSE64.V         v11, t1, none, 1",
-            "ADDI            t1, gp, 0xa8(168)",
+            "ADDI            t1, gp, 0xb0(176)",
             "VSE64.V         v12, t1, none, 1"
         ],
         "disassembly": "phaddw mm3, mm4"
@@ -1340,7 +1340,7 @@
     "0f3801d2": {
         "instruction_count": 13,
         "expected_asm": [
-            "ADDI            ra, gp, 0x98(152)",
+            "ADDI            ra, gp, 0x9c(156)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v10, ra, none, 1",
             "VSETIVLI        zero, 16, e16, m2, tu, mu",
@@ -1351,7 +1351,7 @@
             "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
             "VADD.VV         v10, v6, v7, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x98(152)",
+            "ADDI            t1, gp, 0x9c(156)",
             "VSE64.V         v10, t1, none, 1"
         ],
         "disassembly": "phaddw mm2, mm2"
@@ -1359,7 +1359,7 @@
     "0f38010f": {
         "instruction_count": 16,
         "expected_asm": [
-            "ADDI            ra, gp, 0x90(144)",
+            "ADDI            ra, gp, 0x92(146)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v9, ra, none, 1",
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
@@ -1373,7 +1373,7 @@
             "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
             "VADD.VV         v9, v6, v7, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x90(144)",
+            "ADDI            t1, gp, 0x92(146)",
             "VSE64.V         v9, t1, none, 1"
         ],
         "disassembly": "phaddw mm1, [rdi]"
@@ -1381,10 +1381,10 @@
     "0f3802dc": {
         "instruction_count": 18,
         "expected_asm": [
-            "ADDI            t1, gp, 0xa0(160)",
+            "ADDI            t1, gp, 0xa6(166)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v11, t1, none, 1",
-            "ADDI            t1, gp, 0xa8(168)",
+            "ADDI            t1, gp, 0xb0(176)",
             "VLE64.V         v12, t1, none, 1",
             "VSETIVLI        zero, 8, e32, m2, tu, mu",
             "VMV1R.V         v2, v11",
@@ -1395,9 +1395,9 @@
             "VNSRL.WX        v7, v2, ra, none",
             "VADD.VV         v11, v6, v7, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0xa0(160)",
+            "ADDI            t1, gp, 0xa6(166)",
             "VSE64.V         v11, t1, none, 1",
-            "ADDI            t1, gp, 0xa8(168)",
+            "ADDI            t1, gp, 0xb0(176)",
             "VSE64.V         v12, t1, none, 1"
         ],
         "disassembly": "phaddd mm3, mm4"
@@ -1405,7 +1405,7 @@
     "0f3802d2": {
         "instruction_count": 14,
         "expected_asm": [
-            "ADDI            t1, gp, 0x98(152)",
+            "ADDI            t1, gp, 0x9c(156)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v10, t1, none, 1",
             "VSETIVLI        zero, 8, e32, m2, tu, mu",
@@ -1417,7 +1417,7 @@
             "VNSRL.WX        v7, v2, ra, none",
             "VADD.VV         v10, v6, v7, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x98(152)",
+            "ADDI            t1, gp, 0x9c(156)",
             "VSE64.V         v10, t1, none, 1"
         ],
         "disassembly": "phaddd mm2, mm2"
@@ -1425,7 +1425,7 @@
     "0f38020f": {
         "instruction_count": 17,
         "expected_asm": [
-            "ADDI            t1, gp, 0x90(144)",
+            "ADDI            t1, gp, 0x92(146)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v9, t1, none, 1",
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
@@ -1440,7 +1440,7 @@
             "VNSRL.WX        v7, v2, ra, none",
             "VADD.VV         v9, v6, v7, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x90(144)",
+            "ADDI            t1, gp, 0x92(146)",
             "VSE64.V         v9, t1, none, 1"
         ],
         "disassembly": "phaddd mm1, [rdi]"
@@ -1448,10 +1448,10 @@
     "0f3803dc": {
         "instruction_count": 17,
         "expected_asm": [
-            "ADDI            ra, gp, 0xa0(160)",
+            "ADDI            ra, gp, 0xa6(166)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v11, ra, none, 1",
-            "ADDI            ra, gp, 0xa8(168)",
+            "ADDI            ra, gp, 0xb0(176)",
             "VLE64.V         v12, ra, none, 1",
             "VSETIVLI        zero, 16, e16, m2, tu, mu",
             "VMV1R.V         v2, v11",
@@ -1461,9 +1461,9 @@
             "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
             "VSADD.VV        v11, v6, v7, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0xa0(160)",
+            "ADDI            t1, gp, 0xa6(166)",
             "VSE64.V         v11, t1, none, 1",
-            "ADDI            t1, gp, 0xa8(168)",
+            "ADDI            t1, gp, 0xb0(176)",
             "VSE64.V         v12, t1, none, 1"
         ],
         "disassembly": "phaddsw mm3, mm4"
@@ -1471,7 +1471,7 @@
     "0f3803d2": {
         "instruction_count": 13,
         "expected_asm": [
-            "ADDI            ra, gp, 0x98(152)",
+            "ADDI            ra, gp, 0x9c(156)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v10, ra, none, 1",
             "VSETIVLI        zero, 16, e16, m2, tu, mu",
@@ -1482,7 +1482,7 @@
             "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
             "VSADD.VV        v10, v6, v7, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x98(152)",
+            "ADDI            t1, gp, 0x9c(156)",
             "VSE64.V         v10, t1, none, 1"
         ],
         "disassembly": "phaddsw mm2, mm2"
@@ -1490,7 +1490,7 @@
     "0f38030f": {
         "instruction_count": 16,
         "expected_asm": [
-            "ADDI            ra, gp, 0x90(144)",
+            "ADDI            ra, gp, 0x92(146)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v9, ra, none, 1",
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
@@ -1504,7 +1504,7 @@
             "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
             "VSADD.VV        v9, v6, v7, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x90(144)",
+            "ADDI            t1, gp, 0x92(146)",
             "VSE64.V         v9, t1, none, 1"
         ],
         "disassembly": "phaddsw mm1, [rdi]"
@@ -1512,19 +1512,19 @@
     "0f3a0fd305": {
         "instruction_count": 14,
         "expected_asm": [
-            "ADDI            ra, gp, 0x98(152)",
+            "ADDI            ra, gp, 0x9c(156)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v10, ra, none, 1",
-            "ADDI            ra, gp, 0xa0(160)",
+            "ADDI            ra, gp, 0xa6(166)",
             "VLE64.V         v11, ra, none, 1",
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VSLIDEDOWN.VI   v2, v11, 0x5(5), none",
             "VSLIDEUP.VI     v2, v10, 0x3(3), none",
             "VMV1R.V         v10, v2",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x98(152)",
+            "ADDI            t1, gp, 0x9c(156)",
             "VSE64.V         v10, t1, none, 1",
-            "ADDI            t1, gp, 0xa0(160)",
+            "ADDI            t1, gp, 0xa6(166)",
             "VSE64.V         v11, t1, none, 1"
         ],
         "disassembly": "palignr mm2, mm3, 0x05"
@@ -1532,17 +1532,17 @@
     "0f3a0fd310": {
         "instruction_count": 12,
         "expected_asm": [
-            "ADDI            ra, gp, 0x98(152)",
+            "ADDI            ra, gp, 0x9c(156)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v10, ra, none, 1",
-            "ADDI            ra, gp, 0xa0(160)",
+            "ADDI            ra, gp, 0xa6(166)",
             "VLE64.V         v11, ra, none, 1",
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
             "VXOR.VV         v10, v10, v10, none",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDI            t1, gp, 0x98(152)",
+            "ADDI            t1, gp, 0x9c(156)",
             "VSE64.V         v10, t1, none, 1",
-            "ADDI            t1, gp, 0xa0(160)",
+            "ADDI            t1, gp, 0xa6(166)",
             "VSE64.V         v11, t1, none, 1"
         ],
         "disassembly": "palignr mm2, mm3, 0x10"
