@@ -320,8 +320,10 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         }
         if (!g_config.shell_history_path.empty()) {
             std::filesystem::path shell_history_file;
-            shell_history_file += home;
-            shell_history_file += "/";
+            if (!g_config.shell_history_path.is_absolute()) {
+                shell_history_file += home;
+                shell_history_file += "/";                
+            }
             shell_history_file += g_config.shell_history_path.c_str();
             shell_history += shell_history_file.string();            
         }

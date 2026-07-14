@@ -1,7 +1,7 @@
 // GROUP --- TYPE --- NAME --- DEFAULT VALUE --- ENVIRONMENT VARIABLE NAME --- DESCRIPTION
 X(General, std::filesystem::path, rootfs_path, "", FELIX86_ROOTFS, "Set the rootfs path")
 X(General, std::filesystem::path, thunks_path, "", FELIX86_THUNKS, "Set the thunk libraries path")
-X(General, std::filesystem::path, shell_history_path, ".config/felix86/.felix86_history", FELIX86_THUNKS, "Set the shell history path")
+X(General, std::filesystem::path, shell_history_path, ".felix86_history", FELIX86_THUNKS, "Set the shell history path")
 X(General, std::string, enabled_thunks, "none", FELIX86_ENABLED_THUNKS, "Set the enabled thunks, possible choices: \"vk, glx, wayland, egl\" or \"all\"")
 // TODO: Migrate to std::vector<std::string> so we don't have to split using ;
 X(General, std::string, environment, "", FELIX86_ENVIRONMENT, "Environment variables, separated by ';', to pass to the guest program")
