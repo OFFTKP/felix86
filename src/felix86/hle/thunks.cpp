@@ -12,7 +12,7 @@
 #include "felix86/common/utility.hpp"
 
 void Thunks::initialize() {
-    const char* env = getenv("FELIX86_ENABLED_THUNKS");
+    const char* env = secure_getenv("FELIX86_ENABLED_THUNKS");
     if (env) {
         // Check if not the default and warn
         Config c;

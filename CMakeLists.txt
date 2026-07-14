@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 option(FELIX86_BUILD_THUNKING "Build with thunking support" ON)
 option(FELIX86_MONTHLY_RELEASE "Build as a monthly release" OFF)
+set(FELIX86_CONFIG_PATH "/etc/opt/felix86/config.toml" CACHE STRING "Path to the system-wide configuration file")
 
 project(felix86)
 include(CheckGit.cmake)
@@ -173,6 +174,8 @@ if (FELIX86_MONTHLY_RELEASE)
 else()
     message("Building as a daily release")
 endif()
+
+target_compile_definitions(felix86_core PUBLIC FELIX86_CONFIG_PATH="${FELIX86_CONFIG_PATH}")
 
 
 if (FELIX86_BUILD_THUNKING)

@@ -369,7 +369,7 @@ void Emulator::Start() {
     main_state->signal_table = SignalHandlerTable::create(nullptr);
     main_state->SetRip(g_fs->GetEntrypoint());
 
-    const char* mask = getenv("__FELIX86_SIGNAL_MASK");
+    const char* mask = secure_getenv("__FELIX86_SIGNAL_MASK");
     if (mask) {
         ASSERT(g_execve_process);
         u64 signal_mask;
