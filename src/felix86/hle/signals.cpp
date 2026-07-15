@@ -474,10 +474,16 @@ void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state, sigin
 
     rsp = rsp - sizeof(x64_fpstate);
     static_assert(sizeof(x64_fpstate) % 16 == 0);
+
+    rsp = rsp & ~63ull;
+
     x64_fpstate* fpstate = (x64_fpstate*)rsp;
 
     rsp = rsp - sizeof(x64_rt_sigframe);
     static_assert(sizeof(x64_rt_sigframe) % 16 == 0);
+
+    rsp = rsp & ~63ull;
+
     x64_rt_sigframe* frame = (x64_rt_sigframe*)rsp;
 
     ASSERT(signal.restorer);
@@ -602,6 +608,9 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, si
     }
 
     rsp -= sizeof(x86_fpstate);
+
+    rsp = rsp & ~63ull;
+
     x86_fpstate* fpstate = (x86_fpstate*)rsp;
     ASSERT((u64)fpstate < UINT32_MAX);
 
@@ -614,6 +623,7 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, si
     rsp -= sizeof(x86_rt_sigframe);
 
     rsp = ((rsp + 4) & -16ul) - 4;
+    rsp = rsp & ~63ull;
 
     x86_rt_sigframe* frame = (x86_rt_sigframe*)rsp;
     ASSERT((u64)frame < UINT32_MAX);
@@ -725,9 +735,13 @@ void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state, sigin
         rsp = rsp - sizeof(ymm_hi) - sizeof(xsave_header);
     }
     rsp -= sizeof(x86_fpstate);
+
+    rsp = rsp & ~63ull;
+
     x86_fpstate* fpstate = (x86_fpstate*)rsp;
     rsp = rsp - sizeof(x86_legacy_sigframe);
     rsp = ((rsp + 4) & -16ul) - 4;
+    rsp = rsp & ~63ull;
 
     x86_legacy_sigframe* frame = (x86_legacy_sigframe*)rsp;
     frame->sc.ax = state->GetGpr(X86_REF_RAX);
@@ -1122,7 +1136,8 @@ static void defer_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx
     }
     u64 pc = get_pc(ctx);
     RegisteredSignal* signal = SignalHandlerTable::getRegisteredSignal(state->signal_table, sig);
-    if (state->in_restartable_syscall && (signal->flags & SA_RESTART) && *((u32*)(pc - 4)) == ecall && get_regs(ctx)[biscuit::a0.Index()] == (u64)-EINTR) {
+    if (state->in_restartable_syscall && (signal->flags & SA_RESTART) && *((u32*)(pc - 4)) == ecall &&
+        get_regs(ctx)[biscuit::a0.Index()] == (u64)-EINTR) {
         state->should_restart_syscall = true;
     }
     state->deferred_signals |= 1ull << index;
