@@ -399,8 +399,8 @@ void Emulator::Start() {
         close(fd);
     }
 
-    const char* tracer_env = getenv("__FELIX86_PTRACE_TRACER");
-    if (tracer_env) {
+    int tracer_pid = get_tracer_pid();
+    if (tracer_pid != 0) {
         const char* options = getenv("__FELIX86_PTRACE_FLAGS");
         const char* former_tracee = getenv("__FELIX86_PTRACE_FORMER_TRACEE");
         ASSERT(options && former_tracee);
@@ -409,7 +409,7 @@ void Emulator::Start() {
         ASSERT(g_execve_process);
         u64 flags = std::atoi(options);
         ASSERT(flags != 0 || (options[0] == '0' && options[1] == '\0'));
-        main_state->ptrace_data.constants.tracer_pid = std::atoi(tracer_env);
+        main_state->ptrace_data.constants.tracer_pid = tracer_pid;
         main_state->ptrace_data.constants.flags = flags;
         int former_tid = std::atoi(former_tracee);
         ASSERT(former_tid != 0);

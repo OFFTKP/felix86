@@ -146,6 +146,8 @@ u64 mmap_min_addr();
 
 u64 mmap_max_addr();
 
+pid_t get_tracer_pid();
+
 void felix86_set_segment(ThreadState* state, u64 value, int segment);
 
 void felix86_fprem(ThreadState* state);

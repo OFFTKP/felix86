@@ -1690,3 +1690,33 @@ bool felix86_address_check(void* address) {
     }
     return true;
 }
+
+pid_t get_tracer_pid() {
+    std::ifstream f("/proc/self/status");
+    if (!f.is_open()) {
+        WARN("failed to open /proc/self/status");
+        return 0;
+    }
+
+    static const char key[] = "TracerPid:";
+    const size_t key_len = sizeof(key) - 1;
+
+    std::string line;
+    long pid_val = 0;
+    bool found = false;
+    while (std::getline(f, line)) {
+        if (line.compare(0, key_len, key) == 0) {
+            if (sscanf(line.c_str() + key_len, "%ld", &pid_val) == 1) {
+                found = true;
+            }
+            break;
+        }
+    }
+
+    if (!found) {
+        WARN("TracerPid not found or unparsable in /proc/self/status");
+        return 0;
+    }
+
+    return (pid_t)pid_val;
+}
