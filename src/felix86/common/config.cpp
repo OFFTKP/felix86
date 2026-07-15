@@ -75,23 +75,6 @@ bool is_truthy(const char* str) {
     return lower == "true" || lower == "1" || lower == "yes" || lower == "on" || lower == "y" || lower == "enable";
 }
 
-static bool verifyConfigPermissions(const std::filesystem::path& path) {
-    struct stat st;
-    if (lstat(path.c_str(), &st) != 0) {
-        return false;
-    }
-    if (S_ISLNK(st.st_mode)) {
-        return false;
-    }
-    if (st.st_uid != 0) {
-        return false;
-    }
-    if (st.st_mode & (S_IWGRP | S_IWOTH)) {
-        return false;
-    }
-    return true;
-}
-
 bool Config::initialize(bool ignore_envs) {
     bool is_privileged = getauxval(AT_SECURE) != 0;
     if (is_privileged) {
@@ -117,11 +100,6 @@ bool Config::initialize(bool ignore_envs) {
                       "Run `sudo felix86 --set-config general.rootfs_path=<path>` to create it.",
                       config_path.c_str());
             }
-        }
-
-        if (std::filesystem::exists(config_path) && !verifyConfigPermissions(config_path)) {
-            WARN("Config file %s has unexpected ownership/permissions (should be owned by root, not a symlink, and not group/world-writable).",
-                 config_path.c_str());
         }
 
         profiles_path = getProfilesDir();
