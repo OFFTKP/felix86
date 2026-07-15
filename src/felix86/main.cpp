@@ -514,8 +514,12 @@ int main(int argc, char* argv[]) {
     initialize_globals();
     Signals::initialize();
 
+    if (getenv("__FELIX86_QUIET")) {
+        g_config.quiet = true;
+    }
+
     if (!g_config.quiet) {
-        const char* pipe = getenv("__FELIX86_PIPE");
+        const char* pipe = secure_getenv("__FELIX86_PIPE"); // don't inherit pipe from different uid
         if (!pipe) {
             Logger::startServer();
         } else {

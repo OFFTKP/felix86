@@ -94,7 +94,7 @@ jobs:
           ${{ github.workspace }}/test/felix86_test
           ${{ github.workspace }}/test/felix86 -k
           FELIX86PATH="${{ github.workspace }}/test/felix86"
-          ROOTFSPATH=$($FELIX86PATH -g)
+          ROOTFSPATH=$($FELIX86PATH --get-config general.rootfs_path)
           git clone https://github.com/felix86-emu/binary_tests $RUNNER_TEMP/tests
           cd $RUNNER_TEMP/tests
           FELIX86_GLIBC_LINK="https://github.com/felix86-emu/glibc/releases/download/2.4.3-felix86/glibc-felix86.zip"
