@@ -2,7 +2,10 @@
 #include <filesystem>
 #include <optional>
 #include <system_error>
+#include <elf.h>
 #include <pwd.h>
+#include <sys/auxv.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include "felix86/common/config.hpp"
 #include "felix86/common/log.hpp"
@@ -14,51 +17,22 @@
 Config g_config{};
 Config g_initial_config{};
 
-std::filesystem::path Config::getConfigDir() {
-    std::string homedir;
+std::filesystem::path Config::getConfigFilePath() {
+    return FELIX86_CONFIG_PATH;
+}
 
-    // If SUDO_HOME is defined, use that as the home directory
-    // `sudo` sets SUDO_HOME to the original HOME, and HOME to /root
-    // We want felix86 instances running under sudo to use the original HOME so they can find the config file
-    if (getenv("SUDO_HOME")) {
-        homedir = getenv("SUDO_HOME");
-    } else if (getenv("SUDO_USER")) {
-        homedir = "/home/" + std::string(getenv("SUDO_USER"));
-    } else if (getenv("HOME")) {
-        homedir = getenv("HOME");
-    }
-
-    if (homedir.empty()) {
+std::filesystem::path Config::getProfilesDir() {
+    struct passwd* pw = getpwuid(geteuid());
+    if (!pw || !pw->pw_dir) {
         return {};
-    }
-
-    if (homedir == "/root") {
-        WARN("Home dir is /root, couldn't find user home");
     }
 
     std::error_code ec;
-    std::filesystem::path config_path = homedir;
-    config_path /= ".config";
-    if (!std::filesystem::exists(config_path, ec)) {
-        bool ok = std::filesystem::create_directories(config_path, ec);
-        if (!ok) {
-            return {};
-        }
-    } else if (!std::filesystem::is_directory(config_path, ec)) {
-        return {};
+    std::filesystem::path profiles_path = std::filesystem::path(pw->pw_dir) / ".config" / "felix86" / "profiles";
+    if (!std::filesystem::exists(profiles_path, ec)) {
+        std::filesystem::create_directories(profiles_path, ec);
     }
-
-    config_path /= "felix86";
-    if (!std::filesystem::exists(config_path, ec)) {
-        bool ok = std::filesystem::create_directory(config_path, ec);
-        if (!ok) {
-            return {};
-        }
-    } else if (!std::filesystem::is_directory(config_path, ec)) {
-        return {};
-    }
-
-    return config_path;
+    return profiles_path;
 }
 
 void addToEnvironment(Config& config, const char* env_name, const char* env) {
@@ -102,129 +76,107 @@ bool is_truthy(const char* str) {
 }
 
 bool Config::initialize(bool ignore_envs) {
+    bool is_privileged = getauxval(AT_SECURE) != 0;
+    if (is_privileged) {
+        ignore_envs = true;
+    }
+
     std::filesystem::path config_path;
     std::filesystem::path profiles_path;
-    bool no_config_file = is_truthy(getenv("FELIX86_NO_CONFIG_FILE"));
+    bool no_config_file = is_truthy(secure_getenv("FELIX86_NO_CONFIG_FILE"));
     if (!no_config_file) {
-        const std::filesystem::path config_dir = getConfigDir();
-        if (config_dir.empty()) {
-            return false;
-        }
+        config_path = getConfigFilePath();
 
-        config_path = config_dir / "config.toml";
         if (!std::filesystem::exists(config_path)) {
-            LOG("Created configuration file: %s", config_path.c_str());
-            save(config_path, g_config);
-
-            if (getuid() == 0) {
-                // Config file created while running as sudo
-                // This can happen if for example the first instance of felix86 happens to be
-                // running `sudo --preserve-env=HOME felix86 -b` to register to binfmt_misc
-                // See if running through sudo and change permissions
-                const char* uid = getenv("SUDO_UID");
-                const char* gid = getenv("SUDO_GID");
-                bool owner_changed = false;
-                if (uid && gid) {
-                    long nuid = std::atol(uid);
-                    long ngid = std::atol(gid);
-                    if (nuid && ngid) {
-                        int result = chown(config_path.c_str(), nuid, ngid);
-                        if (result == 0) {
-                            result = chown(config_dir.c_str(), nuid, ngid);
-                            if (result == 0) {
-                                owner_changed = true;
-                            }
-                        }
-                    }
-                }
-
-                if (!owner_changed) {
-                    WARN("The created configuration file %s may be owned by root, which may not be intended", config_path.c_str());
-                    WARN("You can change them manually by doing `sudo chown $USER:$USER %s`", config_path.c_str());
-                }
+            if (geteuid() == 0) {
+                std::error_code ec;
+                std::filesystem::create_directories(config_path.parent_path(), ec);
+                save(config_path, g_config);
+                ASSERT_MSG(chown(config_path.c_str(), 0, 0) == 0, "Failed to chown(%s, 0, 0), errno: %d", config_path.c_str(), errno);
+                chmod(config_path.c_str(), 0644);
+                LOG("Created configuration file: %s", config_path.c_str());
+            } else {
+                ERROR("Config file %s does not exist and cannot be created without root permissions. "
+                      "Run `sudo felix86 --set-config general.rootfs_path=<path>` to create it.",
+                      config_path.c_str());
             }
         }
 
-        std::error_code ec;
-        profiles_path = config_dir / "profiles";
-        std::filesystem::create_directories(profiles_path, ec);
+        profiles_path = getProfilesDir();
+        if (!profiles_path.empty()) {
+            std::error_code ec;
 
-        if (!std::filesystem::exists(profiles_path / "extreme.toml", ec)) {
-            // Enable all optimizations, even ones that may break programs
-            Config extreme_config{};
-            extreme_config.link = true;
-            extreme_config.address_cache = true;
-            extreme_config.unsafe_flags = true;
-            extreme_config.opcode_fusing = true;
-            extreme_config.inline_syscalls = true;
-            extreme_config.inaccurate_minmax = true;
-            extreme_config.always_tso = false;
-            extreme_config.protect_pages = true; // this one is too breaking to disable
-            extreme_config.noflag_opts = true;
-            extreme_config.auto_compress = false;
-            extreme_config.scan_ahead_multi = true;
-            extreme_config.no_address_overflow = true;
-            Config::save(profiles_path / "extreme.toml", extreme_config, true);
-        }
+            if (!std::filesystem::exists(profiles_path / "extreme.toml", ec)) {
+                Config extreme_config{};
+                extreme_config.link = true;
+                extreme_config.address_cache = true;
+                extreme_config.unsafe_flags = true;
+                extreme_config.opcode_fusing = true;
+                extreme_config.inline_syscalls = true;
+                extreme_config.inaccurate_minmax = true;
+                extreme_config.always_tso = false;
+                extreme_config.protect_pages = true;
+                extreme_config.noflag_opts = true;
+                extreme_config.auto_compress = false;
+                extreme_config.scan_ahead_multi = true;
+                extreme_config.no_address_overflow = true;
+                Config::save(profiles_path / "extreme.toml", extreme_config, true);
+            }
 
-        if (!std::filesystem::exists(profiles_path / "safe.toml", ec)) {
-            // Disable most optimizations
-            Config safe_config{};
-            safe_config.link = true;
-            safe_config.address_cache = true;
-            safe_config.unsafe_flags = false;
-            safe_config.opcode_fusing = false;
-            safe_config.inline_syscalls = false;
-            safe_config.inaccurate_minmax = false;
-            safe_config.always_tso = true;
-            safe_config.protect_pages = true;
-            safe_config.noflag_opts = true;
-            safe_config.auto_compress = false;
-            safe_config.scan_ahead_multi = false;
-            safe_config.no_address_overflow = false;
-            Config::save(profiles_path / "safe.toml", safe_config, true);
-        }
+            if (!std::filesystem::exists(profiles_path / "safe.toml", ec)) {
+                Config safe_config{};
+                safe_config.link = true;
+                safe_config.address_cache = true;
+                safe_config.unsafe_flags = false;
+                safe_config.opcode_fusing = false;
+                safe_config.inline_syscalls = false;
+                safe_config.inaccurate_minmax = false;
+                safe_config.always_tso = true;
+                safe_config.protect_pages = true;
+                safe_config.noflag_opts = true;
+                safe_config.auto_compress = false;
+                safe_config.scan_ahead_multi = false;
+                safe_config.no_address_overflow = false;
+                Config::save(profiles_path / "safe.toml", safe_config, true);
+            }
 
-        if (!std::filesystem::exists(profiles_path / "paranoid.toml", ec)) {
-            // Disable all optimizations except block linking and enable some safety checks
-            Config paranoid_config{};
-            paranoid_config.paranoid = true;
-            paranoid_config.alignment_check = true;
-            paranoid_config.always_flags = true;
-            paranoid_config.link = true;
-            paranoid_config.address_cache = false;
-            paranoid_config.unsafe_flags = false;
-            paranoid_config.opcode_fusing = false;
-            paranoid_config.inline_syscalls = false;
-            paranoid_config.inaccurate_minmax = false;
-            paranoid_config.always_tso = true;
-            paranoid_config.protect_pages = true;
-            paranoid_config.noflag_opts = false;
-            paranoid_config.auto_compress = false;
-            paranoid_config.scan_ahead_multi = false;
-            paranoid_config.no_address_overflow = false;
-            Config::save(profiles_path / "paranoid.toml", paranoid_config, true);
-        }
+            if (!std::filesystem::exists(profiles_path / "paranoid.toml", ec)) {
+                Config paranoid_config{};
+                paranoid_config.paranoid = true;
+                paranoid_config.alignment_check = true;
+                paranoid_config.always_flags = true;
+                paranoid_config.link = true;
+                paranoid_config.address_cache = false;
+                paranoid_config.unsafe_flags = false;
+                paranoid_config.opcode_fusing = false;
+                paranoid_config.inline_syscalls = false;
+                paranoid_config.inaccurate_minmax = false;
+                paranoid_config.always_tso = true;
+                paranoid_config.protect_pages = true;
+                paranoid_config.noflag_opts = false;
+                paranoid_config.auto_compress = false;
+                paranoid_config.scan_ahead_multi = false;
+                paranoid_config.no_address_overflow = false;
+                Config::save(profiles_path / "paranoid.toml", paranoid_config, true);
+            }
 
-        if (!std::filesystem::exists(profiles_path / "zink.toml", ec)) {
-            // Enables Vulkan/Wayland thunking and sets environment variables to enable Zink
-            Config zink_config{};
-            zink_config.enabled_thunks = "vk,wl";
-            zink_config.environment = "LIBGL_KOPPER_DRI2=1;MESA_LOADER_DRIVER_OVERRIDE=zink";
-            // Set in host environment too for thunks
-            zink_config.host_environment = "LIBGL_KOPPER_DRI2=1;MESA_LOADER_DRIVER_OVERRIDE=zink";
-            Config::save(profiles_path / "zink.toml", zink_config, true);
+            if (!std::filesystem::exists(profiles_path / "zink.toml", ec)) {
+                Config zink_config{};
+                zink_config.enabled_thunks = "vk,wl";
+                zink_config.environment = "LIBGL_KOPPER_DRI2=1;MESA_LOADER_DRIVER_OVERRIDE=zink";
+                zink_config.host_environment = "LIBGL_KOPPER_DRI2=1;MESA_LOADER_DRIVER_OVERRIDE=zink";
+                Config::save(profiles_path / "zink.toml", zink_config, true);
+            }
         }
     }
 
     g_config = load(config_path, ignore_envs);
     g_config.config_path = config_path;
 
-    const char* profile = getenv("FELIX86_PROFILE");
+    const char* profile = secure_getenv("FELIX86_PROFILE");
     if (profile) {
         std::filesystem::path path;
 
-        // Sets either the absolute profile path or a name of a profile in $HOME/.config/felix86/profiles
         if (profile[0] != '/') {
             std::string sprofile = profile;
             std::transform(sprofile.begin(), sprofile.end(), sprofile.begin(), [](unsigned char c) { return std::tolower(c); });
@@ -245,7 +197,6 @@ bool Config::initialize(bool ignore_envs) {
         }
     }
 
-    // g_config can be changed, g_initial_config won't be changed
     g_initial_config = g_config;
 
 #define X(group, type, name, default_value, env_name, description)                                                                                   \
@@ -256,41 +207,6 @@ bool Config::initialize(bool ignore_envs) {
 #undef X
 
     return true;
-}
-
-template <typename Type>
-void addValue(std::string& str, Type& value) {
-    if constexpr (std::is_same_v<Type, bool>) {
-        str += value ? "1" : "0";
-    } else if constexpr (std::is_same_v<Type, u64>) {
-        str += std::to_string(value);
-    } else if constexpr (std::is_same_v<Type, std::filesystem::path>) {
-        str += value.string();
-    } else if constexpr (std::is_same_v<Type, std::string>) {
-        str += value;
-    } else {
-        static_assert(false);
-    }
-}
-
-std::string Config::getConfigHex() {
-    std::string str;
-#define X(group, type, name, default_value, env_name, description)                                                                                   \
-    {                                                                                                                                                \
-        str += #env_name;                                                                                                                            \
-        str += "=";                                                                                                                                  \
-        addValue(str, g_initial_config.name);                                                                                                        \
-        str += "\n";                                                                                                                                 \
-    }
-#include "config.inc"
-#undef X
-
-    if (str.back() == '\n') {
-        str.pop_back();
-    }
-
-    std::string hex_string = string_to_hex(str);
-    return hex_string;
 }
 
 u64 get_int(const char* str) {
@@ -374,52 +290,6 @@ bool setFromString(Config& config, Type& value, const char* str) {
     return false;
 }
 
-void Config::initializeChild() {
-    const char* env = getenv("__FELIX86_CONFIG");
-    if (!env) {
-        printf("Failed to initialize config. __FELIX86_CONFIG from parent is null\n");
-        exit(1);
-    }
-
-    std::string senv_hex = env;
-    if (senv_hex.empty()) {
-        printf("Config hex string is empty\n");
-        exit(1);
-    }
-
-    if (senv_hex.size() % 2 != 0) {
-        printf("Config hex string is bad: %s\n", env);
-        exit(1);
-    }
-
-    // The config string is a hex string so it can contain any character and newlines with no potential issues
-    Config config = {};
-    std::string senv = hex_to_string(senv_hex);
-    std::unordered_map<std::string, std::string> env_map;
-    std::vector<std::string> envs = split_string(senv, '\n');
-    for (auto& str : envs) {
-        auto it = str.find("=");
-        ASSERT(it != std::string::npos);
-        std::string name = str.substr(0, it);
-        std::string value = str.substr(it + 1);
-        env_map[name] = value;
-    }
-
-#define X(group, type, name, default_value, env_name, description)                                                                                   \
-    {                                                                                                                                                \
-        bool loaded = false;                                                                                                                         \
-        loaded = setFromString<type>(config, config.name, env_map.at(#env_name).c_str());                                                            \
-        if (!loaded) {                                                                                                                               \
-            ERROR("Failed to load option " #env_name);                                                                                               \
-        }                                                                                                                                            \
-    }
-#include "config.inc"
-#undef X
-
-    g_config = config;
-    g_initial_config = config;
-}
-
 Config Config::load(const std::filesystem::path& path, bool ignore_envs) {
     Config config = {};
 
@@ -439,13 +309,15 @@ Config Config::load(const std::filesystem::path& path, bool ignore_envs) {
 #define X(group, type, name, default_value, env_name, description)                                                                                   \
     {                                                                                                                                                \
         [[maybe_unused]] bool loaded = false;                                                                                                        \
-        const char* env = getenv(#env_name);                                                                                                         \
+        const char* env = secure_getenv(#env_name);                                                                                                  \
         if (env && !ignore_envs) {                                                                                                                   \
             loaded = setFromString<type>(config, config.name, env);                                                                                  \
-            if (loaded) config.src.name = ConfigSource::Env;                                                                                         \
+            if (loaded)                                                                                                                              \
+                config.src.name = ConfigSource::Env;                                                                                                 \
         } else if (!no_config_path) {                                                                                                                \
             loaded = loadFromToml<type>(result, #group, #name, config.name);                                                                         \
-            if (loaded) config.src.name = ConfigSource::File;                                                                                        \
+            if (loaded)                                                                                                                              \
+                config.src.name = ConfigSource::File;                                                                                                \
         }                                                                                                                                            \
     }
 #include "config.inc"
@@ -598,18 +470,23 @@ std::optional<ConfigSource> Config::getConfigSource(const char* group, const cha
 std::optional<std::string> Config::getConfigSourceString(const char* group, const char* field) {
     std::optional<ConfigSource> src = getConfigSource(group, field);
     if (src.has_value()) {
-        const char* s = "";
+        std::string s;
         switch (src.value()) {
-            case ConfigSource::Default: s = "default"; break;
-            case ConfigSource::Env: s = "env"; break;
-            case ConfigSource::File: s = "file"; break;
+        case ConfigSource::Default:
+            s = "Default value";
+            break;
+        case ConfigSource::Env:
+            s = "Environment variable";
+            break;
+        case ConfigSource::File:
+            s = std::string("Configuration file ") + config_path.string();
+            break;
         }
         return std::optional<std::string>(s);
     } else {
         return std::optional<std::string>();
     }
 }
-
 
 bool Config::setConfigString(const char* group, const char* field, const char* value) {
     std::string group_lower = lowercase(group);

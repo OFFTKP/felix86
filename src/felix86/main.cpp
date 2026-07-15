@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <fmt/format.h>
 #include <grp.h>
+#include <pwd.h>
 #include <spawn.h>
 #include <sys/auxv.h>
 #include <sys/mount.h>
@@ -30,7 +31,8 @@
 #endif
 
 void rootfs_not_set_error() {
-    printf("Rootfs path not set. Set it using `felix86 -s /path/to/rootfs`.\n");
+    printf("Rootfs path not set in %s\n", g_config.path().c_str());
+    printf("Set it using `sudo felix86 --set-config general.rootfs_path=/path/to/rootfs`.\n");
     printf("Consult the installation guide: https://felix86.com/docs/users/installation-guide/\n\n");
     printf("If you don't have an x86 rootfs, you can use the rootfs installer script to download and install one:\n");
     printf("    bash <(curl -s https://install.felix86.com/rootfs.sh)\n");
@@ -55,9 +57,6 @@ static struct argp_option options[] = {
     {"info", 'i', 0, 0, "Print system info"},
     {"configs", 'c', 0, 0, "Print the emulator configurations"},
     {"kill-all", 'k', 0, 0, "Kill all open emulator instances"},
-    {"set-rootfs", 's', "DIR", 0, "Set the rootfs path in config.toml"},
-    {"get-rootfs", 'g', 0, 0, "Get the rootfs path from config.toml"},
-    {"set-thunks", 'S', "DIR", 0, "Set the thunks path in config.toml"},
     {"binfmt-misc", 'b', 0, 0, "Register the emulator in binfmt_misc so that x86-64 executables can run without prepending the emulator path"},
     {"binfmt-misc-setuid", 'B', 0, 0,
      "Register the emulator in binfmt_misc so that x86-64 executables can run without prepending the emulator path. Also enables the credentials "
@@ -221,7 +220,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         }
 
         std::filesystem::path shell_path;
-        const char* shell = getenv("SHELL");
+        const char* shell = secure_getenv("SHELL");
         if (shell) {
             std::filesystem::path path = g_config.rootfs_path / std::filesystem::path(shell).relative_path();
             bool exists = std::filesystem::exists(path, ec);
@@ -241,13 +240,13 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             exit(1);
         }
 
-        const char* home_env = getenv("HOME");
-        if (!home_env) {
-            printf("$HOME is not set?\n");
+        struct passwd* pw = getpwuid(geteuid());
+        if (!pw || !pw->pw_dir) {
+            printf("Could not determine home directory\n");
             exit(1);
         }
 
-        const std::filesystem::path home = home_env;
+        const std::filesystem::path home = pw->pw_dir;
         const std::filesystem::path home_inside_rootfs = g_config.rootfs_path / home.relative_path();
         std::filesystem::create_directories(home_inside_rootfs, ec);
         if (ec) {
@@ -322,10 +321,10 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             std::filesystem::path shell_history_file;
             if (!g_config.shell_history_path.is_absolute()) {
                 shell_history_file += home;
-                shell_history_file += "/";                
+                shell_history_file += "/";
             }
             shell_history_file += g_config.shell_history_path.c_str();
-            shell_history += shell_history_file.string();            
+            shell_history += shell_history_file.string();
             envp.push_back(shell_history.data());
         }
         envp.push_back(nullptr);
@@ -368,6 +367,10 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     }
     case -4: {
         // set-config
+        if (geteuid() != 0) {
+            printf("Setting config requires root permissions. Please re-run with sudo.\n");
+            exit(1);
+        }
         ASSERT(Config::initialize(true));
         std::string group{};
         std::string field{};
@@ -419,6 +422,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     }
     case 'B': {
         binfmt_misc(true, true);
+        printf("Credentials flag enabled. Setuid x86 binaries will run with elevated privileges.\n");
         exit(0);
         break;
     }
@@ -445,39 +449,6 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         break;
     }
 #endif
-    case 's': {
-        Config::initialize(true /* ignore envs, because we save the config later */);
-        char* real_path = realpath(arg, nullptr);
-        if (!real_path) {
-            printf("Could not resolve %s to an absolute path\n", arg);
-            exit(1);
-        }
-        printf("Setting rootfs to %s\n", real_path);
-        g_config.rootfs_path = real_path;
-        Config::save(g_config.path(), g_config);
-        exit(0);
-        break;
-    }
-    case 'g': {
-        Config::initialize(false /* ignore envs, get from config.toml */);
-        printf("%s", g_config.rootfs_path.c_str());
-        fflush(stdout);
-        exit(0);
-        break;
-    }
-    case 'S': {
-        Config::initialize(true /* ignore envs, because we save the config later */);
-        char* real_path = realpath(arg, nullptr);
-        if (!real_path) {
-            printf("Could not resolve %s to an absolute path\n", arg);
-            exit(1);
-        }
-        printf("Setting thunks path to %s\n", real_path);
-        g_config.thunks_path = real_path;
-        Config::save(g_config.path(), g_config);
-        exit(0);
-        break;
-    }
     case 'c': {
         // TODO: add some color here
         Config::initialize();
@@ -491,10 +462,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         current_group = #group;                                                                                                                      \
         printf("\n[%s]\n", current_group.c_str());                                                                                                   \
     }                                                                                                                                                \
-    fmt::print(                                                                                                                                      \
-        "{} {} = {} (default: {}, src: {}) -- Environment variable: {}\n",                                                                           \
-        #type, #name, g_config.name, #def, g_config.getConfigSourceString(#group, #name).value_or(""), #env                                          \
-    );
+    fmt::print("{} {} = {}, source: {}\n", #type, #name, g_config.name, g_config.getConfigSourceString(#group, #name).value_or(""));
 #include "felix86/common/config.inc"
 #undef X
         exit(0);
@@ -517,7 +485,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
 static struct argp argp = {options, parse_opt, args_doc, doc};
 
 int main(int argc, char* argv[]) {
-    if (getenv("__FELIX86_TEST_BINFMT_MISC")) {
+    if (secure_getenv("__FELIX86_TEST_BINFMT_MISC")) {
         // This shouldn't be printed as when we run /bin/env in detect_binfmt_misc we mute stdout and stderr
         WARN("__FELIX86_TEST_BINFMT_MISC was detected, if you see this then something is wrong");
 
@@ -539,22 +507,19 @@ int main(int argc, char* argv[]) {
 
     g_execve_process = !!getenv("__FELIX86_EXECVE");
 
-    if (!g_execve_process) {
-        Config::initialize();
-    } else {
-        // We pass the config to children using __FELIX86_CONFIG as loaded from Config::load
-        // Guest applications can change the user, which would then mean we have no access to $home
-        // to load the config file. So all execve'd runs should load the configs from a string
-        Config::initializeChild();
-    }
+    Config::initialize();
     if (!g_config.no_rootfs && g_config.rootfs_path.empty()) {
         rootfs_not_set_error();
     }
     initialize_globals();
     Signals::initialize();
 
+    if (getenv("__FELIX86_QUIET")) {
+        g_config.quiet = true;
+    }
+
     if (!g_config.quiet) {
-        const char* pipe = getenv("__FELIX86_PIPE");
+        const char* pipe = secure_getenv("__FELIX86_PIPE"); // don't inherit pipe from different uid
         if (!pipe) {
             Logger::startServer();
         } else {
@@ -589,7 +554,7 @@ int main(int argc, char* argv[]) {
         }
     } else {
         bool purposefully_empty = false;
-        const char* env_file = getenv("FELIX86_ENV_FILE");
+        const char* env_file = secure_getenv("FELIX86_ENV_FILE");
         if (env_file) {
             std::string env_path = env_file;
             if (std::filesystem::exists(env_path)) {

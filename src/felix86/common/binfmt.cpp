@@ -117,11 +117,6 @@ void binfmt_misc(bool is_register, bool is_credentials) {
         exit(1);
     }
 
-    std::string config_dir = Config::getConfigDir();
-    if (config_dir == "/root") {
-        WARN("Config dir is /root, did you forget to pass the environment variables to felix86? Re-run as `sudo --preserve-env=HOME felix86 -b` if "
-             "this was not intended");
-    }
 
     Config::initialize(true /* ignore envs, because we save the config later */);
 
@@ -150,6 +145,7 @@ void binfmt_misc(bool is_register, bool is_credentials) {
 
         g_config.binfmt_misc_installed = false;
         Config::save(g_config.path(), g_config);
+
         printf("felix86 successfully unregistered from binfmt_misc\n");
     } else {
         // Unregister if already registered

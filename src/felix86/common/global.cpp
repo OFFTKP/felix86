@@ -293,7 +293,7 @@ void initialize_globals() {
     }
 
     // Check for FELIX86_EXTENSIONS environment variable
-    const char* all_extensions_env = getenv("FELIX86_ALL_EXTENSIONS");
+    const char* all_extensions_env = secure_getenv("FELIX86_ALL_EXTENSIONS");
     if (all_extensions_env) {
         if (g_extensions_manually_specified) {
             WARN("FELIX86_ALL_EXTENSIONS environment variable overrides manually specified extensions");
@@ -308,7 +308,7 @@ void initialize_globals() {
         }
     }
 
-    const char* extensions_env = getenv("FELIX86_EXTENSIONS");
+    const char* extensions_env = secure_getenv("FELIX86_EXTENSIONS");
     if (extensions_env) {
         if (g_extensions_manually_specified) {
             WARN("FELIX86_EXTENSIONS ignored, because extensions specified with FELIX86_ALL_EXTENSIONS");
@@ -395,6 +395,13 @@ void initialize_globals() {
 
         if (g_config.mount_home) {
             ASSERT_MSG(Filesystem::FakeMount("/home", original_rootfs / "home"), "Failed to fake-mount /home");
+            if (geteuid() == 0) {
+                // This is nice for --shell, so that it can chdir in home
+                bool mounted = Filesystem::FakeMount("/root", original_rootfs / "root");
+                if (!mounted) {
+                    WARN("Failed to fakemount /root");
+                }
+            }
         }
 
         if (getenv("__FELIX86_MOUNT_0")) {
@@ -414,7 +421,7 @@ void initialize_globals() {
         g_rootfs_fd = -1;
     }
 
-    const char* env_file = getenv("FELIX86_ENV_FILE");
+    const char* env_file = secure_getenv("FELIX86_ENV_FILE");
     if (env_file) {
         // Handled in main
         environment += "\nFELIX86_ENV_FILE=" + std::string(env_file);

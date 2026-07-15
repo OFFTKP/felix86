@@ -22,7 +22,6 @@ struct Config {
 #undef X
 
     static bool initialize(bool ignore_envs = false);
-    static void initializeChild();
     static const char* getDescription(const char* name);
     const char* getEnvironment() {
         return __environment.c_str();
@@ -42,9 +41,8 @@ struct Config {
     static bool loadProfile(Config& config, const std::filesystem::path& profile);
     static void save(const std::filesystem::path& path, const Config& config, bool only_non_default = false);
 
-    static std::filesystem::path getConfigDir();
-
-    static std::string getConfigHex();
+    static std::filesystem::path getConfigFilePath();
+    static std::filesystem::path getProfilesDir();
 
 private:
     std::string __environment;
@@ -53,9 +51,9 @@ private:
     friend void addToEnvironment(Config& config, const char* env_name, const char* env);
 
     struct {
-    #define X(group, type, name, value, ...) ConfigSource name = ConfigSource::Default;
-    #include "config.inc"
-    #undef X
+#define X(group, type, name, value, ...) ConfigSource name = ConfigSource::Default;
+#include "config.inc"
+#undef X
     } src;
 };
 
