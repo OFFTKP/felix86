@@ -108,14 +108,14 @@ bool Config::initialize(bool ignore_envs) {
             if (geteuid() == 0) {
                 std::error_code ec;
                 std::filesystem::create_directories(config_path.parent_path(), ec);
-                LOG("Created configuration file: %s", config_path.c_str());
                 save(config_path, g_config);
-                chown(config_path.c_str(), 0, 0);
+                ASSERT_MSG(chown(config_path.c_str(), 0, 0) == 0, "Failed to chown(%s, 0, 0), errno: %d", config_path.c_str(), errno);
                 chmod(config_path.c_str(), 0644);
+                LOG("Created configuration file: %s", config_path.c_str());
             } else {
-                WARN("Config file %s does not exist and cannot be created without root permissions. "
-                     "Run `sudo felix86 --set-config General.rootfs_path=<path>` to create it.",
-                     config_path.c_str());
+                ERROR("Config file %s does not exist and cannot be created without root permissions. "
+                      "Run `sudo felix86 --set-config general.rootfs_path=<path>` to create it.",
+                      config_path.c_str());
             }
         }
 
@@ -231,8 +231,6 @@ bool Config::initialize(bool ignore_envs) {
     return true;
 }
 
-
-
 u64 get_int(const char* str) {
     int len = strlen(str);
     if (len > 2) {
@@ -313,7 +311,6 @@ bool setFromString(Config& config, Type& value, const char* str) {
 
     return false;
 }
-
 
 Config Config::load(const std::filesystem::path& path, bool ignore_envs) {
     Config config = {};
