@@ -217,6 +217,10 @@ bool felix86_xsave_contains_ymms() {
 }
 
 void felix86_xsave(const UserContext& ctx, void* address, bool save_all) {
+    if ((u64)address & 63) {
+        // This would cause #GP, so warn
+        WARN("Improperly aligned xsave area: %lx", address);
+    }
     u64 rfbm = (u64)(u32)ctx.gprs[X86_REF_RDX] << 32 | (u32)ctx.gprs[X86_REF_RAX];
     bool save_x87 = (rfbm & 0b001) || save_all;
     bool save_xmm = (rfbm & 0b010) || save_all;
