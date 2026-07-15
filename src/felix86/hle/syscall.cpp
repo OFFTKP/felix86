@@ -2352,6 +2352,10 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             result = SYSCALL(sendfile, arg1, arg2, host_offset_ptr, arg4);
             break;
         }
+        case felix86_x86_32_sendfile64: {
+            result = SYSCALL(sendfile, arg1, arg2, arg3, arg4);
+            break;
+        }
         case felix86_x86_32_ia32_fallocate: {
             int fd = arg1;
             int mode = arg2;
