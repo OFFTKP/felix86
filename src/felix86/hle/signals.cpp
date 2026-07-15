@@ -475,8 +475,7 @@ void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state, sigin
     rsp = rsp - sizeof(x64_fpstate);
     static_assert(sizeof(x64_fpstate) % 16 == 0);
 
-    // For xsave alignment requirements, e.g. ntdll.so asserts this
-    rsp = rsp & ~63;
+    rsp = rsp & ~63ull;
 
     x64_fpstate* fpstate = (x64_fpstate*)rsp;
 
@@ -607,8 +606,7 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, si
 
     rsp -= sizeof(x86_fpstate);
 
-    // For xsave alignment requirements, e.g. ntdll.so asserts this
-    rsp = rsp & ~63;
+    rsp = rsp & ~63ull;
 
     x86_fpstate* fpstate = (x86_fpstate*)rsp;
     ASSERT((u64)fpstate < UINT32_MAX);
@@ -734,8 +732,7 @@ void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state, sigin
     }
     rsp -= sizeof(x86_fpstate);
 
-    // For xsave alignment requirements, e.g. ntdll.so asserts this
-    rsp = rsp & ~63;
+    rsp = rsp & ~63ull;
 
     x86_fpstate* fpstate = (x86_fpstate*)rsp;
     rsp = rsp - sizeof(x86_legacy_sigframe);
