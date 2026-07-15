@@ -545,7 +545,7 @@ int main(int argc, char* argv[]) {
     VERBOSE("%s", args.c_str());
 
     if (g_execve_process) {
-        const char* guest_envs = secure_getenv("__FELIX86_GUEST_ENVS");
+        const char* guest_envs = getenv("__FELIX86_GUEST_ENVS");
         if (guest_envs) {
             std::vector<std::string> envs = split_string(guest_envs, ',');
             for (auto& env : envs) {
