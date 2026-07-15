@@ -32,11 +32,7 @@
 
 void rootfs_not_set_error() {
     printf("Rootfs path not set in %s\n", g_config.path().c_str());
-    if (geteuid() == 0) {
-        printf("Set it using `sudo felix86 -s /path/to/rootfs`.\n");
-    } else {
-        printf("Set it using `felix86 -s /path/to/rootfs`.\n");
-    }
+    printf("Set it using `sudo felix86 --set-config general.rootfs_path=/path/to/rootfs`.\n");
     printf("Consult the installation guide: https://felix86.com/docs/users/installation-guide/\n\n");
     printf("If you don't have an x86 rootfs, you can use the rootfs installer script to download and install one:\n");
     printf("    bash <(curl -s https://install.felix86.com/rootfs.sh)\n");
