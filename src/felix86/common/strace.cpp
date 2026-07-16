@@ -10,7 +10,7 @@ struct nullable {
     explicit nullable(const char* s) : str(s) {}
 };
 
-auto format_as(nullable n) {
+static auto format_as(nullable n) {
     return n.str ? n.str : "(null)";
 }
 

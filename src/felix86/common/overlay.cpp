@@ -11,7 +11,7 @@ struct Overlay {
 };
 
 // Shouldn't need mutex, we only add to this during initialization and then only iterate it
-std::vector<Overlay> overlays;
+static std::vector<Overlay> overlays;
 
 void Overlays::addOverlay(const char* lib_name, const std::filesystem::path& dest) {
     VERBOSE("Adding overlay %s -> %s", lib_name, dest.c_str());

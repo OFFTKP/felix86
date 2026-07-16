@@ -210,7 +210,7 @@ struct x86_ptrace_syscall_info {
 };
 
 template <x86_ref_e ref>
-constexpr int reg_index = ref - X86_REF_RAX;
+constexpr static int reg_index = ref - X86_REF_RAX;
 
 static const char* stop_to_string(StopType type) {
     switch (type) {
@@ -343,7 +343,7 @@ static int __ptrace(__ptrace_request op, pid_t pid, void* addr, void* data) {
     return ::syscall(SYS_ptrace, op, pid, addr, data);
 }
 
-RemoteState get_remote_state(pid_t pid) {
+static RemoteState get_remote_state(pid_t pid) {
     riscv_user_regs_struct regs;
     struct iovec io;
     io.iov_base = &regs;
@@ -365,7 +365,7 @@ RemoteState get_remote_state(pid_t pid) {
     return RemoteState(remote_state_ptr, pid);
 }
 
-int get_regs(bool tracer_mode32, const RemoteState& remote_state, void* data) {
+static int get_regs(bool tracer_mode32, const RemoteState& remote_state, void* data) {
     const UserContext& remote_ctx = remote_state->ctx;
     if (tracer_mode32) {
         x86_user_regs_struct* user = (x86_user_regs_struct*)data;
@@ -420,7 +420,7 @@ int get_regs(bool tracer_mode32, const RemoteState& remote_state, void* data) {
     }
 }
 
-int set_regs(bool tracer_mode32, RemoteState& remote_state, void* data) {
+static int set_regs(bool tracer_mode32, RemoteState& remote_state, void* data) {
     UserContext& remote_ctx = remote_state->ctx;
     if (tracer_mode32) {
         x86_user_regs_struct* user = (x86_user_regs_struct*)data;

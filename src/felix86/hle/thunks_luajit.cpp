@@ -43,7 +43,7 @@ static u64 x86_to_riscv(u64 x86_pointer) {
     }
 }
 
-void* cached_or_trampoline(const char* signature, void* guest_function) {
+static void* cached_or_trampoline(const char* signature, void* guest_function) {
     u64 cached = x86_to_riscv((u64)guest_function);
     if (cached) {
         return (void*)cached;
@@ -52,53 +52,53 @@ void* cached_or_trampoline(const char* signature, void* guest_function) {
     return ABIMadness::hostToGuestTrampoline(signature, (void*)guest_function);
 }
 
-int host_lua_cpcall(lua_State* L, lua_CFunction func, void* ud) {
+static int host_lua_cpcall(lua_State* L, lua_CFunction func, void* ud) {
     static auto lua_cpcall = (int (*)(lua_State* L, lua_CFunction func, void* ud))dlsym(libluajit, "lua_cpcall");
     return lua_cpcall(L, func, ud);
 }
 
-lua_CFunction host_lua_atpanic(lua_State* L, lua_CFunction panicf) {
+static lua_CFunction host_lua_atpanic(lua_State* L, lua_CFunction panicf) {
     static auto lua_atpanic = (lua_CFunction (*)(lua_State* L, lua_CFunction panicf))dlsym(libluajit, "lua_atpanic");
     return lua_atpanic(L, panicf);
 }
 
-lua_CFunction host_lua_tocfunction(lua_State* L, int idx) {
+static lua_CFunction host_lua_tocfunction(lua_State* L, int idx) {
     static auto lua_tocfunction = (lua_CFunction (*)(lua_State* L, int idx))dlsym(libluajit, "lua_tocfunction");
     return lua_tocfunction(L, idx);
 }
 
-void host_lua_pushcclosure(lua_State* L, lua_CFunction fn, int n) {
+static void host_lua_pushcclosure(lua_State* L, lua_CFunction fn, int n) {
     static auto lua_pushcclosure = (lua_CFunction (*)(lua_State* L, lua_CFunction fn, int n))dlsym(libluajit, "lua_pushcclosure");
     lua_pushcclosure(L, fn, n);
 }
 
-lua_State* host_lua_newstate(lua_Alloc f, void* ud) {
+static lua_State* host_lua_newstate(lua_Alloc f, void* ud) {
     static auto lua_newstate = (lua_State * (*)(lua_Alloc f, void* ud)) dlsym(libluajit, "lua_newstate");
     return lua_newstate(f, ud);
 }
 
-lua_Alloc host_lua_getallocf(lua_State* L, void** ud) {
+static lua_Alloc host_lua_getallocf(lua_State* L, void** ud) {
     static auto lua_getallocf = (lua_Alloc (*)(lua_State* f, void* ud))dlsym(libluajit, "lua_getallocf");
     return lua_getallocf(L, ud);
 }
 
-void host_lua_setallocf(lua_State* L, lua_Alloc f, void* ud) {
+static void host_lua_setallocf(lua_State* L, lua_Alloc f, void* ud) {
     static auto lua_setallocf = (void (*)(lua_State* L, lua_Alloc f, void* ud))dlsym(libluajit, "lua_setallocf");
     lua_setallocf(L, f, ud);
 }
 
-int host_lua_load(lua_State* L, lua_Reader reader, void* dt, const char* chunkname) {
+static int host_lua_load(lua_State* L, lua_Reader reader, void* dt, const char* chunkname) {
     static auto lua_load = (int (*)(lua_State* L, lua_Reader reader, void* dt, const char* chunkname))dlsym(libluajit, "lua_load");
     return lua_load(L, reader, dt, chunkname);
 }
 
-int host_lua_loadx(lua_State* L, lua_Reader reader, void* dt, const char* chunkname, const char* mode) {
+static int host_lua_loadx(lua_State* L, lua_Reader reader, void* dt, const char* chunkname, const char* mode) {
     static auto lua_loadx =
         (int (*)(lua_State* L, lua_Reader reader, void* dt, const char* chunkname, const char* mode))dlsym(libluajit, "lua_loadx");
     return lua_loadx(L, reader, dt, chunkname, mode);
 }
 
-int host_lua_dump(lua_State* L, lua_Writer writer, void* data) {
+static int host_lua_dump(lua_State* L, lua_Writer writer, void* data) {
     static auto lua_dump = (int (*)(lua_State* L, lua_Writer write, void* data))dlsym(libluajit, "lua_dump");
     return lua_dump(L, writer, data);
 }

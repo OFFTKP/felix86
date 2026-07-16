@@ -5,7 +5,7 @@
 #include "felix86/hle/ptrace.hpp"
 #include "felix86/v2/recompiler.hpp"
 
-constexpr size_t trampoline_storage_size = 1024 * 512;
+constexpr static size_t trampoline_storage_size = 1024 * 512;
 
 __attribute__((naked)) static void set_thread_state(ThreadState* state) {
 #ifdef __riscv

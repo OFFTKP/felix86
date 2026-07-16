@@ -14,11 +14,11 @@
 #include "felix86/hle/ioctl/radeon.hpp"
 #include "felix86/hle/ioctl/tty.hpp"
 
-int ioctl32_default(int fd, u32 cmd, u32 args) {
+static int ioctl32_default(int fd, u32 cmd, u32 args) {
     return ::ioctl(fd, cmd, (u64)args);
 }
 
-int ioctl32_unknown(int fd, u32 cmd, u32 args) {
+static int ioctl32_unknown(int fd, u32 cmd, u32 args) {
     std::string fd_path = fmt::format("/proc/self/fd/{}", fd);
     std::error_code ec;
     std::string filepath = std::string(std::filesystem::read_symlink(fd_path, ec));

@@ -78,7 +78,7 @@ private:
 #define SYSCALL(name, ...) (syscall(x64_to_riscv(felix86_x86_64_##name), ##__VA_ARGS__))
 
 // TODO: move me elsewhere
-bool try_strace_ioctl(int rdi, u64 rsi, u64 rdx, u64 result) {
+static bool try_strace_ioctl(int rdi, u64 rsi, u64 rdx, u64 result) {
     if (!g_config.strace) {
         return false;
     }
@@ -186,7 +186,7 @@ bool try_strace_ioctl(int rdi, u64 rsi, u64 rdx, u64 result) {
     return false;
 }
 
-Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5, u64 arg6) {
+static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5, u64 arg6) {
     ThreadState* state = frame->state;
     bool mode32 = state->ctx.Mode32();
     Result result;

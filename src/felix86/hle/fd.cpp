@@ -4,7 +4,7 @@
 #include "felix86/common/log.hpp"
 #include "felix86/hle/fd.hpp"
 
-std::set<int> g_protected_fds{};
+static std::set<int> g_protected_fds{};
 
 void FD::protect(int fd) {
     ASSERT(fd > 2);

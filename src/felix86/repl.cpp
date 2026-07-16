@@ -14,19 +14,19 @@
 
 extern "C" const char* rv64_print(uint32_t opcode, uintptr_t addr);
 
-FlagMode flag_mode = FlagMode::Default;
+static FlagMode flag_mode = FlagMode::Default;
 
-constexpr int color_count = 6;
+constexpr static int color_count = 6;
 const char* colors[color_count] = {
     "\x1b[31m", "\x1b[32m", "\x1b[33m", "\x1b[34m", "\x1b[35m", "\x1b[36m",
 };
 
 const char* reset = ANSI_COLOR_RESET;
 
-bool use_color = false;
-bool mode32 = false;
+static bool use_color = false;
+static bool mode32 = false;
 
-void print_help() {
+static void print_help() {
     printf("Commands:\n");
     printf("  <INSTRUCTIONS>       - compile x86 instructions, separated by semicolons, and print the result\n");
     printf("  mode64               - switch to 64-bit mode (default)\n");
@@ -38,17 +38,17 @@ void print_help() {
     printf("  color                - toggle color coding different instructions\n");
 }
 
-void __attribute__((noreturn)) exit() {
+static void __attribute__((noreturn)) exit() {
     printf("Bye :(\n");
     exit(0);
 }
 
-void toggle_color() {
+static void toggle_color() {
     use_color ^= true;
     printf("Color: %s\n", use_color ? "enabled" : "disabled");
 }
 
-void compile(const std::string& input) {
+static void compile(const std::string& input) {
     char pbuffer[PATH_MAX] = "/tmp/.felix86-repl-XXXXXX";
     int fd = mkstemp(pbuffer);
     if (fd == -1) {
@@ -166,7 +166,7 @@ void compile(const std::string& input) {
     }
 }
 
-void __attribute__((noreturn)) enter_repl() {
+static void __attribute__((noreturn)) enter_repl() {
     if (system("which nasm > /dev/null 2>&1")) {
         printf("felix86 REPL needs nasm installed, please install the nasm assembler\n");
         exit(1);

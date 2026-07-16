@@ -20,7 +20,7 @@
 
 #define FLAGS_SET(v, flags) ((~(v) & (flags)) == 0)
 
-void remove_if_found(std::string& path, const std::filesystem::path& rootfs) {
+static void remove_if_found(std::string& path, const std::filesystem::path& rootfs) {
     if (path.find(rootfs) == 0) {
         if (path == rootfs) {
             // Special case, it is the rootfs path
@@ -37,13 +37,13 @@ void remove_if_found(std::string& path, const std::filesystem::path& rootfs) {
     }
 }
 
-bool statx_inode_same(const struct statx* a, const struct statx* b) {
+static bool statx_inode_same(const struct statx* a, const struct statx* b) {
     return (a && a->stx_mask != 0) && (b && b->stx_mask != 0) && FLAGS_SET(a->stx_mask, STATX_TYPE | STATX_INO) &&
            FLAGS_SET(b->stx_mask, STATX_TYPE | STATX_INO) && ((a->stx_mode ^ b->stx_mode) & S_IFMT) == 0 && a->stx_dev_major == b->stx_dev_major &&
            a->stx_dev_minor == b->stx_dev_minor && a->stx_ino == b->stx_ino;
 }
 
-int generate_memfd(const char* path, int flags) {
+static int generate_memfd(const char* path, int flags) {
     if (flags & O_CLOEXEC) {
         return memfd_create(path, MFD_ALLOW_SEALING | MFD_CLOEXEC);
     } else {
@@ -51,7 +51,7 @@ int generate_memfd(const char* path, int flags) {
     }
 }
 
-void seal_memfd(int fd) {
+static void seal_memfd(int fd) {
     ASSERT(fcntl(fd, F_ADD_SEALS, F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW | F_SEAL_WRITE | F_SEAL_FUTURE_WRITE) == 0);
 }
 

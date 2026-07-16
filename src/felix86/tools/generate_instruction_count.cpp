@@ -21,21 +21,21 @@ struct Instruction {
     std::vector<std::string> expected_asm;
 };
 
-void to_json(ordered_json& j, const Instruction& p) {
+static void to_json(ordered_json& j, const Instruction& p) {
     if (!p.disassembly.empty())
         j = ordered_json{{"instruction_count", p.count}, {"expected_asm", p.expected_asm}, {"disassembly", p.disassembly}};
     else
         j = ordered_json{{"instruction_count", p.count}, {"expected_asm", p.expected_asm}};
 }
 
-void from_json(const ordered_json& j, Instruction& p) {
+static void from_json(const ordered_json& j, Instruction& p) {
     j.at("instruction_count").get_to(p.count);
     j.at("expected_asm").get_to(p.expected_asm);
     if (!p.disassembly.empty())
         j.at("disassembly").get_to(p.disassembly);
 }
 
-void gen_many(Recompiler& rec, const std::string& name, nlohmann::ordered_json& json, void (*func)(Xbyak::CodeGenerator&)) {
+static void gen_many(Recompiler& rec, const std::string& name, nlohmann::ordered_json& json, void (*func)(Xbyak::CodeGenerator&)) {
     rec.setVectorState(SEW::E1024, 0);
     Xbyak::CodeGenerator x;
     auto x86_start = x.getCurr();
@@ -60,7 +60,7 @@ void gen_many(Recompiler& rec, const std::string& name, nlohmann::ordered_json& 
     json[name] = inst;
 }
 
-void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbyak::CodeGenerator&), bool flags = false) {
+static void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbyak::CodeGenerator&), bool flags = false) {
     static bool init = false;
     static ZydisDecoder zydis;
     if (!init) {

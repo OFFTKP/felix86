@@ -61,7 +61,7 @@ u64 g_interpreter_end{};
 u64 g_executable_start{};
 u64 g_executable_end{};
 
-bool is_running_under_gdb() {
+static bool is_running_under_gdb() {
     if (g_config.gdb) {
         return true;
     }
@@ -122,7 +122,7 @@ void Extensions::Clear() {
     VLEN = 0;
 }
 
-void set_xtheadvector(int sig, siginfo_t* info, void* ctx) {
+static void set_xtheadvector(int sig, siginfo_t* info, void* ctx) {
     Extensions::Xtheadvector = true;
 
 #ifdef __riscv

@@ -15,7 +15,7 @@
 #include "tomlc17.h"
 
 Config g_config{};
-Config g_initial_config{};
+static Config g_initial_config{};
 
 std::filesystem::path Config::getConfigFilePath() {
     return FELIX86_CONFIG_PATH;
@@ -43,7 +43,7 @@ void addToEnvironment(Config& config, const char* env_name, const char* env) {
 }
 
 template <typename T>
-std::string namify(const T& val);
+static std::string namify(const T& val);
 
 template <>
 std::string namify(const bool& val) {
@@ -65,7 +65,7 @@ std::string namify(const std::string& val) {
     return val;
 }
 
-bool is_truthy(const char* str) {
+static bool is_truthy(const char* str) {
     if (!str) {
         return false;
     }
@@ -209,7 +209,7 @@ bool Config::initialize(bool ignore_envs) {
     return true;
 }
 
-u64 get_int(const char* str) {
+static u64 get_int(const char* str) {
     int len = strlen(str);
     if (len > 2) {
         // Check if hex
@@ -224,7 +224,7 @@ u64 get_int(const char* str) {
 }
 
 template <typename Type>
-bool loadFromToml(const toml_result_t& toml, const char* group, const char* name, Type& value) {
+static bool loadFromToml(const toml_result_t& toml, const char* group, const char* name, Type& value) {
     toml_datum_t table = toml_get(toml.toptab, group);
     if (table.type != TOML_UNKNOWN) {
         if (table.type != TOML_TABLE) {
@@ -270,7 +270,7 @@ bool loadFromToml(const toml_result_t& toml, const char* group, const char* name
 }
 
 template <typename Type>
-bool setFromString(Config& config, Type& value, const char* str) {
+static bool setFromString(Config& config, Type& value, const char* str) {
     if constexpr (std::is_same_v<Type, bool>) {
         value = is_truthy(str);
         return true;
@@ -347,7 +347,7 @@ bool Config::loadProfile(Config& config, const std::filesystem::path& profile) {
 }
 
 template <typename T>
-std::string stringify_toml(const T& value) {
+static std::string stringify_toml(const T& value) {
     static_assert(false);
     return "";
 }
@@ -408,7 +408,7 @@ static std::string lowercase(const char* str) {
 }
 
 template <typename T>
-std::string stringify_shell(const T& value) {
+static std::string stringify_shell(const T& value) {
     static_assert(false);
     return "";
 }
