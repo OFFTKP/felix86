@@ -45,12 +45,12 @@ void Thunks::runConstructor(const char*, GuestPointers*) {}
 #include "felix86/v2/recompiler.hpp"
 
 #include <vulkan/vulkan.h>
-void* libGL = nullptr;
-void* libGLX = nullptr;
-void* libX11 = nullptr;
-void* libEGL = nullptr;
-void* libvulkan = nullptr;
-void* libwayland = nullptr;
+static void* libGL = nullptr;
+static void* libGLX = nullptr;
+static void* libX11 = nullptr;
+static void* libEGL = nullptr;
+static void* libvulkan = nullptr;
+static void* libwayland = nullptr;
 void* libluajit = nullptr;
 
 // Definitions from libX11
@@ -121,16 +121,16 @@ using XSyncType = int (*)(void*, int);
 using XFreeType = int (*)(void*);
 using mallocType = decltype(&malloc);
 
-XGetVisualInfoType felix86_guest_XGetVisualInfo = nullptr;
-XSyncType felix86_guest_XSync = nullptr;
-mallocType felix86_guest_malloc = nullptr;
+static XGetVisualInfoType felix86_guest_XGetVisualInfo = nullptr;
+static XSyncType felix86_guest_XSync = nullptr;
+static mallocType felix86_guest_malloc = nullptr;
 
 // We can't load it at function call time because vkGetInstanceProcAddr/vkGetDeviceProcAddr needs
 // a VkInstance or VkDevice, so we need to load this before the function call
-u32 (*host_vkGetPhysicalDeviceXlibPresentationSupportKHR)(void* physicalDevice, u32 queueFamilyIndex, void* dpy, u64 visualID) = nullptr;
+static u32 (*host_vkGetPhysicalDeviceXlibPresentationSupportKHR)(void* physicalDevice, u32 queueFamilyIndex, void* dpy, u64 visualID) = nullptr;
 
 // Ditto
-u32 (*host_vkGetPhysicalDeviceXcbPresentationSupportKHR)(void* physicalDevice, u32 queueFamilyIndex, void* connection, void* visualID) = nullptr;
+static u32 (*host_vkGetPhysicalDeviceXcbPresentationSupportKHR)(void* physicalDevice, u32 queueFamilyIndex, void* connection, void* visualID) = nullptr;
 
 // Since we only need these from wayland-client.h, instead of including the file and requiring
 // a dependency we just define them here
@@ -163,14 +163,14 @@ static std::unordered_map<void*, void*> host_to_guest;
 static std::unordered_map<void*, void*> guest_to_host;
 static std::unordered_map<void*, void*> guest_to_host_connection;
 
-void* host_XOpenDisplay(const char* name) {
+static void* host_XOpenDisplay(const char* name) {
     ASSERT(name);
     static void* (*xopendisplay_ptr)(const char*) = (decltype(xopendisplay_ptr))dlsym(libX11, "XOpenDisplay");
     ASSERT(xopendisplay_ptr);
     return xopendisplay_ptr(name);
 }
 
-int host_XFlush(void* display) {
+static int host_XFlush(void* display) {
     if (display == nullptr) {
         WARN("XFlush(nil) called?");
         return 0;
@@ -181,45 +181,45 @@ int host_XFlush(void* display) {
     return xflush_ptr(display);
 }
 
-void* host_XGetVisualInfo(void* display, long vinfo_mask, XVisualInfo64* vinfo_template, int* nitems_return) {
+static void* host_XGetVisualInfo(void* display, long vinfo_mask, XVisualInfo64* vinfo_template, int* nitems_return) {
     static XGetVisualInfoType xvisualinfo_ptr = (XGetVisualInfoType)dlsym(libX11, "XGetVisualInfo");
     ASSERT(xvisualinfo_ptr);
     return xvisualinfo_ptr(display, vinfo_mask, vinfo_template, nitems_return);
 }
 
-int host_XFree(void* ptr) {
+static int host_XFree(void* ptr) {
     static XFreeType xfree_ptr = (XFreeType)dlsym(libX11, "XFree");
     ASSERT(xfree_ptr);
     return xfree_ptr(ptr);
 }
 
-void* host_glXGetProcAddress(const char* name) {
+static void* host_glXGetProcAddress(const char* name) {
     static auto glXGetProcAddress = (void* (*)(const char*))dlsym(libGLX, "glXGetProcAddress");
     return glXGetProcAddress(name);
 }
 
-void host_glDebugMessageCallback(void* callback, void* userParam) {
+static void host_glDebugMessageCallback(void* callback, void* userParam) {
     static auto gldebugmessagecallback_ptr = (decltype(&host_glDebugMessageCallback))host_glXGetProcAddress("glDebugMessageCallback");
     return gldebugmessagecallback_ptr(callback, userParam);
 }
 
-XVisualInfo64* guest_XGetVisualInfo(void* display, long vinfo_mask, XVisualInfo64* vinfo_template, int* nitems_return) {
+static XVisualInfo64* guest_XGetVisualInfo(void* display, long vinfo_mask, XVisualInfo64* vinfo_template, int* nitems_return) {
     ASSERT(felix86_guest_XGetVisualInfo);
     return felix86_guest_XGetVisualInfo(display, vinfo_mask, vinfo_template, nitems_return);
 }
 
-int guest_XSync(void* display, int discard) {
+static int guest_XSync(void* display, int discard) {
     ASSERT(felix86_guest_XSync);
     return felix86_guest_XSync(display, discard);
 }
 
-void* guest_malloc(size_t size) noexcept {
+static void* guest_malloc(size_t size) noexcept {
     ASSERT(felix86_guest_malloc);
     return felix86_guest_malloc(size);
 }
 static_assert(std::is_same_v<decltype(&guest_malloc), void*(*)(size_t) noexcept>);
 
-void* guestToHostDisplay(void* guest_display) {
+static void* guestToHostDisplay(void* guest_display) {
     if (guest_display == 0) {
         WARN("guestToHostDisplay(nil) called?");
         return nullptr;
@@ -245,7 +245,7 @@ void* guestToHostDisplay(void* guest_display) {
     }
 }
 
-void* guestToHostConnection(void* connection) {
+static void* guestToHostConnection(void* connection) {
     std::lock_guard<std::mutex> lock(display_map_mutex);
 
     if (guest_to_host_connection.find(connection) != guest_to_host_connection.end()) {
@@ -264,7 +264,7 @@ void* guestToHostConnection(void* connection) {
     return host_connection;
 }
 
-void* hostToGuestDisplay(void* host) {
+static void* hostToGuestDisplay(void* host) {
     if (host == 0) {
         WARN("hostToGuestDisplay(nil) called?\n");
         return nullptr;
@@ -280,7 +280,7 @@ void* hostToGuestDisplay(void* host) {
     }
 }
 
-XVisualInfo64* hostToGuestVisualInfo(void* guest_display, XVisualInfo64* host_info) {
+static XVisualInfo64* hostToGuestVisualInfo(void* guest_display, XVisualInfo64* host_info) {
     if (!host_info) {
         return nullptr;
     }
@@ -300,7 +300,7 @@ XVisualInfo64* hostToGuestVisualInfo(void* guest_display, XVisualInfo64* host_in
     return info;
 }
 
-XVisualInfo64* guestToHostVisualInfo(void* host_display, XVisualInfo64* guest) {
+static XVisualInfo64* guestToHostVisualInfo(void* host_display, XVisualInfo64* guest) {
     if (!host_display) {
         return nullptr;
     }
@@ -321,7 +321,7 @@ XVisualInfo64* guestToHostVisualInfo(void* host_display, XVisualInfo64* guest) {
 }
 
 template <class T, size_t size = sizeof(T)>
-T* relocateArrayToGuest(T* host_ptr, size_t count) {
+static T* relocateArrayToGuest(T* host_ptr, size_t count) {
     void* guest_ptr = guest_malloc(size * count);
     ASSERT(guest_ptr);
     for (size_t i = 0; i < count; i++) {
@@ -352,11 +352,11 @@ static Thunk thunk_metadata[] = {
 
 #undef X
 
-void unknown_thunk(const char* name) {
+static void unknown_thunk(const char* name) {
     ERROR("Unknown thunk with name: %s", name);
 }
 
-void* generate_guest_pointer(const char* name, u64 host_ptr) {
+static void* generate_guest_pointer(const char* name, u64 host_ptr) {
     const Thunk* thunk = nullptr;
     std::string sname = name;
     for (auto& meta : thunk_metadata) { // TODO: speed it up? only search specific lib
@@ -425,7 +425,7 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
     return memory;
 }
 
-VkResult felix86_thunk_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo, const VkAllocationCallbacks*, VkInstance* pInstance) {
+static VkResult felix86_thunk_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo, const VkAllocationCallbacks*, VkInstance* pInstance) {
     // Remove debug callbacks from VkInstanceCreateInfo
     VkBaseInStructure* base = (VkBaseInStructure*)pCreateInfo;
     constexpr int skipped_type = 1000011000;
@@ -446,16 +446,16 @@ VkResult felix86_thunk_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo,
     return actual(pCreateInfo, nullptr, pInstance);
 }
 
-void* host_vkGetInstanceProcAddr(VkInstance instance, const char* name);
-void* host_vkGetDeviceProcAddr(VkDevice device, const char* name);
-void* host_eglGetProcAddress(const char* name);
-void* get_custom_vk_thunk(const std::string& name);
-void* get_custom_egl_thunk(const std::string& name);
-void* get_custom_glx_thunk(const std::string& name);
-void* get_custom_gl_thunk(const std::string& name);
+static void* host_vkGetInstanceProcAddr(VkInstance instance, const char* name);
+static void* host_vkGetDeviceProcAddr(VkDevice device, const char* name);
+static void* host_eglGetProcAddress(const char* name);
+static void* get_custom_vk_thunk(const std::string& name);
+static void* get_custom_egl_thunk(const std::string& name);
+static void* get_custom_glx_thunk(const std::string& name);
+static void* get_custom_gl_thunk(const std::string& name);
 void* get_custom_luajit_thunk(const std::string& name);
 
-void* felix86_thunk_glXGetProcAddress(const char* name) {
+static void* felix86_thunk_glXGetProcAddress(const char* name) {
     void* ptr = get_custom_glx_thunk(name);
     if (ptr == nullptr) {
         ptr = get_custom_gl_thunk(name);
@@ -472,7 +472,7 @@ void* felix86_thunk_glXGetProcAddress(const char* name) {
 }
 
 // TODO: Kinda wasteful to code cache if this gets called more than once per name
-void* felix86_thunk_vkGetInstanceProcAddr(VkInstance instance, const char* name) {
+static void* felix86_thunk_vkGetInstanceProcAddr(VkInstance instance, const char* name) {
     VERBOSE("vkGetInstanceProcAddr: %s", name);
     void* ptr = get_custom_vk_thunk(name);
     if (ptr == nullptr) {
@@ -498,7 +498,7 @@ void* felix86_thunk_vkGetInstanceProcAddr(VkInstance instance, const char* name)
     }
 }
 
-void* felix86_thunk_vkGetDeviceProcAddr(VkDevice device, const char* name) {
+static void* felix86_thunk_vkGetDeviceProcAddr(VkDevice device, const char* name) {
     VERBOSE("vkGetDeviceProcAddr: %s", name);
     void* ptr = get_custom_vk_thunk(name);
     if (ptr == nullptr) {
@@ -512,7 +512,7 @@ void* felix86_thunk_vkGetDeviceProcAddr(VkDevice device, const char* name) {
     }
 }
 
-void* felix86_thunk_eglGetProcAddress(const char* name) {
+static void* felix86_thunk_eglGetProcAddress(const char* name) {
     void* ptr = get_custom_egl_thunk(name);
     if (ptr == nullptr) {
         ptr = get_custom_gl_thunk(name);
@@ -528,13 +528,13 @@ void* felix86_thunk_eglGetProcAddress(const char* name) {
     }
 }
 
-VkResult felix86_thunk_vkCreateDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
+static VkResult felix86_thunk_vkCreateDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
                                                       const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback) {
     // TODO: implement one day, needs callback support
     return VK_SUCCESS;
 }
 
-void felix86_thunk_vkDestroyDebugReportCallbackEXT(VkInstance instance, VkDebugReportCallbackEXT callback, const VkAllocationCallbacks* pAllocator) {
+static void felix86_thunk_vkDestroyDebugReportCallbackEXT(VkInstance instance, VkDebugReportCallbackEXT callback, const VkAllocationCallbacks* pAllocator) {
     // See vkCreateDebugReportCallbackEXT above
 }
 
@@ -546,7 +546,7 @@ struct felix86_VkXlibSurfaceCreateInfoKHR {
     u64 window;
 };
 
-VkResult felix86_thunk_vkCreateXlibSurfaceKHR(VkInstance instance, const felix86_VkXlibSurfaceCreateInfoKHR* pCreateInfo,
+static VkResult felix86_thunk_vkCreateXlibSurfaceKHR(VkInstance instance, const felix86_VkXlibSurfaceCreateInfoKHR* pCreateInfo,
                                               const VkAllocationCallbacks* pAllocator, VkSurfaceKHR* pSurface) {
     void* guest_display = pCreateInfo->dpy;
     void* host_display = guestToHostDisplay(guest_display);
@@ -567,7 +567,7 @@ struct felix86_VkXcbSurfaceCreateInfoKHR {
     void* window;
 };
 
-VkResult felix86_thunk_vkCreateXcbSurfaceKHR(VkInstance instance, const felix86_VkXcbSurfaceCreateInfoKHR* pCreateInfo,
+static VkResult felix86_thunk_vkCreateXcbSurfaceKHR(VkInstance instance, const felix86_VkXcbSurfaceCreateInfoKHR* pCreateInfo,
                                              const VkAllocationCallbacks* pAllocator, VkSurfaceKHR* pSurface) {
     void* host_connection = guestToHostConnection(pCreateInfo->connection);
     felix86_VkXcbSurfaceCreateInfoKHR host_create_info = *pCreateInfo;
@@ -578,7 +578,7 @@ VkResult felix86_thunk_vkCreateXcbSurfaceKHR(VkInstance instance, const felix86_
     return result;
 }
 
-VkBool32 felix86_thunk_vkGetPhysicalDeviceXlibPresentationSupportKHR(VkPhysicalDevice physicalDevice, uint32_t queueFamilyIndex, void* dpy,
+static VkBool32 felix86_thunk_vkGetPhysicalDeviceXlibPresentationSupportKHR(VkPhysicalDevice physicalDevice, uint32_t queueFamilyIndex, void* dpy,
                                                                      u64 visualID) {
     void* host_display = guestToHostDisplay(dpy);
     VkBool32 result = host_vkGetPhysicalDeviceXlibPresentationSupportKHR(physicalDevice, queueFamilyIndex, host_display, visualID);
@@ -586,7 +586,7 @@ VkBool32 felix86_thunk_vkGetPhysicalDeviceXlibPresentationSupportKHR(VkPhysicalD
     return result;
 }
 
-VkBool32 felix86_thunk_vkGetPhysicalDeviceXcbPresentationSupportKHR(VkPhysicalDevice physicalDevice, uint32_t queueFamilyIndex, void* connection,
+static VkBool32 felix86_thunk_vkGetPhysicalDeviceXcbPresentationSupportKHR(VkPhysicalDevice physicalDevice, uint32_t queueFamilyIndex, void* connection,
                                                                     void* visualID) {
     void* host_connection = guestToHostConnection(connection);
     VkBool32 result = host_vkGetPhysicalDeviceXcbPresentationSupportKHR(physicalDevice, queueFamilyIndex, host_connection, visualID);
@@ -596,7 +596,7 @@ VkBool32 felix86_thunk_vkGetPhysicalDeviceXcbPresentationSupportKHR(VkPhysicalDe
 #define WL_CLOSURE_MAX_ARGS 20
 
 // Convert the wayland callback signature to a felix86 thunk signature to generate a host->guest trampoline
-std::string wl_to_felix86_signature(const std::string& wayland_signature) {
+static std::string wl_to_felix86_signature(const std::string& wayland_signature) {
     std::string ret = "v_qq"; // wayland callbacks return void and take void*, wl_proxy* as the first two args
     for (auto c : wayland_signature) {
         switch (c) {
@@ -630,12 +630,12 @@ std::string wl_to_felix86_signature(const std::string& wayland_signature) {
     return ret;
 }
 
-void* host_wl_proxy_get_listener(struct wl_proxy* proxy) {
+static void* host_wl_proxy_get_listener(struct wl_proxy* proxy) {
     static auto host_wl_proxy_get_listener = (void* (*)(struct wl_proxy*))dlsym(libwayland, "wl_proxy_get_listener");
     return host_wl_proxy_get_listener(proxy);
 }
 
-int felix86_thunk_wl_proxy_add_listener(struct wl_proxy* proxy, void** callbacks, void* data) {
+static int felix86_thunk_wl_proxy_add_listener(struct wl_proxy* proxy, void** callbacks, void* data) {
     void* old_listener = host_wl_proxy_get_listener(proxy);
     delete[] (u64*)old_listener;
 
@@ -655,34 +655,34 @@ int felix86_thunk_wl_proxy_add_listener(struct wl_proxy* proxy, void** callbacks
 
 #define PRINTME VERBOSE("Calling thunked %s", __PRETTY_FUNCTION__)
 
-XVisualInfo64* felix86_thunk_glXChooseVisual(void* guest_display, int screen, int* attribList) {
+static XVisualInfo64* felix86_thunk_glXChooseVisual(void* guest_display, int screen, int* attribList) {
     PRINTME;
     static auto host_glXChooseVisual = (glXChooseVisualType)dlsym(libGLX, "glXChooseVisual");
     return hostToGuestVisualInfo(guest_display, host_glXChooseVisual(guestToHostDisplay(guest_display), screen, attribList));
 }
 
-void* felix86_thunk_glXCreateContextAttribsARB(void* guest_display, void* config, void* share_context, int direct, const int* attrib_list) {
+static void* felix86_thunk_glXCreateContextAttribsARB(void* guest_display, void* config, void* share_context, int direct, const int* attrib_list) {
     PRINTME;
     static auto host_glXCreateContextAttribsARB =
         (decltype(&felix86_thunk_glXCreateContextAttribsARB))host_glXGetProcAddress("glXCreateContextAttribsARB");
     return host_glXCreateContextAttribsARB(guestToHostDisplay(guest_display), config, share_context, direct, attrib_list);
 }
 
-int felix86_thunk_glXQueryRendererIntegerMESA(void* guest_display, int screen, int renderer, int attribute, unsigned int* value) {
+static int felix86_thunk_glXQueryRendererIntegerMESA(void* guest_display, int screen, int renderer, int attribute, unsigned int* value) {
     PRINTME;
     static auto host_glXQueryRendererIntegerMESA =
         (decltype(&felix86_thunk_glXQueryRendererIntegerMESA))host_glXGetProcAddress("glXQueryRendererIntegerMESA");
     return host_glXQueryRendererIntegerMESA(guestToHostDisplay(guest_display), screen, renderer, attribute, value);
 }
 
-const char* felix86_thunk_glXQueryRendererStringMESA(void* guest_display, int screen, int renderer, int attribute) {
+static const char* felix86_thunk_glXQueryRendererStringMESA(void* guest_display, int screen, int renderer, int attribute) {
     PRINTME;
     static auto host_glXQueryRendererStringMESA =
         (decltype(&felix86_thunk_glXQueryRendererStringMESA))host_glXGetProcAddress("glXQueryRendererStringMESA");
     return host_glXQueryRendererStringMESA(guestToHostDisplay(guest_display), screen, renderer, attribute);
 }
 
-void* felix86_thunk_glXCreateContext(void* dpy, XVisualInfo64* visual, void* shareList, int direct) {
+static void* felix86_thunk_glXCreateContext(void* dpy, XVisualInfo64* visual, void* shareList, int direct) {
     PRINTME;
     static auto host_glXCreateContext = (decltype(&felix86_thunk_glXCreateContext))dlsym(libGLX, "glXCreateContext");
     void* host_dpy = guestToHostDisplay(dpy);
@@ -692,31 +692,31 @@ void* felix86_thunk_glXCreateContext(void* dpy, XVisualInfo64* visual, void* sha
     return ret;
 }
 
-void felix86_thunk_glXDestroyContext(void* dpy, void* ctx) {
+static void felix86_thunk_glXDestroyContext(void* dpy, void* ctx) {
     PRINTME;
     static auto host_glXDestroyContext = (decltype(&felix86_thunk_glXDestroyContext))dlsym(libGLX, "glXDestroyContext");
     return host_glXDestroyContext(guestToHostDisplay(dpy), ctx);
 }
 
-int felix86_thunk_glXMakeCurrent(void* dpy, u64 drawable, void* ctx) {
+static int felix86_thunk_glXMakeCurrent(void* dpy, u64 drawable, void* ctx) {
     PRINTME;
     static auto host_glXMakeCurrent = (decltype(&felix86_thunk_glXMakeCurrent))dlsym(libGLX, "glXMakeCurrent");
     return host_glXMakeCurrent(guestToHostDisplay(dpy), drawable, ctx);
 }
 
-void felix86_thunk_glXCopyContext(void* dpy, void* src, void* dst, unsigned long mask) {
+static void felix86_thunk_glXCopyContext(void* dpy, void* src, void* dst, unsigned long mask) {
     PRINTME;
     static auto host_glXCopyContext = (decltype(&felix86_thunk_glXCopyContext))dlsym(libGLX, "glXCopyContext");
     return host_glXCopyContext(guestToHostDisplay(dpy), src, dst, mask);
 }
 
-void felix86_thunk_glXSwapBuffers(void* dpy, u64 drawable) {
+static void felix86_thunk_glXSwapBuffers(void* dpy, u64 drawable) {
     PRINTME;
     static auto host_glXSwapBuffers = (decltype(&felix86_thunk_glXSwapBuffers))dlsym(libGLX, "glXSwapBuffers");
     return host_glXSwapBuffers(guestToHostDisplay(dpy), drawable);
 }
 
-u64 felix86_thunk_glXCreateGLXPixmap(void* dpy, XVisualInfo64* visual, u64 pixmap) {
+static u64 felix86_thunk_glXCreateGLXPixmap(void* dpy, XVisualInfo64* visual, u64 pixmap) {
     PRINTME;
     static auto host_glXCreateGLXPixmap = (decltype(&felix86_thunk_glXCreateGLXPixmap))dlsym(libGLX, "glXCreateGLXPixmap");
     void* host_dpy = guestToHostDisplay(dpy);
@@ -726,31 +726,31 @@ u64 felix86_thunk_glXCreateGLXPixmap(void* dpy, XVisualInfo64* visual, u64 pixma
     return ret;
 }
 
-void felix86_thunk_glXDestroyGLXPixmap(void* dpy, u64 pixmap) {
+static void felix86_thunk_glXDestroyGLXPixmap(void* dpy, u64 pixmap) {
     PRINTME;
     static auto host_glXDestroyGLXPixmap = (decltype(&felix86_thunk_glXDestroyGLXPixmap))dlsym(libGLX, "glXDestroyGLXPixmap");
     return host_glXDestroyGLXPixmap(guestToHostDisplay(dpy), pixmap);
 }
 
-int felix86_thunk_glXQueryExtension(void* dpy, int* errorb, int* event) {
+static int felix86_thunk_glXQueryExtension(void* dpy, int* errorb, int* event) {
     PRINTME;
     static auto host_glXQueryExtension = (decltype(&felix86_thunk_glXQueryExtension))dlsym(libGLX, "glXQueryExtension");
     return host_glXQueryExtension(guestToHostDisplay(dpy), errorb, event);
 }
 
-int felix86_thunk_glXQueryVersion(void* dpy, int* maj, int* min) {
+static int felix86_thunk_glXQueryVersion(void* dpy, int* maj, int* min) {
     PRINTME;
     static auto host_glXQueryVersion = (decltype(&felix86_thunk_glXQueryVersion))dlsym(libGLX, "glXQueryVersion");
     return host_glXQueryVersion(guestToHostDisplay(dpy), maj, min);
 }
 
-int felix86_thunk_glXIsDirect(void* dpy, void* ctx) {
+static int felix86_thunk_glXIsDirect(void* dpy, void* ctx) {
     PRINTME;
     static auto host_glXIsDirect = (decltype(&felix86_thunk_glXIsDirect))dlsym(libGLX, "glXIsDirect");
     return host_glXIsDirect(guestToHostDisplay(dpy), ctx);
 }
 
-int felix86_thunk_glXGetConfig(void* dpy, XVisualInfo64* visual, int attrib, int* value) {
+static int felix86_thunk_glXGetConfig(void* dpy, XVisualInfo64* visual, int attrib, int* value) {
     PRINTME;
     static auto host_glXGetConfig = (decltype(&felix86_thunk_glXGetConfig))dlsym(libGLX, "glXGetConfig");
     void* host_dpy = guestToHostDisplay(dpy);
@@ -760,135 +760,135 @@ int felix86_thunk_glXGetConfig(void* dpy, XVisualInfo64* visual, int attrib, int
     return ret;
 }
 
-const char* felix86_thunk_glXQueryExtensionsString(void* dpy, int screen) {
+static const char* felix86_thunk_glXQueryExtensionsString(void* dpy, int screen) {
     PRINTME;
     static auto host_glXQueryExtensionsString = (decltype(&felix86_thunk_glXQueryExtensionsString))dlsym(libGLX, "glXQueryExtensionsString");
     return host_glXQueryExtensionsString(guestToHostDisplay(dpy), screen);
 }
 
-const char* felix86_thunk_glXQueryServerString(void* dpy, int screen, int name) {
+static const char* felix86_thunk_glXQueryServerString(void* dpy, int screen, int name) {
     PRINTME;
     static auto host_glXQueryServerString = (decltype(&felix86_thunk_glXQueryServerString))dlsym(libGLX, "glXQueryServerString");
     return host_glXQueryServerString(guestToHostDisplay(dpy), screen, name);
 }
 
-const char* felix86_thunk_glXGetClientString(void* dpy, int name) {
+static const char* felix86_thunk_glXGetClientString(void* dpy, int name) {
     PRINTME;
     static auto host_glXGetClientString = (decltype(&felix86_thunk_glXGetClientString))dlsym(libGLX, "glXGetClientString");
     return host_glXGetClientString(guestToHostDisplay(dpy), name);
 }
 
-void** felix86_thunk_glXChooseFBConfig(void* guest_display, int screen, const int* attribList, int* nitems) {
+static void** felix86_thunk_glXChooseFBConfig(void* guest_display, int screen, const int* attribList, int* nitems) {
     PRINTME;
     static auto host_glXChooseFBConfig = (decltype(&felix86_thunk_glXChooseFBConfig))dlsym(libGLX, "glXChooseFBConfig");
     void** ptr = host_glXChooseFBConfig(guestToHostDisplay(guest_display), screen, attribList, nitems);
     return relocateArrayToGuest(ptr, *nitems);
 }
 
-int felix86_thunk_glXGetFBConfigAttrib(void* dpy, void* config, int attribute, int* value) {
+static int felix86_thunk_glXGetFBConfigAttrib(void* dpy, void* config, int attribute, int* value) {
     PRINTME;
     static auto host_glXGetFBConfigAttrib = (decltype(&felix86_thunk_glXGetFBConfigAttrib))dlsym(libGLX, "glXGetFBConfigAttrib");
     return host_glXGetFBConfigAttrib(guestToHostDisplay(dpy), config, attribute, value);
 }
 
-void* felix86_thunk_glXGetCurrentDisplay() {
+static void* felix86_thunk_glXGetCurrentDisplay() {
     PRINTME;
     static auto host_glXGetCurrentDisplay = (decltype(&felix86_thunk_glXGetCurrentDisplay))dlsym(libGLX, "glXGetCurrentDisplay");
     return hostToGuestDisplay(host_glXGetCurrentDisplay());
 }
 
-void** felix86_thunk_glXGetFBConfigs(void* dpy, int screen, int* nelements) {
+static void** felix86_thunk_glXGetFBConfigs(void* dpy, int screen, int* nelements) {
     PRINTME;
     static auto host_glXGetFBConfigs = (decltype(&felix86_thunk_glXGetFBConfigs))dlsym(libGLX, "glXGetFBConfigs");
     void** ptr = host_glXGetFBConfigs(guestToHostDisplay(dpy), screen, nelements);
     return relocateArrayToGuest(ptr, *nelements);
 }
 
-XVisualInfo64* felix86_thunk_glXGetVisualFromFBConfig(void* guest_display, void* config) {
+static XVisualInfo64* felix86_thunk_glXGetVisualFromFBConfig(void* guest_display, void* config) {
     PRINTME;
     static auto host_glXGetVisualFromFBConfig = (decltype(&felix86_thunk_glXGetVisualFromFBConfig))dlsym(libGLX, "glXGetVisualFromFBConfig");
     return hostToGuestVisualInfo(guest_display, host_glXGetVisualFromFBConfig(guestToHostDisplay(guest_display), config));
 }
 
-u64 felix86_thunk_glXCreateWindow(void* dpy, void* config, u64 win, const int* attribList) {
+static u64 felix86_thunk_glXCreateWindow(void* dpy, void* config, u64 win, const int* attribList) {
     PRINTME;
     static auto host_glXCreateWindow = (decltype(&felix86_thunk_glXCreateWindow))dlsym(libGLX, "glXCreateWindow");
     return host_glXCreateWindow(guestToHostDisplay(dpy), config, win, attribList);
 }
 
-void felix86_thunk_glXDestroyWindow(void* dpy, u64 window) {
+static void felix86_thunk_glXDestroyWindow(void* dpy, u64 window) {
     PRINTME;
     static auto host_glXDestroyWindow = (decltype(&felix86_thunk_glXDestroyWindow))dlsym(libGLX, "glXDestroyWindow");
     return host_glXDestroyWindow(guestToHostDisplay(dpy), window);
 }
 
-u64 felix86_thunk_glXCreatePixmap(void* dpy, void* config, u64 pixmap, const int* attribList) {
+static u64 felix86_thunk_glXCreatePixmap(void* dpy, void* config, u64 pixmap, const int* attribList) {
     PRINTME;
     static auto host_glXCreatePixmap = (decltype(&felix86_thunk_glXCreatePixmap))dlsym(libGLX, "glXCreatePixmap");
     return host_glXCreatePixmap(guestToHostDisplay(dpy), config, pixmap, attribList);
 }
 
-void felix86_thunk_glXDestroyPixmap(void* dpy, u64 pixmap) {
+static void felix86_thunk_glXDestroyPixmap(void* dpy, u64 pixmap) {
     PRINTME;
     static auto host_glXDestroyPixmap = (decltype(&felix86_thunk_glXDestroyPixmap))dlsym(libGLX, "glXDestroyPixmap");
     return host_glXDestroyPixmap(guestToHostDisplay(dpy), pixmap);
 }
 
-u64 felix86_thunk_glXCreatePbuffer(void* dpy, void* config, const int* attribList) {
+static u64 felix86_thunk_glXCreatePbuffer(void* dpy, void* config, const int* attribList) {
     PRINTME;
     static auto host_glXCreatePbuffer = (decltype(&felix86_thunk_glXCreatePbuffer))dlsym(libGLX, "glXCreatePbuffer");
     return host_glXCreatePbuffer(guestToHostDisplay(dpy), config, attribList);
 }
 
-void felix86_thunk_glXDestroyPbuffer(void* dpy, u64 pbuf) {
+static void felix86_thunk_glXDestroyPbuffer(void* dpy, u64 pbuf) {
     PRINTME;
     static auto host_glXDestroyPbuffer = (decltype(&felix86_thunk_glXDestroyPbuffer))dlsym(libGLX, "glXDestroyPbuffer");
     return host_glXDestroyPbuffer(guestToHostDisplay(dpy), pbuf);
 }
 
-void felix86_thunk_glXQueryDrawable(void* dpy, u64 draw, int attribute, unsigned int* value) {
+static void felix86_thunk_glXQueryDrawable(void* dpy, u64 draw, int attribute, unsigned int* value) {
     PRINTME;
     static auto host_glXQueryDrawable = (decltype(&felix86_thunk_glXQueryDrawable))dlsym(libGLX, "glXQueryDrawable");
     return host_glXQueryDrawable(guestToHostDisplay(dpy), draw, attribute, value);
 }
 
-void* felix86_thunk_glXCreateNewContext(void* dpy, void* config, int renderType, void* shareList, int direct) {
+static void* felix86_thunk_glXCreateNewContext(void* dpy, void* config, int renderType, void* shareList, int direct) {
     PRINTME;
     static auto host_glXCreateNewContext = (decltype(&felix86_thunk_glXCreateNewContext))dlsym(libGLX, "glXCreateNewContext");
     return host_glXCreateNewContext(guestToHostDisplay(dpy), config, renderType, shareList, direct);
 }
 
-int felix86_thunk_glXMakeContextCurrent(void* dpy, u64 draw, u64 read, void* ctx) {
+static int felix86_thunk_glXMakeContextCurrent(void* dpy, u64 draw, u64 read, void* ctx) {
     PRINTME;
     static auto host_glXMakeContextCurrent = (decltype(&felix86_thunk_glXMakeContextCurrent))dlsym(libGLX, "glXMakeContextCurrent");
     return host_glXMakeContextCurrent(guestToHostDisplay(dpy), draw, read, ctx);
 }
 
-int felix86_thunk_glXQueryContext(void* dpy, void* ctx, int attribute, int* value) {
+static int felix86_thunk_glXQueryContext(void* dpy, void* ctx, int attribute, int* value) {
     PRINTME;
     static auto host_glXQueryContext = (decltype(&felix86_thunk_glXQueryContext))dlsym(libGLX, "glXQueryContext");
     return host_glXQueryContext(guestToHostDisplay(dpy), ctx, attribute, value);
 }
 
-void felix86_thunk_glXSelectEvent(void* dpy, u64 drawable, unsigned long mask) {
+static void felix86_thunk_glXSelectEvent(void* dpy, u64 drawable, unsigned long mask) {
     PRINTME;
     static auto host_glXSelectEvent = (decltype(&felix86_thunk_glXSelectEvent))dlsym(libGLX, "glXSelectEvent");
     return host_glXSelectEvent(guestToHostDisplay(dpy), drawable, mask);
 }
 
-void felix86_thunk_glXGetSelectedEvent(void* dpy, u64 drawable, unsigned long* mask) {
+static void felix86_thunk_glXGetSelectedEvent(void* dpy, u64 drawable, unsigned long* mask) {
     PRINTME;
     static auto host_glXGetSelectedEvent = (decltype(&felix86_thunk_glXGetSelectedEvent))dlsym(libGLX, "glXGetSelectedEvent");
     return host_glXGetSelectedEvent(guestToHostDisplay(dpy), drawable, mask);
 }
 
-void felix86_thunk_glXSwapIntervalEXT(void* guest_display, u64 drawable, int interval) {
+static void felix86_thunk_glXSwapIntervalEXT(void* guest_display, u64 drawable, int interval) {
     PRINTME;
     static auto host_glXSwapIntervalEXT = (decltype(&felix86_thunk_glXSwapIntervalEXT))host_glXGetProcAddress("glXSwapIntervalEXT");
     return host_glXSwapIntervalEXT(guestToHostDisplay(guest_display), drawable, interval);
 }
 
-void felix86_thunk_glDebugMessageCallback(void* callback, void* userParam) {
+static void felix86_thunk_glDebugMessageCallback(void* callback, void* userParam) {
     LOG("Registered host callback with glDebugMessageCallback, ignoring");
 }
 

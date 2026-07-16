@@ -14,7 +14,7 @@
 #include <asm/hwprobe.h>
 #endif
 
-constexpr u32 NO_SUBLEAF = 0xFFFFFFFF;
+constexpr static u32 NO_SUBLEAF = 0xFFFFFFFF;
 
 static inline void bit_set(u32& data, int position, bool value) {
     data &= ~(1u << position);
@@ -22,7 +22,7 @@ static inline void bit_set(u32& data, int position, bool value) {
 }
 
 // Generated using generate_cpuid.cpp
-[[maybe_unused]] constexpr std::array p4_mappings = {
+[[maybe_unused]] constexpr static std::array p4_mappings = {
     // Pentium 4 CPU
     (Cpuid){0x00000000, NO_SUBLEAF, 0x00000002, 0x756E6547, 0x6C65746E, 0x49656E69},
     (Cpuid){0x00000001, NO_SUBLEAF, 0x00000F29, 0x00020809, 0x00004400, 0xBFEBFBFF},
@@ -34,7 +34,7 @@ static inline void bit_set(u32& data, int position, bool value) {
     (Cpuid){0x80000004, NO_SUBLEAF, 0x20342029, 0x20555043, 0x30382E32, 0x007A4847},
 };
 
-[[maybe_unused]] constexpr std::array p4_mappings_sse3 = {
+[[maybe_unused]] constexpr static std::array p4_mappings_sse3 = {
     (Cpuid){0x00000000, NO_SUBLEAF, 0x00000005, 0x756E6547, 0x6C65746E, 0x49656E69},
     (Cpuid){0x00000001, NO_SUBLEAF, 0x00000F41, 0x00010800, 0x0000651D, 0xBFEBFBFF},
     (Cpuid){0x00000002, NO_SUBLEAF, 0x605B5101, 0x00000000, 0x00000000, 0x003C7040},
@@ -53,7 +53,7 @@ static inline void bit_set(u32& data, int position, bool value) {
     (Cpuid){0x80000008, NO_SUBLEAF, 0x00003024, 0x00000000, 0x00000000, 0x00000000},
 };
 
-[[maybe_unused]] constexpr std::array p4_mappings_32 = {
+[[maybe_unused]] constexpr static std::array p4_mappings_32 = {
     // Pentium 4 CPU, no x86-64
     (Cpuid){0x00000000, NO_SUBLEAF, 0x00000002, 0x756E6547, 0x6C65746E, 0x49656E69},
     (Cpuid){0x00000001, NO_SUBLEAF, 0x00000F29, 0x00020809, 0x00004400, 0xBFEBFBFF},
@@ -65,7 +65,7 @@ static inline void bit_set(u32& data, int position, bool value) {
     (Cpuid){0x80000004, NO_SUBLEAF, 0x20342029, 0x20555043, 0x30382E32, 0x007A4847},
 };
 
-[[maybe_unused]] constexpr std::array nehalem_mappings = {
+[[maybe_unused]] constexpr static std::array nehalem_mappings = {
     // http://users.atw.hu/instlatx64/GenuineIntel/GenuineIntel00106A2_Nehalem-EP_CPUID.txt
     (Cpuid){0x00000000, NO_SUBLEAF, 0x00000015, 0x756E6547, 0x6C65746E, 0x49656E69},
     (Cpuid){0x00000001, NO_SUBLEAF, 0x00010676, 0x00040800, 0x000CE3BD, 0xBFEBFBFF},
@@ -91,11 +91,11 @@ static inline void bit_set(u32& data, int position, bool value) {
     (Cpuid){0x80000008, NO_SUBLEAF, 0x00003026, 0x00000000, 0x00000000, 0x00000000},
 };
 
-std::span<const Cpuid> selected_mappings = nehalem_mappings;
-std::span<const Cpuid> selected_mappings_32 = p4_mappings_sse3;
-bool cpu_name_tried = false;
-bool cpu_name_set = false;
-char cpu_name[48];
+static std::span<const Cpuid> selected_mappings = nehalem_mappings;
+static std::span<const Cpuid> selected_mappings_32 = p4_mappings_sse3;
+static bool cpu_name_tried = false;
+static bool cpu_name_set = false;
+static char cpu_name[48];
 
 const char* get_version_full();
 

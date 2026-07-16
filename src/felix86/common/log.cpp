@@ -8,7 +8,7 @@
 #include "felix86/common/log.hpp"
 #include "felix86/hle/fd.hpp"
 
-std::string g_pipe_name;
+static std::string g_pipe_name;
 
 void Logger::log(const char* format, ...) {
     va_list args;

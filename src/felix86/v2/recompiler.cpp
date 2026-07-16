@@ -84,7 +84,7 @@ static bool flag_passthrough(ZydisMnemonic mnemonic) {
     }
 }
 
-void alignment_check_failed(void* rip) {
+static void alignment_check_failed(void* rip) {
     WARN("Unaligned atomic access at %lx", rip);
 }
 

@@ -20,7 +20,7 @@
 #include "felix86/hle/thread.hpp"
 #include "felix86/v2/recompiler.hpp"
 
-void* pthread_handler(void* args) {
+static void* pthread_handler(void* args) {
     u32* finished;
     CloneArgs clone_args;
     {
@@ -110,7 +110,7 @@ void* pthread_handler(void* args) {
     return nullptr;
 }
 
-int clone_handler(void* args) {
+static int clone_handler(void* args) {
     CloneArgs* clone_args = (CloneArgs*)args;
     ASSERT(clone_args->guest_flags & CLONE_VM);
 
@@ -178,7 +178,7 @@ static std::string flags_to_string(u64 f) {
     return flags;
 }
 
-long CloneMe(CloneArgs& host_clone_args) {
+static long CloneMe(CloneArgs& host_clone_args) {
     ASSERT(host_clone_args.guest_flags & CLONE_VM);
     if (!(host_clone_args.guest_flags & CLONE_THREAD)) {
         WARN("Starting thread with CLONE_VM but without CLONE_THREAD");
@@ -235,7 +235,7 @@ long CloneMe(CloneArgs& host_clone_args) {
 
 using pthread_attr_setsysflags_t = int (*)(pthread_attr_t*, size_t);
 
-pthread_attr_setsysflags_t felix86_get_pthread_attr_setsysflags_ptr() {
+static pthread_attr_setsysflags_t felix86_get_pthread_attr_setsysflags_ptr() {
     static void* pthread_attr_setsysflags_p = dlsym(RTLD_DEFAULT, "pthread_attr_setsysflags");
     if (!pthread_attr_setsysflags_p) {
         WARN_ONCE("pthread_attr_setsysflags not found, custom libc not present, using legacy clone implementation");
@@ -244,7 +244,7 @@ pthread_attr_setsysflags_t felix86_get_pthread_attr_setsysflags_ptr() {
     return (pthread_attr_setsysflags_t)pthread_attr_setsysflags_p;
 }
 
-long NewCloneMe(CloneArgs& host_clone_args) {
+static long NewCloneMe(CloneArgs& host_clone_args) {
     // We use a custom pthread_attr_t in our custom libc. It makes use of a `void* unused` field in pthread_attr_t
     // so as to not disturb the size. This way the usage of pthread_attr_t here allocates enough stack space.
     // This way we can use the TLS created by the libc via pthread_create and also modify the flags to be accurate on the guest side.
@@ -297,7 +297,7 @@ long NewCloneMe(CloneArgs& host_clone_args) {
     return host_clone_args.new_tid;
 }
 
-long ForkMe(CloneArgs& host_clone_args) {
+static long ForkMe(CloneArgs& host_clone_args) {
     // If the child_stack argument is NULL, we need to handle it specially. The `clone` function can't take a null child_stack, we have to use
     // the syscall. Per the clone man page: Another difference for sys_clone is that the child_stack argument may be zero, in which case
     // copy-on-write semantics ensure that the child gets separate copies of stack pages when either process modifies the stack. In this case,
@@ -368,7 +368,7 @@ long ForkMe(CloneArgs& host_clone_args) {
     return result;
 }
 
-long VForkMe(CloneArgs& args) {
+static long VForkMe(CloneArgs& args) {
     // Thank you FEX
     // https://github.com/FEX-Emu/FEX/pull/2690
     int parent_pid = getpid();

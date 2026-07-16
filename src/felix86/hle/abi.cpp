@@ -127,7 +127,7 @@ struct Marshalling {
     int size;
 };
 
-void my_printer(ThreadState* state, const char* name) {
+static void my_printer(ThreadState* state, const char* name) {
     int len = strlen(name);
     const char* signature = name + len + 1;
     int sig_len = strlen(signature);
@@ -424,7 +424,7 @@ void GuestToHostMarshaller::emitEpilogue(biscuit::Assembler& as) {
     }
 }
 
-void enter_dispatcher_for_callback(ThreadState* state) {
+static void enter_dispatcher_for_callback(ThreadState* state) {
     u64 rip = state->ctx.rip;
     VERBOSE("Entering dispatcher for callback at %p", rip);
     state->recompiler->enterDispatcher(state);

@@ -30,7 +30,7 @@
 #pragma message("You are compiling for x86-64, felix86 should only be compiled for RISC-V, are you sure you want to do this?")
 #endif
 
-void rootfs_not_set_error() {
+static void rootfs_not_set_error() {
     printf("Rootfs path not set in %s\n", g_config.path().c_str());
     printf("Set it using `sudo felix86 --set-config general.rootfs_path=/path/to/rootfs`.\n");
     printf("Consult the installation guide: https://felix86.com/docs/users/installation-guide/\n\n");
@@ -39,9 +39,9 @@ void rootfs_not_set_error() {
     exit(1);
 }
 
-void __attribute__((noreturn)) enter_repl();
+static void __attribute__((noreturn)) enter_repl();
 
-std::string version_full = get_version_full();
+static std::string version_full = get_version_full();
 const char* argp_program_version = version_full.c_str();
 const char* argp_program_bug_address = "<https://github.com/OFFTKP/felix86/issues>";
 
@@ -70,9 +70,9 @@ static struct argp_option options[] = {
 #endif
     {0}};
 
-int guest_arg_start_index = -1;
+static int guest_arg_start_index = -1;
 
-std::filesystem::path unmodified_executable_path;
+static std::filesystem::path unmodified_executable_path;
 
 template <>
 struct fmt::formatter<std::filesystem::path> : formatter<std::string_view> {
@@ -82,7 +82,7 @@ struct fmt::formatter<std::filesystem::path> : formatter<std::string_view> {
     }
 };
 
-int print_system_info() {
+static int print_system_info() {
     printf("%s\n", version_full.c_str());
 
     using namespace biscuit;
@@ -114,7 +114,7 @@ int print_system_info() {
     }
 }
 
-void kill_all() {
+static void kill_all() {
     DIR* proc_dir;
     struct dirent* entry;
     pid_t self_pid = getpid();

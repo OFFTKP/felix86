@@ -30,19 +30,19 @@ extern char** environ;
 static char x86_string[] = "i686";
 static char x86_64_string[] = "x86_64";
 
-u64 stack_push64(u64 stack, u64 value) {
+static u64 stack_push64(u64 stack, u64 value) {
     stack -= 8;
     *(u64*)stack = value;
     return stack;
 }
 
-u64 stack_push32(u64 stack, u64 value) {
+static u64 stack_push32(u64 stack, u64 value) {
     stack -= 4;
     *(u32*)stack = value;
     return stack;
 }
 
-u64 stack_push_string(u64 stack, const char* str) {
+static u64 stack_push_string(u64 stack, const char* str) {
     u64 len = strlen(str) + 1;
     stack -= len;
     strcpy((char*)stack, str);

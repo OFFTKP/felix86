@@ -37,7 +37,7 @@ enum class SignalBehavior {
     Core,
 };
 
-SignalBehavior get_default_behavior(int sig) {
+static SignalBehavior get_default_behavior(int sig) {
     switch (sig) {
     case SIGHUP:
     case SIGALRM:
@@ -84,7 +84,7 @@ SignalBehavior get_default_behavior(int sig) {
     }
 }
 
-u64* get_regs(void* ctx) {
+static u64* get_regs(void* ctx) {
 #ifdef __riscv
     return (u64*)((ucontext_t*)ctx)->uc_mcontext.__gregs;
 #else
@@ -99,7 +99,7 @@ struct RegisteredHostSignal {
     bool (*func)(ThreadState* current_state, siginfo_t* info, ucontext_t* ctx, u64 pc); // the function to call
 };
 
-const char* signal_to_name(int sig) {
+[[maybe_unused]] static const char* signal_to_name(int sig) {
 #define CASE(name)                                                                                                                                   \
     case name:                                                                                                                                       \
         return #name;
@@ -175,7 +175,7 @@ const char* signal_to_name(int sig) {
 #undef CASE
 }
 
-bool is_in_jit_code(ThreadState* state, u8* ptr) {
+static bool is_in_jit_code(ThreadState* state, u8* ptr) {
     CodeBuffer& buffer = state->recompiler->getAssembler().GetCodeBuffer();
     u8* start = state->recompiler->getStartOfCodeCache();
     u8* end = (u8*)buffer.GetCursorAddress();
@@ -314,7 +314,7 @@ struct x86_rt_sigframe {
     /* fp state follows here */
 };
 
-BlockMetadata* get_block_metadata(ThreadState* state, u64 host_pc) {
+static BlockMetadata* get_block_metadata(ThreadState* state, u64 host_pc) {
     auto& map = state->recompiler->getHostPcMap();
     auto it = map.lower_bound(host_pc);
     ASSERT(it != map.end());
@@ -330,7 +330,7 @@ BlockMetadata* get_block_metadata(ThreadState* state, u64 host_pc) {
     return block;
 }
 
-u64 get_actual_rip(BlockMetadata& metadata, u64 guest_address, u64 fault_pc) {
+static u64 get_actual_rip(BlockMetadata& metadata, u64 guest_address, u64 fault_pc) {
     u64 start_guest_address = guest_address;
     u64 host_address = metadata.host_address;
     size_t instruction_count = metadata.translation_sizes.size();
@@ -350,7 +350,7 @@ u64 get_actual_rip(BlockMetadata& metadata, u64 guest_address, u64 fault_pc) {
 #define REG_PC 0 // risc-v stores it in gpr 0
 #endif
 
-bool sa_ss_flags(ThreadState* state) {
+static bool sa_ss_flags(ThreadState* state) {
     u64 rsp = state->GetGpr(X86_REF_RSP);
     if (!state->alt_stack.ss_size) {
         return SS_DISABLE;
@@ -362,7 +362,7 @@ bool sa_ss_flags(ThreadState* state) {
     return is_on_altstack ? SS_ONSTACK : 0;
 }
 
-u64 get_pc(void* ctx) {
+static u64 get_pc(void* ctx) {
 #ifdef __riscv
     return (u64)((ucontext_t*)ctx)->uc_mcontext.__gregs[REG_PC];
 #else
@@ -371,7 +371,7 @@ u64 get_pc(void* ctx) {
 #endif
 }
 
-void set_pc(void* ctx, u64 new_pc) {
+static void set_pc(void* ctx, u64 new_pc) {
 #ifdef __riscv
     ((ucontext_t*)ctx)->uc_mcontext.__gregs[REG_PC] = new_pc;
 #else
@@ -446,7 +446,7 @@ static u32 get_reg_trapno(u64 host_pc, int sig, siginfo_t* info, ucontext_t* uct
 }
 
 // arch/x86/kernel/signal.c, get_sigframe function prepares the signal frame
-void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state, siginfo_t* guest_info, ucontext_t* host_context) {
+static void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state, siginfo_t* guest_info, ucontext_t* host_context) {
     u64 rsp = state->GetGpr(X86_REF_RSP);
     rsp = rsp - 128; // red zone
     bool use_altstack = signal.flags & SA_ONSTACK;
@@ -566,7 +566,7 @@ void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state, sigin
     regs[Recompiler::allocatedGPR(X86_REF_RIP).Index()] = state->GetRip();
 }
 
-void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, siginfo_t* guest_info, ucontext_t* host_context) {
+static void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, siginfo_t* guest_info, ucontext_t* host_context) {
     // sigreturn trampoline as it exists in the kernel
     // In x86_64 this doesn't exist and instead the user specifies a restorer
     static const struct {
@@ -701,7 +701,7 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, si
     regs[Recompiler::allocatedGPR(X86_REF_RIP).Index()] = state->GetRip();
 }
 
-void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state, siginfo_t* guest_info, ucontext_t* host_context) {
+static void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state, siginfo_t* guest_info, ucontext_t* host_context) {
     static const struct {
         u16 poplmovl;
         u32 val;
@@ -806,7 +806,7 @@ void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state, sigin
     regs[Recompiler::allocatedGPR(X86_REF_RIP).Index()] = state->GetRip();
 }
 
-void setupFrame(RegisteredSignal& signal, int sig, ThreadState* state, siginfo_t* guest_info, ucontext_t* host_context) {
+static void setupFrame(RegisteredSignal& signal, int sig, ThreadState* state, siginfo_t* guest_info, ucontext_t* host_context) {
     VERBOSE("Preparing frame for sig %d with si_code=%d", sig, guest_info->si_code);
     if (!state->ctx.Mode32()) {
         return setupFrame_x64(signal, sig, state, guest_info, host_context);
@@ -819,7 +819,7 @@ void setupFrame(RegisteredSignal& signal, int sig, ThreadState* state, siginfo_t
     }
 }
 
-void restore_sigcontext_32(ThreadState* state, x86_sigcontext_32* ctx) {
+static void restore_sigcontext_32(ThreadState* state, x86_sigcontext_32* ctx) {
     state->SetGpr(X86_REF_RAX, ctx->ax);
     state->SetGpr(X86_REF_RCX, ctx->cx);
     state->SetGpr(X86_REF_RDX, ctx->dx);
@@ -955,7 +955,7 @@ struct riscv_v_state {
     void* datap;
 };
 
-u64* get_fprs(void* ctx) {
+[[maybe_unused]] static u64* get_fprs(void* ctx) {
 #ifdef __riscv
     return (u64*)((ucontext_t*)ctx)->uc_mcontext.__fpregs.__d.__f;
 #else
@@ -964,7 +964,7 @@ u64* get_fprs(void* ctx) {
 #endif
 }
 
-riscv_v_state* get_riscv_vector_state(void* ctx) {
+static riscv_v_state* get_riscv_vector_state(void* ctx) {
 #ifdef __riscv
     ucontext_t* context = (ucontext_t*)ctx;
     mcontext_t* mcontext = &context->uc_mcontext;
@@ -983,7 +983,7 @@ riscv_v_state* get_riscv_vector_state(void* ctx) {
 #endif
 }
 
-void pull_registers_from_context(ThreadState* state, ucontext_t* uctx) {
+static void pull_registers_from_context(ThreadState* state, ucontext_t* uctx) {
     // Pull registers out from statically allocated registers and commit them to memory
     riscv_v_state* vector_state = get_riscv_vector_state(uctx);
     if (!vector_state) {
@@ -1019,7 +1019,7 @@ void pull_registers_from_context(ThreadState* state, ucontext_t* uctx) {
 // Set ucontext_t register values in preparation of signal and setup the stack
 // Afterwards we return from the signal handler normally. The RISC-V PC will be set to the
 // dispatcher and the x86 RIP to the signal handler.
-void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uctx) {
+static void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uctx) {
     ThreadState* state = ThreadState::Get();
 
     // While we *could* just jump to the handler and let the registers be
@@ -1118,7 +1118,7 @@ void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uctx) {
     set_pc(uctx, state->recompiler->getCompileNext());
 }
 
-void prepare_synchronous_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx, u64 rip) {
+static void prepare_synchronous_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx, u64 rip) {
     // Set the RIP register to actual instruction that faulted so that prepare_guest_signal picks it up for the context
     get_regs(ctx)[Recompiler::allocatedGPR(X86_REF_RIP).Index()] = rip;
     prepare_guest_signal(sig, info, (ucontext_t*)ctx);
@@ -1178,7 +1178,7 @@ static void defer_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx
     SIGLOG("Deferring signal %s (%d) during RIP=%lx", sigdescr_np(sig), sig, state->GetRip());
 }
 
-bool handle_safepoint(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
+static bool handle_safepoint(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
     // First we need to check if we are a safepoint
     // Safepoint instructions perform SD(x0, -8, Recompiler::threadStatePointer())
     u32 expected_instruction;
@@ -1274,7 +1274,7 @@ bool handle_safepoint(ThreadState* current_state, siginfo_t* info, ucontext_t* c
     return true;
 }
 
-bool handle_smc(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
+static bool handle_smc(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
     if (!is_in_jit_code(current_state, (u8*)pc)) {
         WARN("We hit a SIGSEGV ACCERR but PC is not in JIT code...");
         return false;
@@ -1287,7 +1287,7 @@ bool handle_smc(ThreadState* current_state, siginfo_t* info, ucontext_t* context
     return true;
 }
 
-bool handle_breakpoint(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
+static bool handle_breakpoint(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
     if (is_in_jit_code(current_state, (u8*)pc)) {
         // Search to see if it is our breakpoint
         // Note the we don't use EBREAK as gdb refuses to continue when it hits that if it doesn't have a breakpoint,
@@ -1309,8 +1309,7 @@ bool handle_breakpoint(ThreadState* current_state, siginfo_t* info, ucontext_t* 
     return false;
 }
 
-bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
-
+static bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
     if (g_config.abort_sigsegv) {
         // A bug that may pop up if we have issues in our address cache or code cache is an invalid address
         // These would usually manifest as jump to null page or to a bogus address with upper bits set
@@ -1384,7 +1383,7 @@ bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, ucontext_t
     }
 }
 
-bool handle_wild_sigabrt(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
+static bool handle_wild_sigabrt(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
     // Similar to SIGSEGV sleeping, SIGABRT can be nice to capture because it's called when guest errors like
     // stack smashing happen.
     bool in_jit_code = is_in_jit_code(current_state, (u8*)pc);
@@ -1422,7 +1421,7 @@ bool handle_wild_sigabrt(ThreadState* current_state, siginfo_t* info, ucontext_t
     }
 }
 
-bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
+static bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
     // We can't cause a SIGSEGV SI_KERNEL from RISC-V, so fix up info->si_code to match x86 behavior
     if (!is_in_jit_code(current_state, (u8*)pc)) {
         return false;
@@ -1506,7 +1505,7 @@ bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucontext_t*
     return true;
 }
 
-bool handle_sigptrace(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
+static bool handle_sigptrace(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
     if (!Ptrace::is_traced(current_state)) {
         WARN_ONCE("SIG53 but not a tracee?");
         return false;
@@ -1559,7 +1558,7 @@ bool handle_sigptrace(ThreadState* current_state, siginfo_t* info, ucontext_t* c
     }
 }
 
-constexpr std::array<RegisteredHostSignal, 7> host_signals = {{
+constexpr static std::array<RegisteredHostSignal, 7> host_signals = {{
     {SIGSEGV, SEGV_ACCERR, handle_safepoint},
     {SIGSEGV, SEGV_ACCERR, handle_smc},
     {SIGSEGV, SEGV_MAPERR, handle_synchronous},
@@ -1569,7 +1568,7 @@ constexpr std::array<RegisteredHostSignal, 7> host_signals = {{
     {SIGABRT, 0, handle_wild_sigabrt},
 }};
 
-bool dispatch_host(int sig, siginfo_t* info, void* ctx) {
+static bool dispatch_host(int sig, siginfo_t* info, void* ctx) {
     ThreadState* state = ThreadState::Get();
     u64 pc = get_pc(ctx);
     int code = info->si_code;
@@ -1586,7 +1585,7 @@ bool dispatch_host(int sig, siginfo_t* info, void* ctx) {
 }
 
 // Main signal handler function, all signals come here
-void signal_handler(int sig, siginfo_t* info, void* ctx) {
+static void signal_handler(int sig, siginfo_t* info, void* ctx) {
     if (g_config.print_all_signals) {
         SIGLOG("------- Signal %s (%d) with code %d -------", sigdescr_np(sig), sig, info->si_code);
     }
