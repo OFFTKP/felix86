@@ -705,8 +705,9 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
             setFsrmSSE(true);
         }
 
-        // Last instruction before block ends, flush x87
-        if (current_instruction_index == instructions.size() - 1) {
+        // Last instruction before block ends with a jumping instruction, flush x87
+        if (!current_block_big && current_instruction_index == instructions.size() - 1) {
+            ASSERT(!is_mmx && !is_x87);
             resetScratch();
             flushX87();
         }
@@ -2214,9 +2215,15 @@ void Recompiler::scanAhead(u64 rip) {
         }
 
         if (too_big) {
-            current_block_big = true;
-            // Similar to jumps, all flags will be calculated as the flag_access_cpazso array ends
-            break;
+            if (is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3) {
+                // If a jump/ret/call/... that would end the block anyway, don't mark this block as big
+                // This way if current_block_big == true we know that it doesn't end in a block-ending instruction
+                current_block_big = false;
+            } else {
+                // Similar to jumps, all flags will be calculated as the flag_access_cpazso array ends
+                current_block_big = true;
+                break;
+            }
         }
 
         if (is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3) {
