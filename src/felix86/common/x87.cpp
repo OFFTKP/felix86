@@ -789,7 +789,7 @@ void felix86_x87_FBLD(ThreadState* state, extFloat80_t* mem, int) {
     for (int i = 0; i < 9; i++) {
         val *= 100;
         u8 byte;
-        memcpy(&byte, mem + (8 - i), 1);
+        memcpy(&byte, (u8*)mem + (8 - i), 1);
         val += (byte >> 4) * 10;
         val += byte & 0xF;
     }
