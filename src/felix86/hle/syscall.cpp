@@ -1748,7 +1748,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
     }
     default: {
         result = -ENOSYS;
-        ERROR("Unimplemented syscall %s (%d)", riscv_get_name(rv_syscall), rv_syscall);
+        WARN("Unimplemented syscall %s (%d)", riscv_get_name(rv_syscall), rv_syscall);
         break;
     }
     }
@@ -2044,7 +2044,7 @@ void felix86_syscall(felix86_frame* frame) {
             result = -ENOSYS;
             const char* name = x64_get_name(syscall_number);
             if (name) {
-                ERROR("Unimplemented syscall %s (%d)", name, (int)syscall_number);
+                WARN("Unimplemented syscall %s (%d)", name, (int)syscall_number);
             }
             break;
         }
@@ -3342,7 +3342,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             result = -ENOSYS;
             const char* name = x86_get_name(syscall_number);
             if (name) {
-                ERROR("Unimplemented syscall %s (%d)", name, (int)syscall_number);
+                WARN("Unimplemented syscall %s (%d)", name, (int)syscall_number);
             }
             break;
         }
