@@ -65,3 +65,5 @@ void felix86_x87_FINCSTP(ThreadState* state);
 void felix86_x87_FDECSTP(ThreadState* state);
 void felix86_x87_FXAM(ThreadState* state);
 void felix86_x87_FFREEP(ThreadState* state, extFloat80_t* reg, int);
+void felix86_x87_FBLD(ThreadState* state, extFloat80_t* mem, int);
+void felix86_x87_FBSTP(ThreadState* state, extFloat80_t* mem, int);
