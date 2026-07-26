@@ -1,0 +1,52 @@
+name: PR Title
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+    branches:
+      - master
+
+jobs:
+  check-title:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title format
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          VALID_SCOPES="Recompiler Linux Thunks Tests CI Chore Tools Common Meta"
+
+          if ! echo "$PR_TITLE" | grep -qE '^[A-Za-z]+(, [A-Za-z]+)*: .+$'; then
+            echo "PR title must be in the format 'Group: Message' (e.g. 'Linux: Fix syscall handling' or 'Linux, Recompiler: Implement feature')"
+            echo ""
+            echo "Valid scopes: $VALID_SCOPES"
+            exit 1
+          fi
+
+          SCOPE_PART="${PR_TITLE%%:*}"
+          MESSAGE_PART="${PR_TITLE#*: }"
+
+          IFS=',' read -ra SCOPES <<< "$SCOPE_PART"
+          for scope in "${SCOPES[@]}"; do
+            scope="$(echo "$scope" | xargs)"
+            first_char="${scope:0:1}"
+            if [[ "$first_char" != "$(echo "$first_char" | tr '[:lower:]' '[:upper:]')" ]]; then
+              echo "Scope '$scope' must start with a capital letter"
+              echo ""
+              echo "Valid scopes: $VALID_SCOPES"
+              exit 1
+            fi
+            if ! echo "$VALID_SCOPES" | grep -qw "$scope"; then
+              echo "Invalid scope '$scope'"
+              echo ""
+              echo "Valid scopes: $VALID_SCOPES"
+              exit 1
+            fi
+          done
+
+          first_char="${MESSAGE_PART:0:1}"
+          if [[ "$first_char" != "$(echo "$first_char" | tr '[:lower:]' '[:upper:]')" ]]; then
+            echo "Message must start with a capital letter (got: '$MESSAGE_PART')"
+            exit 1
+          fi
+
+          echo "PR title is valid: $PR_TITLE"
