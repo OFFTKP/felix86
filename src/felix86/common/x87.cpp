@@ -806,6 +806,7 @@ void felix86_x87_FBSTP(ThreadState* state, extFloat80_t* mem, int) {
     extFloat80_t rounded;
     extF80M_roundToInt(st0, softfloat_getRoundingMode(), false, &rounded);
     bool sign = st0->signExp & 0x8000;
+    st0->signExp &= ~0x8000;
     u8* result = (u8*)mem;
     u64 value = extF80M_to_i64(&rounded, softfloat_getRoundingMode(), false);
     for (int i = 0; i < 9; i++) {
