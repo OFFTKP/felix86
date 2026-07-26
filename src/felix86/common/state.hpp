@@ -6,6 +6,7 @@
 #include "felix86/common/log.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
+#include "felix86/common/x87.hpp"
 #include "felix86/hle/cpuid.hpp"
 #include "felix86/hle/guest_types.hpp"
 #include "felix86/hle/ptrace.hpp"
@@ -171,6 +172,72 @@ typedef enum : u8 {
     X(felix86_vmpsadbw_256)                                                                                                                          \
     X(felix86_crash_and_burn)                                                                                                                        \
     X(felix86_raise_hardware_breakpoint)                                                                                                             \
+    X(felix86_x87_FLD)                                                                                                                               \
+    X(felix86_x87_FADD)                                                                                                                              \
+    X(felix86_x87_FIADD)                                                                                                                             \
+    X(felix86_x87_FADDP)                                                                                                                             \
+    X(felix86_x87_FSUB)                                                                                                                              \
+    X(felix86_x87_FSUBP)                                                                                                                             \
+    X(felix86_x87_FISUB)                                                                                                                             \
+    X(felix86_x87_FSUBR)                                                                                                                             \
+    X(felix86_x87_FSUBRP)                                                                                                                            \
+    X(felix86_x87_FISUBR)                                                                                                                            \
+    X(felix86_x87_FMUL)                                                                                                                              \
+    X(felix86_x87_FMULP)                                                                                                                             \
+    X(felix86_x87_FIMUL)                                                                                                                             \
+    X(felix86_x87_FDIV)                                                                                                                              \
+    X(felix86_x87_FDIVP)                                                                                                                             \
+    X(felix86_x87_FIDIV)                                                                                                                             \
+    X(felix86_x87_FDIVR)                                                                                                                             \
+    X(felix86_x87_FDIVRP)                                                                                                                            \
+    X(felix86_x87_FIDIVR)                                                                                                                            \
+    X(felix86_x87_FST)                                                                                                                               \
+    X(felix86_x87_FSTP)                                                                                                                              \
+    X(felix86_x87_FLDZ)                                                                                                                              \
+    X(felix86_x87_FLD1)                                                                                                                              \
+    X(felix86_x87_FLDL2T)                                                                                                                            \
+    X(felix86_x87_FLDL2E)                                                                                                                            \
+    X(felix86_x87_FLDPI)                                                                                                                             \
+    X(felix86_x87_FLDLG2)                                                                                                                            \
+    X(felix86_x87_FLDLN2)                                                                                                                            \
+    X(felix86_x87_FABS)                                                                                                                              \
+    X(felix86_x87_FCHS)                                                                                                                              \
+    X(felix86_x87_FXCH)                                                                                                                              \
+    X(felix86_x87_FTST)                                                                                                                              \
+    X(felix86_x87_FRNDINT)                                                                                                                           \
+    X(felix86_x87_FSQRT)                                                                                                                             \
+    X(felix86_x87_FILD)                                                                                                                              \
+    X(felix86_x87_FIST)                                                                                                                              \
+    X(felix86_x87_FISTP)                                                                                                                             \
+    X(felix86_x87_FISTTP)                                                                                                                            \
+    X(felix86_x87_FUCOM)                                                                                                                             \
+    X(felix86_x87_FUCOMP)                                                                                                                            \
+    X(felix86_x87_FUCOMPP)                                                                                                                           \
+    X(felix86_x87_FCOM)                                                                                                                              \
+    X(felix86_x87_FCOMP)                                                                                                                             \
+    X(felix86_x87_FCOMPP)                                                                                                                            \
+    X(felix86_x87_FUCOMI)                                                                                                                            \
+    X(felix86_x87_FUCOMIP)                                                                                                                           \
+    X(felix86_x87_FCOMI)                                                                                                                             \
+    X(felix86_x87_FCOMIP)                                                                                                                            \
+    X(felix86_x87_FICOM)                                                                                                                             \
+    X(felix86_x87_FICOMP)                                                                                                                            \
+    X(felix86_x87_FSIN)                                                                                                                              \
+    X(felix86_x87_FCOS)                                                                                                                              \
+    X(felix86_x87_FYL2X)                                                                                                                             \
+    X(felix86_x87_FYL2XP1)                                                                                                                           \
+    X(felix86_x87_F2XM1)                                                                                                                             \
+    X(felix86_x87_FPATAN)                                                                                                                            \
+    X(felix86_x87_FPREM)                                                                                                                             \
+    X(felix86_x87_FPREM1)                                                                                                                            \
+    X(felix86_x87_FSCALE)                                                                                                                            \
+    X(felix86_x87_FPTAN)                                                                                                                             \
+    X(felix86_x87_FSINCOS)                                                                                                                           \
+    X(felix86_x87_FXTRACT)                                                                                                                           \
+    X(felix86_x87_FFREEP)                                                                                                                            \
+    X(felix86_x87_FINCSTP)                                                                                                                           \
+    X(felix86_x87_FDECSTP)                                                                                                                           \
+    X(felix86_x87_FXAM)                                                                                                                              \
     X(felix86_exit_dispatcher)
 
 struct UserContext {
@@ -204,7 +271,7 @@ struct UserContext {
     u64 ssbase{};
     u64 esbase{};
     u32 mxcsr{0x1F80}; // default value
-    u16 fpu_cw{};
+    u16 fpu_cw{0x37F};
     u16 fpu_sw{};
     u8 fpu_tw = -1;
     u8 fpu_top{};
@@ -260,6 +327,13 @@ struct UserContext {
 struct ThreadState {
     UserContext ctx{};
 
+    Recompiler* recompiler;
+
+#define X(name) u64 name = (u64)::name;
+    // We don't want our code to hardcode pointers in order to be reusable (cached)
+    FUNCTION_POINTERS;
+#undef X
+
     pid_t* clear_tid_address = nullptr;
     pthread_t thread{}; // The pthread this state belongs to
     stack_t alt_stack{};
@@ -284,13 +358,6 @@ struct ThreadState {
 
     u64 persona = 0;
 
-    Recompiler* recompiler;
-
-#define X(name) u64 name = (u64)::name;
-    // We don't want our code to hardcode pointers in order to be reusable (cached)
-    FUNCTION_POINTERS;
-#undef X
-
     u64 deferred_signals = 0;
     // Deferred signals that are not masked by the guest mask during the time of the signal
     // Importantly, this isn't deferred_signals & ~signal_mask, but deferred_signals & ~signal_mask_at_time_of_signal
@@ -307,6 +374,8 @@ struct ThreadState {
     u8* x86_trampoline_storage_start = nullptr;
     u8* riscv_trampoline_storage = nullptr;
     u8* x86_trampoline_storage = nullptr;
+
+    bool use_precision_control = false;
 
     PtraceData ptrace_data;
 

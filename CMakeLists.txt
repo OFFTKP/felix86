@@ -66,6 +66,7 @@ add_subdirectory(external/biscuit)
 add_subdirectory(external/zydis)
 add_subdirectory(external/fmt)
 add_subdirectory(external/berkeley-softfloat-3)
+add_subdirectory(external/cephes)
 add_subdirectory(src/felix86/hle/vdso)
 target_compile_definitions(fmt PRIVATE FMT_USE_EXCEPTIONS=0)
 
@@ -103,6 +104,7 @@ set(FELIX86_COMMON_SOURCES
     src/felix86/common/strace.cpp
     src/felix86/common/utility.cpp
     src/felix86/common/binfmt.cpp
+    src/felix86/common/x87.cpp
     src/felix86/common/xsave.cpp
 )
 
@@ -163,7 +165,7 @@ add_library(tomlc17 STATIC external/tomlc17/tomlc17.c)
 add_library(felix86_core STATIC)
 target_sources(felix86_core PRIVATE ${FELIX86_CORE_SOURCES})
 target_include_directories(felix86_core PUBLIC ${FELIX86_INCLUDES})
-target_link_libraries(felix86_core PUBLIC Zydis fmt tomlc17 biscuit berkeley-softfloat git_version x64_vdso)
+target_link_libraries(felix86_core PUBLIC Zydis fmt tomlc17 biscuit berkeley-softfloat cephes git_version x64_vdso)
 
 target_compile_options(felix86_core PRIVATE -Wall -Werror=implicit-fallthrough -Werror=switch -fPIE)
 target_compile_options(felix86_core PRIVATE $<$<COMPILE_LANGUAGE:C>:-Werror=incompatible-pointer-types>)

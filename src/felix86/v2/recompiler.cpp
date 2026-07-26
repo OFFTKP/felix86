@@ -666,10 +666,17 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
             ran_mmx_once = true;
             WARN_ONCE("This program makes use of MMX");
             if (local_x87_state != x87State::MMX) {
-                if (local_x87_state == x87State::x87) {
+                if (local_x87_state == x87State::x87 && g_config.reduced_precision) {
                     flushX87();
                 }
                 switchToMMX();
+            }
+
+            bool is_op0_mmx = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].reg.value >= ZYDIS_REGISTER_MM0 &&
+                              operands[0].reg.value <= ZYDIS_REGISTER_MM7;
+            if (is_op0_mmx && operands[0].actions & ZYDIS_OPERAND_ACTION_WRITE) {
+                int index = operands[0].reg.value - ZYDIS_REGISTER_MM0;
+                mmx_reg_cache[index].dirty = true;
             }
         }
 
@@ -678,12 +685,12 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
                 WARN("x87 and MMX mixed in a block?");
             }
 
-            if (local_x87_state != x87State::x87) {
+            if (local_x87_state != x87State::x87 && g_config.reduced_precision) {
                 switchToX87();
             }
         }
 
-        if (is_x87 && isFsrmSSE()) {
+        if (is_x87 && isFsrmSSE() && g_config.reduced_precision) {
             // An x87 instruction, load the x87 rounding mode
             biscuit::GPR rm = scratch();
             as.LBU(rm, offsetof(ThreadState, ctx.rmode_x87), threadStatePointer());
@@ -698,8 +705,9 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
             setFsrmSSE(true);
         }
 
-        // Last instruction before block ends, flush x87
-        if (current_instruction_index == instructions.size() - 1) {
+        // Last instruction before block ends with a jumping instruction, flush x87
+        if (!current_block_big && current_instruction_index == instructions.size() - 1) {
+            ASSERT(!is_mmx && !is_x87);
             resetScratch();
             flushX87();
         }
@@ -799,42 +807,44 @@ void Recompiler::flushX87() {
     bool top_got = false;
     bool x87_dirty = false;
     bool tag_dirty = false;
-    for (int i = 0; i < 8; i++) {
-        if (x87_reg_cache[i].dirty) {
-            if (!top_got) {
-                top = getTOP();
-                tag_word = scratch();
-                if (x87_reg_cache[i].modify_tag) {
-                    as.LBU(tag_word, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
-                    tag_dirty = true;
+    if (g_config.reduced_precision) {
+        for (int i = 0; i < 8; i++) {
+            if (x87_reg_cache[i].dirty) {
+                if (!top_got) {
+                    top = getTOP();
+                    tag_word = scratch();
+                    if (x87_reg_cache[i].modify_tag) {
+                        as.LBU(tag_word, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
+                        tag_dirty = true;
+                    }
+                    top_got = true;
                 }
-                top_got = true;
-            }
-            ASSERT(x87_reg_cache[i].loaded);
-            int index = i - pushed_this_block;
-            as.ADDI(st, top, index);
-            as.ANDI(st, st, 0b111);
-            // Quick multiply by sizeof(Float80)
-            as.SH2ADD(address, st, st);
-            as.SLLI(address, address, 1);
-            static_assert(sizeof(ThreadState::ctx.st[0]) == sizeof(Float80) && sizeof(Float80) == 10);
-            as.ADD(address, address, threadStatePointer());
-            as.FSD(x87_reg_cache[i].reg, offsetof(ThreadState, ctx.st), address);
+                ASSERT(x87_reg_cache[i].loaded);
+                int index = i - pushed_this_block;
+                as.ADDI(st, top, index);
+                as.ANDI(st, st, 0b111);
+                // Quick multiply by sizeof(Float80)
+                as.SH2ADD(address, st, st);
+                as.SLLI(address, address, 1);
+                static_assert(sizeof(ThreadState::ctx.st[0]) == sizeof(Float80) && sizeof(Float80) == 10);
+                as.ADD(address, address, threadStatePointer());
+                as.FSD(x87_reg_cache[i].reg, offsetof(ThreadState, ctx.st), address);
 
-            if (x87_reg_cache[i].modify_tag) {
-                ASSERT(pushed_this_block > 0);
-                ASSERT(tag_word != x0);
-                as.BCLR(tag_word, tag_word, st);
+                if (x87_reg_cache[i].modify_tag) {
+                    ASSERT(pushed_this_block > 0);
+                    ASSERT(tag_word != x0);
+                    as.BCLR(tag_word, tag_word, st);
+                }
+                x87_dirty = true;
             }
-            x87_dirty = true;
         }
-    }
 
-    if (pushed_this_block > 0) {
-        ASSERT(top_got);
-        as.ADDI(top, top, -pushed_this_block);
-        as.ANDI(top, top, 0b111);
-        as.SB(top, offsetof(ThreadState, ctx.fpu_top), threadStatePointer());
+        if (pushed_this_block > 0) {
+            ASSERT(top_got);
+            as.ADDI(top, top, -pushed_this_block);
+            as.ANDI(top, top, 0b111);
+            as.SB(top, offsetof(ThreadState, ctx.fpu_top), threadStatePointer());
+        }
     }
 
     for (int i = 0; i < 8; i++) {
@@ -845,6 +855,8 @@ void Recompiler::flushX87() {
             biscuit::Vec vec = mmx_reg_cache[i].reg;
             as.ADDI(address, threadStatePointer(), offsetof(ThreadState, ctx.st) + i * sizeof(Float80));
             as.VSE64(vec, address);
+            as.LI(address, -1);
+            as.SH(address, offsetof(ThreadState, ctx.st) + i * sizeof(Float80) + sizeof(u64), Recompiler::threadStatePointer());
         }
     }
 
@@ -2203,9 +2215,15 @@ void Recompiler::scanAhead(u64 rip) {
         }
 
         if (too_big) {
-            current_block_big = true;
-            // Similar to jumps, all flags will be calculated as the flag_access_cpazso array ends
-            break;
+            if (is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3) {
+                // If a jump/ret/call/... that would end the block anyway, don't mark this block as big
+                // This way if current_block_big == true we know that it doesn't end in a block-ending instruction
+                current_block_big = false;
+            } else {
+                // Similar to jumps, all flags will be calculated as the flag_access_cpazso array ends
+                current_block_big = true;
+                break;
+            }
         }
 
         if (is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3) {

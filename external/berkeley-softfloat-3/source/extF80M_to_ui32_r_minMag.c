@@ -36,25 +36,22 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "platform.h"
 #include "internals.h"
-#include "specialize.h"
+#include "platform.h"
 #include "softfloat.h"
+#include "specialize.h"
 
 #ifdef SOFTFLOAT_FAST_INT64
 
-uint_fast32_t extF80M_to_ui32_r_minMag( const extFloat80_t *aPtr, bool exact )
-{
+uint_fast32_t extF80M_to_ui32_r_minMag(const extFloat80_t* aPtr, bool exact) {
 
-    return extF80_to_ui32_r_minMag( *aPtr, exact );
-
+    return extF80_to_ui32_r_minMag(*aPtr, exact);
 }
 
 #else
 
-uint_fast32_t extF80M_to_ui32_r_minMag( const extFloat80_t *aPtr, bool exact )
-{
-    const struct extFloat80M *aSPtr;
+uint_fast32_t extF80M_to_ui32_r_minMag(const extFloat80_t* aPtr, bool exact) {
+    const struct extFloat80M* aSPtr;
     uint_fast16_t uiA64;
     int32_t exp;
     uint64_t sig;
@@ -64,48 +61,50 @@ uint_fast32_t extF80M_to_ui32_r_minMag( const extFloat80_t *aPtr, bool exact )
     uint32_t z;
 
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
-    aSPtr = (const struct extFloat80M *) aPtr;
+     *------------------------------------------------------------------------*/
+    aSPtr = (const struct extFloat80M*)aPtr;
     uiA64 = aSPtr->signExp;
-    exp = expExtF80UI64( uiA64 );
+    exp = expExtF80UI64(uiA64);
     sig = aSPtr->signif;
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
-    if ( ! sig && (exp != 0x7FFF) ) return 0;
+     *------------------------------------------------------------------------*/
+    if (!sig && (exp != 0x7FFF))
+        return 0;
     shiftDist = 0x403E - exp;
-    if ( 64 <= shiftDist ) {
-        if ( exact ) softfloat_exceptionFlags |= softfloat_flag_inexact;
+    if (64 <= shiftDist) {
+        if (exact)
+            softfloat_raiseFlags(softfloat_flag_inexact);
         return 0;
     }
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
-    sign = signExtF80UI64( uiA64 );
-    if ( shiftDist < 0 ) {
-        if ( sign || sig>>32 || (shiftDist <= -31) ) goto invalid;
-        shiftedSig = (uint64_t) (uint32_t) sig<<-shiftDist;
-        if ( shiftedSig>>32 ) goto invalid;
+     *------------------------------------------------------------------------*/
+    sign = signExtF80UI64(uiA64);
+    if (shiftDist < 0) {
+        if (sign || sig >> 32 || (shiftDist <= -31))
+            goto invalid;
+        shiftedSig = (uint64_t)(uint32_t)sig << -shiftDist;
+        if (shiftedSig >> 32)
+            goto invalid;
         z = shiftedSig;
     } else {
         shiftedSig = sig;
-        if ( shiftDist ) shiftedSig >>= shiftDist;
-        if ( shiftedSig>>32 ) goto invalid;
+        if (shiftDist)
+            shiftedSig >>= shiftDist;
+        if (shiftedSig >> 32)
+            goto invalid;
         z = shiftedSig;
-        if ( sign && z ) goto invalid;
-        if ( exact && shiftDist && ((uint64_t) z<<shiftDist != sig) ) {
-            softfloat_exceptionFlags |= softfloat_flag_inexact;
+        if (sign && z)
+            goto invalid;
+        if (exact && shiftDist && ((uint64_t)z << shiftDist != sig)) {
+            softfloat_raiseFlags(softfloat_flag_inexact);
         }
     }
     return z;
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
- invalid:
-    softfloat_raiseFlags( softfloat_flag_invalid );
-    return
-        (exp == 0x7FFF) && (sig & UINT64_C( 0x7FFFFFFFFFFFFFFF ))
-            ? ui32_fromNaN
-            : sign ? ui32_fromNegOverflow : ui32_fromPosOverflow;
-
+     *------------------------------------------------------------------------*/
+invalid:
+    softfloat_raiseFlags(softfloat_flag_invalid);
+    return (exp == 0x7FFF) && (sig & UINT64_C(0x7FFFFFFFFFFFFFFF)) ? ui32_fromNaN : sign ? ui32_fromNegOverflow : ui32_fromPosOverflow;
 }
 
 #endif
-

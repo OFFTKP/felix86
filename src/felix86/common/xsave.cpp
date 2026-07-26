@@ -51,13 +51,17 @@ void felix86_fsave_16(const UserContext& ctx, void* address) {
     bool is_mmx = (x87State)ctx.x87_state == x87State::MMX;
     fsave_frame_16* data = (fsave_frame_16*)address;
     for (int i = 0; i < 8; i++) {
-        if (is_mmx) {
-            u16 ones = 0xFFFF;
-            memcpy(&data->st[i], &ctx.st[i].significand, sizeof(double));
-            memcpy(&data->st[i].exponent, &ones, sizeof(u16));
+        if (g_config.reduced_precision) {
+            if (is_mmx) {
+                u16 ones = 0xFFFF;
+                memcpy(&data->st[i], &ctx.st[i].significand, sizeof(double));
+                memcpy(&data->st[i].exponent, &ones, sizeof(u16));
+            } else {
+                Float80 f80 = f64_to_80(ctx.st[i].significand);
+                memcpy(&data->st[i], &f80, sizeof(Float80));
+            }
         } else {
-            Float80 f80 = f64_to_80(ctx.st[i].significand);
-            memcpy(&data->st[i], &f80, sizeof(Float80));
+            memcpy(&data->st[i], &ctx.st[i], sizeof(Float80));
         }
     }
 
@@ -65,10 +69,13 @@ void felix86_fsave_16(const UserContext& ctx, void* address) {
     data->tw = tw_8_to_16(ctx.fpu_tw);
     data->sw = (ctx.fpu_top << 11) | (ctx.fpu_sw & ~(0b111 << 11));
 
-    // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
-    // will not need f80->f64 conversion if loaded with frstor
-    if (is_mmx) {
-        data->cw |= 0x8000;
+    if (g_config.reduced_precision) {
+        // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
+        // will not need f80->f64 conversion if loaded with frstor
+        // TODO: can we do better than this hack
+        if (is_mmx) {
+            data->cw |= 0x8000;
+        }
     }
 }
 
@@ -76,13 +83,17 @@ void felix86_fsave_32(const UserContext& ctx, void* address) {
     bool is_mmx = (x87State)ctx.x87_state == x87State::MMX;
     fsave_frame_32* data = (fsave_frame_32*)address;
     for (int i = 0; i < 8; i++) {
-        if (is_mmx) {
-            u16 ones = 0xFFFF;
-            memcpy(&data->st[i], &ctx.st[i], sizeof(double));
-            memcpy(&data->st[i].exponent, &ones, sizeof(u16));
+        if (g_config.reduced_precision) {
+            if (is_mmx) {
+                u16 ones = 0xFFFF;
+                memcpy(&data->st[i], &ctx.st[i], sizeof(double));
+                memcpy(&data->st[i].exponent, &ones, sizeof(u16));
+            } else {
+                Float80 f80 = f64_to_80(ctx.st[i].significand);
+                memcpy(&data->st[i], &f80, sizeof(Float80));
+            }
         } else {
-            Float80 f80 = f64_to_80(ctx.st[i].significand);
-            memcpy(&data->st[i], &f80, sizeof(Float80));
+            memcpy(&data->st[i], &ctx.st[i], sizeof(Float80));
         }
     }
 
@@ -90,10 +101,13 @@ void felix86_fsave_32(const UserContext& ctx, void* address) {
     data->tw = tw_8_to_16(ctx.fpu_tw);
     data->sw = (ctx.fpu_top << 11) | (ctx.fpu_sw & ~(0b111 << 11));
 
-    // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
-    // will not need f80->f64 conversion if loaded with frstor
-    if (is_mmx) {
-        data->cw |= 0x8000;
+    if (g_config.reduced_precision) {
+        // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
+        // will not need f80->f64 conversion if loaded with frstor
+        // TODO: can we do better than this hack
+        if (is_mmx) {
+            data->cw |= 0x8000;
+        }
     }
 }
 
@@ -107,11 +121,15 @@ void felix86_frstor_16(UserContext& ctx, void* address) {
     ctx.rmode_x87 = rounding_mode(x86RoundingMode((ctx.fpu_cw >> 10) & 0b11));
 
     for (int i = 0; i < 8; i++) {
-        if (ctx.fpu_cw & 0x8000) {
-            memcpy(&ctx.st[i], &data->st[i], sizeof(double));
+        if (g_config.reduced_precision) {
+            if (ctx.fpu_cw & 0x8000) {
+                memcpy(&ctx.st[i], &data->st[i], sizeof(double));
+            } else {
+                double f64 = f80_to_64(&data->st[i]);
+                memcpy(&ctx.st[i], &f64, sizeof(double));
+            }
         } else {
-            double f64 = f80_to_64(&data->st[i]);
-            memcpy(&ctx.st[i], &f64, sizeof(double));
+            memcpy(&ctx.st[i], &data->st[i], sizeof(Float80));
         }
     }
 }
@@ -126,11 +144,15 @@ void felix86_frstor_32(UserContext& ctx, void* address) {
     ctx.rmode_x87 = rounding_mode(x86RoundingMode((ctx.fpu_cw >> 10) & 0b11));
 
     for (int i = 0; i < 8; i++) {
-        if (ctx.fpu_cw & 0x8000) {
-            memcpy(&ctx.st[i], &data->st[i], sizeof(double));
+        if (g_config.reduced_precision) {
+            if (ctx.fpu_cw & 0x8000) {
+                memcpy(&ctx.st[i], &data->st[i], sizeof(double));
+            } else {
+                double f64 = f80_to_64(&data->st[i]);
+                memcpy(&ctx.st[i], &f64, sizeof(double));
+            }
         } else {
-            double f64 = f80_to_64(&data->st[i]);
-            memcpy(&ctx.st[i], &f64, sizeof(double));
+            memcpy(&ctx.st[i], &data->st[i], sizeof(Float80));
         }
     }
 }
@@ -148,16 +170,20 @@ void felix86_fxsave(const UserContext& ctx, void* address, bool save_x87, bool s
 
     if (save_x87) {
         for (int i = 0; i < 8; i++) {
-            if (is_x87) {
-                Float80 f80 = f64_to_80(ctx.st[i].significand);
-                memcpy(&data->st[i].st[0], &f80, sizeof(Float80));
-            } else {
-                if (!is_mmx) {
-                    WARN("Unknown x87 state during fxsave");
+            if (g_config.reduced_precision) {
+                if (is_x87) {
+                    Float80 f80 = f64_to_80(ctx.st[i].significand);
+                    memcpy(&data->st[i].st[0], &f80, sizeof(Float80));
+                } else {
+                    if (!is_mmx) {
+                        WARN("Unknown x87 state during fxsave");
+                    }
+                    u16 ones = 0xFFFF;
+                    memcpy(&data->st[i].st[0], &ctx.st[i].significand, sizeof(u64));
+                    memcpy(&data->st[i].st[8], &ones, sizeof(u16));
                 }
-                u16 ones = 0xFFFF;
-                memcpy(&data->st[i].st[0], &ctx.st[i].significand, sizeof(u64));
-                memcpy(&data->st[i].st[8], &ones, sizeof(u16));
+            } else {
+                memcpy(&data->st[i].st[0], &ctx.st[i], sizeof(Float80));
             }
         }
 
@@ -165,10 +191,13 @@ void felix86_fxsave(const UserContext& ctx, void* address, bool save_x87, bool s
         data->fcw = ctx.fpu_cw;
         data->fsw = (ctx.fpu_top << 11) | (ctx.fpu_sw & ~(0b111 << 11));
 
-        // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
-        // will not need f80->f64 conversion if loaded with fxrstor
-        if (is_mmx) {
-            data->fcw |= 0x8000;
+        if (g_config.reduced_precision) {
+            // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
+            // will not need f80->f64 conversion if loaded with fxrstor
+            // TODO: can we do better than this hack
+            if (is_mmx) {
+                data->fcw |= 0x8000;
+            }
         }
     }
 
@@ -195,11 +224,15 @@ void felix86_fxrstor(UserContext& ctx, void* address, bool restore_x87, bool res
         ctx.fpu_top = (data->fsw >> 11) & 7;
 
         for (int i = 0; i < 8; i++) {
-            if (ctx.fpu_cw & 0x8000) {
-                memcpy(&ctx.st[i], &data->st[i].st[0], sizeof(double));
+            if (g_config.reduced_precision) {
+                if (ctx.fpu_cw & 0x8000) {
+                    memcpy(&ctx.st[i], &data->st[i].st[0], sizeof(double));
+                } else {
+                    double f64 = f80_to_64((Float80*)&data->st[i].st[0]);
+                    memcpy(&ctx.st[i], &f64, sizeof(double));
+                }
             } else {
-                double f64 = f80_to_64((Float80*)&data->st[i].st[0]);
-                memcpy(&ctx.st[i], &f64, sizeof(double));
+                memcpy(&ctx.st[i], &data->st[i].st[0], sizeof(Float80));
             }
         }
 

@@ -36,13 +36,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "platform.h"
 #include "internals.h"
-#include "specialize.h"
+#include "platform.h"
 #include "softfloat.h"
+#include "specialize.h"
 
-uint_fast32_t f16_to_ui32_r_minMag( float16_t a, bool exact )
-{
+uint_fast32_t f16_to_ui32_r_minMag(float16_t a, bool exact) {
     union ui16_f16 uA;
     uint_fast16_t uiA;
     int_fast8_t exp;
@@ -52,36 +51,32 @@ uint_fast32_t f16_to_ui32_r_minMag( float16_t a, bool exact )
     uint_fast32_t alignedSig;
 
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
+     *------------------------------------------------------------------------*/
     uA.f = a;
     uiA = uA.ui;
-    exp  = expF16UI( uiA );
-    frac = fracF16UI( uiA );
+    exp = expF16UI(uiA);
+    frac = fracF16UI(uiA);
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
+     *------------------------------------------------------------------------*/
     shiftDist = exp - 0x0F;
-    if ( shiftDist < 0 ) {
-        if ( exact && (exp | frac) ) {
-            softfloat_exceptionFlags |= softfloat_flag_inexact;
+    if (shiftDist < 0) {
+        if (exact && (exp | frac)) {
+            softfloat_raiseFlags(softfloat_flag_inexact);
         }
         return 0;
     }
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
-    sign = signF16UI( uiA );
-    if ( sign || (exp == 0x1F) ) {
-        softfloat_raiseFlags( softfloat_flag_invalid );
-        return
-            (exp == 0x1F) && frac ? ui32_fromNaN
-                : sign ? ui32_fromNegOverflow : ui32_fromPosOverflow;
+     *------------------------------------------------------------------------*/
+    sign = signF16UI(uiA);
+    if (sign || (exp == 0x1F)) {
+        softfloat_raiseFlags(softfloat_flag_invalid);
+        return (exp == 0x1F) && frac ? ui32_fromNaN : sign ? ui32_fromNegOverflow : ui32_fromPosOverflow;
     }
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
-    alignedSig = (uint_fast32_t) (frac | 0x0400)<<shiftDist;
-    if ( exact && (alignedSig & 0x3FF) ) {
-        softfloat_exceptionFlags |= softfloat_flag_inexact;
+     *------------------------------------------------------------------------*/
+    alignedSig = (uint_fast32_t)(frac | 0x0400) << shiftDist;
+    if (exact && (alignedSig & 0x3FF)) {
+        softfloat_raiseFlags(softfloat_flag_inexact);
     }
-    return alignedSig>>10;
-
+    return alignedSig >> 10;
 }
-

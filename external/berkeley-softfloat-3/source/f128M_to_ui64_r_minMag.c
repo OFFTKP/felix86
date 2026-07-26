@@ -36,25 +36,22 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "platform.h"
 #include "internals.h"
-#include "specialize.h"
+#include "platform.h"
 #include "softfloat.h"
+#include "specialize.h"
 
 #ifdef SOFTFLOAT_FAST_INT64
 
-uint_fast64_t f128M_to_ui64_r_minMag( const float128_t *aPtr, bool exact )
-{
+uint_fast64_t f128M_to_ui64_r_minMag(const float128_t* aPtr, bool exact) {
 
-    return f128_to_ui64_r_minMag( *aPtr, exact );
-
+    return f128_to_ui64_r_minMag(*aPtr, exact);
 }
 
 #else
 
-uint_fast64_t f128M_to_ui64_r_minMag( const float128_t *aPtr, bool exact )
-{
-    const uint32_t *aWPtr;
+uint_fast64_t f128M_to_ui64_r_minMag(const float128_t* aPtr, bool exact) {
+    const uint32_t* aWPtr;
     uint32_t uiA96;
     bool sign;
     int32_t exp;
@@ -64,51 +61,47 @@ uint_fast64_t f128M_to_ui64_r_minMag( const float128_t *aPtr, bool exact )
     uint64_t z;
 
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
-    aWPtr = (const uint32_t *) aPtr;
-    uiA96 = aWPtr[indexWordHi( 4 )];
-    sign  = signF128UI96( uiA96 );
-    exp   = expF128UI96( uiA96 );
-    sig96 = fracF128UI96( uiA96 );
+     *------------------------------------------------------------------------*/
+    aWPtr = (const uint32_t*)aPtr;
+    uiA96 = aWPtr[indexWordHi(4)];
+    sign = signF128UI96(uiA96);
+    exp = expF128UI96(uiA96);
+    sig96 = fracF128UI96(uiA96);
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
+     *------------------------------------------------------------------------*/
     shiftDist = 0x403E - exp;
-    if ( shiftDist < 0 ) goto invalid;
-    if ( exact ) {
-        if ( exp ) sig96 |= 0x00010000;
-        sig[indexWord( 4, 3 )] = sig96;
-        sig[indexWord( 4, 2 )] = aWPtr[indexWord( 4, 2 )];
-        sig[indexWord( 4, 1 )] = aWPtr[indexWord( 4, 1 )];
-        sig[indexWord( 4, 0 )] = aWPtr[indexWord( 4, 0 )];
-        softfloat_shiftRightJam128M( sig, shiftDist + 17, sig );
-        z = (uint64_t) sig[indexWord( 4, 2 )]<<32 | sig[indexWord( 4, 1 )];
-        if ( sign && z ) goto invalid;
-        if ( sig[indexWordLo( 4 )] ) {
-            softfloat_exceptionFlags |= softfloat_flag_inexact;
+    if (shiftDist < 0)
+        goto invalid;
+    if (exact) {
+        if (exp)
+            sig96 |= 0x00010000;
+        sig[indexWord(4, 3)] = sig96;
+        sig[indexWord(4, 2)] = aWPtr[indexWord(4, 2)];
+        sig[indexWord(4, 1)] = aWPtr[indexWord(4, 1)];
+        sig[indexWord(4, 0)] = aWPtr[indexWord(4, 0)];
+        softfloat_shiftRightJam128M(sig, shiftDist + 17, sig);
+        z = (uint64_t)sig[indexWord(4, 2)] << 32 | sig[indexWord(4, 1)];
+        if (sign && z)
+            goto invalid;
+        if (sig[indexWordLo(4)]) {
+            softfloat_raiseFlags(softfloat_flag_inexact);
         }
     } else {
-        if ( 64 <= shiftDist ) return 0;
-        if ( sign ) goto invalid;
-        z =   UINT64_C( 0x8000000000000000 )
-            | (uint64_t) sig96<<47
-            | (uint64_t) aWPtr[indexWord( 4, 2 )]<<15
-            | aWPtr[indexWord( 4, 1 )]>>17;
+        if (64 <= shiftDist)
+            return 0;
+        if (sign)
+            goto invalid;
+        z = UINT64_C(0x8000000000000000) | (uint64_t)sig96 << 47 | (uint64_t)aWPtr[indexWord(4, 2)] << 15 | aWPtr[indexWord(4, 1)] >> 17;
         z >>= shiftDist;
     }
     return z;
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
- invalid:
-    softfloat_raiseFlags( softfloat_flag_invalid );
-    return
-        (exp == 0x7FFF)
-            && (sig96
-                    || (aWPtr[indexWord( 4, 2 )] | aWPtr[indexWord( 4, 1 )]
-                            | aWPtr[indexWord( 4, 0 )]))
-            ? ui64_fromNaN
-            : sign ? ui64_fromNegOverflow : ui64_fromPosOverflow;
-
+     *------------------------------------------------------------------------*/
+invalid:
+    softfloat_raiseFlags(softfloat_flag_invalid);
+    return (exp == 0x7FFF) && (sig96 || (aWPtr[indexWord(4, 2)] | aWPtr[indexWord(4, 1)] | aWPtr[indexWord(4, 0)])) ? ui64_fromNaN
+           : sign                                                                                                   ? ui64_fromNegOverflow
+                                                                                                                    : ui64_fromPosOverflow;
 }
 
 #endif
-

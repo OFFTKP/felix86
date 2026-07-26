@@ -41,12 +41,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 | Raises the exceptions specified by `flags'.  Floating-point traps can be
 | defined here if desired.  It is currently not possible for such a trap
 | to substitute a result value.  If traps are not implemented, this routine
-| should be simply `softfloat_exceptionFlags |= flags;'.
+| should be simply `softfloat_raiseFlags(flags);'.
 *----------------------------------------------------------------------------*/
-void softfloat_raiseFlags( uint_fast8_t flags )
-{
+// Defined in felix86 side
+// void softfloat_raiseFlags( uint_fast8_t flags )
+// {
 
-    softfloat_exceptionFlags |= flags;
+//     softfloat_raiseFlags(flags);
 
-}
-
+// }

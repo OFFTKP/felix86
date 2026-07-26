@@ -395,7 +395,6 @@ struct Recompiler {
             as.VLE64(entry.reg, address);
             popScratch();
             entry.loaded = true;
-            entry.dirty = true; // TODO: this will dirty loaded mmx regs that aren't written to, fix
             return entry.reg;
         }
         default: {

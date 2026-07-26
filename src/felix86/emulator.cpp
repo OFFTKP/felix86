@@ -23,6 +23,7 @@
 #include "felix86/hle/thread.hpp"
 #include "felix86/hle/thunks.hpp"
 #include "felix86/hle/vdso.hpp"
+#include "felix86/v2/handlers.hpp"
 #include "felix86/v2/recompiler.hpp"
 
 extern char** environ;
@@ -466,6 +467,11 @@ void Emulator::StartTest(const TestConfig& config, u64 stack) {
             ymm.data[2] = 0xCCCC'CCCC'CCCC'CCCC;
             ymm.data[3] = 0xABCD'EF01'2345'6789;
         }
+    }
+
+    if (config.reduced_precision) {
+        g_config.reduced_precision = true;
+        Handlers::initialize();
     }
 
     g_testing = true;

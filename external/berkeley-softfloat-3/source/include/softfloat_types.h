@@ -59,9 +59,9 @@ typedef struct { uint64_t v[2]; } float128_t;
 | named 'signif'.
 *----------------------------------------------------------------------------*/
 #ifdef LITTLEENDIAN
-struct extFloat80M { uint64_t signif; uint16_t signExp; };
+struct __attribute__((packed)) extFloat80M { uint64_t signif; uint16_t signExp; };
 #else
-struct extFloat80M { uint16_t signExp; uint64_t signif; };
+struct __attribute__((packed)) extFloat80M { uint16_t signExp; uint64_t signif; };
 #endif
 
 /*----------------------------------------------------------------------------

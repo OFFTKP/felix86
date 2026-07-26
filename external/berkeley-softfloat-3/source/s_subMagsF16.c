@@ -36,13 +36,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "platform.h"
 #include "internals.h"
-#include "specialize.h"
+#include "platform.h"
 #include "softfloat.h"
+#include "specialize.h"
 
-float16_t softfloat_subMagsF16( uint_fast16_t uiA, uint_fast16_t uiB )
-{
+float16_t softfloat_subMagsF16(uint_fast16_t uiA, uint_fast16_t uiB) {
     int_fast8_t expA;
     uint_fast16_t sigA;
     int_fast8_t expB;
@@ -58,60 +57,62 @@ float16_t softfloat_subMagsF16( uint_fast16_t uiA, uint_fast16_t uiB )
     union ui16_f16 uZ;
 
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
-    expA = expF16UI( uiA );
-    sigA = fracF16UI( uiA );
-    expB = expF16UI( uiB );
-    sigB = fracF16UI( uiB );
+     *------------------------------------------------------------------------*/
+    expA = expF16UI(uiA);
+    sigA = fracF16UI(uiA);
+    expB = expF16UI(uiB);
+    sigB = fracF16UI(uiB);
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
+     *------------------------------------------------------------------------*/
     expDiff = expA - expB;
-    if ( ! expDiff ) {
+    if (!expDiff) {
         /*--------------------------------------------------------------------
-        *--------------------------------------------------------------------*/
-        if ( expA == 0x1F ) {
-            if ( sigA | sigB ) goto propagateNaN;
-            softfloat_raiseFlags( softfloat_flag_invalid );
+         *--------------------------------------------------------------------*/
+        if (expA == 0x1F) {
+            if (sigA | sigB)
+                goto propagateNaN;
+            softfloat_raiseFlags(softfloat_flag_invalid);
             uiZ = defaultNaNF16UI;
             goto uiZ;
         }
         sigDiff = sigA - sigB;
-        if ( ! sigDiff ) {
-            uiZ =
-                packToF16UI(
-                    (softfloat_roundingMode == softfloat_round_min), 0, 0 );
+        if (!sigDiff) {
+            uiZ = packToF16UI((softfloat_getRoundingMode() == softfloat_round_min), 0, 0);
             goto uiZ;
         }
-        if ( expA ) --expA;
-        signZ = signF16UI( uiA );
-        if ( sigDiff < 0 ) {
-            signZ = ! signZ;
+        if (expA)
+            --expA;
+        signZ = signF16UI(uiA);
+        if (sigDiff < 0) {
+            signZ = !signZ;
             sigDiff = -sigDiff;
         }
-        shiftDist = softfloat_countLeadingZeros16( sigDiff ) - 5;
+        shiftDist = softfloat_countLeadingZeros16(sigDiff) - 5;
         expZ = expA - shiftDist;
-        if ( expZ < 0 ) {
+        if (expZ < 0) {
             shiftDist = expA;
             expZ = 0;
         }
-        sigZ = sigDiff<<shiftDist;
+        sigZ = sigDiff << shiftDist;
         goto pack;
     } else {
         /*--------------------------------------------------------------------
-        *--------------------------------------------------------------------*/
-        signZ = signF16UI( uiA );
-        if ( expDiff < 0 ) {
+         *--------------------------------------------------------------------*/
+        signZ = signF16UI(uiA);
+        if (expDiff < 0) {
             /*----------------------------------------------------------------
-            *----------------------------------------------------------------*/
-            signZ = ! signZ;
-            if ( expB == 0x1F ) {
-                if ( sigB ) goto propagateNaN;
-                uiZ = packToF16UI( signZ, 0x1F, 0 );
+             *----------------------------------------------------------------*/
+            signZ = !signZ;
+            if (expB == 0x1F) {
+                if (sigB)
+                    goto propagateNaN;
+                uiZ = packToF16UI(signZ, 0x1F, 0);
                 goto uiZ;
             }
-            if ( expDiff <= -13 ) {
-                uiZ = packToF16UI( signZ, expB, sigB );
-                if ( expA | sigA ) goto subEpsilon;
+            if (expDiff <= -13) {
+                uiZ = packToF16UI(signZ, expB, sigB);
+                if (expA | sigA)
+                    goto subEpsilon;
                 goto uiZ;
             }
             expZ = expA + 19;
@@ -120,68 +121,63 @@ float16_t softfloat_subMagsF16( uint_fast16_t uiA, uint_fast16_t uiB )
             expDiff = -expDiff;
         } else {
             /*----------------------------------------------------------------
-            *----------------------------------------------------------------*/
+             *----------------------------------------------------------------*/
             uiZ = uiA;
-            if ( expA == 0x1F ) {
-                if ( sigA ) goto propagateNaN;
+            if (expA == 0x1F) {
+                if (sigA)
+                    goto propagateNaN;
                 goto uiZ;
             }
-            if ( 13 <= expDiff ) {
-                if ( expB | sigB ) goto subEpsilon;
+            if (13 <= expDiff) {
+                if (expB | sigB)
+                    goto subEpsilon;
                 goto uiZ;
             }
             expZ = expB + 19;
             sigX = sigA | 0x0400;
             sigY = sigB + (expB ? 0x0400 : sigB);
         }
-        sig32Z = ((uint_fast32_t) sigX<<expDiff) - sigY;
-        shiftDist = softfloat_countLeadingZeros32( sig32Z ) - 1;
+        sig32Z = ((uint_fast32_t)sigX << expDiff) - sigY;
+        shiftDist = softfloat_countLeadingZeros32(sig32Z) - 1;
         sig32Z <<= shiftDist;
         expZ -= shiftDist;
-        sigZ = sig32Z>>16;
-        if ( sig32Z & 0xFFFF ) {
+        sigZ = sig32Z >> 16;
+        if (sig32Z & 0xFFFF) {
             sigZ |= 1;
         } else {
-            if ( ! (sigZ & 0xF) && ((unsigned int) expZ < 0x1E) ) {
+            if (!(sigZ & 0xF) && ((unsigned int)expZ < 0x1E)) {
                 sigZ >>= 4;
                 goto pack;
             }
         }
-        return softfloat_roundPackToF16( signZ, expZ, sigZ );
+        return softfloat_roundPackToF16(signZ, expZ, sigZ);
     }
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
- propagateNaN:
-    uiZ = softfloat_propagateNaNF16UI( uiA, uiB );
+     *------------------------------------------------------------------------*/
+propagateNaN:
+    uiZ = softfloat_propagateNaNF16UI(uiA, uiB);
     goto uiZ;
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
- subEpsilon:
-    roundingMode = softfloat_roundingMode;
-    if ( roundingMode != softfloat_round_near_even ) {
-        if (
-            (roundingMode == softfloat_round_minMag)
-                || (roundingMode
-                        == (signF16UI( uiZ ) ? softfloat_round_max
-                                : softfloat_round_min))
-        ) {
+     *------------------------------------------------------------------------*/
+subEpsilon:
+    roundingMode = softfloat_getRoundingMode();
+    if (roundingMode != softfloat_round_near_even) {
+        if ((roundingMode == softfloat_round_minMag) || (roundingMode == (signF16UI(uiZ) ? softfloat_round_max : softfloat_round_min))) {
             --uiZ;
         }
 #ifdef SOFTFLOAT_ROUND_ODD
-        else if ( roundingMode == softfloat_round_odd ) {
+        else if (roundingMode == softfloat_round_odd) {
             uiZ = (uiZ - 1) | 1;
         }
 #endif
     }
-    softfloat_exceptionFlags |= softfloat_flag_inexact;
+    softfloat_raiseFlags(softfloat_flag_inexact);
     goto uiZ;
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
- pack:
-    uiZ = packToF16UI( signZ, expZ, sigZ );
- uiZ:
+     *------------------------------------------------------------------------*/
+pack:
+    uiZ = packToF16UI(signZ, expZ, sigZ);
+uiZ:
     uZ.ui = uiZ;
     return uZ.f;
-
 }
-

@@ -54,9 +54,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ui32_fromPosOverflow 0xFFFFFFFF
 #define ui32_fromNegOverflow 0
 #define ui32_fromNaN         0xFFFFFFFF
-#define i32_fromPosOverflow  0x7FFFFFFF
+#define i32_fromPosOverflow  (-0x7FFFFFFF - 1)
 #define i32_fromNegOverflow  (-0x7FFFFFFF - 1)
-#define i32_fromNaN          0x7FFFFFFF
+#define i32_fromNaN          (-0x7FFFFFFF - 1)
 
 /*----------------------------------------------------------------------------
 | The values to return on conversions to 64-bit integer formats that raise an
@@ -65,9 +65,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ui64_fromPosOverflow UINT64_C( 0xFFFFFFFFFFFFFFFF )
 #define ui64_fromNegOverflow 0
 #define ui64_fromNaN         UINT64_C( 0xFFFFFFFFFFFFFFFF )
-#define i64_fromPosOverflow  INT64_C( 0x7FFFFFFFFFFFFFFF )
+#define i64_fromPosOverflow  (-INT64_C( 0x7FFFFFFFFFFFFFFF ) - 1)
 #define i64_fromNegOverflow  (-INT64_C( 0x7FFFFFFFFFFFFFFF ) - 1)
-#define i64_fromNaN          INT64_C( 0x7FFFFFFFFFFFFFFF )
+#define i64_fromNaN          (-INT64_C( 0x7FFFFFFFFFFFFFFF ) - 1)
 
 /*----------------------------------------------------------------------------
 | "Common NaN" structure, used to transfer NaN representations from one format

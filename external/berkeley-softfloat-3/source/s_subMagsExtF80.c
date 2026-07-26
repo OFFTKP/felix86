@@ -36,20 +36,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "platform.h"
 #include "internals.h"
-#include "specialize.h"
+#include "platform.h"
 #include "softfloat.h"
+#include "specialize.h"
 
-extFloat80_t
- softfloat_subMagsExtF80(
-     uint_fast16_t uiA64,
-     uint_fast64_t uiA0,
-     uint_fast16_t uiB64,
-     uint_fast64_t uiB0,
-     bool signZ
- )
-{
+extFloat80_t softfloat_subMagsExtF80(uint_fast16_t uiA64, uint_fast64_t uiA0, uint_fast16_t uiB64, uint_fast64_t uiB0, bool signZ) {
     int_fast32_t expA;
     uint_fast64_t sigA;
     int_fast32_t expB;
@@ -60,99 +52,106 @@ extFloat80_t
     int_fast32_t expZ;
     uint_fast64_t sigExtra;
     struct uint128 sig128, uiZ;
-    union { struct extFloat80M s; extFloat80_t f; } uZ;
+    union {
+        struct extFloat80M s;
+        extFloat80_t f;
+    } uZ;
 
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
-    expA = expExtF80UI64( uiA64 );
+     *------------------------------------------------------------------------*/
+    expA = expExtF80UI64(uiA64);
     sigA = uiA0;
-    expB = expExtF80UI64( uiB64 );
+    expB = expExtF80UI64(uiB64);
     sigB = uiB0;
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
+     *------------------------------------------------------------------------*/
     expDiff = expA - expB;
-    if ( 0 < expDiff ) goto expABigger;
-    if ( expDiff < 0 ) goto expBBigger;
-    if ( expA == 0x7FFF ) {
-        if ( (sigA | sigB) & UINT64_C( 0x7FFFFFFFFFFFFFFF ) ) {
+    if (0 < expDiff)
+        goto expABigger;
+    if (expDiff < 0)
+        goto expBBigger;
+    if (expA == 0x7FFF) {
+        if ((sigA | sigB) & UINT64_C(0x7FFFFFFFFFFFFFFF)) {
             goto propagateNaN;
         }
-        softfloat_raiseFlags( softfloat_flag_invalid );
+        softfloat_raiseFlags(softfloat_flag_invalid);
         uiZ64 = defaultNaNExtF80UI64;
-        uiZ0  = defaultNaNExtF80UI0;
+        uiZ0 = defaultNaNExtF80UI0;
         goto uiZ;
     }
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
+     *------------------------------------------------------------------------*/
     expZ = expA;
-    if ( ! expZ ) expZ = 1;
+    if (!expZ)
+        expZ = 1;
     sigExtra = 0;
-    if ( sigB < sigA ) goto aBigger;
-    if ( sigA < sigB ) goto bBigger;
-    uiZ64 =
-        packToExtF80UI64( (softfloat_roundingMode == softfloat_round_min), 0 );
+    if (sigB < sigA)
+        goto aBigger;
+    if (sigA < sigB)
+        goto bBigger;
+    uiZ64 = packToExtF80UI64((softfloat_getRoundingMode() == softfloat_round_min), 0);
     uiZ0 = 0;
     goto uiZ;
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
- expBBigger:
-    if ( expB == 0x7FFF ) {
-        if ( sigB & UINT64_C( 0x7FFFFFFFFFFFFFFF ) ) goto propagateNaN;
-        uiZ64 = packToExtF80UI64( signZ ^ 1, 0x7FFF );
-        uiZ0  = UINT64_C( 0x8000000000000000 );
+     *------------------------------------------------------------------------*/
+expBBigger:
+    if (expB == 0x7FFF) {
+        if (sigB & UINT64_C(0x7FFFFFFFFFFFFFFF))
+            goto propagateNaN;
+        uiZ64 = packToExtF80UI64(signZ ^ 1, 0x7FFF);
+        uiZ0 = UINT64_C(0x8000000000000000);
         goto uiZ;
     }
-    if ( ! expA ) {
+    if (!expA) {
         ++expDiff;
         sigExtra = 0;
-        if ( ! expDiff ) goto newlyAlignedBBigger;
+        if (!expDiff)
+            goto newlyAlignedBBigger;
     }
-    sig128 = softfloat_shiftRightJam128( sigA, 0, -expDiff );
+    sig128 = softfloat_shiftRightJam128(sigA, 0, -expDiff);
     sigA = sig128.v64;
     sigExtra = sig128.v0;
- newlyAlignedBBigger:
+newlyAlignedBBigger:
     expZ = expB;
- bBigger:
-    signZ = ! signZ;
-    sig128 = softfloat_sub128( sigB, 0, sigA, sigExtra );
+bBigger:
+    signZ = !signZ;
+    sig128 = softfloat_sub128(sigB, 0, sigA, sigExtra);
     goto normRoundPack;
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
- expABigger:
-    if ( expA == 0x7FFF ) {
-        if ( sigA & UINT64_C( 0x7FFFFFFFFFFFFFFF ) ) goto propagateNaN;
+     *------------------------------------------------------------------------*/
+expABigger:
+    if (expA == 0x7FFF) {
+        if (sigA & UINT64_C(0x7FFFFFFFFFFFFFFF))
+            goto propagateNaN;
         uiZ64 = uiA64;
-        uiZ0  = uiA0;
+        uiZ0 = uiA0;
         goto uiZ;
     }
-    if ( ! expB ) {
+    if (!expB) {
         --expDiff;
         sigExtra = 0;
-        if ( ! expDiff ) goto newlyAlignedABigger;
+        if (!expDiff)
+            goto newlyAlignedABigger;
     }
-    sig128 = softfloat_shiftRightJam128( sigB, 0, expDiff );
+    sig128 = softfloat_shiftRightJam128(sigB, 0, expDiff);
     sigB = sig128.v64;
     sigExtra = sig128.v0;
- newlyAlignedABigger:
+newlyAlignedABigger:
     expZ = expA;
- aBigger:
-    sig128 = softfloat_sub128( sigA, 0, sigB, sigExtra );
+aBigger:
+    sig128 = softfloat_sub128(sigA, 0, sigB, sigExtra);
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
- normRoundPack:
-    return
-        softfloat_normRoundPackToExtF80(
-            signZ, expZ, sig128.v64, sig128.v0, extF80_roundingPrecision );
+     *------------------------------------------------------------------------*/
+normRoundPack:
+    return softfloat_normRoundPackToExtF80(signZ, expZ, sig128.v64, sig128.v0, softfloat_getRoundPrecision());
     /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
- propagateNaN:
-    uiZ = softfloat_propagateNaNExtF80UI( uiA64, uiA0, uiB64, uiB0 );
+     *------------------------------------------------------------------------*/
+propagateNaN:
+    uiZ = softfloat_propagateNaNExtF80UI(uiA64, uiA0, uiB64, uiB0);
     uiZ64 = uiZ.v64;
-    uiZ0  = uiZ.v0;
- uiZ:
+    uiZ0 = uiZ.v0;
+uiZ:
     uZ.s.signExp = uiZ64;
-    uZ.s.signif  = uiZ0;
+    uZ.s.signif = uiZ0;
     return uZ.f;
-
 }
-
