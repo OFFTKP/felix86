@@ -11672,6 +11672,14 @@ FAST_HANDLE(FSTP) {
     rec.popX87();
 }
 
+FAST_HANDLE(FBLD) {
+    ERROR("FBLD is unimplemented for reduced precision");
+}
+
+FAST_HANDLE(FBSTP) {
+    ERROR("FBSTP is unimplemented for reduced precision");
+}
+
 FAST_HANDLE(FADD) {
     OP(&Assembler::FADD_D, rec, as, instruction, operands, false);
 }
@@ -12633,6 +12641,10 @@ X87_HANDLE(FISTP);
 X87_HANDLE(FISTTP);
 
 X87_HANDLE(FCHS);
+
+X87_HANDLE(FBLD);
+
+X87_HANDLE(FBSTP);
 
 void FCMOV_80(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, biscuit::GPR cond) {
     biscuit::GPR temp1 = rec.scratch();

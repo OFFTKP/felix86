@@ -237,6 +237,8 @@ typedef enum : u8 {
     X(felix86_x87_FFREEP)                                                                                                                            \
     X(felix86_x87_FINCSTP)                                                                                                                           \
     X(felix86_x87_FDECSTP)                                                                                                                           \
+    X(felix86_x87_FBLD)                                                                                                                              \
+    X(felix86_x87_FBSTP)                                                                                                                             \
     X(felix86_x87_FXAM)                                                                                                                              \
     X(felix86_exit_dispatcher)
 

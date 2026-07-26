@@ -782,3 +782,40 @@ void felix86_x87_FXAM(ThreadState* state) {
     state->ctx.fpu_sw |= c2 ? C2_BIT : 0;
     state->ctx.fpu_sw |= c3 ? C3_BIT : 0;
 }
+
+void felix86_x87_FBLD(ThreadState* state, extFloat80_t* mem, int) {
+    bool sign = mem->signExp & 0x8000;
+    i64 val = 0;
+    for (int i = 0; i < 9; i++) {
+        val *= 100;
+        u8 byte;
+        memcpy(&byte, (u8*)mem + (8 - i), 1);
+        val += (byte >> 4) * 10;
+        val += byte & 0xF;
+    }
+    if (sign) {
+        val = -val;
+    }
+    extFloat80_t result;
+    i64_to_extF80M(val, &result);
+    push(state, &result);
+}
+
+void felix86_x87_FBSTP(ThreadState* state, extFloat80_t* mem, int) {
+    extFloat80_t* st0 = (extFloat80_t*)&state->ctx.st[state->ctx.fpu_top];
+    extFloat80_t rounded;
+    extF80M_roundToInt(st0, softfloat_getRoundingMode(), false, &rounded);
+    bool sign = rounded.signExp & 0x8000;
+    rounded.signExp &= ~0x8000;
+    u8* result = (u8*)mem;
+    u64 value = extF80M_to_i64(&rounded, softfloat_getRoundingMode(), false);
+    for (int i = 0; i < 9; i++) {
+        u8 byte = value % 100;
+        u8 high = byte / 10;
+        u8 low = byte % 10;
+        result[i] = (high << 4) | low;
+        value /= 100;
+    }
+    result[9] = sign ? 0x80 : 0x00;
+    pop(state);
+}
