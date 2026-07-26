@@ -18,6 +18,7 @@
 #define ANSI_COLOR_BLACK_ON_CYAN "\x1b[30;106m"
 #define ANSI_COLOR_BLACK_ON_GREEN "\x1b[30;42m"
 #define ANSI_COLOR_BLACK_ON_ORANGE "\x1b[30;43m"
+#define ANSI_COLOR_BLACK_ON_RED "\x1b[30;41m"
 #define ANSI_COLOR_BLACK_ON_PINK "\x1b[30;45m"
 #define ANSI_COLOR_BLACK_ON_WHITE "\x1b[30;47m"
 
@@ -85,8 +86,15 @@ private:
 
 #define ERROR(format, ...)                                                                                                                           \
     do {                                                                                                                                             \
-        Logger::log(ANSI_COLOR_RED "%s:%d (Thread: %d) " format ANSI_COLOR_RESET "\n", __FILENAME__, __LINE__, gettid(), ##__VA_ARGS__);             \
+        Logger::log(ANSI_COLOR_BLACK_ON_RED "%s:%d (Thread: %d) " format ANSI_COLOR_RESET "\n", __FILENAME__, __LINE__, gettid(), ##__VA_ARGS__);    \
         felix86_exit(1);                                                                                                                             \
+    } while (0)
+
+#define IMPORTANT(format, ...)                                                                                                                       \
+    do {                                                                                                                                             \
+        if (!g_config.quiet) {                                                                                                                       \
+            Logger::log(ANSI_COLOR_RED format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                                \
+        }                                                                                                                                            \
     } while (0)
 
 #define WARN(format, ...)                                                                                                                            \
