@@ -522,7 +522,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
         g_process_globals.perf->addToFile(block_meta.host_address, size, "guest " + symbol.filename().string());
     }
 
-    return start;
+    return block_meta.host_address;
 }
 
 void Recompiler::insertSafepoint() {
