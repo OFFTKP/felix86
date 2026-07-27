@@ -306,7 +306,12 @@ void felix86_iret(struct ThreadState* state, bool iretq) {
     u64 mask = 0x3F7BD7;
     rflags &= mask;
     rflags |= 0b10;
+    bool old_tf = state->GetFlag(X86_REF_TF);
     state->ctx.SetFlags(rflags);
+    bool tf = state->GetFlag(X86_REF_TF);
+    if (tf != old_tf) {
+        felix86_tf_changed(state, tf);
+    }
     state->SetRip(rip);
     cs &= 0xFFFF;
     felix86_set_segment(state, cs, ZYDIS_REGISTER_CS);
