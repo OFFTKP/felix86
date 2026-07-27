@@ -43,19 +43,18 @@ int FD::close_range(u32 start, u32 end, int flags) {
     u32 current_start = start;
     auto guard = g_process_globals.states_lock.lock();
     for (u32 protected_fd : g_protected_fds) {
-        if (protected_fd == current_start) {
-            // Skip this fd
+        if (protected_fd < current_start) {
+            continue;
+        } else if (protected_fd > end) {
+            break;
+        } else if (protected_fd == current_start) {
             WARN("Program tried to close one of our fds: %d", protected_fd);
             current_start++;
             continue;
-        } else if (protected_fd < current_start) {
-            continue;
-        } else if (protected_fd > current_start) {
-            // Close until fd - 1 and set next start to fd + 1
+        } else {
             WARN("Program tried to close one of our fds: %d", protected_fd);
             int result = ::close_range(current_start, protected_fd - 1, flags);
             if (result != 0) {
-                // Kernel gave us an error, return the code now
                 return result;
             }
             current_start = protected_fd + 1;

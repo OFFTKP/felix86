@@ -700,7 +700,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         if (g_config.calltrace_on_exit) {
             dump_states();
         }
-        LOG("Process %d called exit_group", gettid());
+        LOG("Process %d called exit_group(%d)", gettid(), arg1);
         SYSCALL(exit_group, arg1);
         UNREACHABLE();
         break;
@@ -1076,7 +1076,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         if (g_config.calltrace_on_exit) {
             dump_states();
         }
-        LOG("Thread %ld exited with SYS_exit", gettid());
+        LOG("Thread %ld exited with SYS_exit(%d)", gettid(), arg1);
         if (state->clear_tid_address) {
             __atomic_store_n(state->clear_tid_address, 0, __ATOMIC_SEQ_CST);
             syscall(SYS_futex, state->clear_tid_address, FUTEX_WAKE, ~0ULL, 0, 0, 0);
