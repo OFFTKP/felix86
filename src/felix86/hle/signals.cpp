@@ -534,6 +534,8 @@ static void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state
     frame->uc.uc_mcontext.gregs[REG_R13] = state->GetGpr(X86_REF_R13);
     frame->uc.uc_mcontext.gregs[REG_R14] = state->GetGpr(X86_REF_R14);
     frame->uc.uc_mcontext.gregs[REG_R15] = state->GetGpr(X86_REF_R15);
+    u64 csgsfs = (u64)state->ctx.cs | ((u64)state->ctx.gs << 16) | ((u64)state->ctx.fs << 32) | ((u64)state->ctx.ss << 48);
+    frame->uc.uc_mcontext.gregs[REG_CSGSFS] = csgsfs;
     frame->uc.uc_mcontext.gregs[REG_RIP] = state->GetRip();
     frame->uc.uc_mcontext.gregs[REG_EFL] = state->GetFlags();
     frame->uc.uc_mcontext.gregs[REG_TRAPNO] = get_reg_trapno(get_pc(host_context), sig, guest_info, host_context);
@@ -808,15 +810,16 @@ static void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state
 
 static void setupFrame(RegisteredSignal& signal, int sig, ThreadState* state, siginfo_t* guest_info, ucontext_t* host_context) {
     VERBOSE("Preparing frame for sig %d with si_code=%d", sig, guest_info->si_code);
-    if (!state->ctx.Mode32()) {
-        return setupFrame_x64(signal, sig, state, guest_info, host_context);
+    if (!signal.mode32) {
+        setupFrame_x64(signal, sig, state, guest_info, host_context);
     } else {
         if (signal.flags & SA_SIGINFO) {
-            return setupFrame_x86_rt(signal, sig, state, guest_info, host_context);
+            setupFrame_x86_rt(signal, sig, state, guest_info, host_context);
         } else {
-            return setupFrame_x86(signal, sig, state, guest_info, host_context);
+            setupFrame_x86(signal, sig, state, guest_info, host_context);
         }
     }
+    state->ctx.cs = signal.mode32 ? 0x23 : 0x33;
 }
 
 static void restore_sigcontext_32(ThreadState* state, x86_sigcontext_32* ctx) {
@@ -914,6 +917,10 @@ void Signals::sigreturn(ThreadState* state, bool rt) {
         state->SetGpr(X86_REF_R14, frame->uc.uc_mcontext.gregs[REG_R14]);
         state->SetGpr(X86_REF_R15, frame->uc.uc_mcontext.gregs[REG_R15]);
         state->SetRip(frame->uc.uc_mcontext.gregs[REG_RIP]);
+
+        u64 csgsfs = frame->uc.uc_mcontext.gregs[REG_CSGSFS];
+        state->ctx.cs = csgsfs & 0xFFFF;
+        state->ctx.ss = (csgsfs >> 48) & 0xFFFF;
 
         SIGLOG("------- 64-bit rt_sigreturn TID: %d returning to RIP=%lx -------", gettid(), state->GetRip());
 
@@ -1645,7 +1652,7 @@ void Signals::initialize() {
 void Signals::registerSignalHandler(ThreadState* state, int sig, u64 handler, u64 mask, int flags, u64 restorer) {
     ASSERT(sig >= 1 && sig <= 64);
 
-    SignalHandlerTable::registerSignal(state->signal_table, sig, handler, mask, flags, restorer);
+    SignalHandlerTable::registerSignal(state, sig, handler, mask, flags, restorer);
 
     // If not SIG_DFL or SIG_IGN, register the host signal handler to capture the signal
     // If SIG_DFL or SIG_IGN, we want to passthrough the handler to the kernel

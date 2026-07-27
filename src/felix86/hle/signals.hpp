@@ -20,6 +20,7 @@ struct RegisteredSignal {
     u64 mask; // blocked during execution of this handler
     int flags;
     u64 restorer; // for 32-bit apps
+    bool mode32;
 };
 
 struct riscv_sigaction {
@@ -54,7 +55,8 @@ struct SignalHandlerTable {
         return &table->table[sig];
     }
 
-    static void registerSignal(SignalHandlerTable* table, int sig, u64 func, u64 mask, int flags, u64 restorer) {
+    static void registerSignal(ThreadState* state, int sig, u64 func, u64 mask, int flags, u64 restorer) {
+        SignalHandlerTable* table = state->signal_table;
         ASSERT(sig != SIGKILL && sig != SIGSTOP);
         sig -= 1;
         ASSERT(sig >= 0 && sig <= 63);
@@ -62,6 +64,7 @@ struct SignalHandlerTable {
         table->table[sig].mask = mask;
         table->table[sig].func = func;
         table->table[sig].restorer = restorer;
+        table->table[sig].mode32 = state->ctx.Mode32();
     }
 
     RegisteredSignal table[64];
@@ -72,7 +75,7 @@ static_assert(offsetof(RegisteredSignal, func) == 0);
 static_assert(offsetof(RegisteredSignal, mask) == 8);
 static_assert(offsetof(RegisteredSignal, flags) == 16);
 static_assert(offsetof(RegisteredSignal, restorer) == 24);
-static_assert(sizeof(RegisteredSignal) == 32);
+static_assert(sizeof(RegisteredSignal) == 40);
 static_assert(sizeof(SignalHandlerTable) == sizeof(RegisteredSignal) * 64);
 
 struct BlockMetadata;

@@ -1243,7 +1243,7 @@ void felix86_set_segment(ThreadState* state, u64 value, int segment) {
         }
 
         if (old_cs != new_cs) {
-            WARN("Mode32 switched during %lx", state->ctx.rip);
+            VERBOSE("Mode32 switched during %lx", state->ctx.rip);
             // Technically there could be a code segment that runs on both 32-bit and 64-bit
             // and we'd need to clear the code cache on switch or have separate 32-bit and 64-bit
             // code caches to emulate it correctly. There's no known programs that do this
