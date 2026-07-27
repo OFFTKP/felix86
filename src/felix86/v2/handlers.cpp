@@ -12864,8 +12864,10 @@ FAST_HANDLE(INVLPG) {
     }
     case INVLPG_THUNK_CONSTRUCTOR: {
         u8* signature = (u8*)(rip + instruction.length + 1);
-        u64 pointers = (u64)signature + 4;
         ASSERT_MSG(*(u32*)signature == 0x12345678, "Signature check failed on library constructor");
+        u8* offset_addr = signature + 4;
+        i32 rel_offset = *(i32*)offset_addr;
+        u64 pointers = (u64)offset_addr + 4 + rel_offset;
         ASSERT_MSG((pointers & 0b111) == 0, "Pointer table not aligned?");
 
         const char* name = (const char*)*(u64*)pointers;

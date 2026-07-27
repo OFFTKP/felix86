@@ -33,6 +33,11 @@ __felix86_constructor:
 invlpg [rbx]
 ret
 dd 0x12345678 ; invlpg + ret are 4 bytes, four more here to align to pointer
+dd constructor_data - ($ + 4) ; RIP-relative offset to data table (avoids TEXTREL)
+
+section .data
+align 8
+constructor_data:
 dq libname
 ; Here follows the null terminated list of {const char*, void*} (names, functions)
 dq XGetVisualInfo_name
@@ -43,6 +48,8 @@ dq malloc_name
 dq malloc
 dq 0
 dq 0
+
+section .text
 
 global glXChooseVisual:function
 align 16
