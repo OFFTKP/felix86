@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
 
-# TODO: our thunk library logic causes relocations in .text
-# We need to rethink our constructor stuff to use a pointer to .data instead
 project(felix86-thunks C ASM_NASM)
 
 if (NOT CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")

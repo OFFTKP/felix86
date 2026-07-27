@@ -32,7 +32,7 @@ invlpg [rbx]
 ```
 Exists in the constructor, called when a library is loaded. Essentially notifies our recompiler that a library
 has been loaded, the name of the library follows after the RET (this time as a pointer for convenience), and after the name
-exists a null terminated list of {const char*, void*}, where the const char* is the name of a guest function and the void* is the pointer
+exists a pointer to a null terminated list of {const char*, void*}, where the const char* is the name of a guest function and the void* is the pointer
 to the function itself. This is because some times we wanna call guest code from host code to do some stuff.
 ```
 invlpg [rcx]
