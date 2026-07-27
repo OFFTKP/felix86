@@ -1742,6 +1742,26 @@ FAST_HANDLE(INSD) {
     rec.stopCompiling();
 }
 
+FAST_HANDLE(IN) {
+    WARN("Compiling IN instruction");
+    as.SD(x0, 0, x0);
+    as.SLTIU(x0, x0, FELIX86_HINT_GP);
+    // Unreachable
+    as.C_UNDEF();
+    as.C_UNDEF();
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(OUT) {
+    WARN("Compiling OUT instruction");
+    as.SD(x0, 0, x0);
+    as.SLTIU(x0, x0, FELIX86_HINT_GP);
+    // Unreachable
+    as.C_UNDEF();
+    as.C_UNDEF();
+    rec.stopCompiling();
+}
+
 FAST_HANDLE(UD2) {
     WARN_ONCE("UD2 instruction being compiled?");
     EmitUD(rec, as);
