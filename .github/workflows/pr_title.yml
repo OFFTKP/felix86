@@ -17,7 +17,9 @@ jobs:
 
           if ! echo "$PR_TITLE" | grep -qE '^[A-Za-z]+(, [A-Za-z]+)*: .+$'; then
             echo "PR title must be in the format 'Group: Message' (e.g. 'Linux: Fix syscall handling' or 'Linux, Recompiler: Implement feature')"
-            echo ""
+            echo "Current title: $PR_TITLE"
+            echo -n "In bytes: "
+            echo "$PR_TITLE" | hexdump -C
             echo "Valid scopes: $VALID_SCOPES"
             exit 1
           fi

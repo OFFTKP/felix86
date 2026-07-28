@@ -1015,12 +1015,54 @@ FAST_HANDLE(SUB) {
             break;
         }
         case 32: {
+            biscuit::Label loop, good_alignment, best_alignment, end;
+            biscuit::GPR masked_address = rec.scratch();
+            biscuit::GPR mask = rec.scratch();
+            biscuit::GPR s_a1 = rec.scratch();
+            as.LI(mask, 4);
+            as.ANDI(masked_address, address, 0b111);
+            as.BEQZ(masked_address, &best_alignment);
+            as.BLE(masked_address, mask, &good_alignment);
+            as.EBREAK();
+            as.C_UNDEF();
+            as.C_UNDEF();
+            as.Bind(&good_alignment);
+
+            biscuit::GPR s_a3 = mask;
+            biscuit::GPR s_a2 = rec.flag(X86_REF_CF); // ran out of scratch and these get modified later
+            biscuit::GPR s_a4 = rec.flag(X86_REF_SF);
+            biscuit::GPR s_a5 = rec.flag(X86_REF_ZF);
+            biscuit::GPR s_a6 = masked_address;
+            as.ANDI(s_a6, address, -8);
+            as.SLLI(address, address, 3);
+            as.LI(s_a3, 0xFFFF'FFFF);
+            as.SLL(s_a4, s_a3, address);
+            as.SLL(s_a1, src, address);
+            as.Bind(&loop);
+            as.LR_D(Ordering::AQRL, s_a5, s_a6);
+            as.SUB(s_a2, s_a5, s_a1);
+            as.XOR(s_a2, s_a2, s_a5);
+            as.AND(s_a2, s_a2, s_a4);
+            as.XOR(s_a2, s_a2, s_a5);
+            as.SC_D(Ordering::AQRL, s_a2, s_a2, s_a6);
+            as.BNEZ(s_a2, &loop);
+            as.SRL(dst, s_a5, address);
+            as.AND(dst, dst, s_a3);
+            as.J(&end);
+
+            rec.popScratch();
+            rec.popScratch();
+            rec.popScratch();
+            rec.setLockHandled();
+
+            as.Bind(&best_alignment);
             biscuit::GPR src_neg = rec.scratch();
             as.NEG(src_neg, src);
             as.AMOADD_W(Ordering::AQRL, dst, src_neg, address);
             rec.popScratch();
             rec.zext(dst, dst, X86_SIZE_DWORD); // AMOADD_W sign extends
             rec.setLockHandled();
+            as.Bind(&end);
             break;
         }
         case 64: {
