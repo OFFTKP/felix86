@@ -9000,3 +9000,5 @@ glWindowPos3svARB:
 invlpg [rax]
 db "glWindowPos3svARB", 0
 ret
+
+section .note.GNU-stack noalloc noexec nowrite progbits

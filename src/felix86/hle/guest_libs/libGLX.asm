@@ -390,3 +390,5 @@ __GLXGL_CORE_FUNCTIONS:
 
 section .init_array
     dq __felix86_constructor
+
+section .note.GNU-stack noalloc noexec nowrite progbits
