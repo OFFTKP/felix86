@@ -1010,3 +1010,5 @@ luaopen_base:
 invlpg [rax]
 db "luaopen_base", 0
 ret
+
+section .note.GNU-stack noalloc noexec nowrite progbits

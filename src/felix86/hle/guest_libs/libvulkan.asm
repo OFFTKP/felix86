@@ -2284,3 +2284,5 @@ ret
 
 section .init_array
     dq __felix86_constructor
+
+section .note.GNU-stack noalloc noexec nowrite progbits
