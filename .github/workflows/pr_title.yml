@@ -15,6 +15,11 @@ jobs:
         run: |
           VALID_SCOPES="Recompiler Linux Thunks Tests CI Chore Tools Common Meta"
 
+          if echo "$PR_TITLE" | grep -qE '^[[:space:]]'; then
+            echo "PR title has a leading space: '$PR_TITLE'"
+            exit 1
+          fi
+
           if ! echo "$PR_TITLE" | grep -qE '^[A-Za-z]+(, [A-Za-z]+)*: .+$'; then
             echo "PR title must be in the format 'Group: Message' (e.g. 'Linux: Fix syscall handling' or 'Linux, Recompiler: Implement feature')"
             echo ""
