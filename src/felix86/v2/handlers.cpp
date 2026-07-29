@@ -10012,6 +10012,9 @@ FAST_HANDLE(XADD_lock_8) {
     as.SRLW(src, src, address);
     as.ANDI(src, src, 0xFF);
 
+    rec.popScratch();
+    rec.popScratch();
+
     if (!g_config.noflag_opts || update_any) {
         biscuit::GPR result = rec.scratch();
         as.ADD(result, dst, src);
