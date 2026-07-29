@@ -9975,6 +9975,81 @@ FAST_HANDLE(WRGSBASE) {
     }
 }
 
+FAST_HANDLE(XADD_lock_8) {
+    bool update_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
+    bool update_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
+    bool update_af = rec.shouldEmitFlag(rip, X86_REF_AF);
+    bool update_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
+    bool update_of = rec.shouldEmitFlag(rip, X86_REF_OF);
+    bool update_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
+    bool update_any = update_af | update_cf | update_zf | update_pf | update_of | update_sf;
+
+    biscuit::GPR dst = rec.scratch();
+    biscuit::GPR src = rec.getGPR(&operands[1]);
+    biscuit::GPR address = rec.lea(&operands[0]);
+    biscuit::Label loop;
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR masked_address = rec.scratch();
+    biscuit::GPR temp = rec.scratch();
+
+    as.ANDI(masked_address, address, -4);
+    as.SLLI(address, address, 3);
+    as.LI(temp, 0xFF);
+    as.SLLW(temp, temp, address);
+    as.SLLW(src, src, address);
+
+    as.Bind(&loop);
+    as.LR_W(Ordering::AQRL, dst, masked_address);
+    as.ADD(result, dst, src);
+    as.XOR(result, result, dst);
+    as.AND(result, result, temp);
+    as.XOR(result, result, dst);
+    as.SC_W(Ordering::AQRL, result, result, masked_address);
+    as.BNEZ(result, &loop);
+
+    as.SRLW(dst, dst, address);
+    as.ANDI(dst, dst, 0xFF);
+    as.SRLW(src, src, address);
+    as.ANDI(src, src, 0xFF);
+
+    rec.popScratch();
+    rec.popScratch();
+
+    if (!g_config.noflag_opts || update_any) {
+        biscuit::GPR result = rec.scratch();
+        as.ADD(result, dst, src);
+
+        x86_size_e size = rec.getSize(&operands[0]);
+
+        if (update_cf) {
+            rec.updateCarryAdd(dst, result, size);
+        }
+
+        if (update_pf) {
+            rec.updateParity(result);
+        }
+
+        if (update_af) {
+            rec.updateAuxiliaryAdd(dst, result);
+        }
+
+        if (update_zf) {
+            rec.updateZero(result, size);
+        }
+
+        if (update_sf) {
+            rec.updateSign(result, size);
+        }
+
+        if (update_of) {
+            rec.updateOverflowAdd(dst, src, result, size);
+        }
+    }
+
+    rec.setGPR(&operands[1], dst);
+    rec.setLockHandled();
+}
+
 FAST_HANDLE(XADD_lock_32) {
     bool update_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
     bool update_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
@@ -10126,6 +10201,9 @@ FAST_HANDLE(XADD) {
     bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
     if (needs_atomic) {
         switch (instruction.operand_width) {
+        case 8: {
+            return fast_XADD_lock_8(rec, rip, as, instruction, operands);
+        }
         case 32: {
             return fast_XADD_lock_32(rec, rip, as, instruction, operands);
         }
