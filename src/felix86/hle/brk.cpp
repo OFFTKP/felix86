@@ -8,7 +8,7 @@
 #include "felix86/hle/mmap.hpp"
 
 void BRK::allocate(bool mode32) {
-    u64 initial_brk_size = 8 * 1024 * 1024;
+    u64 initial_brk_size = 0x1000;
 
     u64 base = g_program_end;
     base &= ~0xFFF;
