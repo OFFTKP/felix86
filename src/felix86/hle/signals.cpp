@@ -1622,8 +1622,14 @@ static void signal_handler(int sig, siginfo_t* info, void* ctx) {
             return prepare_synchronous_signal(state, sig, info, ctx, actual_rip);
         } else {
             AddressCacheEntry entry = state->recompiler->getAddressCacheEntry(state->ctx.rip);
-            ERROR("Synchronous signal %s with code %d but not in JIT code during RIP=%lx, PC=%lx, RA=%lx, address_cache entry: [%lx, %lx]",
-                  sigdescr_np(sig), info->si_code, state->ctx.rip, pc, get_regs(ctx)[1], entry.guest, entry.host);
+            if (!state->force_defer_synchronous) {
+                ERROR("Synchronous signal %s with code %d but not in JIT code during RIP=%lx, PC=%lx, RA=%lx, address_cache entry: [%lx, %lx]",
+                      sigdescr_np(sig), info->si_code, state->ctx.rip, pc, get_regs(ctx)[1], entry.guest, entry.host);
+            } else {
+                defer_signal(state, sig, info, ctx);
+                siglongjmp(state->force_defer_buffer, sig);
+                UNREACHABLE();
+            }
         }
     } else {
         defer_signal(state, sig, info, ctx);

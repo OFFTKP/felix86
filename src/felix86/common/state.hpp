@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <csetjmp>
 #include "biscuit/isa.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
@@ -370,6 +371,9 @@ struct ThreadState {
     void* deferred_fault_page = nullptr;
     bool in_restartable_syscall = false;
     bool should_restart_syscall = false;
+
+    bool force_defer_synchronous = false;
+    sigjmp_buf force_defer_buffer{};
 
     // For storing generated risc-v or x86 code that needs to outlive code cache clears
     u8* riscv_trampoline_storage_start = nullptr;
