@@ -411,7 +411,7 @@ static u32 get_reg_err(int sig, siginfo_t* info, ucontext_t* uctx) {
 // TODO: for synchronous signals like hlt/int3 etc. we need custom trapno/err
 static u32 get_reg_trapno(u64 host_pc, int sig, siginfo_t* info, ucontext_t* uctx) {
     // TODO: ugly hardcoding, make this better ...
-    if (info->si_code == TRAP_TRACE) {
+    if (info->si_code == TRAP_TRACE || info->si_code == TRAP_BRKPT) {
         return 1;
     }
 
@@ -1445,7 +1445,7 @@ static bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucon
     // Check the hint right after to make sure this is a hlt
     u32 next_instruction = *(((u32*)pc) + 1);
 
-    u32 expected_divzero, expected_int3, expected_ud2, expected_gp, expected_tf;
+    u32 expected_divzero, expected_int3, expected_int1, expected_ud2, expected_gp, expected_tf;
     {
         Assembler tas2((u8*)&expected_divzero, sizeof(u32));
         tas2.SLTIU(x0, x0, FELIX86_HINT_DIVZERO);
@@ -1453,6 +1453,10 @@ static bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucon
     {
         Assembler tas2((u8*)&expected_int3, sizeof(u32));
         tas2.SLTIU(x0, x0, FELIX86_HINT_INT3);
+    }
+    {
+        Assembler tas2((u8*)&expected_int1, sizeof(u32));
+        tas2.SLTIU(x0, x0, FELIX86_HINT_INT1);
     }
     {
         Assembler tas2((u8*)&expected_ud2, sizeof(u32));
@@ -1490,6 +1494,12 @@ static bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucon
         info->si_addr = nullptr;
         SIGLOG("Hit INT3 instruction");
         // The stop happens after the INT3 instruction in x86
+        actual_rip += 1;
+    } else if (next_instruction == expected_int1) {
+        sig = SIGTRAP;
+        info->si_code = TRAP_BRKPT;
+        info->si_addr = nullptr;
+        SIGLOG("Hit INT1 instruction");
         actual_rip += 1;
     } else if (next_instruction == expected_ud2) {
         sig = SIGILL;
