@@ -83,7 +83,25 @@ static void pop(ThreadState* state) {
     state->ctx.fpu_top = top;
 }
 
-static void fpu_operation(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs, int size, arithmetic_func_t operation, bool reverse) {
+[[nodiscard]] static bool safe_memcpy(void* dst, void* src, size_t size) {
+    ThreadState* state = ThreadState::Get();
+    state->force_defer_synchronous = true;
+    int ret = sigsetjmp(state->force_defer_buffer, 1);
+    if (ret == 0) {
+        memcpy(dst, src, size);
+        asm volatile("" ::: "memory");
+        state->force_defer_synchronous = false;
+        return true;
+    } else {
+        // A signal happened during the memcpy and it was deferred, return false to return out of the function
+        WARN("Signal %d happened during x87 function", ret);
+        state->force_defer_synchronous = false;
+        return false;
+    }
+}
+
+[[nodiscard]] static bool fpu_operation(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs, int size, arithmetic_func_t operation,
+                                        bool reverse) {
     PrecisionGuard guard(state);
     if (size == 0) {
         checkReg(state, lhs);
@@ -96,12 +114,25 @@ static void fpu_operation(ThreadState* state, extFloat80_t* lhs, extFloat80_t* r
     } else {
         extFloat80_t f80storage;
         extFloat80_t* f80p = &f80storage;
-        if (size == 0 /* reg */ || size == 80) {
-            f80p = lhs;
+        if (size == 80) {
+            bool read = safe_memcpy(f80p, lhs, sizeof(Float80));
+            if (!read) {
+                return false;
+            }
         } else if (size == 64) {
-            f64_to_extF80M(*(float64_t*)lhs, f80p);
+            float64_t f64;
+            bool read = safe_memcpy(&f64, lhs, sizeof(float64_t));
+            if (!read) {
+                return false;
+            }
+            f64_to_extF80M(f64, f80p);
         } else if (size == 32) {
-            f32_to_extF80M(*(float32_t*)lhs, f80p);
+            float32_t f32;
+            bool read = safe_memcpy(&f32, lhs, sizeof(float32_t));
+            if (!read) {
+                return false;
+            }
+            f32_to_extF80M(f32, f80p);
         } else {
             UNREACHABLE();
         }
@@ -112,18 +143,28 @@ static void fpu_operation(ThreadState* state, extFloat80_t* lhs, extFloat80_t* r
             operation(rhs, f80p, rhs);
         }
     }
+    return true;
 }
 
-static void fpu_operation_integer(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs, int size, arithmetic_func_t operation, bool reverse) {
+static bool fpu_operation_integer(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs, int size, arithmetic_func_t operation, bool reverse) {
     PrecisionGuard guard(state);
     extFloat80_t f80storage;
     extFloat80_t* f80p = &f80storage;
     if (size == 16) {
-        i16 num = *(i16*)lhs;
+        i16 num;
+        bool read = safe_memcpy(&num, lhs, sizeof(i16));
+        if (!read) {
+            return false;
+        }
         i32 snum = num;
         i32_to_extF80M(snum, f80p);
     } else if (size == 32) {
-        i32_to_extF80M(*(i32*)lhs, f80p);
+        i32 num;
+        bool read = safe_memcpy(&num, lhs, sizeof(i32));
+        if (!read) {
+            return false;
+        }
+        i32_to_extF80M(num, f80p);
     } else {
         UNREACHABLE();
     }
@@ -133,17 +174,33 @@ static void fpu_operation_integer(ThreadState* state, extFloat80_t* lhs, extFloa
     } else {
         operation(rhs, f80p, rhs);
     }
+    return true;
 }
 
 void felix86_x87_FLD(ThreadState* state, extFloat80_t* mem, int size) {
     extFloat80_t f80storage;
     extFloat80_t* f80p = &f80storage;
-    if (size == 0 /* reg */ || size == 80) {
+    if (size == 0) {
         f80p = mem;
+    } else if (size == 80) {
+        bool read = safe_memcpy(f80p, mem, sizeof(Float80));
+        if (!read) {
+            return;
+        }
     } else if (size == 64) {
-        f64_to_extF80M(*(float64_t*)mem, f80p);
+        float64_t f64;
+        bool read = safe_memcpy(&f64, mem, sizeof(float64_t));
+        if (!read) {
+            return;
+        }
+        f64_to_extF80M(f64, f80p);
     } else if (size == 32) {
-        f32_to_extF80M(*(float32_t*)mem, f80p);
+        float32_t f32;
+        bool read = safe_memcpy(&f32, mem, sizeof(float32_t));
+        if (!read) {
+            return;
+        }
+        f32_to_extF80M(f32, f80p);
     } else {
         UNREACHABLE();
     }
@@ -153,11 +210,26 @@ void felix86_x87_FLD(ThreadState* state, extFloat80_t* mem, int size) {
 void felix86_x87_FILD(ThreadState* state, extFloat80_t* mem, int size) {
     extFloat80_t f80;
     if (size == 16) {
-        i32_to_extF80M(*(i16*)mem, &f80);
+        i16 num;
+        bool read = safe_memcpy(&num, mem, sizeof(i16));
+        if (!read) {
+            return;
+        }
+        i32_to_extF80M((i32)num, &f80);
     } else if (size == 64) {
-        i64_to_extF80M(*(i64*)mem, &f80);
+        i64 num;
+        bool read = safe_memcpy(&num, mem, sizeof(i64));
+        if (!read) {
+            return;
+        }
+        i64_to_extF80M(num, &f80);
     } else if (size == 32) {
-        i32_to_extF80M(*(i32*)mem, &f80);
+        i32 num;
+        bool read = safe_memcpy(&num, mem, sizeof(i32));
+        if (!read) {
+            return;
+        }
+        i32_to_extF80M(num, &f80);
     } else {
         UNREACHABLE();
     }
@@ -166,13 +238,19 @@ void felix86_x87_FILD(ThreadState* state, extFloat80_t* mem, int size) {
 
 #define COMMON_ARITHMETIC(name_lower, name_upper, reverse)                                                                                           \
     void felix86_x87_F##name_upper(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs, int size) {                                             \
-        fpu_operation(state, lhs, rhs, size, &extF80M_##name_lower, reverse);                                                                        \
+        if (!fpu_operation(state, lhs, rhs, size, &extF80M_##name_lower, reverse)) {                                                                 \
+            return;                                                                                                                                  \
+        }                                                                                                                                            \
     }                                                                                                                                                \
     void felix86_x87_FI##name_upper(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs, int size) {                                            \
-        fpu_operation_integer(state, lhs, rhs, size, &extF80M_##name_lower, reverse);                                                                \
+        if (!fpu_operation_integer(state, lhs, rhs, size, &extF80M_##name_lower, reverse)) {                                                         \
+            return;                                                                                                                                  \
+        }                                                                                                                                            \
     }                                                                                                                                                \
     void felix86_x87_F##name_upper##P(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs, int size) {                                          \
-        fpu_operation(state, lhs, rhs, size, &extF80M_##name_lower, reverse);                                                                        \
+        if (!fpu_operation(state, lhs, rhs, size, &extF80M_##name_lower, reverse)) {                                                                 \
+            return;                                                                                                                                  \
+        }                                                                                                                                            \
         pop(state);                                                                                                                                  \
     }
 
@@ -183,24 +261,38 @@ COMMON_ARITHMETIC(div, DIV, false);
 COMMON_ARITHMETIC(sub, SUBR, true);
 COMMON_ARITHMETIC(div, DIVR, true);
 
-void felix86_x87_FST(ThreadState* state, extFloat80_t* mem, int size) {
+[[nodiscard]] bool FST_common(ThreadState* state, extFloat80_t* mem, int size) {
     if (size == 0) {
         memcpy(mem, &state->ctx.st[state->ctx.fpu_top], sizeof(Float80));
         markRegFull(state, mem);
     } else if (size == 32) {
         float32_t f32 = extF80M_to_f32((extFloat80_t*)&state->ctx.st[state->ctx.fpu_top]);
-        memcpy(mem, &f32, sizeof(u32));
+        bool write = safe_memcpy(mem, &f32, sizeof(u32));
+        if (!write) {
+            return false;
+        }
     } else if (size == 64) {
         float64_t f64 = extF80M_to_f64((extFloat80_t*)&state->ctx.st[state->ctx.fpu_top]);
-        memcpy(mem, &f64, sizeof(u64));
+        bool write = safe_memcpy(mem, &f64, sizeof(u64));
+        if (!write) {
+            return false;
+        }
     } else if (size == 80) {
-        memcpy(mem, &state->ctx.st[state->ctx.fpu_top], sizeof(Float80));
+        bool write = safe_memcpy(mem, &state->ctx.st[state->ctx.fpu_top], sizeof(Float80));
+        if (!write) {
+            return false;
+        }
     } else {
         UNREACHABLE();
     }
+    return true;
 }
 
-static void FIST_80(ThreadState* state, extFloat80_t* mem, int size, u8 rounding_mode) {
+void felix86_x87_FST(ThreadState* state, extFloat80_t* mem, int size) {
+    (void)FST_common(state, mem, size);
+}
+
+[[nodiscard]] static bool FIST_common(ThreadState* state, extFloat80_t* mem, int size, u8 rounding_mode) {
     extFloat80_t* src = (extFloat80_t*)&state->ctx.st[state->ctx.fpu_top];
     if (size == 16) {
         i32 num = extF80M_to_i32(src, rounding_mode, false);
@@ -208,34 +300,53 @@ static void FIST_80(ThreadState* state, extFloat80_t* mem, int size, u8 rounding
             num = INT16_MIN;
             state->ctx.fpu_sw |= 1;
         }
-        memcpy(mem, &num, sizeof(u16));
+        bool write = safe_memcpy(mem, &num, sizeof(u16));
+        if (!write) {
+            return false;
+        }
     } else if (size == 32) {
         i32 num = extF80M_to_i32(src, rounding_mode, false);
-        memcpy(mem, &num, sizeof(u32));
+        bool write = safe_memcpy(mem, &num, sizeof(u32));
+        if (!write) {
+            return false;
+        }
     } else if (size == 64) {
         i64 num = extF80M_to_i64(src, rounding_mode, false);
-        memcpy(mem, &num, sizeof(u64));
+        bool write = safe_memcpy(mem, &num, sizeof(u64));
+        if (!write) {
+            return false;
+        }
     } else {
         UNREACHABLE();
     }
+    return true;
 }
 
 void felix86_x87_FIST(ThreadState* state, extFloat80_t* mem, int size) {
-    FIST_80(state, mem, size, softfloat_getRoundingMode());
+    (void)FIST_common(state, mem, size, softfloat_getRoundingMode());
 }
 
 void felix86_x87_FISTP(ThreadState* state, extFloat80_t* mem, int size) {
-    FIST_80(state, mem, size, softfloat_getRoundingMode());
+    bool success = FIST_common(state, mem, size, softfloat_getRoundingMode());
+    if (!success) {
+        return;
+    }
     pop(state);
 }
 
 void felix86_x87_FISTTP(ThreadState* state, extFloat80_t* mem, int size) {
-    FIST_80(state, mem, size, softfloat_round_minMag);
+    bool success = FIST_common(state, mem, size, softfloat_round_minMag);
+    if (!success) {
+        return;
+    }
     pop(state);
 }
 
 void felix86_x87_FSTP(ThreadState* state, extFloat80_t* mem, int size) {
-    felix86_x87_FST(state, mem, size);
+    bool success = FST_common(state, mem, size);
+    if (!success) {
+        return;
+    }
     pop(state);
 }
 
@@ -545,14 +656,24 @@ void felix86_x87_FCOMIP(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs
     pop(state);
 }
 
-void felix86_x87_FICOM(ThreadState* state, extFloat80_t* mem, int size) {
+[[nodiscard]] bool FICOM_common(ThreadState* state, extFloat80_t* mem, int size) {
     extFloat80_t* lhs = (extFloat80_t*)&state->ctx.st[state->ctx.fpu_top];
     extFloat80_t rhsstorage;
     extFloat80_t* rhs = &rhsstorage;
     if (size == 16) {
-        i32_to_extF80M(*(i16*)mem, rhs);
+        i16 num;
+        bool read = safe_memcpy(&num, mem, sizeof(i16));
+        if (!read) {
+            return false;
+        }
+        i32_to_extF80M(num, rhs);
     } else if (size == 32) {
-        i32_to_extF80M(*(i32*)mem, rhs);
+        i32 num;
+        bool read = safe_memcpy(&num, mem, sizeof(i32));
+        if (!read) {
+            return false;
+        }
+        i32_to_extF80M(num, rhs);
     } else {
         UNREACHABLE();
     }
@@ -583,10 +704,18 @@ void felix86_x87_FICOM(ThreadState* state, extFloat80_t* mem, int size) {
     state->ctx.fpu_sw |= c0 ? C0_BIT : 0;
     state->ctx.fpu_sw |= c2 ? C2_BIT : 0;
     state->ctx.fpu_sw |= c3 ? C3_BIT : 0;
+    return true;
+}
+
+void felix86_x87_FICOM(ThreadState* state, extFloat80_t* mem, int size) {
+    (void)FICOM_common(state, mem, size);
 }
 
 void felix86_x87_FICOMP(ThreadState* state, extFloat80_t* mem, int size) {
-    felix86_x87_FICOM(state, mem, size);
+    bool success = FICOM_common(state, mem, size);
+    if (!success) {
+        return;
+    }
     pop(state);
 }
 
@@ -784,12 +913,18 @@ void felix86_x87_FXAM(ThreadState* state) {
 }
 
 void felix86_x87_FBLD(ThreadState* state, extFloat80_t* mem, int) {
-    bool sign = mem->signExp & 0x8000;
+    extFloat80_t buffer;
+    bool copied = safe_memcpy(&buffer, mem, sizeof(extFloat80_t));
+    if (!copied) {
+        return;
+    }
+
+    bool sign = buffer.signExp & 0x8000;
     i64 val = 0;
     for (int i = 0; i < 9; i++) {
         val *= 100;
         u8 byte;
-        memcpy(&byte, (u8*)mem + (8 - i), 1);
+        memcpy(&byte, (u8*)&buffer + (8 - i), 1);
         val += (byte >> 4) * 10;
         val += byte & 0xF;
     }
@@ -802,12 +937,13 @@ void felix86_x87_FBLD(ThreadState* state, extFloat80_t* mem, int) {
 }
 
 void felix86_x87_FBSTP(ThreadState* state, extFloat80_t* mem, int) {
+    extFloat80_t buffer;
     extFloat80_t* st0 = (extFloat80_t*)&state->ctx.st[state->ctx.fpu_top];
     extFloat80_t rounded;
     extF80M_roundToInt(st0, softfloat_getRoundingMode(), false, &rounded);
     bool sign = rounded.signExp & 0x8000;
     rounded.signExp &= ~0x8000;
-    u8* result = (u8*)mem;
+    u8* result = (u8*)&buffer;
     u64 value = extF80M_to_i64(&rounded, softfloat_getRoundingMode(), false);
     for (int i = 0; i < 9; i++) {
         u8 byte = value % 100;
@@ -817,5 +953,9 @@ void felix86_x87_FBSTP(ThreadState* state, extFloat80_t* mem, int) {
         value /= 100;
     }
     result[9] = sign ? 0x80 : 0x00;
+    bool copied = safe_memcpy(mem, &buffer, sizeof(extFloat80_t));
+    if (!copied) {
+        return;
+    }
     pop(state);
 }

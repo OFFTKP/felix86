@@ -12603,6 +12603,8 @@ inline static void x87_Operation(Recompiler& rec, Assembler& as, ZydisDecodedIns
         // TODO: only restore if next instr isn't x87
         rec.restoreState();
     }
+
+    rec.insertSafepoint();
 }
 
 #define X87_HANDLE(name)                                                                                                                             \

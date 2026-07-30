@@ -1,6 +1,6 @@
 {
     "dcc3": {
-        "instruction_count": 73,
+        "instruction_count": 74,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -74,12 +74,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fadd st3, st0"
     },
     "d8c3": {
-        "instruction_count": 73,
+        "instruction_count": 74,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -153,12 +154,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fadd st0, st3"
     },
     "d807": {
-        "instruction_count": 68,
+        "instruction_count": 69,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -227,12 +229,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fadd [rdi]"
     },
     "dc07": {
-        "instruction_count": 68,
+        "instruction_count": 69,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -301,12 +304,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fadd [rdi]"
     },
     "dec3": {
-        "instruction_count": 73,
+        "instruction_count": 74,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -380,12 +384,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "faddp st3, st0"
     },
     "de07": {
-        "instruction_count": 68,
+        "instruction_count": 69,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -454,12 +459,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fiadd [rdi]"
     },
     "da07": {
-        "instruction_count": 68,
+        "instruction_count": 69,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -528,12 +534,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fiadd [rdi]"
     },
     "dceb": {
-        "instruction_count": 73,
+        "instruction_count": 74,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -607,12 +614,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fsub st3, st0"
     },
     "d8e3": {
-        "instruction_count": 73,
+        "instruction_count": 74,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -686,12 +694,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fsub st0, st3"
     },
     "d827": {
-        "instruction_count": 68,
+        "instruction_count": 69,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -760,12 +769,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fsub [rdi]"
     },
     "dc27": {
-        "instruction_count": 68,
+        "instruction_count": 69,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -834,12 +844,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fsub [rdi]"
     },
     "deeb": {
-        "instruction_count": 73,
+        "instruction_count": 74,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -913,12 +924,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fsubp st3, st0"
     },
     "de27": {
-        "instruction_count": 68,
+        "instruction_count": 69,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -987,12 +999,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fisub [rdi]"
     },
     "da27": {
-        "instruction_count": 68,
+        "instruction_count": 69,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -1061,12 +1074,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fisub [rdi]"
     },
     "dce3": {
-        "instruction_count": 73,
+        "instruction_count": 74,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -1140,12 +1154,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fsubr st3, st0"
     },
     "d8eb": {
-        "instruction_count": 73,
+        "instruction_count": 74,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -1219,12 +1234,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fsubr st0, st3"
     },
     "d82f": {
-        "instruction_count": 68,
+        "instruction_count": 69,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -1293,12 +1309,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fsubr [rdi]"
     },
     "dc2f": {
-        "instruction_count": 68,
+        "instruction_count": 69,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -1367,12 +1384,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fsubr [rdi]"
     },
     "dee3": {
-        "instruction_count": 73,
+        "instruction_count": 74,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -1446,12 +1464,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fsubrp st3, st0"
     },
     "de2f": {
-        "instruction_count": 68,
+        "instruction_count": 69,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -1520,12 +1539,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fisubr [rdi]"
     },
     "da2f": {
-        "instruction_count": 68,
+        "instruction_count": 69,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -1594,12 +1614,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fisubr [rdi]"
     },
     "dccb": {
-        "instruction_count": 73,
+        "instruction_count": 74,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -1673,12 +1694,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fmul st3, st0"
     },
     "d8cb": {
-        "instruction_count": 73,
+        "instruction_count": 74,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -1752,12 +1774,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fmul st0, st3"
     },
     "d80f": {
-        "instruction_count": 68,
+        "instruction_count": 69,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -1826,12 +1849,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fmul [rdi]"
     },
     "dc0f": {
-        "instruction_count": 68,
+        "instruction_count": 69,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -1900,12 +1924,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fmul [rdi]"
     },
     "decb": {
-        "instruction_count": 73,
+        "instruction_count": 74,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -1979,12 +2004,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fmulp st3, st0"
     },
     "da0f": {
-        "instruction_count": 68,
+        "instruction_count": 69,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -2053,12 +2079,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fimul [rdi]"
     },
     "de0f": {
-        "instruction_count": 68,
+        "instruction_count": 69,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -2127,12 +2154,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fimul [rdi]"
     },
     "dcfb": {
-        "instruction_count": 73,
+        "instruction_count": 74,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -2206,12 +2234,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fdiv st3, st0"
     },
     "d8f3": {
-        "instruction_count": 73,
+        "instruction_count": 74,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -2285,12 +2314,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fdiv st0, st3"
     },
     "d837": {
-        "instruction_count": 68,
+        "instruction_count": 69,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -2359,12 +2389,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fdiv [rdi]"
     },
     "dc37": {
-        "instruction_count": 68,
+        "instruction_count": 69,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -2433,12 +2464,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fdiv [rdi]"
     },
     "defb": {
-        "instruction_count": 73,
+        "instruction_count": 74,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -2512,12 +2544,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fdivp st3, st0"
     },
     "da37": {
-        "instruction_count": 68,
+        "instruction_count": 69,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -2586,12 +2619,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fidiv [rdi]"
     },
     "de37": {
-        "instruction_count": 68,
+        "instruction_count": 69,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -2660,12 +2694,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fidiv [rdi]"
     },
     "dcf3": {
-        "instruction_count": 73,
+        "instruction_count": 74,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -2739,12 +2774,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fdivr st3, st0"
     },
     "d8fb": {
-        "instruction_count": 73,
+        "instruction_count": 74,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -2818,12 +2854,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fdivr st0, st3"
     },
     "d83f": {
-        "instruction_count": 68,
+        "instruction_count": 69,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -2892,12 +2929,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fdivr [rdi]"
     },
     "dc3f": {
-        "instruction_count": 68,
+        "instruction_count": 69,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -2966,12 +3004,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fdivr [rdi]"
     },
     "def3": {
-        "instruction_count": 73,
+        "instruction_count": 74,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -3045,12 +3084,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fdivrp st3, st0"
     },
     "da3f": {
-        "instruction_count": 68,
+        "instruction_count": 69,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -3119,12 +3159,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fidivr [rdi]"
     },
     "de3f": {
-        "instruction_count": 68,
+        "instruction_count": 69,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -3193,12 +3234,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fidivr [rdi]"
     },
     "dbf3": {
-        "instruction_count": 73,
+        "instruction_count": 74,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -3272,12 +3314,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fcomi st0, st3"
     },
     "dff3": {
-        "instruction_count": 73,
+        "instruction_count": 74,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -3351,12 +3394,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fcomip st0, st3"
     },
     "dbeb": {
-        "instruction_count": 73,
+        "instruction_count": 74,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -3430,12 +3474,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fucomi st0, st3"
     },
     "dfeb": {
-        "instruction_count": 73,
+        "instruction_count": 74,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -3509,12 +3554,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fucomip st0, st3"
     },
     "df17": {
-        "instruction_count": 61,
+        "instruction_count": 62,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -3576,12 +3622,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fist [rdi]"
     },
     "db17": {
-        "instruction_count": 61,
+        "instruction_count": 62,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -3643,12 +3690,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fist [rdi]"
     },
     "df1f": {
-        "instruction_count": 61,
+        "instruction_count": 62,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -3710,12 +3758,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fistp [rdi]"
     },
     "db1f": {
-        "instruction_count": 61,
+        "instruction_count": 62,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -3777,12 +3826,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fistp [rdi]"
     },
     "df3f": {
-        "instruction_count": 61,
+        "instruction_count": 62,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -3844,12 +3894,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fistp [rdi]"
     },
     "df0f": {
-        "instruction_count": 61,
+        "instruction_count": 62,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -3911,12 +3962,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fisttp [rdi]"
     },
     "db0f": {
-        "instruction_count": 61,
+        "instruction_count": 62,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -3978,12 +4030,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fisttp [rdi]"
     },
     "dd0f": {
-        "instruction_count": 61,
+        "instruction_count": 62,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -4045,12 +4098,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t3, gp, 0x38c(908)",
             "CSRRW           zero, t3, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fisttp [rdi]"
     },
     "d9e1": {
-        "instruction_count": 58,
+        "instruction_count": 59,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -4109,12 +4163,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fabs"
     },
     "d9fe": {
-        "instruction_count": 58,
+        "instruction_count": 59,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -4173,12 +4228,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fsin"
     },
     "d9ff": {
-        "instruction_count": 58,
+        "instruction_count": 59,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -4237,12 +4293,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fcos"
     },
     "d9e8": {
-        "instruction_count": 58,
+        "instruction_count": 59,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -4301,12 +4358,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fld1"
     },
     "d9e9": {
-        "instruction_count": 58,
+        "instruction_count": 59,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -4365,12 +4423,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fldl2t"
     },
     "d9ea": {
-        "instruction_count": 58,
+        "instruction_count": 59,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -4429,12 +4488,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fldl2e"
     },
     "d9eb": {
-        "instruction_count": 58,
+        "instruction_count": 59,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -4493,12 +4553,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fldpi"
     },
     "d9ec": {
-        "instruction_count": 58,
+        "instruction_count": 59,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -4557,12 +4618,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fldlg2"
     },
     "d9ed": {
-        "instruction_count": 58,
+        "instruction_count": 59,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -4621,12 +4683,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fldln2"
     },
     "d9ee": {
-        "instruction_count": 58,
+        "instruction_count": 59,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -4685,12 +4748,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fldz"
     },
     "d9e0": {
-        "instruction_count": 58,
+        "instruction_count": 59,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -4749,12 +4813,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fchs"
     },
     "d9fc": {
-        "instruction_count": 58,
+        "instruction_count": 59,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -4813,12 +4878,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "frndint"
     },
     "d9f8": {
-        "instruction_count": 58,
+        "instruction_count": 59,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -4877,12 +4943,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fprem"
     },
     "d9fa": {
-        "instruction_count": 58,
+        "instruction_count": 59,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -4941,12 +5008,13 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fsqrt"
     },
     "d9cb": {
-        "instruction_count": 73,
+        "instruction_count": 74,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -5020,7 +5088,8 @@
             "LBU             s9, gp, 0x2dd(733)",
             "LBU             t1, gp, 0x38c(908)",
             "CSRRW           zero, t1, 0x2(2)",
-            "FENCE          "
+            "FENCE          ",
+            "SD              zero, gp, 0xfffffff8(-8)"
         ],
         "disassembly": "fxch st3"
     },
