@@ -114,9 +114,7 @@ static void pop(ThreadState* state) {
     } else {
         extFloat80_t f80storage;
         extFloat80_t* f80p = &f80storage;
-        if (size == 0) {
-            f80p = lhs;
-        } else if (size == 80) {
+        if (size == 80) {
             bool read = safe_memcpy(f80p, lhs, sizeof(Float80));
             if (!read) {
                 return false;
