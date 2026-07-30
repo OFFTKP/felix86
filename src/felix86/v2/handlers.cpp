@@ -12905,6 +12905,15 @@ FAST_HANDLE(INT3) {
     rec.stopCompiling();
 }
 
+FAST_HANDLE(INT1) {
+    WARN("INT1 encountered");
+    as.SD(x0, 0, x0);
+    as.SLTIU(x0, x0, FELIX86_HINT_INT1);
+    // Unreachable
+    as.C_UNDEF();
+    as.C_UNDEF();
+}
+
 FAST_HANDLE(INT) {
     ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE);
     if (operands[0].imm.value.u == 0x80) {
