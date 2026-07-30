@@ -706,7 +706,7 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
         }
 
         // Last instruction before block ends with a jumping instruction, flush x87
-        if (!current_block_big && current_instruction_index == instructions.size() - 1) {
+        if (!current_block_big && !is_single_step && current_instruction_index == instructions.size() - 1) {
             ASSERT(!is_mmx && !is_x87);
             resetScratch();
             flushX87();
