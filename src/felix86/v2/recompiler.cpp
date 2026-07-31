@@ -2707,9 +2707,12 @@ void Recompiler::jumpAndLink(u64 rip) {
 
         u64 offset = target - (u64)as.GetCursorPointer();
         if (IsValidJTypeImm(offset - 4)) {
-            // TODO: if falling through to block, replace jump with auipc+addi to t5
             as.NOP();
-            as.J(offset - 4);
+            if (offset - 4 == 4) {
+                as.NOP();
+            } else {
+                as.J(offset - 4);
+            }
         } else {
             // Too far for a regular jump, use AUIPC+JR
             ASSERT(IsValid2GBImm(offset));
