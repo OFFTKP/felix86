@@ -10,14 +10,14 @@ felix86 is a Linux userspace emulator that allows you to run x86 and x86-64 prog
 Run the following command:
 
 ```bash
-bash <(curl -s https://install.felix86.com)
+bash <(curl -fsSL https://install.felix86.com)
 ```
 
 This command downloads and runs a script which installs felix86 and a rootfs of your choice.
 
 Documentation for developers and users can be found here: https://felix86.com/docs
 
-Feel free to join our **Discord server**: [https://discord.gg/TgBxgFwByU](https://discord.gg/TgBxgFwByU)
+Feel free to join our **Discord server**: [https://discord.felix86.com](https://discord.felix86.com)
 
 ## Features
 - Just-in-Time (JIT) recompiler
