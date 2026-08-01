@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <fmt/format.h>
 #include <linux/futex.h>
+#include <linux/openat2.h>
 #include <linux/seccomp.h>
 #include <linux/sem.h>
 #include <poll.h>
@@ -787,6 +788,14 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
     }
     case felix86_riscv64_openat: {
         result = g_fs->OpenAt(mode32, (int)arg1, (char*)arg2, (int)arg3, arg4);
+        break;
+    }
+    case felix86_riscv64_openat2: {
+        open_how* how = (open_how*)arg3;
+        if (how->resolve) {
+            IMPORTANT("Ignored how->resolve flags: %x", how->resolve);
+        }
+        result = g_fs->OpenAt(mode32, (int)arg1, (char*)arg2, how->flags, how->mode);
         break;
     }
     case felix86_riscv64_tgkill: {
