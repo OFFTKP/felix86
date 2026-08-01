@@ -789,6 +789,14 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         result = g_fs->OpenAt(mode32, (int)arg1, (char*)arg2, (int)arg3, arg4);
         break;
     }
+    case felix86_riscv64_openat2: {
+        open_how* how = (open_how*)arg3;
+        if (how->resolve) {
+            IMPORTANT("Ignored how->resolve flags: %x", how->resolve);
+        }
+        result = g_fs->OpenAt(mode32, (int)arg1, (char*)arg2, how->flags, how->mode);
+        break;
+    }
     case felix86_riscv64_tgkill: {
         if (arg3 != 0) { // sig==0 is used to check if process exists
             SIGLOG("%d is calling tgkill with sig: %d for TGID: %d and TID: %d", gettid(), arg3, arg1, arg2);
