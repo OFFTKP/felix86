@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <fmt/format.h>
 #include <linux/futex.h>
+#include <linux/openat2.h>
 #include <linux/seccomp.h>
 #include <linux/sem.h>
 #include <poll.h>
