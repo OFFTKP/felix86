@@ -77,4 +77,5 @@ X(Performance, bool, auto_compress, false, FELIX86_AUTO_COMPRESS, "Automatically
 X(Performance, bool, scan_ahead_multi, true, FELIX86_SCAN_AHEAD_MULTI, "Scan ahead to multiple blocks when possible, avoiding even more flag calculations")
 X(Performance, bool, no_address_overflow, true, FELIX86_NO_ADDRESS_OVERFLOW, "Assume addresses won't overflow in 32-bit apps, which allows for some optimizations")
 X(Performance, bool, group_loadstore, true, FELIX86_GROUP_LOADSTORE, "Load/store SIMD state in groups of eight, may improve performance")
+X(Performance, bool, merge_blocks, true, FELIX86_MERGE_BLOCKS, "If compiling a block that is a superset of another block, merge the other block into the new block, should improve icache and address cache usage")
 X(Performance, bool, reduced_precision, false, FELIX86_REDUCED_PRECISION, "Use 64-bit floats for x87, may improve performance but cause issues in some games")

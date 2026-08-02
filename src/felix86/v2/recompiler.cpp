@@ -658,6 +658,16 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
             break;
         }
 
+        if (g_config.merge_blocks && local_x87_state == x87State::Unknown) {
+            // We don't perform this optimization if there's any x87 state in this block
+            // as it will mean the instructions are not enterable
+            if (blockExists(rip)) {
+                // Translation sizes remain unaffected, we just make it point here
+                // This should improve icache locality
+                getBlockMetadata(rip).host_address = start_pc;
+            }
+        }
+
         if (is_mmx) {
             if (!ran_mmx_once) {
                 // Set FPU tag word to valid for the first MMX instruction in this block
