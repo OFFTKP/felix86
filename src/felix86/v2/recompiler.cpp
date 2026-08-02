@@ -2285,9 +2285,8 @@ void Recompiler::scanAhead(u64 rip) {
                                           instruction_ahead.cpu_flags->set_1 | instruction_ahead.cpu_flags->undefined;
                             u32 used = instruction_ahead.cpu_flags->tested;
                             if (flag_passthrough(mnemonic)) {
-                                // For now, instructions that conditionally modify flags will act as if they use flags
-                                // This is necessary so that any block that jumps to a e.g. shift instruction will still emit its final flags
-                                used = flags_we_care_about;
+                                // Act as if this instruction didn't change any flags, since it may not if shift == 0
+                                changed = 0;
                             }
 
                             u32 used_not_previously_changed = used & ~changed_this_block;
