@@ -2177,40 +2177,52 @@ void Recompiler::scanAhead(u64 rip) {
             u32 used = instruction.cpu_flags->tested;
             bool passthrough = flag_passthrough(instruction.mnemonic);
 
-            if (used & ZYDIS_CPUFLAG_CF || passthrough) {
-                flag_access_cpazso[0].push_back({false, rip});
-            } else if (changed & ZYDIS_CPUFLAG_CF) {
-                flag_access_cpazso[0].push_back({true, rip});
+            if (!passthrough) {
+                if (used & ZYDIS_CPUFLAG_CF) {
+                    flag_access_cpazso[0].push_back({false, rip});
+                } else if (changed & ZYDIS_CPUFLAG_CF) {
+                    flag_access_cpazso[0].push_back({true, rip});
+                }
             }
 
-            if (used & ZYDIS_CPUFLAG_PF || passthrough) {
-                flag_access_cpazso[1].push_back({false, rip});
-            } else if (changed & ZYDIS_CPUFLAG_PF) {
-                flag_access_cpazso[1].push_back({true, rip});
+            if (!passthrough) {
+                if (used & ZYDIS_CPUFLAG_PF) {
+                    flag_access_cpazso[1].push_back({false, rip});
+                } else if (changed & ZYDIS_CPUFLAG_PF) {
+                    flag_access_cpazso[1].push_back({true, rip});
+                }
             }
 
-            if (used & ZYDIS_CPUFLAG_AF || passthrough) {
-                flag_access_cpazso[2].push_back({false, rip});
-            } else if (changed & ZYDIS_CPUFLAG_AF) {
-                flag_access_cpazso[2].push_back({true, rip});
+            if (!passthrough) {
+                if (used & ZYDIS_CPUFLAG_AF) {
+                    flag_access_cpazso[2].push_back({false, rip});
+                } else if (changed & ZYDIS_CPUFLAG_AF) {
+                    flag_access_cpazso[2].push_back({true, rip});
+                }
             }
 
-            if (used & ZYDIS_CPUFLAG_ZF || passthrough) {
-                flag_access_cpazso[3].push_back({false, rip});
-            } else if (changed & ZYDIS_CPUFLAG_ZF) {
-                flag_access_cpazso[3].push_back({true, rip});
+            if (!passthrough) {
+                if (used & ZYDIS_CPUFLAG_ZF) {
+                    flag_access_cpazso[3].push_back({false, rip});
+                } else if (changed & ZYDIS_CPUFLAG_ZF) {
+                    flag_access_cpazso[3].push_back({true, rip});
+                }
             }
 
-            if (used & ZYDIS_CPUFLAG_SF || passthrough) {
-                flag_access_cpazso[4].push_back({false, rip});
-            } else if (changed & ZYDIS_CPUFLAG_SF) {
-                flag_access_cpazso[4].push_back({true, rip});
+            if (!passthrough) {
+                if (used & ZYDIS_CPUFLAG_SF) {
+                    flag_access_cpazso[4].push_back({false, rip});
+                } else if (changed & ZYDIS_CPUFLAG_SF) {
+                    flag_access_cpazso[4].push_back({true, rip});
+                }
             }
 
-            if (used & ZYDIS_CPUFLAG_OF || passthrough) {
-                flag_access_cpazso[5].push_back({false, rip});
-            } else if (changed & ZYDIS_CPUFLAG_OF) {
-                flag_access_cpazso[5].push_back({true, rip});
+            if (!passthrough) {
+                if (used & ZYDIS_CPUFLAG_OF) {
+                    flag_access_cpazso[5].push_back({false, rip});
+                } else if (changed & ZYDIS_CPUFLAG_OF) {
+                    flag_access_cpazso[5].push_back({true, rip});
+                }
             }
         }
 
