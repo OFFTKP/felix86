@@ -407,6 +407,10 @@ EXT("libvulkan.so", vkCmdSetVertexInput, v_qdqdq)
 // VK_EXT_external_memory_host
 EXT("libvulkan.so", vkGetMemoryHostPointerProperties, d_qdqq)
 
+// VK_KHR_fragment_shading_rate
+KHR("libvulkan.so", vkCmdSetFragmentShadingRateKHR, v_qqq)
+KHR("libvulkan.so", vkGetPhysicalDeviceFragmentShadingRates, d_qqq)
+
 #undef KHR
 #undef EXT
 #undef KHR_EXT
