@@ -365,12 +365,18 @@ enum CmpPredicate {
 };
 
 static void OP_noflags_destreg(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands,
-                               void (Assembler::*func64)(biscuit::GPR, biscuit::GPR, biscuit::GPR),
-                               void (Assembler::*func32)(biscuit::GPR, biscuit::GPR, biscuit::GPR)) {
+                               void (Assembler::*funcr)(biscuit::GPR, biscuit::GPR, biscuit::GPR),
+                               void (Assembler::*funci)(biscuit::GPR, biscuit::GPR, int32_t)) {
     biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
     biscuit::GPR src;
+    bool use_src_imm = false;
+    i64 src_imm;
     if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
         src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    } else if (funci && operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE && IsValidSigned12BitImm(operands[1].imm.value.s) &&
+               operands[0].size >= 32) {
+        use_src_imm = true;
+        src_imm = operands[1].imm.value.s;
     } else {
         src = rec.getGPR(&operands[1]);
     }
@@ -384,24 +390,24 @@ static void OP_noflags_destreg(Recompiler& rec, u64 rip, Assembler& as, ZydisDec
         if (!dst_high && !src_high) {
             as.SLLI(temp, src, 56);
             as.RORI(dst, dst, 8);
-            (as.*func64)(dst, dst, temp);
+            (as.*funcr)(dst, dst, temp);
             as.RORI(dst, dst, 56);
         } else if (!dst_high && src_high) {
             as.SRLI(temp, src, 8);
             as.SLLI(temp, temp, 56);
             as.RORI(dst, dst, 8);
-            (as.*func64)(dst, dst, temp);
+            (as.*funcr)(dst, dst, temp);
             as.RORI(dst, dst, 56);
         } else if (dst_high && !src_high) {
             as.SLLI(temp, src, 56);
             as.RORI(dst, dst, 16);
-            (as.*func64)(dst, dst, temp);
+            (as.*funcr)(dst, dst, temp);
             as.RORI(dst, dst, 48);
         } else if (dst_high && src_high) {
             as.SRLI(temp, src, 8);
             as.SLLI(temp, temp, 56);
             as.RORI(dst, dst, 16);
-            (as.*func64)(dst, dst, temp);
+            (as.*funcr)(dst, dst, temp);
             as.RORI(dst, dst, 48);
         }
         break;
@@ -410,17 +416,25 @@ static void OP_noflags_destreg(Recompiler& rec, u64 rip, Assembler& as, ZydisDec
         biscuit::GPR temp = rec.scratch();
         as.SLLI(temp, src, 48);
         as.RORI(dst, dst, 16);
-        (as.*func64)(dst, dst, temp);
+        (as.*funcr)(dst, dst, temp);
         as.RORI(dst, dst, 48);
         break;
     }
     case 32: {
-        (as.*func32)(dst, dst, src);
+        if (use_src_imm) {
+            (as.*funci)(dst, dst, src_imm);
+        } else {
+            (as.*funcr)(dst, dst, src);
+        }
         rec.zext(dst, dst, X86_SIZE_DWORD);
         break;
     }
     case 64: {
-        (as.*func64)(dst, dst, src);
+        if (use_src_imm) {
+            (as.*funci)(dst, dst, src_imm);
+        } else {
+            (as.*funcr)(dst, dst, src);
+        }
         break;
     }
     }
@@ -695,7 +709,7 @@ FAST_HANDLE(ADD) {
     bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
     if (g_config.noflag_opts && !needs_any_flag && dst_reg) {
         // We can do it faster if we don't need to calculate flags
-        return OP_noflags_destreg(rec, rip, as, instruction, operands, &Assembler::ADD, &Assembler::ADDW);
+        return OP_noflags_destreg(rec, rip, as, instruction, operands, &Assembler::ADD, &Assembler::ADDI);
     }
 
     biscuit::GPR result = rec.scratch();
@@ -897,7 +911,7 @@ FAST_HANDLE(SUB) {
     bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
     if (g_config.noflag_opts && !needs_any_flag && dst_reg) {
         // We can do it faster if we don't need to calculate flags
-        return OP_noflags_destreg(rec, rip, as, instruction, operands, &Assembler::SUB, &Assembler::SUBW);
+        return OP_noflags_destreg(rec, rip, as, instruction, operands, &Assembler::SUB, nullptr);
     }
 
     biscuit::GPR result = rec.scratch();
@@ -1502,7 +1516,8 @@ FAST_HANDLE(XOR) {
     bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
     if (g_config.noflag_opts && !needs_any_flag && dst_reg) {
         // We can do it faster if we don't need to calculate flags
-        return OP_noflags_destreg(rec, rip, as, instruction, operands, &Assembler::XOR, &Assembler::XOR);
+        return OP_noflags_destreg(rec, rip, as, instruction, operands, &Assembler::XOR,
+                                  (void (Assembler::*)(biscuit::GPR, biscuit::GPR, int32_t))&Assembler::XORI);
     }
 
     biscuit::GPR result = rec.scratch();
