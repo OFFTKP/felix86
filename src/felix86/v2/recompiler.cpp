@@ -2315,7 +2315,7 @@ void Recompiler::scanAhead(u64 rip) {
                             if (is_jump || is_illegal || is_hlt || is_int3) {
                                 // Check if we can follow the jump trivially
                                 if (is_jump && mnemonic == ZYDIS_MNEMONIC_JMP && operands_ahead[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-                                    u64 displacement = sextImmediate(getImmediate(&operands[0]), operands[0].imm.size);
+                                    u64 displacement = sextImmediate(getImmediate(&operands_ahead[0]), operands_ahead[0].imm.size);
                                     rip_ahead += instruction_ahead.length + displacement;
                                     jump_to_self = false; // stop using our cached instructions
                                     continue;
