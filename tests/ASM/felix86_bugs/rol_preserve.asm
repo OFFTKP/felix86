@@ -17,26 +17,26 @@ add rax, rbx
 rol rax, 3
 pushfq
 pop r8
-and r8, 0x8d5
+and r8, 0xd5
 
 or rax, rbx
 rol rax, 0
 pushfq
 pop r9
-and r9, 0x8d5
+and r9, 0xd5
 
 mov rcx, 5
 xor rax, rbx
 rol rax, cl
 pushfq
 pop r10
-and r10, 0x8d5
+and r10, 0xd5
 
 xor ecx, ecx
 xor rax, rbx
 rol rax, cl
 pushfq
 pop r11
-and r11, 0x8d5
+and r11, 0xd5
 
 hlt
