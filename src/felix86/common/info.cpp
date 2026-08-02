@@ -4,7 +4,7 @@
 extern const char* g_git_hash;
 
 #define YEAR "26"
-#define MONTH "08"
+#define MONTH "09"
 
 const char* get_version_full() {
 #ifdef FELIX86_MONTHLY_RELEASE
