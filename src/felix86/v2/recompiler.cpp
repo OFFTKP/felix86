@@ -2317,6 +2317,7 @@ void Recompiler::scanAhead(u64 rip) {
                                 if (is_jump && mnemonic == ZYDIS_MNEMONIC_JMP && operands_ahead[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
                                     u64 displacement = sextImmediate(getImmediate(&operands[0]), operands[0].imm.size);
                                     rip_ahead += instruction_ahead.length + displacement;
+                                    jump_to_self = false; // stop using our cached instructions
                                     continue;
                                 }
 
