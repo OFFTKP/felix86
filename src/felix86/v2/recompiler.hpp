@@ -71,6 +71,7 @@ struct BlockMetadata {
     // and the size of the risc-v instructions used to translate it
     std::vector<TranslationSize> translation_sizes{};
     std::vector<u8*> pending_links{};
+    bool enterable; // Can be entered from instructions in the middle of the block
 };
 
 // WARN: don't allocate this struct on the stack as it's quite big due to address_cache and can lead to stack overflow

@@ -423,6 +423,49 @@ void Recompiler::clearCodeCache(ThreadState* state) {
 }
 
 u64 Recompiler::compile(ThreadState* state, u64 rip) {
+    if (g_config.merge_blocks) {
+        auto guard = page_map_lock.lock();
+        u64 page = rip & ~0xFFFull;
+        auto& blocks_in_page = page_map[page];
+        for (auto& block : blocks_in_page) {
+            if (block->guest_address < rip) {
+                int index = 0;
+                int found_index = 0;
+                u64 current_rip = block->guest_address;
+                u64 current_pc = block->host_address;
+                u64 found_pc = 0;
+                bool found = false;
+                for (auto& size : block->translation_sizes) {
+                    current_rip += size.x86_instruction_size;
+                    current_pc += size.riscv_instructions_size;
+                    index++;
+                    if (current_rip == rip) {
+                        found = true;
+                        found_pc = current_pc;
+                        found_index = index;
+                        // Keep going to get end_pc and end_rip
+                    } else if (!found && current_rip > rip) {
+                        break;
+                    }
+                }
+                if (found) {
+                    u64 end_pc = current_pc;
+                    u64 end_rip = current_rip;
+                    BlockMetadata& block_meta = getBlockMetadata(rip);
+                    host_pc_map[end_pc - 1] = {&block_meta};
+                    block_meta.host_address = found_pc;
+                    block_meta.guest_address = rip;
+                    block_meta.translation_sizes =
+                        std::vector<TranslationSize>(block->translation_sizes.begin() + found_index, block->translation_sizes.end());
+                    expirePendingLinks(rip);
+                    markPagesAsReadOnly(rip, end_rip);
+                    return block_meta.host_address;
+                }
+            } else {
+                break;
+            }
+        }
+    }
     u64 size = code_cache_sizes[code_cache_size_index];
     size_t remaining_size = size - as.GetCodeBuffer().GetCursorOffset();
     // TODO: restrict max x86 instruction count per block
@@ -453,7 +496,10 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
         u64 start_masked = start_rip & ~0xFFFull;
         u64 end_masked = (end_rip - 1) & ~0xFFFull;
         for (u64 page = start_masked; page <= end_masked; page += 0x1000) {
-            page_map[page].push_back(&block_meta);
+            auto& blocks = page_map[page];
+            auto it = std::lower_bound(blocks.begin(), blocks.end(), &block_meta,
+                                       [](const BlockMetadata* a, const BlockMetadata* b) { return a->guest_address < b->guest_address; });
+            blocks.insert(it, &block_meta);
         }
     }
 
@@ -596,6 +642,7 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
     block_meta.host_address = (u64)as.GetCursorPointer();
     block_meta.guest_address = start_rip;
     block_meta.translation_sizes.resize(instructions.size());
+    block_meta.enterable = true;
 
     // TODO: Put all this resetting functionality in a function
     resetX87();
@@ -688,6 +735,10 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
                 int index = operands[0].reg.value - ZYDIS_REGISTER_MM0;
                 mmx_reg_cache[index].dirty = true;
             }
+
+            if (g_config.reduced_precision) {
+                block_meta.enterable = false;
+            }
         }
 
         if (is_x87) {
@@ -697,6 +748,10 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
 
             if (local_x87_state != x87State::x87 && g_config.reduced_precision) {
                 switchToX87();
+            }
+
+            if (g_config.reduced_precision) {
+                block_meta.enterable = false;
             }
         }
 
