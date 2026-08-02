@@ -429,15 +429,19 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
         auto& blocks_in_page = page_map[page];
         for (auto& block : blocks_in_page) {
             if (block->guest_address < rip) {
-                int index = 0;
-                int found_index = 0;
+                size_t index = 0;
+                size_t found_index = 0;
                 u64 current_rip = block->guest_address;
                 u64 current_pc = block->host_address;
+                ASSERT(current_pc);
                 u64 found_pc = 0;
                 bool found = false;
                 for (auto& size : block->translation_sizes) {
                     current_rip += size.x86_instruction_size;
                     current_pc += size.riscv_instructions_size;
+                    if (index == block->translation_sizes.size() - 1) {
+                        break;
+                    }
                     index++;
                     if (current_rip == rip) {
                         found = true;
