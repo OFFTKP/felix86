@@ -39,7 +39,7 @@ static void rootfs_not_set_error() {
     exit(1);
 }
 
-static void __attribute__((noreturn)) enter_repl();
+void __attribute__((noreturn)) enter_repl();
 
 static std::string version_full = get_version_full();
 const char* argp_program_version = version_full.c_str();
