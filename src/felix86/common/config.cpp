@@ -337,9 +337,13 @@ bool Config::loadProfile(Config& config, const std::filesystem::path& profile) {
         return false;
     }
 
+    config.profile_path = profile;
+
 #define X(group, type, name, default_value, env_name, description)                                                                                   \
     {                                                                                                                                                \
-        (void)loadFromToml<type>(result, #group, #name, config.name);                                                                                \
+        bool loaded = loadFromToml<type>(result, #group, #name, config.name);                                                                        \
+        if (loaded)                                                                                                                                  \
+            config.src.name = ConfigSource::Profile;                                                                                                 \
     }
 #include "config.inc"
 #undef X
@@ -480,6 +484,9 @@ std::optional<std::string> Config::getConfigSourceString(const char* group, cons
             break;
         case ConfigSource::File:
             s = std::string("Configuration file ") + config_path.string();
+            break;
+        case ConfigSource::Profile:
+            s = std::string("Profile ") + profile_path.string();
             break;
         }
         return std::optional<std::string>(s);

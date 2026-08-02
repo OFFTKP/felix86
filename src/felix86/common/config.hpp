@@ -14,6 +14,7 @@ enum class ConfigSource {
     File,
     Env,
     Default,
+    Profile,
 };
 
 struct Config {
@@ -47,6 +48,7 @@ struct Config {
 private:
     std::string __environment;
     std::filesystem::path config_path;
+    std::filesystem::path profile_path;
 
     friend void addToEnvironment(Config& config, const char* env_name, const char* env);
 
