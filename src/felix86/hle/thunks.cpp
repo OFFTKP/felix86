@@ -130,7 +130,8 @@ static mallocType felix86_guest_malloc = nullptr;
 static u32 (*host_vkGetPhysicalDeviceXlibPresentationSupportKHR)(void* physicalDevice, u32 queueFamilyIndex, void* dpy, u64 visualID) = nullptr;
 
 // Ditto
-static u32 (*host_vkGetPhysicalDeviceXcbPresentationSupportKHR)(void* physicalDevice, u32 queueFamilyIndex, void* connection, void* visualID) = nullptr;
+static u32 (*host_vkGetPhysicalDeviceXcbPresentationSupportKHR)(void* physicalDevice, u32 queueFamilyIndex, void* connection,
+                                                                void* visualID) = nullptr;
 
 // Since we only need these from wayland-client.h, instead of including the file and requiring
 // a dependency we just define them here
@@ -217,7 +218,7 @@ static void* guest_malloc(size_t size) noexcept {
     ASSERT(felix86_guest_malloc);
     return felix86_guest_malloc(size);
 }
-static_assert(std::is_same_v<decltype(&guest_malloc), void*(*)(size_t) noexcept>);
+static_assert(std::is_same_v<decltype(&guest_malloc), void* (*)(size_t) noexcept>);
 
 static void* guestToHostDisplay(void* guest_display) {
     if (guest_display == 0) {
@@ -529,12 +530,13 @@ static void* felix86_thunk_eglGetProcAddress(const char* name) {
 }
 
 static VkResult felix86_thunk_vkCreateDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
-                                                      const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback) {
+                                                             const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback) {
     // TODO: implement one day, needs callback support
     return VK_SUCCESS;
 }
 
-static void felix86_thunk_vkDestroyDebugReportCallbackEXT(VkInstance instance, VkDebugReportCallbackEXT callback, const VkAllocationCallbacks* pAllocator) {
+static void felix86_thunk_vkDestroyDebugReportCallbackEXT(VkInstance instance, VkDebugReportCallbackEXT callback,
+                                                          const VkAllocationCallbacks* pAllocator) {
     // See vkCreateDebugReportCallbackEXT above
 }
 
@@ -547,7 +549,7 @@ struct felix86_VkXlibSurfaceCreateInfoKHR {
 };
 
 static VkResult felix86_thunk_vkCreateXlibSurfaceKHR(VkInstance instance, const felix86_VkXlibSurfaceCreateInfoKHR* pCreateInfo,
-                                              const VkAllocationCallbacks* pAllocator, VkSurfaceKHR* pSurface) {
+                                                     const VkAllocationCallbacks* pAllocator, VkSurfaceKHR* pSurface) {
     void* guest_display = pCreateInfo->dpy;
     void* host_display = guestToHostDisplay(guest_display);
     felix86_VkXlibSurfaceCreateInfoKHR host_create_info = *pCreateInfo;
@@ -568,7 +570,7 @@ struct felix86_VkXcbSurfaceCreateInfoKHR {
 };
 
 static VkResult felix86_thunk_vkCreateXcbSurfaceKHR(VkInstance instance, const felix86_VkXcbSurfaceCreateInfoKHR* pCreateInfo,
-                                             const VkAllocationCallbacks* pAllocator, VkSurfaceKHR* pSurface) {
+                                                    const VkAllocationCallbacks* pAllocator, VkSurfaceKHR* pSurface) {
     void* host_connection = guestToHostConnection(pCreateInfo->connection);
     felix86_VkXcbSurfaceCreateInfoKHR host_create_info = *pCreateInfo;
     host_create_info.connection = host_connection;
@@ -579,15 +581,15 @@ static VkResult felix86_thunk_vkCreateXcbSurfaceKHR(VkInstance instance, const f
 }
 
 static VkBool32 felix86_thunk_vkGetPhysicalDeviceXlibPresentationSupportKHR(VkPhysicalDevice physicalDevice, uint32_t queueFamilyIndex, void* dpy,
-                                                                     u64 visualID) {
+                                                                            u64 visualID) {
     void* host_display = guestToHostDisplay(dpy);
     VkBool32 result = host_vkGetPhysicalDeviceXlibPresentationSupportKHR(physicalDevice, queueFamilyIndex, host_display, visualID);
     host_XFlush(host_display);
     return result;
 }
 
-static VkBool32 felix86_thunk_vkGetPhysicalDeviceXcbPresentationSupportKHR(VkPhysicalDevice physicalDevice, uint32_t queueFamilyIndex, void* connection,
-                                                                    void* visualID) {
+static VkBool32 felix86_thunk_vkGetPhysicalDeviceXcbPresentationSupportKHR(VkPhysicalDevice physicalDevice, uint32_t queueFamilyIndex,
+                                                                           void* connection, void* visualID) {
     void* host_connection = guestToHostConnection(connection);
     VkBool32 result = host_vkGetPhysicalDeviceXcbPresentationSupportKHR(physicalDevice, queueFamilyIndex, host_connection, visualID);
     return result;
@@ -1113,7 +1115,7 @@ void Thunks::initialize() {
             add_overlays({"libGLX.so", "libGLX.so.0", "libGLX.so.0.0.0"});
         }
 
-        constexpr const char* x11_name = "libX11.so";
+        constexpr const char* x11_name = "libX11.so.6";
         libX11 = dlopen(x11_name, RTLD_NOW | RTLD_LOCAL);
         if (!libX11) {
             WARN("I couldn't open libX11.so, error: %s", dlerror());
@@ -1144,7 +1146,7 @@ void Thunks::initialize() {
     }
 
     if (thunk_luajit) {
-        constexpr const char* luajit_name = "libluajit-5.1.so";
+        constexpr const char* luajit_name = "libluajit-5.1.so.2";
         libluajit = dlopen(luajit_name, RTLD_NOW | RTLD_LOCAL);
         if (!libluajit) {
             // Also try libluajit.so just in case
