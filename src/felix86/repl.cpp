@@ -166,7 +166,7 @@ static void compile(const std::string& input) {
     }
 }
 
-static void __attribute__((noreturn)) enter_repl() {
+void __attribute__((noreturn)) enter_repl() {
     if (system("which nasm > /dev/null 2>&1")) {
         printf("felix86 REPL needs nasm installed, please install the nasm assembler\n");
         exit(1);
