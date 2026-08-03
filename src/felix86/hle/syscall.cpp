@@ -1988,6 +1988,27 @@ void felix86_syscall(felix86_frame* frame) {
             result = Filesystem::Rmdir((char*)arg1);
             break;
         }
+        case felix86_x86_64_getdents: {
+            u32 fd = arg1;
+            u64 dirp = arg2;
+            u32 count = arg3;
+
+            result = SYSCALL(getdents64, fd, dirp, count);
+            if (result > 0) {
+                size_t bytes = result;
+                for (size_t i = 0; i < bytes;) {
+                    u8* record = (u8*)(dirp + i);
+                    x86_linux_dirent64* src = (x86_linux_dirent64*)record;
+                    x86_linux_dirent* dst = (x86_linux_dirent*)record;
+                    u16 reclen = src->d_reclen;
+                    u8 type = src->d_type;
+                    memmove(dst->d_name, src->d_name, reclen - sizeof(x86_linux_dirent64));
+                    record[reclen - 1] = type;
+                    i += reclen;
+                }
+            }
+            break;
+        }
         case felix86_x86_64_fork: {
             CloneArgs args = {};
             u64 guest_flags = SIGCHLD;
@@ -2868,7 +2889,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                 size_t bytes = result;
                 size_t num = 0;
                 for (size_t i = 0; i < bytes;) {
-                    x86_linux_dirent* current = (x86_linux_dirent*)(dirp + i);
+                    x86_linux_dirent64* current = (x86_linux_dirent64*)(dirp + i);
                     current->d_off = num++;
                     i += current->d_reclen;
                 }
