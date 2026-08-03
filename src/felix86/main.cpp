@@ -507,43 +507,6 @@ int main(int argc, char* argv[]) {
 
     g_execve_process = !!getenv("__FELIX86_EXECVE");
 
-    Config::initialize();
-    if (!g_config.no_rootfs && g_config.rootfs_path.empty()) {
-        rootfs_not_set_error();
-    }
-    initialize_globals();
-    Signals::initialize();
-
-    if (getenv("__FELIX86_QUIET")) {
-        g_config.quiet = true;
-    }
-
-    if (!g_config.quiet) {
-        const char* pipe = secure_getenv("__FELIX86_PIPE"); // don't inherit pipe from different uid
-        if (!pipe) {
-            Logger::startServer();
-        } else {
-            Logger::joinServer();
-        }
-    }
-
-    const char* argv0_original = getenv("__FELIX86_ARGV0");
-    if (argv0_original) {
-        g_params.argv[0] = argv0_original;
-    } else {
-        ASSERT(!g_execve_process);
-        if (g_params.argv[0].find(g_config.rootfs_path) == 0) {
-            replace_all(g_params.argv[0], g_config.rootfs_path, "");
-        }
-    }
-
-    std::string args = "Arguments: ";
-    for (const auto& arg : g_params.argv) {
-        args += arg;
-        args += " ";
-    }
-    VERBOSE("%s", args.c_str());
-
     if (g_execve_process) {
         const char* guest_envs = getenv("__FELIX86_GUEST_ENVS");
         if (guest_envs) {
@@ -613,6 +576,43 @@ int main(int argc, char* argv[]) {
             }
         }
     }
+
+    Config::initialize();
+    if (!g_config.no_rootfs && g_config.rootfs_path.empty()) {
+        rootfs_not_set_error();
+    }
+    initialize_globals();
+    Signals::initialize();
+
+    if (getenv("__FELIX86_QUIET")) {
+        g_config.quiet = true;
+    }
+
+    if (!g_config.quiet) {
+        const char* pipe = secure_getenv("__FELIX86_PIPE"); // don't inherit pipe from different uid
+        if (!pipe) {
+            Logger::startServer();
+        } else {
+            Logger::joinServer();
+        }
+    }
+
+    const char* argv0_original = getenv("__FELIX86_ARGV0");
+    if (argv0_original) {
+        g_params.argv[0] = argv0_original;
+    } else {
+        ASSERT(!g_execve_process);
+        if (g_params.argv[0].find(g_config.rootfs_path) == 0) {
+            replace_all(g_params.argv[0], g_config.rootfs_path, "");
+        }
+    }
+
+    std::string args = "Arguments: ";
+    for (const auto& arg : g_params.argv) {
+        args += arg;
+        args += " ";
+    }
+    VERBOSE("%s", args.c_str());
 
     // TODO: These "hacky" environment variables are bandaid solutions to problems that we need to eventually fix
     // They are enabled by default
