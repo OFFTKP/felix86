@@ -180,6 +180,7 @@ bool Config::initialize(bool ignore_envs) {
     g_config.config_path = config_path;
 
     const char* steam_appid = is_privileged ? nullptr : guest_getenv("SteamAppId");
+    printf("%s\n", steam_appid ? steam_appid : "null");
     if (steam_appid && euid != 0) {
         const std::filesystem::path steam_dir = getProfilesDir() / "steam";
         const std::string toml_file = std::string(steam_appid) + ".toml";
