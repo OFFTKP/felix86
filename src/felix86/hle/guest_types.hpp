@@ -16,17 +16,30 @@
 
 using x86_fdset = u32;
 
-struct x86_linux_dirent {
+struct __attribute__((packed)) x86_linux_dirent64 {
     u64 d_ino;
     u64 d_off;
     u16 d_reclen;
     u8 d_type;
-    u8 _pad[5];
     char d_name[];
 };
 
+static_assert(std::is_trivially_copyable_v<x86_linux_dirent64>);
+static_assert(sizeof(x86_linux_dirent64) == 19);
+
+struct __attribute__((packed)) x86_linux_dirent {
+    u64 d_ino;
+    u64 d_off;
+    u16 d_reclen;
+    char d_name[]; // filename (null terminated)
+    /*
+    char pad[];    // padding
+    char d_type;   // file type; offset is (d_reclen - 1)
+    */
+};
+
 static_assert(std::is_trivially_copyable_v<x86_linux_dirent>);
-static_assert(sizeof(x86_linux_dirent) == 24);
+static_assert(sizeof(x86_linux_dirent) == 18);
 
 struct x86_sigset_argpack {
     u32 data; // pointer to u64
