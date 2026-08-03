@@ -191,6 +191,8 @@ bool Config::initialize(bool ignore_envs) {
             if (!loaded) {
                 WARN("Failed to load SteamAppId profile at %s", toml_path.c_str());
             }
+        } else {
+            WARN("No SteamAppId config file exists at %s", toml_path.c_str());
         }
     }
 
