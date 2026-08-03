@@ -83,6 +83,7 @@ bool Config::initialize(bool ignore_envs) {
 
     std::filesystem::path config_path;
     std::filesystem::path profiles_path;
+    pid_t euid = geteuid();
     bool no_config_file = is_truthy(secure_getenv("FELIX86_NO_CONFIG_FILE"));
     if (!no_config_file) {
         config_path = getConfigFilePath();
@@ -102,70 +103,75 @@ bool Config::initialize(bool ignore_envs) {
             }
         }
 
-        profiles_path = getProfilesDir();
-        if (!profiles_path.empty()) {
-            std::error_code ec;
+        if (euid != 0) {
+            profiles_path = getProfilesDir();
+            if (!profiles_path.empty()) {
+                std::error_code ec;
 
-            if (!std::filesystem::exists(profiles_path / "extreme.toml", ec)) {
-                Config extreme_config{};
-                extreme_config.link = true;
-                extreme_config.address_cache = true;
-                extreme_config.unsafe_flags = true;
-                extreme_config.opcode_fusing = true;
-                extreme_config.inline_syscalls = true;
-                extreme_config.inaccurate_minmax = true;
-                extreme_config.always_tso = false;
-                extreme_config.protect_pages = true;
-                extreme_config.noflag_opts = true;
-                extreme_config.auto_compress = false;
-                extreme_config.scan_ahead_multi = true;
-                extreme_config.no_address_overflow = true;
-                Config::save(profiles_path / "extreme.toml", extreme_config, true);
-            }
+                if (!std::filesystem::exists(profiles_path / "extreme.toml", ec)) {
+                    Config extreme_config{};
+                    extreme_config.link = true;
+                    extreme_config.address_cache = true;
+                    extreme_config.unsafe_flags = true;
+                    extreme_config.opcode_fusing = true;
+                    extreme_config.inline_syscalls = true;
+                    extreme_config.inaccurate_minmax = true;
+                    extreme_config.always_tso = false;
+                    extreme_config.protect_pages = true;
+                    extreme_config.noflag_opts = true;
+                    extreme_config.auto_compress = false;
+                    extreme_config.scan_ahead_multi = true;
+                    extreme_config.no_address_overflow = true;
+                    extreme_config.reduced_precision = true;
+                    Config::save(profiles_path / "extreme.toml", extreme_config, true);
+                }
 
-            if (!std::filesystem::exists(profiles_path / "safe.toml", ec)) {
-                Config safe_config{};
-                safe_config.link = true;
-                safe_config.address_cache = true;
-                safe_config.unsafe_flags = false;
-                safe_config.opcode_fusing = false;
-                safe_config.inline_syscalls = false;
-                safe_config.inaccurate_minmax = false;
-                safe_config.always_tso = true;
-                safe_config.protect_pages = true;
-                safe_config.noflag_opts = true;
-                safe_config.auto_compress = false;
-                safe_config.scan_ahead_multi = false;
-                safe_config.no_address_overflow = false;
-                Config::save(profiles_path / "safe.toml", safe_config, true);
-            }
+                if (!std::filesystem::exists(profiles_path / "safe.toml", ec)) {
+                    Config safe_config{};
+                    safe_config.link = true;
+                    safe_config.address_cache = true;
+                    safe_config.unsafe_flags = false;
+                    safe_config.opcode_fusing = false;
+                    safe_config.inline_syscalls = false;
+                    safe_config.inaccurate_minmax = false;
+                    safe_config.always_tso = true;
+                    safe_config.protect_pages = true;
+                    safe_config.noflag_opts = true;
+                    safe_config.auto_compress = false;
+                    safe_config.scan_ahead_multi = false;
+                    safe_config.no_address_overflow = false;
+                    safe_config.reduced_precision = false;
+                    Config::save(profiles_path / "safe.toml", safe_config, true);
+                }
 
-            if (!std::filesystem::exists(profiles_path / "paranoid.toml", ec)) {
-                Config paranoid_config{};
-                paranoid_config.paranoid = true;
-                paranoid_config.alignment_check = true;
-                paranoid_config.always_flags = true;
-                paranoid_config.link = true;
-                paranoid_config.address_cache = false;
-                paranoid_config.unsafe_flags = false;
-                paranoid_config.opcode_fusing = false;
-                paranoid_config.inline_syscalls = false;
-                paranoid_config.inaccurate_minmax = false;
-                paranoid_config.always_tso = true;
-                paranoid_config.protect_pages = true;
-                paranoid_config.noflag_opts = false;
-                paranoid_config.auto_compress = false;
-                paranoid_config.scan_ahead_multi = false;
-                paranoid_config.no_address_overflow = false;
-                Config::save(profiles_path / "paranoid.toml", paranoid_config, true);
-            }
+                if (!std::filesystem::exists(profiles_path / "paranoid.toml", ec)) {
+                    Config paranoid_config{};
+                    paranoid_config.paranoid = true;
+                    paranoid_config.alignment_check = true;
+                    paranoid_config.always_flags = true;
+                    paranoid_config.link = true;
+                    paranoid_config.address_cache = false;
+                    paranoid_config.unsafe_flags = false;
+                    paranoid_config.opcode_fusing = false;
+                    paranoid_config.inline_syscalls = false;
+                    paranoid_config.inaccurate_minmax = false;
+                    paranoid_config.always_tso = true;
+                    paranoid_config.protect_pages = true;
+                    paranoid_config.noflag_opts = false;
+                    paranoid_config.auto_compress = false;
+                    paranoid_config.scan_ahead_multi = false;
+                    paranoid_config.no_address_overflow = false;
+                    paranoid_config.reduced_precision = false;
+                    Config::save(profiles_path / "paranoid.toml", paranoid_config, true);
+                }
 
-            if (!std::filesystem::exists(profiles_path / "zink.toml", ec)) {
-                Config zink_config{};
-                zink_config.enabled_thunks = "vk,wl";
-                zink_config.environment = "LIBGL_KOPPER_DRI2=1;MESA_LOADER_DRIVER_OVERRIDE=zink";
-                zink_config.host_environment = "LIBGL_KOPPER_DRI2=1;MESA_LOADER_DRIVER_OVERRIDE=zink";
-                Config::save(profiles_path / "zink.toml", zink_config, true);
+                if (!std::filesystem::exists(profiles_path / "zink.toml", ec)) {
+                    Config zink_config{};
+                    zink_config.enabled_thunks = "vk,wl";
+                    zink_config.environment = "LIBGL_KOPPER_DRI2=1;MESA_LOADER_DRIVER_OVERRIDE=zink";
+                    zink_config.host_environment = "LIBGL_KOPPER_DRI2=1;MESA_LOADER_DRIVER_OVERRIDE=zink";
+                    Config::save(profiles_path / "zink.toml", zink_config, true);
+                }
             }
         }
     }
@@ -173,8 +179,23 @@ bool Config::initialize(bool ignore_envs) {
     g_config = load(config_path, ignore_envs);
     g_config.config_path = config_path;
 
+    const char* steam_appid = secure_getenv("SteamAppId");
+    if (steam_appid && euid != 0) {
+        const std::filesystem::path steam_dir = getProfilesDir() / "steam";
+        const std::string toml_file = std::string(steam_appid) + ".toml";
+        const std::filesystem::path toml_path = steam_dir / toml_file;
+        std::error_code ec;
+        bool exists = std::filesystem::exists(toml_path, ec);
+        if (exists) {
+            bool loaded = Config::loadProfile(g_config, toml_path);
+            if (!loaded) {
+                WARN("Failed to load SteamAppId profile at %s", toml_path.c_str());
+            }
+        }
+    }
+
     const char* profile = secure_getenv("FELIX86_PROFILE");
-    if (profile) {
+    if (profile && euid != 0) {
         std::filesystem::path path;
 
         if (profile[0] != '/') {
@@ -187,7 +208,10 @@ bool Config::initialize(bool ignore_envs) {
 
         std::error_code ec;
         if (std::filesystem::exists(path, ec)) {
-            Config::loadProfile(g_config, path);
+            bool loaded = Config::loadProfile(g_config, path);
+            if (!loaded) {
+                WARN("Failed to load profile at %s", path.c_str());
+            }
         } else {
             if (ec) {
                 WARN("Error while trying to access profile %s at %s", profile, path.c_str());
