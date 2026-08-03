@@ -1775,3 +1775,16 @@ extern "C" void softfloat_raiseFlags(u8 flags) {
     }
     }
 }
+
+const char* guest_getenv(const char* name) {
+    if (!name)
+        return nullptr;
+    size_t name_len = std::strlen(name);
+    for (auto& env : g_params.envp) {
+        auto pos = env.find('=');
+        if (pos != std::string::npos && pos == name_len && env.compare(0, pos, name) == 0) {
+            return env.data() + pos + 1;
+        }
+    }
+    return nullptr;
+}

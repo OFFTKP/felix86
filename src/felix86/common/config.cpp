@@ -179,7 +179,7 @@ bool Config::initialize(bool ignore_envs) {
     g_config = load(config_path, ignore_envs);
     g_config.config_path = config_path;
 
-    const char* steam_appid = getenv("SteamAppId");
+    const char* steam_appid = is_privileged ? nullptr : guest_getenv("SteamAppId");
     if (steam_appid && euid != 0) {
         const std::filesystem::path steam_dir = getProfilesDir() / "steam";
         const std::string toml_file = std::string(steam_appid) + ".toml";
@@ -196,7 +196,7 @@ bool Config::initialize(bool ignore_envs) {
         }
     }
 
-    const char* profile = getenv("FELIX86_PROFILE");
+    const char* profile = secure_getenv("FELIX86_PROFILE");
     if (profile && euid != 0) {
         std::filesystem::path path;
 
