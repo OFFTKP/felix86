@@ -330,8 +330,9 @@ static BlockMetadata* get_block_metadata(ThreadState* state, u64 host_pc) {
     return block;
 }
 
-static u64 get_actual_rip(BlockMetadata& metadata, u64 guest_address, u64 fault_pc) {
-    u64 start_guest_address = guest_address;
+static u64 get_actual_rip(BlockMetadata& metadata, u64 fault_pc) {
+    const u64 start_guest_address = metadata.guest_address;
+    u64 guest_address = start_guest_address;
     u64 host_address = metadata.host_address;
     size_t instruction_count = metadata.translation_sizes.size();
     for (size_t i = 0; i < instruction_count; i++) {
@@ -1350,8 +1351,7 @@ static bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, uco
             if (in_jit_code) {
                 auto current_block = get_block_metadata(current_state, pc);
                 if (current_block) {
-                    u64 block_rip = current_block->guest_address;
-                    u64 actual_rip = get_actual_rip(*current_block, block_rip, pc);
+                    u64 actual_rip = get_actual_rip(*current_block, pc);
                     print_address(actual_rip);
                 } else {
 #ifdef __riscv
@@ -1405,8 +1405,7 @@ static bool handle_wild_sigabrt(ThreadState* current_state, siginfo_t* info, uco
             if (in_jit_code) {
                 auto current_block = get_block_metadata(current_state, pc);
                 if (current_block) {
-                    u64 block_rip = current_block->guest_address;
-                    u64 actual_rip = get_actual_rip(*current_block, block_rip, pc);
+                    u64 actual_rip = get_actual_rip(*current_block, pc);
                     print_address(actual_rip);
                 } else {
 #ifdef __riscv
@@ -1480,7 +1479,7 @@ static bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucon
     } else {
         BlockMetadata* current_block = get_block_metadata(current_state, pc);
         ASSERT_MSG(current_block, "Failed to get current block during synchronous signal with PC=%lx, RIP=%lx", pc, current_state->ctx.rip);
-        actual_rip = get_actual_rip(*current_block, current_block->guest_address, pc);
+        actual_rip = get_actual_rip(*current_block, pc);
     }
 
     int sig;
@@ -1626,9 +1625,8 @@ static void signal_handler(int sig, siginfo_t* info, void* ctx) {
         if (is_in_jit_code(state, (u8*)pc)) {
             BlockMetadata* current_block = get_block_metadata(state, pc);
             ASSERT_MSG(current_block, "Failed to get current block during synchronous signal with PC=%lx, RIP=%lx", pc, state->ctx.rip);
-            u64 block_rip = current_block->guest_address;
-            u64 actual_rip = get_actual_rip(*current_block, block_rip, pc);
-            VERBOSE("Synchronous signal block: %lx, actual rip: %lx", block_rip, actual_rip);
+            u64 actual_rip = get_actual_rip(*current_block, pc);
+            VERBOSE("Synchronous signal block: %lx, actual rip: %lx", current_block->guest_address, actual_rip);
             return prepare_synchronous_signal(state, sig, info, ctx, actual_rip);
         } else {
             AddressCacheEntry entry = state->recompiler->getAddressCacheEntry(state->ctx.rip);
