@@ -66,6 +66,7 @@ static void SetCmpFlags(u64 rip, Recompiler& rec, Assembler& as, biscuit::GPR ds
     }
 
     if (always_emit || rec.shouldEmitFlag(rip, X86_REF_PF)) {
+        ASSERT(result != x0);
         rec.updateParity(result);
     }
 
@@ -74,14 +75,17 @@ static void SetCmpFlags(u64 rip, Recompiler& rec, Assembler& as, biscuit::GPR ds
     }
 
     if (always_emit || rec.shouldEmitFlag(rip, X86_REF_ZF)) {
+        ASSERT(result != x0);
         rec.updateZero(result, size);
     }
 
     if (always_emit || rec.shouldEmitFlag(rip, X86_REF_SF)) {
+        ASSERT(result != x0);
         rec.updateSign(result, size);
     }
 
     if (always_emit || rec.shouldEmitFlag(rip, X86_REF_OF)) {
+        ASSERT(result != x0);
         rec.updateOverflowSub(dst, src, result, size);
     }
 }
@@ -1202,11 +1206,17 @@ FAST_HANDLE(CMP) {
         return;
     }
 
-    biscuit::GPR result = rec.scratch();
+    biscuit::GPR result = x0;
+    bool calculate_result = needs_pf || needs_zf || needs_sf || needs_of;
+    if (calculate_result) {
+        result = rec.scratch();
+    }
     biscuit::GPR src = rec.getGPR(&operands[1]);
     biscuit::GPR dst = rec.getGPR(&operands[0]);
 
-    as.SUB(result, dst, src);
+    if (calculate_result) {
+        as.SUB(result, dst, src);
+    }
 
     x86_size_e size = rec.getSize(&operands[0]);
 
