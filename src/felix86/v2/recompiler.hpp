@@ -743,8 +743,6 @@ struct Recompiler {
         return fsrm_sse;
     }
 
-    void skipNext();
-
     u64 getCurrentRipregValue() {
         return current_ripreg_value;
     }
@@ -752,8 +750,6 @@ struct Recompiler {
     void setCurrentRipregValue(u64 value) {
         current_ripreg_value = value;
     }
-
-    std::optional<std::pair<ZydisDecodedInstruction*, ZydisDecodedOperand*>> getNextInstruction();
 
 private:
     void emitNecessaryStuff();
@@ -835,8 +831,6 @@ private:
     bool fsrm_sse = true;
 
     bool lock_handled = false;
-
-    bool skip_next = false;
 
     AddressCacheEntry* address_cache = nullptr;
 

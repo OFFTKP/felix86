@@ -131,176 +131,6 @@ static void CMOV(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstructio
     rec.setGPR(&operands[0], result);
 }
 
-static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands) {
-    // Sometimes we hit instructions like
-    //     cmp ...
-    //     cmovl
-    // CMOVL uses the OF flag. This makes sense if your architecture is x86 and you have flags, but in RISC-V
-    // OF calculation can be 8-9 instructions. And the effect of CMOVL is that it just checks the 'less than' condition
-    // There's instructions that can do this way better like SLT(U) in RISC-V. We must make sure the other flags aren't used
-    // and fuse the cmp+cmovl (and others eventually) into fewer instructions
-    u64 next_rip = rip + instruction.length;
-    bool needs_cf = rec.shouldEmitFlag(next_rip, X86_REF_CF);
-    bool needs_af = rec.shouldEmitFlag(next_rip, X86_REF_AF);
-    bool needs_pf = rec.shouldEmitFlag(next_rip, X86_REF_PF);
-    bool needs_zf = rec.shouldEmitFlag(next_rip, X86_REF_ZF);
-    bool needs_sf = rec.shouldEmitFlag(next_rip, X86_REF_SF);
-    bool needs_of = rec.shouldEmitFlag(next_rip, X86_REF_OF);
-    bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf || needs_af;
-    // If after the next instruction we need any flag, we can't fuse the CMP because the flags will be important later on
-    if (needs_any_flag) {
-        return false;
-    }
-
-    auto opt = rec.getNextInstruction();
-    if (!opt) {
-        return false;
-    }
-
-    auto [next_instruction, next_operands] = *opt;
-    switch (next_instruction->mnemonic) {
-    case ZYDIS_MNEMONIC_CMOVL: {
-        biscuit::GPR cond = rec.scratch();
-        biscuit::GPR lhs = rec.getGPR(&operands[0]);
-        biscuit::GPR rhs = rec.getGPR(&operands[1]);
-        if (operands[0].size != 64) {
-            biscuit::GPR slhs = rec.scratch();
-            biscuit::GPR srhs = rec.scratch();
-            rec.sext(slhs, lhs, rec.zydisToSize(operands[0].size));
-            rec.sext(srhs, rhs, rec.zydisToSize(operands[0].size));
-            as.SLT(cond, slhs, srhs);
-            rec.popScratch();
-            rec.popScratch();
-        } else {
-            as.SLT(cond, lhs, rhs);
-        }
-        rec.resetScratch(); // pop all scratch except cond which was allocated first
-        rec.scratch();
-        CMOV(rec, rip, as, *next_instruction, next_operands, cond);
-        rec.skipNext();
-        return true;
-    }
-    case ZYDIS_MNEMONIC_CMOVLE: {
-        biscuit::GPR cond = rec.scratch();
-        biscuit::GPR lhs = rec.getGPR(&operands[0]);
-        biscuit::GPR rhs = rec.getGPR(&operands[1]);
-        if (operands[0].size != 64) {
-            biscuit::GPR slhs = rec.scratch();
-            biscuit::GPR srhs = rec.scratch();
-            rec.sext(slhs, lhs, rec.zydisToSize(operands[0].size));
-            rec.sext(srhs, rhs, rec.zydisToSize(operands[0].size));
-            as.SGT(cond, slhs, srhs);
-            as.XORI(cond, cond, 1);
-            rec.popScratch();
-            rec.popScratch();
-        } else {
-            as.SGT(cond, lhs, rhs);
-            as.XORI(cond, cond, 1);
-        }
-        rec.resetScratch();
-        rec.scratch();
-        CMOV(rec, rip, as, *next_instruction, next_operands, cond);
-        rec.skipNext();
-        return true;
-    }
-    case ZYDIS_MNEMONIC_CMOVNLE: {
-        biscuit::GPR cond = rec.scratch();
-        biscuit::GPR lhs = rec.getGPR(&operands[0]);
-        biscuit::GPR rhs = rec.getGPR(&operands[1]);
-        if (operands[0].size != 64) {
-            biscuit::GPR slhs = rec.scratch();
-            biscuit::GPR srhs = rec.scratch();
-            rec.sext(slhs, lhs, rec.zydisToSize(operands[0].size));
-            rec.sext(srhs, rhs, rec.zydisToSize(operands[0].size));
-            as.SGT(cond, slhs, srhs);
-            rec.popScratch();
-            rec.popScratch();
-        } else {
-            as.SGT(cond, lhs, rhs);
-        }
-        rec.resetScratch();
-        rec.scratch();
-        CMOV(rec, rip, as, *next_instruction, next_operands, cond);
-        rec.skipNext();
-        return true;
-    }
-    case ZYDIS_MNEMONIC_CMOVNL: {
-        biscuit::GPR cond = rec.scratch();
-        biscuit::GPR lhs = rec.getGPR(&operands[0]);
-        biscuit::GPR rhs = rec.getGPR(&operands[1]);
-        if (operands[0].size != 64) {
-            biscuit::GPR slhs = rec.scratch();
-            biscuit::GPR srhs = rec.scratch();
-            rec.sext(slhs, lhs, rec.zydisToSize(operands[0].size));
-            rec.sext(srhs, rhs, rec.zydisToSize(operands[0].size));
-            as.SLT(cond, slhs, srhs);
-            as.XORI(cond, cond, 1);
-            rec.popScratch();
-            rec.popScratch();
-        } else {
-            as.SLT(cond, lhs, rhs);
-            as.XORI(cond, cond, 1);
-        }
-        rec.resetScratch();
-        rec.scratch();
-        CMOV(rec, rip, as, *next_instruction, next_operands, cond);
-        rec.skipNext();
-        return true;
-    }
-    case ZYDIS_MNEMONIC_CMOVB: {
-        biscuit::GPR cond = rec.scratch();
-        biscuit::GPR lhs = rec.getGPR(&operands[0]);
-        biscuit::GPR rhs = rec.getGPR(&operands[1]);
-        as.SLTU(cond, lhs, rhs);
-        rec.resetScratch();
-        rec.scratch();
-        CMOV(rec, rip, as, *next_instruction, next_operands, cond);
-        rec.skipNext();
-        return true;
-    }
-    case ZYDIS_MNEMONIC_CMOVBE: {
-        biscuit::GPR cond = rec.scratch();
-        biscuit::GPR lhs = rec.getGPR(&operands[0]);
-        biscuit::GPR rhs = rec.getGPR(&operands[1]);
-        as.SGTU(cond, lhs, rhs);
-        as.XORI(cond, cond, 1);
-        rec.resetScratch();
-        rec.scratch();
-        CMOV(rec, rip, as, *next_instruction, next_operands, cond);
-        rec.skipNext();
-        return true;
-    }
-    case ZYDIS_MNEMONIC_CMOVNB: {
-        biscuit::GPR cond = rec.scratch();
-        biscuit::GPR lhs = rec.getGPR(&operands[0]);
-        biscuit::GPR rhs = rec.getGPR(&operands[1]);
-        as.SLTU(cond, lhs, rhs);
-        as.XORI(cond, cond, 1);
-        rec.resetScratch();
-        rec.scratch();
-        CMOV(rec, rip, as, *next_instruction, next_operands, cond);
-        rec.skipNext();
-        return true;
-    }
-    case ZYDIS_MNEMONIC_CMOVNBE: {
-        biscuit::GPR cond = rec.scratch();
-        biscuit::GPR lhs = rec.getGPR(&operands[0]);
-        biscuit::GPR rhs = rec.getGPR(&operands[1]);
-        as.SGTU(cond, lhs, rhs);
-        rec.resetScratch();
-        rec.scratch();
-        CMOV(rec, rip, as, *next_instruction, next_operands, cond);
-        rec.skipNext();
-        return true;
-    }
-    default: {
-        break;
-    }
-    }
-
-    return false;
-}
-
 static bool is_segment(ZydisDecodedOperand& operand) {
     if (operand.type != ZYDIS_OPERAND_TYPE_REGISTER) {
         return false;
@@ -1188,12 +1018,6 @@ FAST_HANDLE(ADC) {
 }
 
 FAST_HANDLE(CMP) {
-    if (g_config.opcode_fusing && !g_config.single_step && !g_config.paranoid) {
-        if (AttemptCmpFusing(rec, rip, as, instruction, operands)) {
-            return;
-        }
-    }
-
     bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
     bool needs_af = rec.shouldEmitFlag(rip, X86_REF_AF);
     bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
@@ -1741,6 +1565,152 @@ FAST_HANDLE(AND) {
     if (writeback) {
         rec.setGPR(&operands[0], result);
     }
+}
+
+FAST_HANDLE(FELIX86_SUB) {
+    // Special 64-bit only 3 operand sub, converted from regular SUB during optimization
+    // We don't define FELIX86_ADD as x86 code will just use lea for 3 operand add
+    x86_size_e size = X86_SIZE_QWORD;
+    biscuit::GPR dst = rec.getGPR(&operands[0]);
+    biscuit::GPR src1 = rec.getGPR(&operands[1]);
+    biscuit::GPR src2 = rec.getGPR(&operands[2]);
+    ASSERT(dst != src1);
+    ASSERT(dst != src2);
+
+    as.SUB(dst, src1, src2);
+
+    SetCmpFlags(rip, rec, as, src1, src2, dst, size);
+
+    rec.setGPR(&operands[0], dst);
+}
+
+FAST_HANDLE(FELIX86_OR) {
+    x86_size_e size = X86_SIZE_QWORD;
+    bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
+    bool needs_af = rec.shouldEmitFlag(rip, X86_REF_AF);
+    bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
+    bool needs_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
+    bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
+    bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
+    biscuit::GPR dst = rec.getGPR(&operands[0]);
+    biscuit::GPR src1 = rec.getGPR(&operands[1]);
+    biscuit::GPR src2 = rec.getGPR(&operands[2]);
+    ASSERT(dst != src1);
+    ASSERT(dst != src2);
+
+    as.OR(dst, src1, src2);
+
+    if (needs_cf) {
+        rec.clearFlag(X86_REF_CF);
+    }
+
+    if (needs_pf) {
+        rec.updateParity(dst);
+    }
+
+    if (needs_zf) {
+        rec.updateZero(dst, size);
+    }
+
+    if (needs_sf) {
+        rec.updateSign(dst, size);
+    }
+
+    if (needs_of) {
+        rec.clearFlag(X86_REF_OF);
+    }
+
+    if (needs_af) {
+        rec.clearFlag(X86_REF_AF);
+    }
+
+    rec.setGPR(&operands[0], dst);
+}
+
+FAST_HANDLE(FELIX86_XOR) {
+    x86_size_e size = X86_SIZE_QWORD;
+    bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
+    bool needs_af = rec.shouldEmitFlag(rip, X86_REF_AF);
+    bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
+    bool needs_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
+    bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
+    bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
+    biscuit::GPR dst = rec.getGPR(&operands[0]);
+    biscuit::GPR src1 = rec.getGPR(&operands[1]);
+    biscuit::GPR src2 = rec.getGPR(&operands[2]);
+    ASSERT(dst != src1);
+    ASSERT(dst != src2);
+
+    as.XOR(dst, src1, src2);
+
+    if (needs_cf) {
+        rec.clearFlag(X86_REF_CF);
+    }
+
+    if (needs_pf) {
+        rec.updateParity(dst);
+    }
+
+    if (needs_zf) {
+        rec.updateZero(dst, size);
+    }
+
+    if (needs_sf) {
+        rec.updateSign(dst, size);
+    }
+
+    if (needs_of) {
+        rec.clearFlag(X86_REF_OF);
+    }
+
+    if (needs_af) {
+        rec.clearFlag(X86_REF_AF);
+    }
+
+    rec.setGPR(&operands[0], dst);
+}
+
+FAST_HANDLE(FELIX86_AND) {
+    x86_size_e size = X86_SIZE_QWORD;
+    bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
+    bool needs_af = rec.shouldEmitFlag(rip, X86_REF_AF);
+    bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
+    bool needs_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
+    bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
+    bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
+    biscuit::GPR dst = rec.getGPR(&operands[0]);
+    biscuit::GPR src1 = rec.getGPR(&operands[1]);
+    biscuit::GPR src2 = rec.getGPR(&operands[2]);
+    ASSERT(dst != src1);
+    ASSERT(dst != src2);
+
+    as.AND(dst, src1, src2);
+
+    if (needs_cf) {
+        rec.clearFlag(X86_REF_CF);
+    }
+
+    if (needs_pf) {
+        rec.updateParity(dst);
+    }
+
+    if (needs_zf) {
+        rec.updateZero(dst, size);
+    }
+
+    if (needs_sf) {
+        rec.updateSign(dst, size);
+    }
+
+    if (needs_of) {
+        rec.clearFlag(X86_REF_OF);
+    }
+
+    if (needs_af) {
+        rec.clearFlag(X86_REF_AF);
+    }
+
+    rec.setGPR(&operands[0], dst);
 }
 
 FAST_HANDLE(HLT) {
@@ -3891,6 +3861,126 @@ FAST_HANDLE(CMOVLE) {
 
 FAST_HANDLE(CMOVNLE) {
     CMOV(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+// Fused CMP+CMOVcc, where the CMP operands are op3 and op4
+FAST_HANDLE(FELIX86_CMOVL) {
+    biscuit::GPR cond = rec.scratch();
+    biscuit::GPR lhs = rec.getGPR(&operands[3]);
+    biscuit::GPR rhs = rec.getGPR(&operands[4]);
+    if (operands[3].size != 64) {
+        biscuit::GPR slhs = rec.scratch();
+        biscuit::GPR srhs = rec.scratch();
+        rec.sext(slhs, lhs, rec.zydisToSize(operands[3].size));
+        rec.sext(srhs, rhs, rec.zydisToSize(operands[4].size));
+        as.SLT(cond, slhs, srhs);
+        rec.popScratch();
+        rec.popScratch();
+    } else {
+        as.SLT(cond, lhs, rhs);
+    }
+    rec.resetScratch(); // pop all scratch except cond which was allocated first
+    rec.scratch();
+    CMOV(rec, rip, as, instruction, operands, cond);
+}
+
+FAST_HANDLE(FELIX86_CMOVNL) {
+    biscuit::GPR cond = rec.scratch();
+    biscuit::GPR lhs = rec.getGPR(&operands[3]);
+    biscuit::GPR rhs = rec.getGPR(&operands[4]);
+    if (operands[3].size != 64) {
+        biscuit::GPR slhs = rec.scratch();
+        biscuit::GPR srhs = rec.scratch();
+        rec.sext(slhs, lhs, rec.zydisToSize(operands[3].size));
+        rec.sext(srhs, rhs, rec.zydisToSize(operands[4].size));
+        as.SLT(cond, slhs, srhs);
+        as.XORI(cond, cond, 1);
+        rec.popScratch();
+        rec.popScratch();
+    } else {
+        as.SLT(cond, lhs, rhs);
+        as.XORI(cond, cond, 1);
+    }
+    rec.resetScratch(); // pop all scratch except cond which was allocated first
+    rec.scratch();
+    CMOV(rec, rip, as, instruction, operands, cond);
+}
+
+FAST_HANDLE(FELIX86_CMOVLE) {
+    biscuit::GPR cond = rec.scratch();
+    biscuit::GPR lhs = rec.getGPR(&operands[3]);
+    biscuit::GPR rhs = rec.getGPR(&operands[4]);
+    if (operands[3].size != 64) {
+        biscuit::GPR slhs = rec.scratch();
+        biscuit::GPR srhs = rec.scratch();
+        rec.sext(slhs, lhs, rec.zydisToSize(operands[3].size));
+        rec.sext(srhs, rhs, rec.zydisToSize(operands[4].size));
+        as.SGT(cond, slhs, srhs);
+        as.XORI(cond, cond, 1);
+        rec.popScratch();
+        rec.popScratch();
+    } else {
+        as.SGT(cond, lhs, rhs);
+        as.XORI(cond, cond, 1);
+    }
+    rec.resetScratch(); // pop all scratch except cond which was allocated first
+    rec.scratch();
+    CMOV(rec, rip, as, instruction, operands, cond);
+}
+
+FAST_HANDLE(FELIX86_CMOVNLE) {
+    biscuit::GPR cond = rec.scratch();
+    biscuit::GPR lhs = rec.getGPR(&operands[3]);
+    biscuit::GPR rhs = rec.getGPR(&operands[4]);
+    if (operands[3].size != 64) {
+        biscuit::GPR slhs = rec.scratch();
+        biscuit::GPR srhs = rec.scratch();
+        rec.sext(slhs, lhs, rec.zydisToSize(operands[3].size));
+        rec.sext(srhs, rhs, rec.zydisToSize(operands[4].size));
+        as.SGT(cond, slhs, srhs);
+        rec.popScratch();
+        rec.popScratch();
+    } else {
+        as.SGT(cond, lhs, rhs);
+    }
+    rec.resetScratch(); // pop all scratch except cond which was allocated first
+    rec.scratch();
+    CMOV(rec, rip, as, instruction, operands, cond);
+}
+
+FAST_HANDLE(FELIX86_CMOVBE) {
+    biscuit::GPR cond = rec.scratch();
+    biscuit::GPR lhs = rec.getGPR(&operands[3]);
+    biscuit::GPR rhs;
+    if (operands[4].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+        u64 value = rec.zextImmediate(operands[4].imm.value.u, operands[4].size);
+        rhs = rec.scratch();
+        as.LI(rhs, value);
+    } else {
+        rhs = rec.getGPR(&operands[4]);
+    }
+    as.SGTU(cond, lhs, rhs);
+    as.XORI(cond, cond, 1);
+    rec.resetScratch();
+    rec.scratch();
+    CMOV(rec, rip, as, instruction, operands, cond);
+}
+
+FAST_HANDLE(FELIX86_CMOVNBE) {
+    biscuit::GPR cond = rec.scratch();
+    biscuit::GPR lhs = rec.getGPR(&operands[3]);
+    biscuit::GPR rhs;
+    if (operands[4].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+        u64 value = rec.zextImmediate(operands[4].imm.value.u, operands[4].size);
+        rhs = rec.scratch();
+        as.LI(rhs, value);
+    } else {
+        rhs = rec.getGPR(&operands[4]);
+    }
+    as.SGTU(cond, lhs, rhs);
+    rec.resetScratch();
+    rec.scratch();
+    CMOV(rec, rip, as, instruction, operands, cond);
 }
 
 FAST_HANDLE(MOVSXD) {

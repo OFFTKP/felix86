@@ -1,8 +1,7 @@
 /**
  * Defines the `ZydisMnemonic` enum.
  */
-typedef enum ZydisMnemonic_
-{
+typedef enum ZydisMnemonic_ {
     ZYDIS_MNEMONIC_INVALID,
     ZYDIS_MNEMONIC_AAA,
     ZYDIS_MNEMONIC_AAD,
@@ -1799,6 +1798,19 @@ typedef enum ZydisMnemonic_
     ZYDIS_MNEMONIC_XSTORE,
     ZYDIS_MNEMONIC_XSUSLDTRK,
     ZYDIS_MNEMONIC_XTEST,
+
+    // Custom instructions. We replace instruction sequences with these when necessary for optimization
+    // Essentially we treat the Zydis instructions as our IR and these are our extensions
+    ZYDIS_MNEMONIC_FELIX86_SUB,
+    ZYDIS_MNEMONIC_FELIX86_OR,
+    ZYDIS_MNEMONIC_FELIX86_XOR,
+    ZYDIS_MNEMONIC_FELIX86_AND,
+    ZYDIS_MNEMONIC_FELIX86_CMOVL,
+    ZYDIS_MNEMONIC_FELIX86_CMOVNL,
+    ZYDIS_MNEMONIC_FELIX86_CMOVLE,
+    ZYDIS_MNEMONIC_FELIX86_CMOVNLE,
+    ZYDIS_MNEMONIC_FELIX86_CMOVBE,
+    ZYDIS_MNEMONIC_FELIX86_CMOVNBE,
 
     /**
      * Maximum value of this enum.

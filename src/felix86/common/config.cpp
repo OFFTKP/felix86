@@ -113,7 +113,6 @@ bool Config::initialize(bool ignore_envs) {
                     extreme_config.link = true;
                     extreme_config.address_cache = true;
                     extreme_config.unsafe_flags = true;
-                    extreme_config.opcode_fusing = true;
                     extreme_config.inline_syscalls = true;
                     extreme_config.inaccurate_minmax = true;
                     extreme_config.always_tso = false;
@@ -131,7 +130,6 @@ bool Config::initialize(bool ignore_envs) {
                     safe_config.link = true;
                     safe_config.address_cache = true;
                     safe_config.unsafe_flags = false;
-                    safe_config.opcode_fusing = false;
                     safe_config.inline_syscalls = false;
                     safe_config.inaccurate_minmax = false;
                     safe_config.always_tso = true;
@@ -152,7 +150,6 @@ bool Config::initialize(bool ignore_envs) {
                     paranoid_config.link = true;
                     paranoid_config.address_cache = false;
                     paranoid_config.unsafe_flags = false;
-                    paranoid_config.opcode_fusing = false;
                     paranoid_config.inline_syscalls = false;
                     paranoid_config.inaccurate_minmax = false;
                     paranoid_config.always_tso = true;

@@ -66,7 +66,6 @@ X(Performance, bool, link, true, FELIX86_LINK, "Enable basic block linking, impo
 X(Performance, u64, max_block_size, 300, FELIX86_MAX_BLOCK_SIZE, "Maximum x86 instructions per block")
 X(Performance, bool, address_cache, true, FELIX86_ADDRESS_CACHE, "Use lower address bits to speed up block lookup")
 X(Performance, bool, unsafe_flags, false, FELIX86_UNSAFE_FLAGS, "Assume flags are thrashed on every call/ret to avoid some calculations")
-X(Performance, bool, opcode_fusing, false, FELIX86_FUSE_OPCODES, "Try to fuse some x86 opcodes together if possible")
 X(Performance, bool, inline_syscalls, true, FELIX86_INLINE_SYSCALLS, "Use ECALL directly instead of a function for some syscalls")
 X(Performance, bool, inaccurate_minmax, false, FELIX86_INACCURATE_MINMAX, "Don't accurately calculate minps/minpd/maxps/maxpd instructions when it comes to NaNs")
 X(Performance, bool, divzero_check, true, FELIX86_DIVZERO_CHECK, "Check for division by zero for every div instruction to raise a signal if necessary")

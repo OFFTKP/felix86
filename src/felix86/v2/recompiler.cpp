@@ -17,6 +17,7 @@
 #include "felix86/hle/ptrace.hpp"
 #include "felix86/hle/syscall.hpp"
 #include "felix86/v2/handlers.hpp"
+#include "felix86/v2/optimizer.hpp"
 #include "felix86/v2/recompiler.hpp"
 #include "fmt/format.h"
 
@@ -597,6 +598,7 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
     current_mode32 = mode32;
     current_decoder_initialized = false; // TODO: don't invalidate if same mode32 as before
     scanAhead(rip);
+    Optimizer::pass(rip, instructions, current_flag_access);
     BlockMetadata& block_meta = getBlockMetadata(rip);
     block_meta.host_address = (u64)as.GetCursorPointer();
     block_meta.guest_address = start_rip;
@@ -764,12 +766,6 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
 
         current_instruction_index += 1;
 
-        if (skip_next) {
-            rip += instructions[current_instruction_index].first.length;
-            current_instruction_index += 1;
-            skip_next = false;
-        }
-
         if (current_instruction_index == instructions.size()) {
             break;
         }
@@ -795,20 +791,6 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
     local_x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
 
     return rip;
-}
-
-std::optional<std::pair<ZydisDecodedInstruction*, ZydisDecodedOperand*>> Recompiler::getNextInstruction() {
-    ASSERT(instructions.size() > current_instruction_index + 1);
-    if (current_instruction_index + 1 < instructions.size()) {
-        auto& [instruction, operands] = instructions[current_instruction_index + 1];
-        return std::make_pair(&instruction, operands);
-    } else {
-        return std::nullopt;
-    }
-}
-
-void Recompiler::skipNext() {
-    skip_next = true;
 }
 
 void Recompiler::flushX87() {
@@ -2120,6 +2102,7 @@ void Recompiler::exitDispatcher(felix86_frame* frame) {
 
 void Recompiler::scanAhead(u64 rip) {
     current_block_big = false;
+
     bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
     u64 initial_rip = rip;
     instructions.clear();
