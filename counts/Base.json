@@ -13916,7 +13916,7 @@
             "CSRRW           zero, t4, 0x2(2)",
             "FENCE          ",
             "LD              t6, gp, 0x398(920)",
-            "LD              t6, t6, 0xd8(216)",
+            "LD              t6, t6, 0x90(144)",
             "JALR            zero, t6, 0x0(0)"
         ],
         "disassembly": "popfq"

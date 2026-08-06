@@ -877,6 +877,7 @@ void Recompiler::flushX87() {
 void Recompiler::compileInstruction(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, u64 rip) {
     current_instruction = &instruction;
     current_operands = operands;
+    current_flags_needed = -1; // only cache flags needed on first shouldEmitFlag
     current_rip = rip;
     resetScratch();
 
@@ -2092,26 +2093,14 @@ void Recompiler::exitDispatcher(felix86_frame* frame) {
     __builtin_unreachable();
 }
 
-namespace {
-struct ScanAccess {
-    u64 rip;
-    ZydisAccessedFlagsMask flags_used;
-    ZydisAccessedFlagsMask flags_changed;
-};
-} // namespace
-
 void Recompiler::scanAhead(u64 rip) {
-    flag_access.clear();
-
     current_block_big = false;
-
     constexpr ZydisAccessedFlagsMask all_flags =
         ZYDIS_CPUFLAG_OF | ZYDIS_CPUFLAG_CF | ZYDIS_CPUFLAG_ZF | ZYDIS_CPUFLAG_SF | ZYDIS_CPUFLAG_AF | ZYDIS_CPUFLAG_PF;
-
     bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
     u64 initial_rip = rip;
     instructions.clear();
-    std::vector<ScanAccess> scan_entries;
+    std::vector<FlagAccessData::ScanAccess> scan_entries;
     while (true) {
         instructions.push_back({});
         auto& [instruction, operands] = instructions.back();
@@ -2320,13 +2309,7 @@ void Recompiler::scanAhead(u64 rip) {
         rip += instruction.length;
     }
 
-    ZydisAccessedFlagsMask live = all_flags;
-    for (int i = (int)scan_entries.size() - 1; i >= 0; i--) {
-        live &= ~scan_entries[i].flags_changed;
-        live |= scan_entries[i].flags_used;
-        flag_access.push_back({.rip = scan_entries[i].rip, .flags_needed = live});
-    }
-    std::reverse(flag_access.begin(), flag_access.end());
+    current_flag_access = FlagAccessData(scan_entries);
 }
 
 bool Recompiler::shouldEmitFlag(u64 rip, x86_ref_e ref) {
@@ -2361,14 +2344,11 @@ bool Recompiler::shouldEmitFlag(u64 rip, x86_ref_e ref) {
         break;
     }
 
-    // Binary search for the first flag_access entry with rip strictly greater than the query rip
-    auto it = std::lower_bound(flag_access.begin(), flag_access.end(), rip, [](const FlagAccess& fa, u64 r) { return fa.rip <= r; });
-
-    if (it != flag_access.end()) {
-        return (it->flags_needed & mask) != 0;
+    if (current_flags_needed == -1) {
+        current_flags_needed = current_flag_access.getFlagsNeeded(rip, mask);
     }
 
-    return true;
+    return (current_flags_needed & mask) != 0;
 }
 
 void Recompiler::updateOverflowSub(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size_e) {

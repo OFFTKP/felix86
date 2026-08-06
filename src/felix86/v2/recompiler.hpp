@@ -10,6 +10,7 @@
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
+#include "felix86/common/zydis_types.hpp"
 
 #define FELIX86_HINT_SAFEPOINT_SYSCALL 0xa5
 #define FELIX86_HINT_GP 0x86
@@ -755,11 +756,6 @@ struct Recompiler {
     std::optional<std::pair<ZydisDecodedInstruction*, ZydisDecodedOperand*>> getNextInstruction();
 
 private:
-    struct FlagAccess {
-        u64 rip;
-        ZydisAccessedFlagsMask flags_needed;
-    };
-
     void emitNecessaryStuff();
 
     void emitDispatcher();
@@ -780,17 +776,6 @@ private:
 
     biscuit::Assembler as{};
     ZydisDecoder decoder{};
-
-    using Operands = ZydisDecodedOperand[ZYDIS_MAX_OPERAND_COUNT];
-    std::vector<std::pair<ZydisDecodedInstruction, Operands>> instructions;
-
-    ZydisDecodedInstruction* current_instruction;
-    ZydisDecodedOperand* current_operands;
-    u64 current_rip;
-    u64 current_ripreg_value;
-    u64 current_instruction_index = 0;
-    bool current_instruction_on_stack = false;
-    bool current_block_big = false;
 
     std::array<std::pair<bool, u64>, 4> breakpoints;
 
@@ -828,8 +813,16 @@ private:
 
     int rax_value = -1;
 
-    std::vector<FlagAccess> flag_access{};
-
+    std::vector<InstructionData> instructions;
+    ZydisDecodedInstruction* current_instruction;
+    ZydisDecodedOperand* current_operands;
+    ZydisAccessedFlagsMask current_flags_needed;
+    u64 current_rip;
+    u64 current_ripreg_value;
+    u64 current_instruction_index = 0;
+    bool current_instruction_on_stack = false;
+    bool current_block_big = false;
+    FlagAccessData current_flag_access{};
     BlockMetadata* current_block_metadata{};
     SEW current_sew = SEW::E1024;
     u8 current_vlen = 0;
