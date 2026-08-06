@@ -1,3 +1,4 @@
+#include <cassert>
 #include <csignal>
 #include <memory>
 #include <new>
@@ -338,6 +339,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             g_is_single_thread = false;
             Recompiler::invalidateRangeGlobal(0, UINT64_MAX & ~0xFFFull, "shmat happened");
         }
+        // TODO: use g_mapper here to track 64-bit shmat.
         result = SYSCALL(shmat, arg1, arg2, arg3);
         if (result >= 0 && ((u64)result) > mmap_min_addr() && result < UINT32_MAX) {
             WARN("shmat in 32-bit address space, this could cause problems with MAP_32BIT");
@@ -349,6 +351,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_shmdt: {
+        // TODO: use g_mapper here to track 64-bit shmdt.
         if (arg1 > mmap_min_addr() && arg1 < UINT32_MAX) {
             WARN("shmdt in 32-bit address space, this could cause problems with MAP_32BIT");
         }
@@ -879,8 +882,8 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             // We need to also track fixed mappings in the 32-bit address space
             result = (ssize_t)g_mapper->map32((void*)arg1, arg2, arg3, (int)arg4, (int)arg5, arg6);
         } else {
-            // No need to use mapper
-            result = SYSCALL(mmap, arg1, arg2, arg3, (int)arg4, (int)arg5, arg6);
+            // Use mapper to track memory allocation.
+            result = (ssize_t)g_mapper->map(false, (void*)arg1, arg2, arg3, (int)arg4, (int)arg5, arg6);
         }
 
         // If there's any blocks in any threads that match this mmapped range they need to be invalidated
@@ -900,7 +903,8 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             // Track unmaps in the 32-bit address space for MAP_32BIT in 64-bit mode
             result = g_mapper->unmap32((void*)arg1, arg2);
         } else {
-            result = SYSCALL(munmap, arg1, arg2, arg3, arg4, arg5, arg6);
+            // Use mapper to track memory allocation.
+            result = g_mapper->unmap(false, (void*)arg1, arg2);
         }
 
         if (result == 0) {

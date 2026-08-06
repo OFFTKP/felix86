@@ -1,8 +1,20 @@
 #pragma once
 
+#include <list>
 #include <unordered_map>
 #include "felix86/common/freelist.hpp"
 #include "felix86/common/types.hpp"
+
+struct AllocatedRegion {
+    /// Inclusive end address.
+    u64 start;
+    /// Non inclusive end address.
+    u64 end;
+    /// Flags used for mapping this region.
+    int flags;
+    /// If the allocated region is shared memory.
+    bool shmem;
+};
 
 // TODO: add verifications using /proc/self/maps and optional debugging mode that always verifies
 struct Mapper {
@@ -22,11 +34,29 @@ struct Mapper {
         return freelist.allocate(addr, size);
     }
 
+    /// Return the total amount of bytes allocated by the guest.
+    uint64_t total_mapped_memory();
+
+    /// Is the provided address mapped by the guest.
+    bool is_address_guest(void* address);
+
+    /// Return the tracked allocated regions.
+    std::vector<AllocatedRegion> get_allocated_regions();
+
+    /// Marks memory as reserved and tracked by the guest.
+    void reserve(u64 address, u64 len, int flags);
+
 private:
     Freelist freelist;
     std::unordered_map<u32, int> page_to_shmid{};
+    /// Tracks the amount of currently mapped regions in memory.
+    /// This will merge multiple mappings together.
+    std::list<AllocatedRegion> allocated_regions;
 
     std::vector<std::pair<u32, u32>> getRegions();
 
     friend void verifyRegions(Mapper& mapper, const std::vector<std::pair<u32, u32>>& regions);
+
+    void add_tracked_region(u64 address, u64 len, int flags, bool shmem = false);
+    void remove_tracked_region(u64 address, u64 len);
 };

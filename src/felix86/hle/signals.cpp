@@ -1,5 +1,6 @@
 #include <array>
 #include <csignal>
+#include <cstdio>
 #include <cstring>
 #include <bits/types/sigset_t.h>
 #include <sys/mman.h>
@@ -18,6 +19,7 @@
 #include "felix86/hle/ptrace.hpp"
 #include "felix86/hle/signals.hpp"
 #include "felix86/v2/recompiler.hpp"
+#include "felix86/hle/mmap.hpp"
 #undef si_pid
 
 #define FP_XSTATE_MAGIC1 0x46505853U
@@ -1326,6 +1328,11 @@ static bool handle_breakpoint(ThreadState* current_state, siginfo_t* info, ucont
 }
 
 static bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
+    // If the segmentation fault is caused by the guest
+    if (g_mapper->is_address_guest(info->si_addr)) {
+        return true;
+    }
+
     if (g_config.abort_sigsegv) {
         // A bug that may pop up if we have issues in our address cache or code cache is an invalid address
         // These would usually manifest as jump to null page or to a bogus address with upper bits set
