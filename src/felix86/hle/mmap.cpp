@@ -352,7 +352,7 @@ uint64_t Mapper::total_mapped_memory() {
     return total_bytes;
 }
 
-bool Mapper::is_address_guest(void* address) {
+bool Mapper::is_guest_address(void* address) {
     // Ensure no race conditions.
     auto guard = freelist.lock();
 
