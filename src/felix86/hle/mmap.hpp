@@ -38,7 +38,7 @@ struct Mapper {
     uint64_t total_mapped_memory();
 
     /// Is the provided address mapped by the guest.
-    bool is_address_guest(void* address);
+    bool is_guest_address(void* address);
 
     /// Return the tracked allocated regions.
     std::vector<AllocatedRegion> get_allocated_regions();
