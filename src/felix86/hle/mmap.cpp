@@ -150,18 +150,14 @@ void* Mapper::map(bool mode32, void* addr, u64 size, int prot, int flags, int fd
     if (mode32) {
         return map32(addr, size, prot, flags, fd, offset);
     } else {
-        if ((flags & (MAP_FIXED | MAP_FIXED_NOREPLACE)) && (u64)addr < UINT32_MAX) {
-            return map32(addr, size, prot, flags, fd, offset);
-        } else {
-            void* result = mmap(addr, size, prot, flags, fd, offset);
+        void* result = mmap(addr, size, prot, flags, fd, offset);
 
-            // On success, add tracked allocation.
-            if (result != (void*)-1) {
-                add_tracked_region((u64)result, size, flags);
-            }
-
-            return result;
+        // On success, add tracked allocation.
+        if (result != (void*)-1) {
+            add_tracked_region((u64)result, size, flags);
         }
+
+        return result;
     }
 }
 
@@ -169,18 +165,14 @@ int Mapper::unmap(bool mode32, void* addr, u64 size) {
     if (mode32) {
         return unmap32(addr, size);
     } else {
-        if ((u64)addr < UINT32_MAX) {
-            return unmap32(addr, size);
-        } else {
-            int result = munmap(addr, size);
+        int result = munmap(addr, size);
 
-            // On success, remove tracked allocation.
-            if (result != -1) {
-                remove_tracked_region((u64)addr, size);
-            }
-
-            return result;
+        // On success, remove tracked allocation.
+        if (result != -1) {
+            remove_tracked_region((u64)addr, size);
         }
+
+        return result;
     }
 }
 
@@ -201,7 +193,7 @@ void* Mapper::remap(bool mode32, void* old_address, u64 old_size, u64 new_size, 
 
             // On success, remap the tracked allocation
             if (result != (void*)-1) {
-                remove_tracked_region((u64)old_address, new_size);
+                remove_tracked_region((u64)old_address, old_size);
                 add_tracked_region((u64)result, new_size, flags);
             }
 

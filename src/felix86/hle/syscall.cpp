@@ -341,7 +341,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         }
         // TODO: use g_mapper here to track 64-bit shmat.
         result = SYSCALL(shmat, arg1, arg2, arg3);
-        if (result >= 0 && ((u64)result) > mmap_min_addr() && result < UINT32_MAX) {
+        if (result >= 0 && ((u64)result) > mmap_min_addr() && result <= UINT32_MAX) {
             WARN("shmat in 32-bit address space, this could cause problems with MAP_32BIT");
         }
         break;
@@ -352,7 +352,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
     }
     case felix86_riscv64_shmdt: {
         // TODO: use g_mapper here to track 64-bit shmdt.
-        if (arg1 > mmap_min_addr() && arg1 < UINT32_MAX) {
+        if (arg1 > mmap_min_addr() && arg1 <= UINT32_MAX) {
             WARN("shmdt in 32-bit address space, this could cause problems with MAP_32BIT");
         }
         result = SYSCALL(shmdt, arg1);
@@ -873,18 +873,13 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             g_is_single_thread = false;
             Recompiler::invalidateRangeGlobal(0, UINT64_MAX & ~0xFFFull, "MAP_SHARED happened");
         }
-
-        bool is_fixed = (flags & MAP_FIXED) || (flags & MAP_FIXED_NOREPLACE);
-        if ((flags & MAP_32BIT) || (is_fixed && arg1 < UINT32_MAX) || mode32) {
-            // The MAP_32BIT flag is x86 only so we need to emulate it
-            // For example, Mono tries to use it to allocate code cache pages near the executable so that it can use
-            // +-2GiB jumps. If it doesn't get them near enough it will eventually crash and die.
-            // We need to also track fixed mappings in the 32-bit address space
-            result = (ssize_t)g_mapper->map32((void*)arg1, arg2, arg3, (int)arg4, (int)arg5, arg6);
-        } else {
-            // Use mapper to track memory allocation.
-            result = (ssize_t)g_mapper->map(false, (void*)arg1, arg2, arg3, (int)arg4, (int)arg5, arg6);
-        }
+        // The MAP_32BIT flag is x86 only so we need to emulate it
+        // For example, Mono tries to use it to allocate code cache pages near the executable so that it can use
+        // +-2GiB jumps. If it doesn't get them near enough it will eventually crash and die.
+        // We need to also track fixed mappings in the 32-bit address space
+        bool is_fixed = ((flags & MAP_FIXED) || (flags & MAP_FIXED_NOREPLACE)) && arg1 <= UINT32_MAX;
+        bool is_mmap32 = is_fixed || (flags & MAP_32BIT) || mode32;
+        result = (ssize_t)g_mapper->map(is_mmap32, (void*)arg1, arg2, arg3, (int)arg4, (int)arg5, arg6);
 
         // If there's any blocks in any threads that match this mmapped range they need to be invalidated
         if (result > 0) {
@@ -899,13 +894,9 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_munmap: {
-        if (arg1 < UINT32_MAX || mode32) {
-            // Track unmaps in the 32-bit address space for MAP_32BIT in 64-bit mode
-            result = g_mapper->unmap32((void*)arg1, arg2);
-        } else {
-            // Use mapper to track memory allocation.
-            result = g_mapper->unmap(false, (void*)arg1, arg2);
-        }
+        // Track unmaps in the 32-bit address space for MAP_32BIT in 64-bit mode
+        bool is_munmap32 = arg1 <= UINT32_MAX || mode32;
+        result = g_mapper->unmap(is_munmap32, (void*)arg1, arg2);
 
         if (result == 0) {
             Recompiler::invalidateRangeGlobal(arg1, arg1 + arg2, "munmap");
