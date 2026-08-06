@@ -1,6 +1,5 @@
 #include <array>
 #include <csignal>
-#include <cstdio>
 #include <cstring>
 #include <bits/types/sigset_t.h>
 #include <sys/mman.h>
@@ -19,7 +18,6 @@
 #include "felix86/hle/ptrace.hpp"
 #include "felix86/hle/signals.hpp"
 #include "felix86/v2/recompiler.hpp"
-#include "felix86/hle/mmap.hpp"
 #undef si_pid
 
 #define FP_XSTATE_MAGIC1 0x46505853U
