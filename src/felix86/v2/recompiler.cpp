@@ -2093,9 +2093,7 @@ void Recompiler::exitDispatcher(felix86_frame* frame) {
 }
 
 void Recompiler::scanAhead(u64 rip) {
-    for (int i = 0; i < 6; i++) {
-        flag_access_cpazso[i].clear();
-    }
+    flag_access.clear();
 
     current_block_big = false;
 
@@ -2116,6 +2114,8 @@ void Recompiler::scanAhead(u64 rip) {
             break;
         }
 
+        constexpr ZydisAccessedFlagsMask all_flags =
+            ZYDIS_CPUFLAG_OF | ZYDIS_CPUFLAG_CF | ZYDIS_CPUFLAG_ZF | ZYDIS_CPUFLAG_SF | ZYDIS_CPUFLAG_AF | ZYDIS_CPUFLAG_PF;
         bool too_big = instructions.size() > g_config.max_block_size;
         bool is_jump = instruction.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
         bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET || mnemonic == ZYDIS_MNEMONIC_IRETD || mnemonic == ZYDIS_MNEMONIC_IRETQ;
@@ -2130,12 +2130,7 @@ void Recompiler::scanAhead(u64 rip) {
             if (is_call || is_ret) {
                 // Pretend that the call/ret changes the flags so that we don't calculate the flags
                 // This is most often the case so it's a good optimization.
-                flag_access_cpazso[0].push_back({true, rip});
-                flag_access_cpazso[1].push_back({true, rip});
-                flag_access_cpazso[2].push_back({true, rip});
-                flag_access_cpazso[3].push_back({true, rip});
-                flag_access_cpazso[4].push_back({true, rip});
-                flag_access_cpazso[5].push_back({true, rip});
+                flag_access.push_back({.rip = rip, .flags_used = 0, .flags_changed = all_flags});
                 break;
             }
         }
@@ -2143,12 +2138,7 @@ void Recompiler::scanAhead(u64 rip) {
         if (instruction.mnemonic == ZYDIS_MNEMONIC_INVLPG) {
             // Don't calculate any flags
             if (!g_config.paranoid) {
-                flag_access_cpazso[0].push_back({true, rip});
-                flag_access_cpazso[1].push_back({true, rip});
-                flag_access_cpazso[2].push_back({true, rip});
-                flag_access_cpazso[3].push_back({true, rip});
-                flag_access_cpazso[4].push_back({true, rip});
-                flag_access_cpazso[5].push_back({true, rip});
+                flag_access.push_back({.rip = rip, .flags_used = 0, .flags_changed = all_flags});
             }
             ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
             if (operands[0].mem.base == ZYDIS_REGISTER_RAX) {
@@ -2157,7 +2147,6 @@ void Recompiler::scanAhead(u64 rip) {
                 size_t size = strlen(string);
                 ASSERT(size > 0);
                 rip += instruction.length + size + 1; // don't forget null terminator
-                continue;
             } else if (operands[0].mem.base == ZYDIS_REGISTER_RCX) {
                 // Super hack! After invlpg [rcx] comes an address and a string which the recompiler skips and we also need to skip here.
                 const char* signature = (const char*)(rip + instruction.length + 8);
@@ -2167,63 +2156,22 @@ void Recompiler::scanAhead(u64 rip) {
                 ASSERT(signature_size > 0);
                 ASSERT(name_size > 0);
                 rip += instruction.length + 8 + signature_size + 1 + name_size + 1; // don't forget null terminator
-                continue;
             }
+            continue;
         }
 
         if (instruction.attributes & ZYDIS_ATTRIB_CPUFLAG_ACCESS) {
+            ZydisAccessedFlagsMask flags_used = 0;
+            ZydisAccessedFlagsMask flags_changed = 0;
             u32 changed =
                 instruction.cpu_flags->modified | instruction.cpu_flags->set_0 | instruction.cpu_flags->set_1 | instruction.cpu_flags->undefined;
             u32 used = instruction.cpu_flags->tested;
             bool passthrough = flag_passthrough(instruction.mnemonic);
-
             if (!passthrough) {
-                if (used & ZYDIS_CPUFLAG_CF) {
-                    flag_access_cpazso[0].push_back({false, rip});
-                } else if (changed & ZYDIS_CPUFLAG_CF) {
-                    flag_access_cpazso[0].push_back({true, rip});
-                }
+                flags_used |= used & all_flags;
+                flags_changed |= changed & all_flags;
             }
-
-            if (!passthrough) {
-                if (used & ZYDIS_CPUFLAG_PF) {
-                    flag_access_cpazso[1].push_back({false, rip});
-                } else if (changed & ZYDIS_CPUFLAG_PF) {
-                    flag_access_cpazso[1].push_back({true, rip});
-                }
-            }
-
-            if (!passthrough) {
-                if (used & ZYDIS_CPUFLAG_AF) {
-                    flag_access_cpazso[2].push_back({false, rip});
-                } else if (changed & ZYDIS_CPUFLAG_AF) {
-                    flag_access_cpazso[2].push_back({true, rip});
-                }
-            }
-
-            if (!passthrough) {
-                if (used & ZYDIS_CPUFLAG_ZF) {
-                    flag_access_cpazso[3].push_back({false, rip});
-                } else if (changed & ZYDIS_CPUFLAG_ZF) {
-                    flag_access_cpazso[3].push_back({true, rip});
-                }
-            }
-
-            if (!passthrough) {
-                if (used & ZYDIS_CPUFLAG_SF) {
-                    flag_access_cpazso[4].push_back({false, rip});
-                } else if (changed & ZYDIS_CPUFLAG_SF) {
-                    flag_access_cpazso[4].push_back({true, rip});
-                }
-            }
-
-            if (!passthrough) {
-                if (used & ZYDIS_CPUFLAG_OF) {
-                    flag_access_cpazso[5].push_back({false, rip});
-                } else if (changed & ZYDIS_CPUFLAG_OF) {
-                    flag_access_cpazso[5].push_back({true, rip});
-                }
-            }
+            flag_access.push_back({.rip = rip, .flags_used = flags_used, .flags_changed = flags_changed});
         }
 
         if (too_big) {
@@ -2232,7 +2180,7 @@ void Recompiler::scanAhead(u64 rip) {
                 // This way if current_block_big == true we know that it doesn't end in a block-ending instruction
                 current_block_big = false;
             } else {
-                // Similar to jumps, all flags will be calculated as the flag_access_cpazso array ends
+                // Similar to jumps, all flags will be calculated as the flag_access array ends
                 current_block_big = true;
                 break;
             }
@@ -2251,8 +2199,7 @@ void Recompiler::scanAhead(u64 rip) {
                         ZydisDecodedOperand* operands_ahead = operands_ahead_storage;
                         u32 changed_this_block = 0;
                         u32 used_this_block = 0;
-                        u32 flags_we_care_about =
-                            ZYDIS_CPUFLAG_OF | ZYDIS_CPUFLAG_CF | ZYDIS_CPUFLAG_ZF | ZYDIS_CPUFLAG_SF | ZYDIS_CPUFLAG_AF | ZYDIS_CPUFLAG_PF;
+                        u32 flags_we_care_about = all_flags;
                         // 10 is heuristically picked with no real reason
                         // If we go too high we risk messing our performance
                         // TODO: some benchmarking may be in order
@@ -2305,8 +2252,7 @@ void Recompiler::scanAhead(u64 rip) {
                             if (is_call || is_ret) {
                                 if (g_config.unsafe_flags && !g_config.paranoid) {
                                     // Pretend call and ret overwrites all flags
-                                    changed_this_block = ZYDIS_CPUFLAG_CF | ZYDIS_CPUFLAG_PF | ZYDIS_CPUFLAG_AF | ZYDIS_CPUFLAG_ZF |
-                                                         ZYDIS_CPUFLAG_SF | ZYDIS_CPUFLAG_OF;
+                                    changed_this_block = all_flags;
                                 }
 
                                 break;
@@ -2354,29 +2300,7 @@ void Recompiler::scanAhead(u64 rip) {
                     // trick the instruction handlers into not emitting this flag
                     // If the JCC actually uses the flag, that's fine because the flag access will be after the usage
                     // so the instruction handler will emit that flag
-                    if (thrashed_ahead & ZYDIS_CPUFLAG_CF) {
-                        flag_access_cpazso[0].push_back({true, rip});
-                    }
-
-                    if (thrashed_ahead & ZYDIS_CPUFLAG_PF) {
-                        flag_access_cpazso[1].push_back({true, rip});
-                    }
-
-                    if (thrashed_ahead & ZYDIS_CPUFLAG_AF) {
-                        flag_access_cpazso[2].push_back({true, rip});
-                    }
-
-                    if (thrashed_ahead & ZYDIS_CPUFLAG_ZF) {
-                        flag_access_cpazso[3].push_back({true, rip});
-                    }
-
-                    if (thrashed_ahead & ZYDIS_CPUFLAG_SF) {
-                        flag_access_cpazso[4].push_back({true, rip});
-                    }
-
-                    if (thrashed_ahead & ZYDIS_CPUFLAG_OF) {
-                        flag_access_cpazso[5].push_back({true, rip});
-                    }
+                    flag_access.push_back({.rip = rip, .flags_used = 0, .flags_changed = (thrashed_ahead & all_flags)});
                 }
             }
 
@@ -2394,37 +2318,37 @@ bool Recompiler::shouldEmitFlag(u64 rip, x86_ref_e ref) {
         return false;
     }
 
-    int index = 0;
+    ZydisAccessedFlagsMask mask = 0;
     switch (ref) {
     case X86_REF_CF:
-        index = 0;
+        mask = ZYDIS_CPUFLAG_CF;
         break;
     case X86_REF_PF:
-        index = 1;
+        mask = ZYDIS_CPUFLAG_PF;
         break;
     case X86_REF_AF:
-        index = 2;
+        mask = ZYDIS_CPUFLAG_AF;
         break;
     case X86_REF_ZF:
-        index = 3;
+        mask = ZYDIS_CPUFLAG_ZF;
         break;
     case X86_REF_SF:
-        index = 4;
+        mask = ZYDIS_CPUFLAG_SF;
         break;
     case X86_REF_OF:
-        index = 5;
+        mask = ZYDIS_CPUFLAG_OF;
         break;
     default:
         UNREACHABLE();
         break;
     }
 
-    for (auto& [changed, r] : flag_access_cpazso[index]) {
-        if (r > rip && !changed) {
+    for (auto& [r, used, changed] : flag_access) {
+        if (r > rip && (used & mask)) {
             return true;
         }
 
-        if (r > rip && changed) {
+        if (r > rip && (changed & mask)) {
             return false;
         }
     }

@@ -756,8 +756,9 @@ struct Recompiler {
 
 private:
     struct FlagAccess {
-        bool modification; // true if modified, false if used
-        u64 position;
+        u64 rip;
+        ZydisAccessedFlagsMask flags_used;
+        ZydisAccessedFlagsMask flags_changed;
     };
 
     void emitNecessaryStuff();
@@ -828,7 +829,7 @@ private:
 
     int rax_value = -1;
 
-    std::array<std::vector<FlagAccess>, 6> flag_access_cpazso{};
+    std::vector<FlagAccess> flag_access{};
 
     BlockMetadata* current_block_metadata{};
     SEW current_sew = SEW::E1024;
