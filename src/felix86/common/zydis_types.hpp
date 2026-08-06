@@ -44,7 +44,7 @@ struct FlagAccessData {
         auto it = std::lower_bound(flag_access.begin(), flag_access.end(), rip, [](const FlagAccess& fa, u64 r) { return fa.rip <= r; });
 
         if (it != flag_access.end()) {
-            return (it->flags_needed & mask) != 0;
+            return it->flags_needed & mask;
         }
 
         return true;
