@@ -2092,14 +2092,26 @@ void Recompiler::exitDispatcher(felix86_frame* frame) {
     __builtin_unreachable();
 }
 
+namespace {
+struct ScanAccess {
+    u64 rip;
+    ZydisAccessedFlagsMask flags_used;
+    ZydisAccessedFlagsMask flags_changed;
+};
+} // namespace
+
 void Recompiler::scanAhead(u64 rip) {
     flag_access.clear();
 
     current_block_big = false;
 
+    constexpr ZydisAccessedFlagsMask all_flags =
+        ZYDIS_CPUFLAG_OF | ZYDIS_CPUFLAG_CF | ZYDIS_CPUFLAG_ZF | ZYDIS_CPUFLAG_SF | ZYDIS_CPUFLAG_AF | ZYDIS_CPUFLAG_PF;
+
     bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
     u64 initial_rip = rip;
     instructions.clear();
+    std::vector<ScanAccess> scan_entries;
     while (true) {
         instructions.push_back({});
         auto& [instruction, operands] = instructions.back();
@@ -2114,8 +2126,6 @@ void Recompiler::scanAhead(u64 rip) {
             break;
         }
 
-        constexpr ZydisAccessedFlagsMask all_flags =
-            ZYDIS_CPUFLAG_OF | ZYDIS_CPUFLAG_CF | ZYDIS_CPUFLAG_ZF | ZYDIS_CPUFLAG_SF | ZYDIS_CPUFLAG_AF | ZYDIS_CPUFLAG_PF;
         bool too_big = instructions.size() > g_config.max_block_size;
         bool is_jump = instruction.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
         bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET || mnemonic == ZYDIS_MNEMONIC_IRETD || mnemonic == ZYDIS_MNEMONIC_IRETQ;
@@ -2130,7 +2140,7 @@ void Recompiler::scanAhead(u64 rip) {
             if (is_call || is_ret) {
                 // Pretend that the call/ret changes the flags so that we don't calculate the flags
                 // This is most often the case so it's a good optimization.
-                flag_access.push_back({.rip = rip, .flags_used = 0, .flags_changed = all_flags});
+                scan_entries.push_back({.rip = rip, .flags_used = 0, .flags_changed = all_flags});
                 break;
             }
         }
@@ -2138,7 +2148,7 @@ void Recompiler::scanAhead(u64 rip) {
         if (instruction.mnemonic == ZYDIS_MNEMONIC_INVLPG) {
             // Don't calculate any flags
             if (!g_config.paranoid) {
-                flag_access.push_back({.rip = rip, .flags_used = 0, .flags_changed = all_flags});
+                scan_entries.push_back({.rip = rip, .flags_used = 0, .flags_changed = all_flags});
             }
             ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
             if (operands[0].mem.base == ZYDIS_REGISTER_RAX) {
@@ -2171,7 +2181,7 @@ void Recompiler::scanAhead(u64 rip) {
                 flags_used |= used & all_flags;
                 flags_changed |= changed & all_flags;
             }
-            flag_access.push_back({.rip = rip, .flags_used = flags_used, .flags_changed = flags_changed});
+            scan_entries.push_back({.rip = rip, .flags_used = flags_used, .flags_changed = flags_changed});
         }
 
         if (too_big) {
@@ -2300,7 +2310,7 @@ void Recompiler::scanAhead(u64 rip) {
                     // trick the instruction handlers into not emitting this flag
                     // If the JCC actually uses the flag, that's fine because the flag access will be after the usage
                     // so the instruction handler will emit that flag
-                    flag_access.push_back({.rip = rip, .flags_used = 0, .flags_changed = (thrashed_ahead & all_flags)});
+                    scan_entries.push_back({.rip = rip, .flags_used = 0, .flags_changed = (thrashed_ahead & all_flags)});
                 }
             }
 
@@ -2309,6 +2319,14 @@ void Recompiler::scanAhead(u64 rip) {
 
         rip += instruction.length;
     }
+
+    ZydisAccessedFlagsMask live = all_flags;
+    for (int i = (int)scan_entries.size() - 1; i >= 0; i--) {
+        live &= ~scan_entries[i].flags_changed;
+        live |= scan_entries[i].flags_used;
+        flag_access.push_back({.rip = scan_entries[i].rip, .flags_needed = live});
+    }
+    std::reverse(flag_access.begin(), flag_access.end());
 }
 
 bool Recompiler::shouldEmitFlag(u64 rip, x86_ref_e ref) {
@@ -2343,14 +2361,11 @@ bool Recompiler::shouldEmitFlag(u64 rip, x86_ref_e ref) {
         break;
     }
 
-    for (auto& [r, used, changed] : flag_access) {
-        if (r > rip && (used & mask)) {
-            return true;
-        }
+    // Binary search for the first flag_access entry with rip strictly greater than the query rip
+    auto it = std::lower_bound(flag_access.begin(), flag_access.end(), rip, [](const FlagAccess& fa, u64 r) { return fa.rip <= r; });
 
-        if (r > rip && (changed & mask)) {
-            return false;
-        }
+    if (it != flag_access.end()) {
+        return (it->flags_needed & mask) != 0;
     }
 
     return true;

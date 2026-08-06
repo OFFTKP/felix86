@@ -757,8 +757,7 @@ struct Recompiler {
 private:
     struct FlagAccess {
         u64 rip;
-        ZydisAccessedFlagsMask flags_used;
-        ZydisAccessedFlagsMask flags_changed;
+        ZydisAccessedFlagsMask flags_needed;
     };
 
     void emitNecessaryStuff();
