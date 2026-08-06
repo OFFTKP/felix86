@@ -1,4 +1,8 @@
 #include <cstdint>
+#include <cstdio>
+#include <iterator>
+#include <memory>
+#include <utility>
 #include <sys/mman.h>
 #include <sys/shm.h>
 #include "felix86/common/global.hpp"
@@ -33,10 +37,12 @@ void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offse
             // and dirty solution of unallocating it in freelist so we can reallocate it
             ASSERT((u64)result < UINT32_MAX);
             freelist.deallocate((u64)result, size);
+            remove_tracked_region((u64)result, size);
         }
 
         void* mapping = freelist.allocate((u64)result, size);
         ASSERT_MSG(mapping == result, "Failed with mmap(%lx, %lx, %x, %x, %d, %lx)", addr, size, prot, flags, fd, offset);
+        add_tracked_region((u64)result, size, flags);
         return result;
     } else {
         void* address = freelist.allocate(0, size);
@@ -47,10 +53,13 @@ void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offse
 
         void* result = mmap(address, size, prot, flags | MAP_FIXED_NOREPLACE, fd, offset);
         if (result == MAP_FAILED) {
+            // TODO: should this free memory back from freelist again?
             i64 error = -errno;
             WARN("Even though our freelist says we have memory at %lx-%lx, mmap failed with: %ld", (u64)address, (u64)address + size, error);
             return (void*)error;
         }
+        
+        add_tracked_region((u64)result, size, flags);
         ASSERT(result == address);
         return address;
     }
@@ -61,8 +70,12 @@ int Mapper::unmap32(void* addr, u64 size) {
     ASSERT((u64)addr < UINT32_MAX);
     int result = munmap(addr, size);
     if (result != -1) {
+        // unmap it from our freelist as well
         auto guard = freelist.lock();
-        freelist.deallocate((u64)addr, size); // unmap it from our freelist as well
+        freelist.deallocate((u64)addr, size); 
+        // also unmap it from the allocation tracker.
+        remove_tracked_region((u64)addr, size);
+        
         return result;
     } else {
         return -errno;
@@ -96,6 +109,10 @@ void* Mapper::remap32(void* old_address, u64 old_size, u64 new_size, int flags, 
 
         void* mapping = freelist.allocate((u64)result, new_size);
         ASSERT(mapping == result);
+
+        remove_tracked_region((u64)old_address, old_size);
+        add_tracked_region((u64)result, new_size, flags);
+
         return result;
     } else {
         // If we are here it means there's MREMAP_MAYMOVE and not MREMAP_FIXED
@@ -121,6 +138,9 @@ void* Mapper::remap32(void* old_address, u64 old_size, u64 new_size, int flags, 
             freelist.deallocate((u64)old_address, old_size);
         }
 
+        remove_tracked_region((u64)old_address, old_size);
+        add_tracked_region((u64)result, new_size, flags);
+
         ASSERT(result == new_address);
         return result;
     }
@@ -133,7 +153,14 @@ void* Mapper::map(bool mode32, void* addr, u64 size, int prot, int flags, int fd
         if ((flags & (MAP_FIXED | MAP_FIXED_NOREPLACE)) && (u64)addr < UINT32_MAX) {
             return map32(addr, size, prot, flags, fd, offset);
         } else {
-            return mmap(addr, size, prot, flags, fd, offset);
+            void* result = mmap(addr, size, prot, flags, fd, offset);
+
+            // On success, add tracked allocation.
+            if (result != (void*)-1) {
+                add_tracked_region((u64)result, size, flags);
+            }
+            
+            return result;
         }
     }
 }
@@ -145,7 +172,14 @@ int Mapper::unmap(bool mode32, void* addr, u64 size) {
         if ((u64)addr < UINT32_MAX) {
             return unmap32(addr, size);
         } else {
-            return munmap(addr, size);
+            int result = munmap(addr, size);
+
+            // On success, remove tracked allocation.
+            if (result != -1) {
+                remove_tracked_region((u64)addr, size);
+            }
+
+            return result;
         }
     }
 }
@@ -164,9 +198,185 @@ void* Mapper::remap(bool mode32, void* old_address, u64 old_size, u64 new_size, 
             void* result = ::mremap(old_address, old_size, new_size, flags, new_address);
             // we don't want an allocation in the low 32-bit area
             ASSERT((u64)result > UINT32_MAX);
+
+            // On success, remap the tracked allocation
+            if (result != (void*)-1) {
+                remove_tracked_region((u64)old_address, new_size);
+                add_tracked_region((u64)result, new_size, flags);
+            }
+            
             return result;
         }
     }
+}
+
+void Mapper::add_tracked_region(u64 address, u64 len, int flags, bool shmem) {
+    if (len == 0) return;
+    
+    // Assume 4KiB alignment.
+    address = address & ~0x3ff;
+    u64 end = address + len;
+    end = (end + 0x3ff) & ~0x3ff;
+    
+    // We assume at this point, that the allocated region will not overlap with any existing region.
+    // This works because any invocation to mmap cannot share the same region of address space as
+    // an already existing mapping UNLESS it has the MAP_FIXED flag, in which case the mapped region
+    // is removed before a call to this function.
+
+    AllocatedRegion v = AllocatedRegion { address, end, flags, shmem };
+
+    for (auto it = allocated_regions.begin(); it != allocated_regions.end(); it++) {
+        auto& r = *it;
+        bool can_merge = r.flags == flags && r.shmem == shmem;
+
+        // Region extends another leading.
+        if (can_merge && r.start == end) {
+            r.start = address;
+            return;
+        }
+        // Region extends another trailing.
+        else if (can_merge && r.end == address) {
+            auto r = *it;
+            r.end = end;
+            // Check if we can continue merging onwards.
+            it++;
+            for (;it != allocated_regions.end(); it++) {
+                if ((*it).start == r.end && (*it).shmem == shmem && (*it).flags == flags) {
+                    r.end = (*it).end;
+                    it = allocated_regions.erase(it);
+                } else if ((*it).start < r.end) {
+                    (*it).start = r.end;
+                    if ((*it).start >= (*it).end) {
+                        it = allocated_regions.erase(it);
+                    }
+                } else {
+                    break;
+                }
+            }
+            return;
+        }
+        // Overlap.
+        else if (
+            (r.start >= address && r.start < end)
+            || (r.end > address && r.end <= end)
+            || (address >= r.start && address < r.end)
+            || (end > r.start && end <= r.end)
+        ) {
+            remove_tracked_region(address, len);
+            add_tracked_region(address, len, flags, shmem);
+            return;
+        }
+        else if (end <= r.start) {
+            allocated_regions.insert(it, v);
+            return;
+        }
+    }
+
+    allocated_regions.emplace_back(v);
+}
+
+void Mapper::remove_tracked_region(u64 address, u64 len) {
+    if (len == 0) return;
+
+    address = address & ~0x3ff;
+    u64 end = address + len;
+    end = (end + 0x3ff) & ~0x3ff;
+
+    for (auto it = allocated_regions.begin(); it != allocated_regions.end();) {
+        auto r = *it;
+        // Because the linked list is ordered, we know if the start address is greater than end,
+        // then there is no more regions to remove with this unmap.
+        if (end <= r.start || address == end) {
+            break;
+        }
+
+        /// The mapped region is entirely within the unmapped region
+        if (address <= r.start && end >= r.end) {
+            it = allocated_regions.erase(it);
+            continue;
+        }
+
+        /// The unmapped region is entirely within an existing region.
+        if (r.start <= address && r.end >= end) {
+            it = allocated_regions.erase(it);
+
+            if (address - r.start > 0) {
+                it = allocated_regions.insert(it, AllocatedRegion {r.start, address, r.flags, r.shmem});
+                it++;
+            }
+            if (r.end - end > 0) {
+                it = allocated_regions.insert(it, AllocatedRegion {end, r.end, r.flags, r.shmem});
+                it++;
+            }
+            continue;
+        }
+
+        auto& m = *it;
+        /// The unmapped region removes from the left side.
+        if (m.start >= address && m.end > address) {
+            m.start = end;
+
+        }
+
+        /// The unmapped region removes from the right side.
+        if (m.start <= address && m.end > address) {
+            m.end = address;
+        }
+
+        if (m.start >= m.end) {
+            it = allocated_regions.erase(it);
+        } else {
+            it++;
+        }
+    }
+}
+
+void Mapper::reserve(u64 address, u64 len, int flags) {
+    // Ensure no race conditions.
+    auto guard = freelist.lock();
+
+    freelist.deallocate(address, len);
+    remove_tracked_region(address, len);
+    add_tracked_region(address, len, flags, false);
+}
+
+uint64_t Mapper::total_mapped_memory() {
+    // Ensure no race conditions.
+    auto guard = freelist.lock();
+
+    uint64_t total_bytes = 0;
+    for (auto r: allocated_regions) {
+        total_bytes += r.end - r.start;
+    }
+
+    return total_bytes;
+}
+
+bool Mapper::is_address_guest(void* address) {
+    // Ensure no race conditions.
+    auto guard = freelist.lock();
+
+    // TODO: could maybe be done faster using caching?
+    // Optionally, an ordered map could maybe be iterated faster?
+    u64 a = (u64)address;
+    for (auto r: allocated_regions) {
+        if (r.start <= a && a < r.end) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+std::vector<AllocatedRegion> Mapper::get_allocated_regions() {
+    // Ensure no race conditions.
+    auto guard = freelist.lock();
+
+    std::vector<AllocatedRegion> regions;
+    for (auto region: allocated_regions) {
+        regions.push_back(region);
+    }
+    return regions;
 }
 
 std::vector<std::pair<u32, u32>> Mapper::getRegions() {
@@ -212,7 +422,7 @@ int Mapper::shmat32(int shmid, void* address, int flags, u32* result_address) {
 
         // Since an address is provided by the application, we are going to assume it's
         // inside 32-bit address space and just check after the shmat
-        shm_mem = shmat(shmid, address, flags);
+        shm_mem = ::shmat(shmid, address, flags);
         if ((i64)shm_mem != -1) {
             u64 top_bits = (u64)shm_mem >> 32;
             ASSERT_MSG(top_bits == 0 || top_bits == 0xFFFF'FFFF, "shmat returned address in 64-bit address space?");
@@ -237,6 +447,8 @@ int Mapper::shmat32(int shmid, void* address, int flags, u32* result_address) {
     ASSERT_MSG(top_bits == 0 || top_bits == 0xFFFF'FFFF, "shmat returned address in 64-bit address space?");
     *result_address = (u32)(u64)shm_mem;
     page_to_shmid[(u32)(u64)shm_mem & ~0xFFFull] = shmid;
+    add_tracked_region((u64)shm_mem, size, flags, true);
+
     return 0;
 }
 
@@ -247,7 +459,6 @@ int Mapper::shmdt32(void* address) {
         return -EINVAL;
     }
 
-    auto guard = freelist.lock();
     int shmid = it->second;
     struct shmid_ds ds;
     if (shmctl(shmid, IPC_STAT, &ds) == 0) {
@@ -257,12 +468,13 @@ int Mapper::shmdt32(void* address) {
             WARN("shmctl returned size not aligned to a page: %lx, setting to new size: %lx", size, new_size);
             size = new_size;
         }
+        remove_tracked_region((u64)address, size);
         freelist.deallocate((u64)address, size);
     } else {
         WARN("shmctl returned error %d", -errno);
     }
 
-    int result = shmdt(address);
+    int result = ::shmdt(address);
 
     if (result == 0) {
         page_to_shmid.erase(it);
