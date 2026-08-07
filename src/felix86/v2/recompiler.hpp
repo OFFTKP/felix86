@@ -816,7 +816,6 @@ private:
     std::vector<InstructionData> instructions;
     ZydisDecodedInstruction* current_instruction;
     ZydisDecodedOperand* current_operands;
-    ZydisAccessedFlagsMask current_flags_needed;
     u64 current_rip;
     u64 current_ripreg_value;
     u64 current_instruction_index = 0;

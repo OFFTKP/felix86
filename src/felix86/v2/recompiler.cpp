@@ -877,7 +877,6 @@ void Recompiler::flushX87() {
 void Recompiler::compileInstruction(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, u64 rip) {
     current_instruction = &instruction;
     current_operands = operands;
-    current_flags_needed = -1; // only cache flags needed on first shouldEmitFlag
     current_rip = rip;
     resetScratch();
 
