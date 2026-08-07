@@ -2094,8 +2094,6 @@ void Recompiler::exitDispatcher(felix86_frame* frame) {
 
 void Recompiler::scanAhead(u64 rip) {
     current_block_big = false;
-    constexpr ZydisAccessedFlagsMask all_flags =
-        ZYDIS_CPUFLAG_OF | ZYDIS_CPUFLAG_CF | ZYDIS_CPUFLAG_ZF | ZYDIS_CPUFLAG_SF | ZYDIS_CPUFLAG_AF | ZYDIS_CPUFLAG_PF;
     bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
     u64 initial_rip = rip;
     instructions.clear();
@@ -2128,7 +2126,7 @@ void Recompiler::scanAhead(u64 rip) {
             if (is_call || is_ret) {
                 // Pretend that the call/ret changes the flags so that we don't calculate the flags
                 // This is most often the case so it's a good optimization.
-                scan_entries.push_back({.rip = rip, .flags_used = 0, .flags_changed = all_flags});
+                scan_entries.push_back({.rip = rip, .flags_used = 0, .flags_changed = ALL_CPUFLAGS});
                 break;
             }
         }
@@ -2136,7 +2134,7 @@ void Recompiler::scanAhead(u64 rip) {
         if (instruction.mnemonic == ZYDIS_MNEMONIC_INVLPG) {
             // Don't calculate any flags
             if (!g_config.paranoid) {
-                scan_entries.push_back({.rip = rip, .flags_used = 0, .flags_changed = all_flags});
+                scan_entries.push_back({.rip = rip, .flags_used = 0, .flags_changed = ALL_CPUFLAGS});
             }
             ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
             if (operands[0].mem.base == ZYDIS_REGISTER_RAX) {
@@ -2166,8 +2164,8 @@ void Recompiler::scanAhead(u64 rip) {
             u32 used = instruction.cpu_flags->tested;
             bool passthrough = flag_passthrough(instruction.mnemonic);
             if (!passthrough) {
-                flags_used |= used & all_flags;
-                flags_changed |= changed & all_flags;
+                flags_used |= used & ALL_CPUFLAGS;
+                flags_changed |= changed & ALL_CPUFLAGS;
             }
             scan_entries.push_back({.rip = rip, .flags_used = flags_used, .flags_changed = flags_changed});
         }
@@ -2197,7 +2195,7 @@ void Recompiler::scanAhead(u64 rip) {
                         ZydisDecodedOperand* operands_ahead = operands_ahead_storage;
                         u32 changed_this_block = 0;
                         u32 used_this_block = 0;
-                        u32 flags_we_care_about = all_flags;
+                        u32 flags_we_care_about = ALL_CPUFLAGS;
                         // 10 is heuristically picked with no real reason
                         // If we go too high we risk messing our performance
                         // TODO: some benchmarking may be in order
@@ -2250,7 +2248,7 @@ void Recompiler::scanAhead(u64 rip) {
                             if (is_call || is_ret) {
                                 if (g_config.unsafe_flags && !g_config.paranoid) {
                                     // Pretend call and ret overwrites all flags
-                                    changed_this_block = all_flags;
+                                    changed_this_block = ALL_CPUFLAGS;
                                 }
 
                                 break;
@@ -2298,7 +2296,7 @@ void Recompiler::scanAhead(u64 rip) {
                     // trick the instruction handlers into not emitting this flag
                     // If the JCC actually uses the flag, that's fine because the flag access will be after the usage
                     // so the instruction handler will emit that flag
-                    scan_entries.push_back({.rip = rip, .flags_used = 0, .flags_changed = (thrashed_ahead & all_flags)});
+                    scan_entries.push_back({.rip = rip, .flags_used = 0, .flags_changed = (thrashed_ahead & ALL_CPUFLAGS)});
                 }
             }
 
