@@ -2344,11 +2344,7 @@ bool Recompiler::shouldEmitFlag(u64 rip, x86_ref_e ref) {
         break;
     }
 
-    if (current_flags_needed == -1) {
-        current_flags_needed = current_flag_access.getFlagsNeeded(rip, mask);
-    }
-
-    return (current_flags_needed & mask) != 0;
+    return current_flag_access.getFlagsNeeded(rip, mask) != 0;
 }
 
 void Recompiler::updateOverflowSub(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size_e) {

@@ -47,7 +47,7 @@ struct FlagAccessData {
             return it->flags_needed & mask;
         }
 
-        return true;
+        return mask;
     }
 
 private:
