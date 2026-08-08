@@ -1668,6 +1668,8 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             args += arg ? arg : "";
         }
 
+        g_process_globals.shm_manager.unlink();
+
         LOG("Running execve on %s, wish me luck. Args:%s", executable.c_str(), args.c_str());
 
         // Despite our wishes, execve will raise a SIGTRAP if traced
