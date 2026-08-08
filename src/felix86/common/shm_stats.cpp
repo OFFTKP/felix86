@@ -16,6 +16,7 @@ void SHMManager::initialize() {
         name = "fex-" + std::to_string(getpid()) + "-stats";
         int fd = shm_open(name.c_str(), O_CREAT | O_TRUNC | O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO);
         if (fd == -1) {
+            WARN("Failed to open shm, disabling stats");
             g_emit_stats = false;
             name = {};
         } else {
@@ -28,14 +29,17 @@ void SHMManager::initialize() {
                     if (mem != MAP_FAILED) {
                         current_size = initial_size;
                     } else {
+                        WARN("Failed to allocate initial memory, disabling stats");
                         g_emit_stats = false;
                         base = nullptr;
                     }
                 } else {
+                    WARN("Failed to reserve memory, disabling stats");
                     g_emit_stats = false;
                     base = nullptr;
                 }
             } else {
+                WARN("Failed to ftruncate, disabling stats");
                 g_emit_stats = false;
             }
             close(fd);
@@ -127,6 +131,7 @@ FEXCore::SHMStats::ThreadStats* SHMManager::addThread(u32 tid) {
 
     close(fd);
     current_size = new_size;
+    stat_header->Size = current_size;
     slot = findSlot(tid, new_size);
     if (!slot) {
         IMPORTANT("Couldn't find empty slot after increasing shm size");
