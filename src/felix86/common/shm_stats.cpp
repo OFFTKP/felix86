@@ -75,7 +75,7 @@ FEXCore::SHMStats::ThreadStats* SHMManager::findSlot(u32 tid, u64 scan_size) {
     }
 
     if (slot) {
-        u64 offset = (u64)slot - (u64)stat_base;
+        u64 offset = (u64)slot - (u64)base;
         if (stat_header->Head == 0) {
             stat_header->Head = offset;
         } else {
@@ -84,6 +84,7 @@ FEXCore::SHMStats::ThreadStats* SHMManager::findSlot(u32 tid, u64 scan_size) {
         stat_tail = slot;
         return slot;
     } else {
+        WARN("Slot not found");
         return nullptr;
     }
 }
@@ -146,7 +147,7 @@ void SHMManager::removeThread(FEXCore::SHMStats::ThreadStats* slot) {
 
     auto guard = lock.lock();
     slot->TID = 0;
-    const u64 offset = (u64)slot - (u64)stat_base;
+    const u64 offset = (u64)slot - (u64)base;
     const u64 next = slot->Next;
     if (stat_header->Head == offset) {
         stat_header->Head = next;
