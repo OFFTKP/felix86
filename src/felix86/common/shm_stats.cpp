@@ -50,7 +50,7 @@ void SHMManager::initialize() {
         stat_header->app_type = FEXCore::SHMStats::AppType::LINUX_64; // TODO
         stat_header->ThreadStatsSize = sizeof(FEXCore::SHMStats::ThreadStats);
         std::string version = get_version_full();
-        strncpy(stat_header->fex_version, version.data(), std::min(sizeof(stat_header->fex_version), version.size()));
+        strncpy(stat_header->fex_version, version.data(), std::min(sizeof(stat_header->fex_version) - 1, version.size()));
         stat_header->Size = current_size;
     }
 }
@@ -103,36 +103,30 @@ FEXCore::SHMStats::ThreadStats* SHMManager::addThread(u32 tid) {
         return nullptr;
     }
 
-    // Double the size if not already doubled by another thread
-    // and then scan again
-    const u64 new_size = current_size;
-    if (new_size > scan_size) {
-        // The size was already doubled by another thread, just scan again
-    } else {
-        ASSERT(!name.empty());
-        int fd = shm_open(name.c_str(), O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO);
-        if (fd == -1) {
-            IMPORTANT("Failed to open shm %s", name.c_str());
-            return nullptr;
-        }
-
-        int result = ftruncate(fd, new_size);
-        if (result == -1) {
-            IMPORTANT("Failed to increase shm size");
-            close(fd);
-            return nullptr;
-        }
-
-        void* mem = mmap(base, new_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, 0);
-        if (mem == MAP_FAILED) {
-            IMPORTANT("Failed to increase shm mapping");
-            close(fd);
-            return nullptr;
-        }
-
-        close(fd);
-        current_size = new_size;
+    const u64 new_size = std::min(current_size * 2, FELIX86_MAX_SHM_SIZE);
+    ASSERT(!name.empty());
+    int fd = shm_open(name.c_str(), O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO);
+    if (fd == -1) {
+        IMPORTANT("Failed to open shm %s", name.c_str());
+        return nullptr;
     }
+
+    int result = ftruncate(fd, new_size);
+    if (result == -1) {
+        IMPORTANT("Failed to increase shm size");
+        close(fd);
+        return nullptr;
+    }
+
+    void* mem = mmap(base, new_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, 0);
+    if (mem == MAP_FAILED) {
+        IMPORTANT("Failed to increase shm mapping");
+        close(fd);
+        return nullptr;
+    }
+
+    close(fd);
+    current_size = new_size;
     slot = findSlot(tid, new_size);
     if (!slot) {
         IMPORTANT("Couldn't find empty slot after increasing shm size");
@@ -146,6 +140,7 @@ void SHMManager::removeThread(FEXCore::SHMStats::ThreadStats* slot) {
     }
 
     auto guard = lock.lock();
+    slot->TID = 0;
     const u64 offset = (u64)slot - (u64)stat_base;
     const u64 next = slot->Next;
     if (stat_header->Head == offset) {
@@ -162,8 +157,8 @@ void SHMManager::removeThread(FEXCore::SHMStats::ThreadStats* slot) {
                 if (stat_tail == slot) {
                     stat_tail = current;
                 }
+                break;
             }
-            break;
         }
     }
 
