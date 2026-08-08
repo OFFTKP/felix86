@@ -159,6 +159,7 @@ set(FELIX86_INCLUDES
     external/json
     external/biscuit/include
     external/tomlc17
+    external/FEX/include
 )
 
 add_library(tomlc17 STATIC external/tomlc17/tomlc17.c)

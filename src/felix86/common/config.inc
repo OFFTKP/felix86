@@ -60,6 +60,7 @@ X(Debugging, bool, enable_io_uring, false, FELIX86_ENABLE_IO_URING, "Enable io_u
 X(Debugging, bool, dump_seccomp, false, FELIX86_DUMP_SECCOMP, "Dump installed seccomp programs")
 X(Debugging, bool, seccomp_always_allow, false, FELIX86_SECCOMP_ALWAYS_ALLOW, "Don't run seccomp programs at all, allow all syscalls")
 X(Debugging, bool, ptrace_enabled, true, FELIX86_PTRACE_ENABLED, "Enable ptrace(), allowing programs to debug other programs")
+X(Debugging, bool, stats_enabled, false, FELIX86_STATS_ENABLED, "Enable JIT stats")
 
 X(Performance, bool, link, true, FELIX86_LINK, "Enable basic block linking, important for performance")
 X(Performance, u64, max_block_size, 300, FELIX86_MAX_BLOCK_SIZE, "Maximum x86 instructions per block")
