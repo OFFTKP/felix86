@@ -63,7 +63,7 @@ FEXCore::SHMStats::ThreadStats* SHMManager::findSlot(u32 tid, u64 scan_size) {
     for (u64 i = 0; i < count; i++) {
         FEXCore::SHMStats::ThreadStats* current = &stat_base[i];
         if (current->TID == 0) {
-            memset(slot, 0, sizeof(FEXCore::SHMStats::ThreadStats));
+            memset(current, 0, sizeof(FEXCore::SHMStats::ThreadStats));
             current->TID = tid;
             slot = current;
             break;
