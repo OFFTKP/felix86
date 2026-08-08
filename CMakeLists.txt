@@ -100,6 +100,7 @@ set(FELIX86_COMMON_SOURCES
     src/felix86/common/print.cpp
     src/felix86/common/process_lock.cpp
     src/felix86/common/script.cpp
+    src/felix86/common/shm_stats.cpp
     src/felix86/common/state.cpp
     src/felix86/common/strace.cpp
     src/felix86/common/utility.cpp
