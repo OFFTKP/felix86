@@ -33,7 +33,7 @@ u64 sext_if_64(u64 value, u8 size_e);
 
 std::string get_perf_symbol(u64 address);
 
-void flush_icache();
+void flush_icache(u64 start, u64 end);
 
 void flush_icache_global(u64 start, u64 end);
 

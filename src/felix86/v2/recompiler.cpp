@@ -162,6 +162,7 @@ Recompiler::~Recompiler() {
 void Recompiler::emitNecessaryStuff() {
     OptimizationGuard guard(as, optimization_guard_counter);
 
+    u64 start = (u64)as.GetCursorPointer();
     u8* replace_me = emitInvalidateCallerThunk();
     emitDispatcher();
     u8* ptr = as.GetCursorPointer();
@@ -171,7 +172,7 @@ void Recompiler::emitNecessaryStuff() {
 
     start_of_code_cache = as.GetCursorPointer();
 
-    flush_icache();
+    flush_icache((u64)start, (u64)start_of_code_cache);
 }
 
 void Recompiler::emitDispatcher() {
@@ -375,7 +376,7 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_
         // to jump to before getting hit by this invalidation. So we can jumpAndLink there.
         state->recompiler->jumpAndLink(rip);
         state->recompiler->as.SetCursorPointer(cursor);
-        flush_icache();
+        flush_icache((u64)link_location, (u64)link_location + 4096);
     } else {
         // The dispatcher makes sure the third argument is set to 0 if we get here not from a link
     }
@@ -778,7 +779,7 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
     }
 
     resetScratch();
-    flush_icache();
+    flush_icache(block_meta.host_address, (u64)as.GetCursorPointer());
 
     current_block_metadata = nullptr;
     local_x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
@@ -2703,15 +2704,24 @@ void Recompiler::expirePendingLinks(u64 rip) {
         return;
     }
 
+    u64 min = -1ull;
+    u64 max = 0;
     auto& links = getBlockMetadata(rip).pending_links;
     for (u8* link : links) {
         u8* cursor = as.GetCursorPointer();
         as.SetCursorPointer(link);
         jumpAndLink(rip);
         as.SetCursorPointer(cursor);
+
+        if ((u64)link < min) {
+            min = (u64)link;
+        }
+        if ((u64)link > max) {
+            max = (u64)link;
+        }
     }
 
-    flush_icache();
+    flush_icache(min, max + 4096);
 
     // Free the memory as pending_links won't be used after the block is compiled
     std::vector<u8*>().swap(links);
