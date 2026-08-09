@@ -660,6 +660,7 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
             break;
         }
 
+        resetScratch();
         if (is_mmx) {
             if (!ran_mmx_once) {
                 // Set FPU tag word to valid for the first MMX instruction in this block
