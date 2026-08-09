@@ -701,6 +701,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         if (g_config.calltrace_on_exit) {
             dump_states();
         }
+        g_process_globals.shm_manager.unlink();
         LOG("Process %d called exit_group(%d)", gettid(), arg1);
         SYSCALL(exit_group, arg1);
         UNREACHABLE();
@@ -1085,6 +1086,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         if (g_config.calltrace_on_exit) {
             dump_states();
         }
+        g_process_globals.shm_manager.removeThread(state->thread_stats);
         LOG("Thread %ld exited with SYS_exit(%d)", gettid(), arg1);
         if (state->clear_tid_address) {
             __atomic_store_n(state->clear_tid_address, 0, __ATOMIC_SEQ_CST);
@@ -1665,6 +1667,8 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             args += " ";
             args += arg ? arg : "";
         }
+
+        g_process_globals.shm_manager.unlink();
 
         LOG("Running execve on %s, wish me luck. Args:%s", executable.c_str(), args.c_str());
 

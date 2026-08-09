@@ -423,6 +423,7 @@ void Recompiler::clearCodeCache(ThreadState* state) {
 }
 
 u64 Recompiler::compile(ThreadState* state, u64 rip) {
+    FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedJITCount, 1);
     u64 size = code_cache_sizes[code_cache_size_index];
     size_t remaining_size = size - as.GetCodeBuffer().GetCursorOffset();
     // TODO: restrict max x86 instruction count per block

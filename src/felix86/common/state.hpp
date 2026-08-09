@@ -5,6 +5,7 @@
 #include "biscuit/isa.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/common/shm_stats.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/common/x87.hpp"
@@ -384,6 +385,8 @@ struct ThreadState {
     bool use_precision_control = false;
 
     PtraceData ptrace_data;
+
+    FEXCore::SHMStats::ThreadStats* thread_stats = nullptr;
 
     u64 GetGpr(x86_ref_e ref) const {
         if (ref < X86_REF_RAX || ref > X86_REF_R15) {

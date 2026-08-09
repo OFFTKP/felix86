@@ -30,10 +30,15 @@ ThreadState* ThreadState::Create(ThreadState* copy_state) {
     ThreadState* state = new (state_location) ThreadState;
     state->recompiler = new Recompiler;
     state->deferred_fault_page = state_memory;
-    VERBOSE("ThreadState* for %d is %lx", gettid(), state);
+    u32 tid = gettid();
+    VERBOSE("ThreadState* for %d is %lx", tid, state);
     memset(&state->ptrace_data, 0, sizeof(state->ptrace_data));
-    state->ptrace_data.constants.my_tid = gettid();
+    state->ptrace_data.constants.my_tid = tid;
     state->ptrace_data.constants.my_tgid = getpid();
+
+    if (g_emit_stats) {
+        state->thread_stats = g_process_globals.shm_manager.addThread(tid);
+    }
 
     sigemptyset(&state->signal_mask);
 

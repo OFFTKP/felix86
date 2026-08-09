@@ -275,7 +275,7 @@ static void setupMainStack(ThreadState* state) {
 }
 
 void* Emulator::CompileNext(ThreadState* thread_state) {
-    g_dispatcher_exit_count++;
+    FELIX86_PROFILE_ACCUMULATION(thread_state->thread_stats, AccumulatedJITTime);
     u64 next_block = thread_state->recompiler->getCompiledBlock(thread_state, thread_state->GetRip());
     ASSERT_MSG(next_block != 0, "getCompiledBlock returned null?");
     return (void*)next_block;

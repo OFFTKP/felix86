@@ -16,6 +16,7 @@
 #include "felix86/common/info.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/perf.hpp"
+#include "felix86/common/shm_stats.hpp"
 #include "felix86/hle/fd.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/mmap.hpp"
@@ -30,7 +31,6 @@ std::atomic_bool g_symbols_cached = {false};
 u64 g_initial_brk = 0;
 u64 g_current_brk = 0;
 u64 g_current_brk_size = 0;
-u64 g_dispatcher_exit_count = 0;
 std::unordered_map<u64, std::vector<u64>> g_breakpoints{};
 ProcessGlobals g_process_globals{};
 std::unique_ptr<Mapper> g_mapper{};
@@ -49,6 +49,7 @@ std::filesystem::path g_executable_path_guest_override{};
 std::filesystem::path g_mounts_path{};
 std::vector<FakeMountNode> g_fake_mounts{};
 bool g_testing = false;
+bool g_emit_stats = false;
 
 // g_output_fd should be replaced upon connecting to the server, however if an error occurs before then we should at least log it
 int g_output_fd = STDERR_FILENO;
@@ -106,6 +107,8 @@ void ProcessGlobals::initialize() {
     // mount_paths.clear();
 
     g_fs->initializeEmulatedNodes();
+
+    shm_manager.initialize();
 
     // Don't reset the /proc/self/maps mapped regions, we can reuse the ones from parent process
 }
@@ -501,6 +504,7 @@ void initialize_globals() {
 
     g_fs = std::make_unique<Filesystem>();
     g_mapper = std::make_unique<Mapper>();
+    g_emit_stats = felix86_shm_stats_enabled();
 }
 
 bool parse_extensions(const char* arg) {

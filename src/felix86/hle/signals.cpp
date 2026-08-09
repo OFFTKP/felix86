@@ -1077,6 +1077,7 @@ static void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uct
         // This will make processes that wait on this process to see the correct
         // result in waitpid & co
         WARN("Signal %d with default behavior, terminating...", sig);
+        g_process_globals.shm_manager.unlink();
         struct sigaction sa;
         sa.sa_handler = SIG_DFL;
         sigemptyset(&sa.sa_mask);
@@ -1292,6 +1293,7 @@ static bool handle_smc(ThreadState* current_state, siginfo_t* info, ucontext_t* 
     u64 write_address = (u64)info->si_addr & ~0xFFFull;
     Recompiler::invalidateRangeGlobal(write_address, write_address + 1, "self-modifying code");
     ASSERT_MSG(::mprotect((void*)write_address, 0x1000, PROT_READ | PROT_WRITE) == 0, "mprotect failed on address %lx", write_address);
+    FELIX86_PROFILE_INSTANT_INCREMENT(current_state->thread_stats, AccumulatedSMCCount, 1);
     return true;
 }
 
