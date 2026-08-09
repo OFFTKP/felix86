@@ -58,17 +58,18 @@ void felix86_fsave_16(const UserContext& ctx, void* address) {
     bool is_mmx = (x87State)ctx.x87_state == x87State::MMX;
     fsave_frame_16* data = (fsave_frame_16*)address;
     for (int i = 0; i < 8; i++) {
+        const Float80& st = ctx.st[(ctx.fpu_top + i) & 0b111];
         if (g_config.reduced_precision) {
             if (is_mmx) {
                 u16 ones = 0xFFFF;
-                memcpy(&data->st[i], &ctx.st[i].significand, sizeof(double));
+                memcpy(&data->st[i], &st.significand, sizeof(double));
                 memcpy(&data->st[i].exponent, &ones, sizeof(u16));
             } else {
-                Float80 f80 = f64_to_80(ctx.st[i].significand);
+                Float80 f80 = f64_to_80(st.significand);
                 memcpy(&data->st[i], &f80, sizeof(Float80));
             }
         } else {
-            memcpy(&data->st[i], &ctx.st[i], sizeof(Float80));
+            memcpy(&data->st[i], &st, sizeof(Float80));
         }
     }
 
@@ -94,17 +95,18 @@ void felix86_fsave_32(const UserContext& ctx, void* address) {
     bool is_mmx = (x87State)ctx.x87_state == x87State::MMX;
     fsave_frame_32* data = (fsave_frame_32*)address;
     for (int i = 0; i < 8; i++) {
+        const Float80& st = ctx.st[(ctx.fpu_top + i) & 0b111];
         if (g_config.reduced_precision) {
             if (is_mmx) {
                 u16 ones = 0xFFFF;
-                memcpy(&data->st[i], &ctx.st[i], sizeof(double));
+                memcpy(&data->st[i], &st, sizeof(double));
                 memcpy(&data->st[i].exponent, &ones, sizeof(u16));
             } else {
-                Float80 f80 = f64_to_80(ctx.st[i].significand);
+                Float80 f80 = f64_to_80(st.significand);
                 memcpy(&data->st[i], &f80, sizeof(Float80));
             }
         } else {
-            memcpy(&data->st[i], &ctx.st[i], sizeof(Float80));
+            memcpy(&data->st[i], &st, sizeof(Float80));
         }
     }
 
@@ -136,15 +138,16 @@ void felix86_frstor_16(UserContext& ctx, void* address) {
     ctx.rmode_x87 = rounding_mode(x86RoundingMode((ctx.fpu_cw >> 10) & 0b11));
 
     for (int i = 0; i < 8; i++) {
+        Float80& st = ctx.st[(ctx.fpu_top + i) & 0b111];
         if (g_config.reduced_precision) {
             if (ctx.fpu_cw & 0x8000) {
-                memcpy(&ctx.st[i], &data->st[i], sizeof(double));
+                memcpy(&st, &data->st[i], sizeof(double));
             } else {
                 double f64 = f80_to_64(&data->st[i]);
-                memcpy(&ctx.st[i], &f64, sizeof(double));
+                memcpy(&st, &f64, sizeof(double));
             }
         } else {
-            memcpy(&ctx.st[i], &data->st[i], sizeof(Float80));
+            memcpy(&st, &data->st[i], sizeof(Float80));
         }
     }
 }
@@ -159,15 +162,16 @@ void felix86_frstor_32(UserContext& ctx, void* address) {
     ctx.rmode_x87 = rounding_mode(x86RoundingMode((ctx.fpu_cw >> 10) & 0b11));
 
     for (int i = 0; i < 8; i++) {
+        Float80& st = ctx.st[(ctx.fpu_top + i) & 0b111];
         if (g_config.reduced_precision) {
             if (ctx.fpu_cw & 0x8000) {
-                memcpy(&ctx.st[i], &data->st[i], sizeof(double));
+                memcpy(&st, &data->st[i], sizeof(double));
             } else {
                 double f64 = f80_to_64(&data->st[i]);
-                memcpy(&ctx.st[i], &f64, sizeof(double));
+                memcpy(&st, &f64, sizeof(double));
             }
         } else {
-            memcpy(&ctx.st[i], &data->st[i], sizeof(Float80));
+            memcpy(&st, &data->st[i], sizeof(Float80));
         }
     }
 }
@@ -306,14 +310,24 @@ void felix86_xrstor(UserContext& ctx, void* address, bool restore_all) {
 void felix86_fstenv_16(ThreadState* state, u64 address) {
     fenv_data_16* env = (fenv_data_16*)address;
     env->cw = state->ctx.fpu_cw;
-    env->tw = tw_8_to_16(state->ctx.st, state->ctx.fpu_tw);
+    bool is_mmx = (x87State)state->ctx.x87_state == x87State::MMX;
+    if (is_mmx) {
+        env->tw = 0; // All registers valid in MMX state
+    } else {
+        env->tw = tw_8_to_16(state->ctx.st, state->ctx.fpu_tw);
+    }
     env->sw = (state->ctx.fpu_top << 11) | (state->ctx.fpu_sw & ~(0b111 << 11));
 }
 
 void felix86_fstenv_32(ThreadState* state, u64 address) {
     fenv_data_32* env = (fenv_data_32*)address;
     env->cw = state->ctx.fpu_cw;
-    env->tw = tw_8_to_16(state->ctx.st, state->ctx.fpu_tw);
+    bool is_mmx = (x87State)state->ctx.x87_state == x87State::MMX;
+    if (is_mmx) {
+        env->tw = 0; // All registers valid in MMX state
+    } else {
+        env->tw = tw_8_to_16(state->ctx.st, state->ctx.fpu_tw);
+    }
     env->sw = (state->ctx.fpu_top << 11) | (state->ctx.fpu_sw & ~(0b111 << 11));
 }
 
