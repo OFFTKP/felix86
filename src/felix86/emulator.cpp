@@ -469,10 +469,8 @@ void Emulator::StartTest(const TestConfig& config, u64 stack) {
         }
     }
 
-    if (config.reduced_precision) {
-        g_config.reduced_precision = true;
-        Handlers::initialize();
-    }
+    g_config.reduced_precision = config.reduced_precision;
+    Handlers::initialize();
 
     g_testing = true;
     Threads::StartThread(main_state);
