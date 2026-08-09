@@ -201,6 +201,9 @@ u64 sext_if_64(u64 value, u8 size_e) {
 // Flush icache for current core
 void flush_icache(u64 start, u64 end) {
 #if defined(__riscv)
+#ifndef SYS_RISCV_FLUSH_ICACHE_LOCAL
+#define SYS_RISCV_FLUSH_ICACHE_LOCAL 1
+#endif
     __riscv_flush_icache((void*)start, (void*)end, SYS_RISCV_FLUSH_ICACHE_LOCAL);
 #endif
 }
