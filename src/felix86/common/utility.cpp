@@ -891,7 +891,7 @@ void felix86_fsincos(ThreadState* state) {
     memcpy(&boop, &state->ctx.st[TOP(0)], sizeof(double));
     state->ctx.fpu_top -= 1;
     state->ctx.fpu_top &= 0b111;
-    state->ctx.fpu_tw &= ~(0b1 << state->ctx.fpu_top);
+    state->ctx.fpu_tw |= 0b1 << state->ctx.fpu_top;
     sincos(boop, (double*)&state->ctx.st[TOP(1)], (double*)&state->ctx.st[TOP(0)]);
     state->ctx.fpu_sw &= ~C2_BIT;
 }
@@ -1328,7 +1328,7 @@ void felix86_fxam(ThreadState* state) {
 
     u16 mask = 0b1 << state->ctx.fpu_top;
     u8 c3c2c0;
-    if ((state->ctx.fpu_tw & mask) == mask) {
+    if ((state->ctx.fpu_tw & mask) == 0) {
         c3c2c0 = 0b101;
     } else if (st0d == 0.0) {
         c3c2c0 = 0b100;

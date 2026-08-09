@@ -8802,9 +8802,8 @@ static void SCALAR(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruct
 FAST_HANDLE(EMMS) {
     rec.flushX87();
     // Set FPU tag word to empty
-    biscuit::GPR ones = rec.scratch();
-    as.LI(ones, -1);
-    as.SB(ones, offsetof(ThreadState, ctx.fpu_tw), rec.threadStatePointer());
+    // Since our internal tag word is abridged, we use zeroes for empty
+    as.SB(x0, offsetof(ThreadState, ctx.fpu_tw), rec.threadStatePointer());
     rec.switchToX87();
 }
 
@@ -12027,7 +12026,7 @@ FAST_HANDLE(FFREE) {
     as.ADDI(top, top, operands[0].reg.value - ZYDIS_REGISTER_ST0);
     as.ANDI(top, top, 0b111);
     as.LBU(tag, offsetof(ThreadState, ctx.fpu_tw), Recompiler::threadStatePointer());
-    as.BSET(tag, tag, top);
+    as.BCLR(tag, tag, top);
     as.SB(tag, offsetof(ThreadState, ctx.fpu_tw), Recompiler::threadStatePointer());
 }
 
@@ -12472,8 +12471,8 @@ FAST_HANDLE(FNINIT) {
     as.LI(temp, 0x037F);
     as.SH(temp, offsetof(ThreadState, ctx.fpu_cw), Recompiler::threadStatePointer());
 
-    as.LI(temp, -1);
-    as.SB(temp, offsetof(ThreadState, ctx.fpu_tw), Recompiler::threadStatePointer());
+    // Since our tag word is abridged we use zeroes for empty
+    as.SB(x0, offsetof(ThreadState, ctx.fpu_tw), Recompiler::threadStatePointer());
 
     as.SB(x0, offsetof(ThreadState, ctx.fpu_top), Recompiler::threadStatePointer());
     as.SH(x0, offsetof(ThreadState, ctx.fpu_sw), Recompiler::threadStatePointer());
@@ -12557,6 +12556,7 @@ FAST_HANDLE(FNSAVE) {
         rec.callPointer(offsetof(ThreadState, felix86_fsave_32));
     }
     rec.restoreState();
+    fast_FNINIT(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(FRSTOR) {
@@ -12843,7 +12843,7 @@ void FCMOV_80(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, bis
     as.SD(temp1, offsetof(ThreadState, ctx.st), top0);
     as.SW(temp2, offsetof(ThreadState, ctx.st) + sizeof(u64), top0);
     as.LBU(temp1, offsetof(ThreadState, ctx.fpu_tw), Recompiler::threadStatePointer());
-    as.BCLR(temp1, temp1, top);
+    as.BSET(temp1, temp1, top);
     as.SB(temp1, offsetof(ThreadState, ctx.fpu_tw), Recompiler::threadStatePointer());
     as.Bind(&not_true);
 }

@@ -5255,7 +5255,7 @@
             "SD              ra, t4, 0x88(136)",
             "SW              t1, t4, 0x90(144)",
             "LBU             ra, gp, 0x348(840)",
-            "BCLR            ra, ra, t3",
+            "BSET            ra, ra, t3",
             "SB              ra, gp, 0x348(840)"
         ],
         "disassembly": "fcmovb st0, st3"
@@ -5279,7 +5279,7 @@
             "SD              ra, t4, 0x88(136)",
             "SW              t1, t4, 0x90(144)",
             "LBU             ra, gp, 0x348(840)",
-            "BCLR            ra, ra, t3",
+            "BSET            ra, ra, t3",
             "SB              ra, gp, 0x348(840)"
         ],
         "disassembly": "fcmove st0, st3"
@@ -5304,7 +5304,7 @@
             "SD              t1, t2, 0x88(136)",
             "SW              t3, t2, 0x90(144)",
             "LBU             t1, gp, 0x348(840)",
-            "BCLR            t1, t1, t4",
+            "BSET            t1, t1, t4",
             "SB              t1, gp, 0x348(840)"
         ],
         "disassembly": "fcmovbe st0, st3"
@@ -5329,7 +5329,7 @@
             "SD              t1, t2, 0x88(136)",
             "SW              t3, t2, 0x90(144)",
             "LBU             t1, gp, 0x348(840)",
-            "BCLR            t1, t1, t4",
+            "BSET            t1, t1, t4",
             "SB              t1, gp, 0x348(840)"
         ],
         "disassembly": "fcmovu st0, st3"
@@ -5354,7 +5354,7 @@
             "SD              t1, t2, 0x88(136)",
             "SW              t3, t2, 0x90(144)",
             "LBU             t1, gp, 0x348(840)",
-            "BCLR            t1, t1, t4",
+            "BSET            t1, t1, t4",
             "SB              t1, gp, 0x348(840)"
         ],
         "disassembly": "fcmovnb st0, st3"
@@ -5379,7 +5379,7 @@
             "SD              t1, t2, 0x88(136)",
             "SW              t3, t2, 0x90(144)",
             "LBU             t1, gp, 0x348(840)",
-            "BCLR            t1, t1, t4",
+            "BSET            t1, t1, t4",
             "SB              t1, gp, 0x348(840)"
         ],
         "disassembly": "fcmovne st0, st3"
@@ -5405,7 +5405,7 @@
             "SD              t1, t2, 0x88(136)",
             "SW              t3, t2, 0x90(144)",
             "LBU             t1, gp, 0x348(840)",
-            "BCLR            t1, t1, t4",
+            "BSET            t1, t1, t4",
             "SB              t1, gp, 0x348(840)"
         ],
         "disassembly": "fcmovnbe st0, st3"
@@ -5431,7 +5431,7 @@
             "SD              t3, t5, 0x88(136)",
             "SW              t4, t5, 0x90(144)",
             "LBU             t3, gp, 0x348(840)",
-            "BCLR            t3, t3, t2",
+            "BSET            t3, t3, t2",
             "SB              t3, gp, 0x348(840)"
         ],
         "disassembly": "fcmovnu st0, st3"

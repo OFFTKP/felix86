@@ -660,10 +660,14 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
             break;
         }
 
+        resetScratch();
         if (is_mmx) {
             if (!ran_mmx_once) {
                 // Set FPU tag word to valid for the first MMX instruction in this block
-                as.SB(x0, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
+                biscuit::GPR ones = scratch();
+                as.LI(ones, -1);
+                as.SB(ones, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
+                popScratch();
             }
             ran_mmx_once = true;
             WARN_ONCE("This program makes use of MMX");
@@ -687,7 +691,10 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
                 WARN("x87 and MMX mixed in a block?");
             }
 
-            if (local_x87_state != x87State::x87 && g_config.reduced_precision) {
+            ZydisMnemonic mnemonic = instruction.mnemonic;
+            bool is_save_restore = mnemonic == ZYDIS_MNEMONIC_FNSAVE || mnemonic == ZYDIS_MNEMONIC_FRSTOR || mnemonic == ZYDIS_MNEMONIC_FXSAVE ||
+                                   mnemonic == ZYDIS_MNEMONIC_FXSAVE64 || mnemonic == ZYDIS_MNEMONIC_FXRSTOR || mnemonic == ZYDIS_MNEMONIC_FXRSTOR64;
+            if (!is_save_restore) {
                 switchToX87();
             }
         }
@@ -835,7 +842,7 @@ void Recompiler::flushX87() {
                 if (x87_reg_cache[i].modify_tag) {
                     ASSERT(pushed_this_block > 0);
                     ASSERT(tag_word != x0);
-                    as.BCLR(tag_word, tag_word, st);
+                    as.BSET(tag_word, tag_word, st);
                 }
                 x87_dirty = true;
             }
@@ -3526,7 +3533,7 @@ void Recompiler::popX87() {
         biscuit::GPR top = getTOP();
 
         as.LBU(ftw, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
-        as.BSET(ftw, ftw, top);
+        as.BCLR(ftw, ftw, top);
         as.SB(ftw, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
 
         as.ADDI(top, top, 1);

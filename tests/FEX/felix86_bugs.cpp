@@ -11,6 +11,18 @@
         FEXTestLoader::RunTest("ASM/FEX_bugs/" #name ".asm");                                                                                        \
     }
 
+FEX_BUG_TEST(fxsave_bug)
+FEX_BUG_TEST(fxrstor_bug)
+FEX_BUG_TEST(FSCALE_zero_inf)
+FEX_BUG_TEST(FXTRACT_inf)
+// FEX_BUG_TEST(FXTRACT_inf_f64)
+FEX_BUG_TEST(FXTRACT_nan)
+// FEX_BUG_TEST(FXTRACT_nan_f64)
+FEX_BUG_TEST(x87DecrementStackBug)
+FEX_BUG_TEST(x87_fprem)
+FEX_BUG_TEST(x87IncrementStackBug)
+// FEX_BUG_TEST(X87MMXNZCV)
+FEX_BUG_TEST(x87_unordered_cmp_fix)
 FEX_BUG_TEST(32bit_syscall)
 FEX_BUG_TEST(BEXTR_flags)
 FEX_BUG_TEST(BLSI_flags)
