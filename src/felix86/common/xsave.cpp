@@ -73,7 +73,11 @@ void felix86_fsave_16(const UserContext& ctx, void* address) {
     }
 
     data->cw = ctx.fpu_cw;
-    data->tw = tw_8_to_16(ctx.st, ctx.fpu_tw);
+    if (is_mmx) {
+        data->tw = 0; // All registers valid in MMX state
+    } else {
+        data->tw = tw_8_to_16(ctx.st, ctx.fpu_tw);
+    }
     data->sw = (ctx.fpu_top << 11) | (ctx.fpu_sw & ~(0b111 << 11));
 
     if (g_config.reduced_precision) {
@@ -105,7 +109,11 @@ void felix86_fsave_32(const UserContext& ctx, void* address) {
     }
 
     data->cw = ctx.fpu_cw;
-    data->tw = tw_8_to_16(ctx.st, ctx.fpu_tw);
+    if (is_mmx) {
+        data->tw = 0; // All registers valid in MMX state
+    } else {
+        data->tw = tw_8_to_16(ctx.st, ctx.fpu_tw);
+    }
     data->sw = (ctx.fpu_top << 11) | (ctx.fpu_sw & ~(0b111 << 11));
 
     if (g_config.reduced_precision) {
