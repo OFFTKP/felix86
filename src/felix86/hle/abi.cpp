@@ -632,6 +632,6 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, const void* guest
 
     state->riscv_trampoline_storage = as.GetCursorPointer();
 
-    flush_icache();
+    flush_icache((u64)trampoline, (u64)as.GetCursorPointer());
     return trampoline;
 }
