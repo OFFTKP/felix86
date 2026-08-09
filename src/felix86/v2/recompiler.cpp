@@ -690,9 +690,7 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
                 WARN("x87 and MMX mixed in a block?");
             }
 
-            if (local_x87_state != x87State::x87 && g_config.reduced_precision) {
-                switchToX87();
-            }
+            switchToX87();
         }
 
         if (is_x87 && isFsrmSSE() && g_config.reduced_precision) {
