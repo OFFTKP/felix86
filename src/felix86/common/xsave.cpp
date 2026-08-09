@@ -29,18 +29,25 @@ static_assert(sizeof(fenv_data_32) == 28);
 static u8 tw_16_to_8(u16 tw) {
     u8 ret = 0;
     for (int i = 0; i < 8; i++) {
-        if (((tw >> (i * 2)) & 0b11) == 0b11) {
+        if (((tw >> (i * 2)) & 0b11) != 0b11) {
             ret |= 1 << i;
         }
     }
     return ret;
 }
 
-// TODO: check for zero/nan
-static u16 tw_8_to_16(u8 tw) {
+static u16 tw_8_to_16(const Float80* st, u8 tw) {
     u16 ret = 0;
     for (int i = 0; i < 8; i++) {
         if (((tw >> i) & 0b1) == 0b1) {
+            auto& reg = st[i];
+            if ((reg.exponent & 0x7FFF) == 0 && reg.significand == 0) {
+                ret |= 0b01 << (i * 2);
+            } else if ((reg.exponent & 0x7FFF) == 0x7FFF || ((reg.exponent & 0x7FFF) == 0 && reg.significand != 0) ||
+                       ((reg.significand >> 63) & 1) == 0) {
+                ret |= 0b10 << (i * 2);
+            }
+        } else {
             ret |= 0b11 << (i * 2);
         }
     }
@@ -66,7 +73,7 @@ void felix86_fsave_16(const UserContext& ctx, void* address) {
     }
 
     data->cw = ctx.fpu_cw;
-    data->tw = tw_8_to_16(ctx.fpu_tw);
+    data->tw = tw_8_to_16(ctx.st, ctx.fpu_tw);
     data->sw = (ctx.fpu_top << 11) | (ctx.fpu_sw & ~(0b111 << 11));
 
     if (g_config.reduced_precision) {
@@ -98,7 +105,7 @@ void felix86_fsave_32(const UserContext& ctx, void* address) {
     }
 
     data->cw = ctx.fpu_cw;
-    data->tw = tw_8_to_16(ctx.fpu_tw);
+    data->tw = tw_8_to_16(ctx.st, ctx.fpu_tw);
     data->sw = (ctx.fpu_top << 11) | (ctx.fpu_sw & ~(0b111 << 11));
 
     if (g_config.reduced_precision) {
@@ -170,20 +177,21 @@ void felix86_fxsave(const UserContext& ctx, void* address, bool save_x87, bool s
 
     if (save_x87) {
         for (int i = 0; i < 8; i++) {
+            const Float80& st = ctx.st[(ctx.fpu_top + i) & 0b111];
             if (g_config.reduced_precision) {
                 if (is_x87) {
-                    Float80 f80 = f64_to_80(ctx.st[i].significand);
+                    Float80 f80 = f64_to_80(st.significand);
                     memcpy(&data->st[i].st[0], &f80, sizeof(Float80));
                 } else {
                     if (!is_mmx) {
                         WARN("Unknown x87 state during fxsave");
                     }
                     u16 ones = 0xFFFF;
-                    memcpy(&data->st[i].st[0], &ctx.st[i].significand, sizeof(u64));
+                    memcpy(&data->st[i].st[0], &st.significand, sizeof(u64));
                     memcpy(&data->st[i].st[8], &ones, sizeof(u16));
                 }
             } else {
-                memcpy(&data->st[i].st[0], &ctx.st[i], sizeof(Float80));
+                memcpy(&data->st[i].st[0], &st, sizeof(Float80));
             }
         }
 
@@ -224,15 +232,16 @@ void felix86_fxrstor(UserContext& ctx, void* address, bool restore_x87, bool res
         ctx.fpu_top = (data->fsw >> 11) & 7;
 
         for (int i = 0; i < 8; i++) {
+            Float80& st = ctx.st[(ctx.fpu_top + i) & 0b111];
             if (g_config.reduced_precision) {
                 if (ctx.fpu_cw & 0x8000) {
-                    memcpy(&ctx.st[i], &data->st[i].st[0], sizeof(double));
+                    memcpy(&st, &data->st[i].st[0], sizeof(double));
                 } else {
                     double f64 = f80_to_64((Float80*)&data->st[i].st[0]);
-                    memcpy(&ctx.st[i], &f64, sizeof(double));
+                    memcpy(&st, &f64, sizeof(double));
                 }
             } else {
-                memcpy(&ctx.st[i], &data->st[i].st[0], sizeof(Float80));
+                memcpy(&st, &data->st[i].st[0], sizeof(Float80));
             }
         }
 
@@ -289,14 +298,14 @@ void felix86_xrstor(UserContext& ctx, void* address, bool restore_all) {
 void felix86_fstenv_16(ThreadState* state, u64 address) {
     fenv_data_16* env = (fenv_data_16*)address;
     env->cw = state->ctx.fpu_cw;
-    env->tw = tw_8_to_16(state->ctx.fpu_tw);
+    env->tw = tw_8_to_16(state->ctx.st, state->ctx.fpu_tw);
     env->sw = (state->ctx.fpu_top << 11) | (state->ctx.fpu_sw & ~(0b111 << 11));
 }
 
 void felix86_fstenv_32(ThreadState* state, u64 address) {
     fenv_data_32* env = (fenv_data_32*)address;
     env->cw = state->ctx.fpu_cw;
-    env->tw = tw_8_to_16(state->ctx.fpu_tw);
+    env->tw = tw_8_to_16(state->ctx.st, state->ctx.fpu_tw);
     env->sw = (state->ctx.fpu_top << 11) | (state->ctx.fpu_sw & ~(0b111 << 11));
 }
 

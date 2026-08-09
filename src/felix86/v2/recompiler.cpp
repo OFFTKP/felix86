@@ -663,7 +663,10 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
         if (is_mmx) {
             if (!ran_mmx_once) {
                 // Set FPU tag word to valid for the first MMX instruction in this block
-                as.SB(x0, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
+                biscuit::GPR ones = scratch();
+                as.LI(ones, -1);
+                as.SB(ones, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
+                popScratch();
             }
             ran_mmx_once = true;
             WARN_ONCE("This program makes use of MMX");
@@ -835,7 +838,7 @@ void Recompiler::flushX87() {
                 if (x87_reg_cache[i].modify_tag) {
                     ASSERT(pushed_this_block > 0);
                     ASSERT(tag_word != x0);
-                    as.BCLR(tag_word, tag_word, st);
+                    as.BSET(tag_word, tag_word, st);
                 }
                 x87_dirty = true;
             }
@@ -3526,7 +3529,7 @@ void Recompiler::popX87() {
         biscuit::GPR top = getTOP();
 
         as.LBU(ftw, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
-        as.BSET(ftw, ftw, top);
+        as.BCLR(ftw, ftw, top);
         as.SB(ftw, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
 
         as.ADDI(top, top, 1);

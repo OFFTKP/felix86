@@ -35,7 +35,7 @@ static void markRegFull(ThreadState* state, const extFloat80_t* reg) {
     ASSERT(is_reg);
     int index = ((u64)reg - (u64)&state->ctx.st[0]) / sizeof(Float80);
     u8 tw = state->ctx.fpu_tw;
-    tw &= ~(1 << index);
+    tw |= (1 << index);
     state->ctx.fpu_tw = tw;
 }
 
@@ -45,7 +45,7 @@ static void checkReg(ThreadState* state, const extFloat80_t* reg) {
     if (is_reg) {
         int index = ((u64)reg - (u64)&state->ctx.st[0]) / sizeof(Float80);
         u8 status = (tw >> index) & 0b1;
-        if (status == 0b1) {
+        if (status == 0b0) {
             X87LOG("Reg %d is empty in tag word during x87 instruction, RIP: %lx", index, state->GetRip());
         }
     }
@@ -58,12 +58,14 @@ static void push(ThreadState* state, const extFloat80_t* value) {
 
     // Ensure we are not overflowing
     u8 tw = state->ctx.fpu_tw;
-    bool empty = (tw >> top) & 1;
+    bool empty = ((tw >> top) & 1) == 0;
     if (!empty) {
         WARN("x87 stack overflows during push at RIP=%lx", state->GetRip());
+        state->ctx.fpu_sw |= 0b1000001; // set SF and IE bits
+        state->ctx.fpu_cw |= C1_BIT;    // set C1 to 1 == overflow
     }
 
-    tw &= ~(1 << top);
+    tw |= 1 << top;
     memcpy(&state->ctx.st[top], value, sizeof(Float80));
     state->ctx.fpu_tw = tw;
     state->ctx.fpu_top = top;
@@ -72,11 +74,13 @@ static void push(ThreadState* state, const extFloat80_t* value) {
 static void pop(ThreadState* state) {
     u8 top = state->ctx.fpu_top;
     u8 tw = state->ctx.fpu_tw;
-    bool empty = (tw >> top) & 1;
+    bool empty = ((tw >> top) & 1) == 0;
     if (empty) {
         WARN("x87 stack underflows during pop at RIP=%lx", state->GetRip());
+        state->ctx.fpu_sw |= 0b1000001; // set SF and IE bits
+        state->ctx.fpu_cw &= ~C1_BIT;   // set C1 to 0 == underflow
     }
-    tw |= 1 << top;
+    tw &= ~(1 << top);
     top += 1;
     top &= 0b111;
     state->ctx.fpu_tw = tw;
@@ -878,8 +882,8 @@ void felix86_x87_FFREEP(ThreadState* state, extFloat80_t* reg, int) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedFloatFallbackCount, 1);
     checkReg(state, reg);
     int index = ((u64)reg - (u64)&state->ctx.st[0]) / sizeof(Float80);
-    state->ctx.fpu_tw |= 1 << ((state->ctx.fpu_top + index) & 0b111);
     pop(state);
+    state->ctx.fpu_tw &= ~(1 << index);
 }
 
 void felix86_x87_FINCSTP(ThreadState* state) {
@@ -898,7 +902,7 @@ void felix86_x87_FXAM(ThreadState* state) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedFloatFallbackCount, 1);
     u8 top = state->ctx.fpu_top;
     u8 tw = state->ctx.fpu_tw;
-    bool empty = (tw >> top) & 1;
+    bool empty = ((tw >> top) & 1) == 0;
     const extFloat80_t* st0 = (extFloat80_t*)&state->ctx.st[top];
     bool sign = (st0->signExp >> 15) & 1;
     u16 exponent = st0->signExp & 0x7FFF;
