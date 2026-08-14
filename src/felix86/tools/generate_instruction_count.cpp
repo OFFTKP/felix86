@@ -6,10 +6,10 @@
 #define XBYAK_NO_EXCEPTION
 #include <xbyak/xbyak.h>
 #include "Zydis/Disassembler.h"
+#include "felix86/common/disassembler.h"
 #include "felix86/v2/handlers.hpp"
 #include "felix86/v2/recompiler.hpp"
 #include "fmt/format.h"
-#include "rv64_printer.h"
 
 using namespace nlohmann;
 
@@ -51,7 +51,7 @@ static void gen_many(Recompiler& rec, const std::string& name, nlohmann::ordered
         i += 4;
         u32 data = 0;
         memcpy(&data, address, 4);
-        const char* out = rv64_print(data, (u64)address);
+        std::string out = riscv_disassemble(data, (u64)address);
         inst.expected_asm.push_back(out);
         count++;
     }
@@ -102,7 +102,7 @@ static void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbya
         i += 4;
         u32 data = 0;
         memcpy(&data, address, 4);
-        const char* out = rv64_print(data, (u64)address);
+        std::string out = riscv_disassemble(data, (u64)address);
         inst.expected_asm.push_back(out);
         count++;
     }

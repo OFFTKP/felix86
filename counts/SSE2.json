@@ -2705,7 +2705,7 @@
             "VWADDU.VX       v2, v6, zero, none",
             "VWADDU.VX       v4, v7, zero, none",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VSLL.VI         v4, v4, 0xfffffff0(-16), none",
+            "VSLL.VI         v4, v4, 0x10(16), none",
             "VOR.VV          v19, v2, v4, none"
         ],
         "disassembly": "punpckhwd xmm3, xmm4"
@@ -2719,7 +2719,7 @@
             "VWADDU.VX       v2, v6, zero, none",
             "VWADDU.VX       v4, v7, zero, none",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VSLL.VI         v4, v4, 0xfffffff0(-16), none",
+            "VSLL.VI         v4, v4, 0x10(16), none",
             "VOR.VV          v18, v2, v4, none"
         ],
         "disassembly": "punpckhwd xmm2, xmm2"
@@ -2735,7 +2735,7 @@
             "VWADDU.VX       v2, v6, zero, none",
             "VWADDU.VX       v4, v7, zero, none",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VSLL.VI         v4, v4, 0xfffffff0(-16), none",
+            "VSLL.VI         v4, v4, 0x10(16), none",
             "VOR.VV          v17, v2, v4, none"
         ],
         "disassembly": "punpckhwd xmm1, [rdi]"
@@ -2942,7 +2942,7 @@
             "ADDIW           ra, zero, 0x20(32)",
             "VSETVLI         zero, ra, e8, m1, tu, mu",
             "VMV1R.V         v2, v19",
-            "VSLIDEUP.VI     v2, v20, 0xfffffff0(-16), none",
+            "VSLIDEUP.VI     v2, v20, 0x10(16), none",
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VNCLIP.WI       v19, v2, 0x0(0), none"
         ],
@@ -2954,7 +2954,7 @@
             "ADDIW           ra, zero, 0x20(32)",
             "VSETVLI         zero, ra, e8, m1, tu, mu",
             "VMV1R.V         v2, v18",
-            "VSLIDEUP.VI     v2, v18, 0xfffffff0(-16), none",
+            "VSLIDEUP.VI     v2, v18, 0x10(16), none",
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VNCLIP.WI       v18, v2, 0x0(0), none"
         ],
@@ -2968,7 +2968,7 @@
             "ADDIW           ra, zero, 0x20(32)",
             "VSETVLI         zero, ra, e8, m1, tu, mu",
             "VMV1R.V         v2, v17",
-            "VSLIDEUP.VI     v2, v4, 0xfffffff0(-16), none",
+            "VSLIDEUP.VI     v2, v4, 0x10(16), none",
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VNCLIP.WI       v17, v2, 0x0(0), none"
         ],
