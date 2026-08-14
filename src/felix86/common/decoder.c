@@ -212,7 +212,7 @@ RiscvMnemonic riscv_get_mnemonic(uint32_t data)
         return RISCV_C_J;
     if ((data & 0xe003u) == 0x2001u)
         return RISCV_C_JAL;
-    if ((data & 0xf07fu) == 0x8002u && !(FX(data, 19, 15) == 0))
+    if ((data & 0xf07fu) == 0x8002u && !(FX(data, 11, 7) == 0))
         return RISCV_C_JR;
     if ((data & 0xfc03u) == 0x8000u)
         return RISCV_C_LBU;
@@ -228,7 +228,7 @@ RiscvMnemonic riscv_get_mnemonic(uint32_t data)
         return RISCV_C_LI;
     if ((data & 0xf0ffu) == 0x6081u && !(FX(data, 11, 7) > 15))
         return RISCV_C_MOP_N;
-    if ((data & 0xe003u) == 0x6001u && !(FX(data, 11, 7) == 0))
+    if ((data & 0xe003u) == 0x6001u)
         return RISCV_C_LUI;
     if ((data & 0xe003u) == 0x4000u)
         return RISCV_C_LW;

@@ -22,7 +22,7 @@ static const char riscv_vpr[32][4] = {
 static const char riscv_vm[2][5] = {"v0.t", "none"};
 static const char riscv_aq[4][5] = {"none", "aq"};
 static const char riscv_rl[4][5] = {"none", "rl"};
-static const char riscv_rm[8][4] = {"rne", "rtz", "rdn", "rup", "rmm", "n/a", "n/a", "dyn"};
+static const char riscv_rm[8][8] = {"rne", "rtz", "rdn", "rup", "rmm", "unknown", "unknown", "dyn"};
 static const char riscv_nf[8][4] = {"1", "2", "3", "4", "5", "6", "7", "8"};
 static const char riscv_lmul[8][9] = {"m1", "m2", "m4", "m8", "reserved", "mf8", "mf4", "mf2"};
 static const char riscv_sew[8][9] = {"e8", "e16", "e32", "e64", "reserved", "reserved", "reserved", "reserved"};
@@ -280,7 +280,7 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s ", "C.EBREAK");
     } break;
     case RISCV_C_JALR: {
-        snprintf(buff, sizeof(buff), "%-15s %s", "C.JALR", riscv_gpr[FX(data, 19, 15)]);
+        snprintf(buff, sizeof(buff), "%-15s %s", "C.JALR", riscv_gpr[FX(data, 11, 7)]);
     } break;
     case RISCV_C_ADD: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s", "C.ADD", riscv_gpr[FX(data, 11, 7)], riscv_gpr[FX(data, 6, 2)]);
@@ -316,25 +316,25 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, 0x%x(%d)", "C.BNEZ", riscv_gpr[8 + FX(data, 9, 7)], (unsigned int)(SIGN_EXTEND(((BX(data, 12) << 8) | (FX(data, 11, 10) << 3) | (FX(data, 6, 5) << 6) | (FX(data, 4, 3) << 1) | (BX(data, 2) << 5)), 9)), (int)(SIGN_EXTEND(((BX(data, 12) << 8) | (FX(data, 11, 10) << 3) | (FX(data, 6, 5) << 6) | (FX(data, 4, 3) << 1) | (BX(data, 2) << 5)), 9)));
     } break;
     case RISCV_C_FLD: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "C.FLD", riscv_gpr[8 + FX(data, 4, 2)], riscv_gpr[8 + FX(data, 9, 7)], (unsigned int)((FX(data, 6, 5) << 6) | (FX(data, 12, 10) << 3)), (int)((FX(data, 6, 5) << 6) | (FX(data, 12, 10) << 3)));
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "C.FLD", riscv_fpr[8 + FX(data, 4, 2)], riscv_gpr[8 + FX(data, 9, 7)], (unsigned int)((FX(data, 6, 5) << 6) | (FX(data, 12, 10) << 3)), (int)((FX(data, 6, 5) << 6) | (FX(data, 12, 10) << 3)));
     } break;
     case RISCV_C_FLDSP: {
         snprintf(buff, sizeof(buff), "%-15s %s, 0x%x(%d)", "C.FLDSP", riscv_fpr[FX(data, 11, 7)], (unsigned int)((FX(data, 4, 2) << 6) | (BX(data, 12) << 5) | (FX(data, 6, 5) << 3)), (int)((FX(data, 4, 2) << 6) | (BX(data, 12) << 5) | (FX(data, 6, 5) << 3)));
     } break;
     case RISCV_C_FLW: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "C.FLW", riscv_gpr[8 + FX(data, 4, 2)], riscv_gpr[8 + FX(data, 9, 7)], (unsigned int)((FX(data, 12, 10) << 3) | (BX(data, 6) << 2) | (BX(data, 5) << 6)), (int)((FX(data, 12, 10) << 3) | (BX(data, 6) << 2) | (BX(data, 5) << 6)));
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "C.FLW", riscv_fpr[8 + FX(data, 4, 2)], riscv_gpr[8 + FX(data, 9, 7)], (unsigned int)((FX(data, 12, 10) << 3) | (BX(data, 6) << 2) | (BX(data, 5) << 6)), (int)((FX(data, 12, 10) << 3) | (BX(data, 6) << 2) | (BX(data, 5) << 6)));
     } break;
     case RISCV_C_FLWSP: {
         snprintf(buff, sizeof(buff), "%-15s %s, 0x%x(%d)", "C.FLWSP", riscv_fpr[FX(data, 11, 7)], (unsigned int)((FX(data, 3, 2) << 6) | (BX(data, 12) << 5) | (FX(data, 6, 4) << 2)), (int)((FX(data, 3, 2) << 6) | (BX(data, 12) << 5) | (FX(data, 6, 4) << 2)));
     } break;
     case RISCV_C_FSD: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "C.FSD", riscv_gpr[8 + FX(data, 9, 7)], riscv_gpr[8 + FX(data, 4, 2)], (unsigned int)((FX(data, 6, 5) << 6) | (FX(data, 12, 10) << 3)), (int)((FX(data, 6, 5) << 6) | (FX(data, 12, 10) << 3)));
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "C.FSD", riscv_fpr[8 + FX(data, 4, 2)], riscv_gpr[8 + FX(data, 9, 7)], (unsigned int)((FX(data, 6, 5) << 6) | (FX(data, 12, 10) << 3)), (int)((FX(data, 6, 5) << 6) | (FX(data, 12, 10) << 3)));
     } break;
     case RISCV_C_FSDSP: {
         snprintf(buff, sizeof(buff), "%-15s %s, 0x%x(%d)", "C.FSDSP", riscv_gpr[FX(data, 6, 2)], (unsigned int)((FX(data, 9, 7) << 6) | (FX(data, 12, 10) << 3)), (int)((FX(data, 9, 7) << 6) | (FX(data, 12, 10) << 3)));
     } break;
     case RISCV_C_FSW: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "C.FSW", riscv_gpr[8 + FX(data, 9, 7)], riscv_gpr[8 + FX(data, 4, 2)], (unsigned int)((FX(data, 12, 10) << 3) | (BX(data, 6) << 2) | (BX(data, 5) << 6)), (int)((FX(data, 12, 10) << 3) | (BX(data, 6) << 2) | (BX(data, 5) << 6)));
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "C.FSW", riscv_fpr[8 + FX(data, 4, 2)], riscv_gpr[8 + FX(data, 9, 7)], (unsigned int)((FX(data, 12, 10) << 3) | (BX(data, 6) << 2) | (BX(data, 5) << 6)), (int)((FX(data, 12, 10) << 3) | (BX(data, 6) << 2) | (BX(data, 5) << 6)));
     } break;
     case RISCV_C_FSWSP: {
         snprintf(buff, sizeof(buff), "%-15s %s, 0x%x(%d)", "C.FSWSP", riscv_gpr[FX(data, 6, 2)], (unsigned int)((FX(data, 8, 7) << 6) | (FX(data, 12, 9) << 2)), (int)((FX(data, 8, 7) << 6) | (FX(data, 12, 9) << 2)));
@@ -346,7 +346,7 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s 0x%x(%d)", "C.JAL", (unsigned int)(SIGN_EXTEND(((BX(data, 12) << 11) | (BX(data, 11) << 4) | (FX(data, 10, 9) << 8) | (BX(data, 8) << 10) | (BX(data, 7) << 6) | (BX(data, 6) << 7) | (FX(data, 5, 3) << 1) | (BX(data, 2) << 5)), 12)), (int)(SIGN_EXTEND(((BX(data, 12) << 11) | (BX(data, 11) << 4) | (FX(data, 10, 9) << 8) | (BX(data, 8) << 10) | (BX(data, 7) << 6) | (BX(data, 6) << 7) | (FX(data, 5, 3) << 1) | (BX(data, 2) << 5)), 12)));
     } break;
     case RISCV_C_JR: {
-        snprintf(buff, sizeof(buff), "%-15s %s", "C.JR", riscv_gpr[FX(data, 19, 15)]);
+        snprintf(buff, sizeof(buff), "%-15s %s", "C.JR", riscv_gpr[FX(data, 11, 7)]);
     } break;
     case RISCV_C_LBU: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "C.LBU", riscv_gpr[8 + FX(data, 4, 2)], riscv_gpr[8 + FX(data, 9, 7)], (unsigned int)((BX(data, 5) << 1) | BX(data, 6)), (int)((BX(data, 5) << 1) | BX(data, 6)));
@@ -396,7 +396,7 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "C.SB", riscv_gpr[8 + FX(data, 4, 2)], riscv_gpr[8 + FX(data, 9, 7)], (unsigned int)((BX(data, 5) << 1) | BX(data, 6)), (int)((BX(data, 5) << 1) | BX(data, 6)));
     } break;
     case RISCV_C_SD: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "C.SD", riscv_gpr[8 + FX(data, 9, 7)], riscv_gpr[8 + FX(data, 4, 2)], (unsigned int)((FX(data, 6, 5) << 6) | (FX(data, 12, 10) << 3)), (int)((FX(data, 6, 5) << 6) | (FX(data, 12, 10) << 3)));
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "C.SD", riscv_gpr[8 + FX(data, 4, 2)], riscv_gpr[8 + FX(data, 9, 7)], (unsigned int)((FX(data, 6, 5) << 6) | (FX(data, 12, 10) << 3)), (int)((FX(data, 6, 5) << 6) | (FX(data, 12, 10) << 3)));
     } break;
     case RISCV_C_SDSP: {
         snprintf(buff, sizeof(buff), "%-15s %s, 0x%x(%d)", "C.SDSP", riscv_gpr[FX(data, 6, 2)], (unsigned int)((FX(data, 9, 7) << 6) | (FX(data, 12, 10) << 3)), (int)((FX(data, 9, 7) << 6) | (FX(data, 12, 10) << 3)));
@@ -426,7 +426,7 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, %s", "C.SUBW", riscv_gpr[8 + FX(data, 9, 7)], riscv_gpr[8 + FX(data, 4, 2)]);
     } break;
     case RISCV_C_SW: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "C.SW", riscv_gpr[8 + FX(data, 9, 7)], riscv_gpr[8 + FX(data, 4, 2)], (unsigned int)((FX(data, 12, 10) << 3) | (BX(data, 6) << 2) | (BX(data, 5) << 6)), (int)((FX(data, 12, 10) << 3) | (BX(data, 6) << 2) | (BX(data, 5) << 6)));
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "C.SW", riscv_gpr[8 + FX(data, 4, 2)], riscv_gpr[8 + FX(data, 9, 7)], (unsigned int)((FX(data, 12, 10) << 3) | (BX(data, 6) << 2) | (BX(data, 5) << 6)), (int)((FX(data, 12, 10) << 3) | (BX(data, 6) << 2) | (BX(data, 5) << 6)));
     } break;
     case RISCV_C_SWSP: {
         snprintf(buff, sizeof(buff), "%-15s %s, 0x%x(%d)", "C.SWSP", riscv_gpr[FX(data, 6, 2)], (unsigned int)((FX(data, 8, 7) << 6) | (FX(data, 12, 9) << 2)), (int)((FX(data, 8, 7) << 6) | (FX(data, 12, 9) << 2)));
@@ -753,10 +753,10 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FLEQ.Q", riscv_gpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_fpr[FX(data, 24, 20)]);
     } break;
     case RISCV_FLEQ_S: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FLEQ.S", riscv_gpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)], riscv_gpr[FX(data, 24, 20)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FLEQ.S", riscv_gpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_fpr[FX(data, 24, 20)]);
     } break;
     case RISCV_FLH: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "FLH", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], (unsigned int)(SIGN_EXTEND(FX(data, 31, 20), 12)), (int)(SIGN_EXTEND(FX(data, 31, 20), 12)));
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "FLH", riscv_fpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)], (unsigned int)(SIGN_EXTEND(FX(data, 31, 20), 12)), (int)(SIGN_EXTEND(FX(data, 31, 20), 12)));
     } break;
     case RISCV_FLI_D: {
         snprintf(buff, sizeof(buff), "%-15s %s, 0x%x(%d)", "FLI.D", riscv_fpr[FX(data, 11, 7)], (unsigned int)(FX(data, 19, 15)), (int)(FX(data, 19, 15)));
@@ -768,10 +768,10 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, 0x%x(%d)", "FLI.Q", riscv_fpr[FX(data, 11, 7)], (unsigned int)(FX(data, 19, 15)), (int)(FX(data, 19, 15)));
     } break;
     case RISCV_FLI_S: {
-        snprintf(buff, sizeof(buff), "%-15s %s, 0x%x(%d)", "FLI.S", riscv_gpr[FX(data, 11, 7)], (unsigned int)(FX(data, 19, 15)), (int)(FX(data, 19, 15)));
+        snprintf(buff, sizeof(buff), "%-15s %s, 0x%x(%d)", "FLI.S", riscv_fpr[FX(data, 11, 7)], (unsigned int)(FX(data, 19, 15)), (int)(FX(data, 19, 15)));
     } break;
     case RISCV_FLQ: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "FLQ", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], (unsigned int)(SIGN_EXTEND(FX(data, 31, 20), 12)), (int)(SIGN_EXTEND(FX(data, 31, 20), 12)));
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "FLQ", riscv_fpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)], (unsigned int)(SIGN_EXTEND(FX(data, 31, 20), 12)), (int)(SIGN_EXTEND(FX(data, 31, 20), 12)));
     } break;
     case RISCV_FLT_D: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FLT.D", riscv_gpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_fpr[FX(data, 24, 20)]);
@@ -795,7 +795,7 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FLTQ.Q", riscv_gpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_fpr[FX(data, 24, 20)]);
     } break;
     case RISCV_FLTQ_S: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FLTQ.S", riscv_gpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)], riscv_gpr[FX(data, 24, 20)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FLTQ.S", riscv_gpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_fpr[FX(data, 24, 20)]);
     } break;
     case RISCV_FLW: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "FLW", riscv_fpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)], (unsigned int)(SIGN_EXTEND(FX(data, 31, 20), 12)), (int)(SIGN_EXTEND(FX(data, 31, 20), 12)));
@@ -834,7 +834,7 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FMAXM.Q", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_fpr[FX(data, 24, 20)]);
     } break;
     case RISCV_FMAXM_S: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FMAXM.S", riscv_gpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)], riscv_gpr[FX(data, 24, 20)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FMAXM.S", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_fpr[FX(data, 24, 20)]);
     } break;
     case RISCV_FMIN_D: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FMIN.D", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_fpr[FX(data, 24, 20)]);
@@ -858,7 +858,7 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FMINM.Q", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_fpr[FX(data, 24, 20)]);
     } break;
     case RISCV_FMINM_S: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FMINM.S", riscv_gpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)], riscv_gpr[FX(data, 24, 20)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FMINM.S", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_fpr[FX(data, 24, 20)]);
     } break;
     case RISCV_FMSUB_D: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s, %s", "FMSUB.D", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_fpr[FX(data, 24, 20)], riscv_fpr[FX(data, 31, 27)], riscv_rm[FX(data, 14, 12)]);
@@ -906,13 +906,13 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, %s", "FMVH.X.D", riscv_gpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)]);
     } break;
     case RISCV_FMVH_X_Q: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s", "FMVH.X.Q", riscv_gpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s", "FMVH.X.Q", riscv_gpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)]);
     } break;
     case RISCV_FMVP_D_X: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FMVP.D.X", riscv_fpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)], riscv_gpr[FX(data, 24, 20)]);
     } break;
     case RISCV_FMVP_Q_X: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FMVP.Q.X", riscv_gpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)], riscv_gpr[FX(data, 24, 20)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FMVP.Q.X", riscv_fpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)], riscv_gpr[FX(data, 24, 20)]);
     } break;
     case RISCV_FNMADD_D: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s, %s", "FNMADD.D", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_fpr[FX(data, 24, 20)], riscv_fpr[FX(data, 31, 27)], riscv_rm[FX(data, 14, 12)]);
@@ -948,7 +948,7 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FROUND.Q", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_rm[FX(data, 14, 12)]);
     } break;
     case RISCV_FROUND_S: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FROUND.S", riscv_gpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)], riscv_rm[FX(data, 14, 12)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FROUND.S", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_rm[FX(data, 14, 12)]);
     } break;
     case RISCV_FROUNDNX_D: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FROUNDNX.D", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_rm[FX(data, 14, 12)]);
@@ -960,7 +960,7 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FROUNDNX.Q", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_rm[FX(data, 14, 12)]);
     } break;
     case RISCV_FROUNDNX_S: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FROUNDNX.S", riscv_gpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)], riscv_rm[FX(data, 14, 12)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FROUNDNX.S", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_rm[FX(data, 14, 12)]);
     } break;
     case RISCV_FSD: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "FSD", riscv_fpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], (unsigned int)(SIGN_EXTEND(((FX(data, 31, 25) << 5) | FX(data, 11, 7)), 12)), (int)(SIGN_EXTEND(((FX(data, 31, 25) << 5) | FX(data, 11, 7)), 12)));
@@ -1002,10 +1002,10 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FSGNJX.S", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_fpr[FX(data, 24, 20)]);
     } break;
     case RISCV_FSH: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "FSH", riscv_fpr[FX(data, 24, 20)], riscv_fpr[FX(data, 19, 15)], (unsigned int)(SIGN_EXTEND(((FX(data, 31, 25) << 5) | FX(data, 11, 7)), 12)), (int)(SIGN_EXTEND(((FX(data, 31, 25) << 5) | FX(data, 11, 7)), 12)));
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "FSH", riscv_fpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], (unsigned int)(SIGN_EXTEND(((FX(data, 31, 25) << 5) | FX(data, 11, 7)), 12)), (int)(SIGN_EXTEND(((FX(data, 31, 25) << 5) | FX(data, 11, 7)), 12)));
     } break;
     case RISCV_FSQ: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "FSQ", riscv_fpr[FX(data, 24, 20)], riscv_fpr[FX(data, 19, 15)], (unsigned int)(SIGN_EXTEND(((FX(data, 31, 25) << 5) | FX(data, 11, 7)), 12)), (int)(SIGN_EXTEND(((FX(data, 31, 25) << 5) | FX(data, 11, 7)), 12)));
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "FSQ", riscv_fpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], (unsigned int)(SIGN_EXTEND(((FX(data, 31, 25) << 5) | FX(data, 11, 7)), 12)), (int)(SIGN_EXTEND(((FX(data, 31, 25) << 5) | FX(data, 11, 7)), 12)));
     } break;
     case RISCV_FSQRT_D: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "FSQRT.D", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_rm[FX(data, 14, 12)]);
@@ -1035,10 +1035,10 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "FSW", riscv_fpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], (unsigned int)(SIGN_EXTEND(((FX(data, 31, 25) << 5) | FX(data, 11, 7)), 12)), (int)(SIGN_EXTEND(((FX(data, 31, 25) << 5) | FX(data, 11, 7)), 12)));
     } break;
     case RISCV_HFENCE_GVMA: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HFENCE.GVMA", riscv_fpr[FX(data, 19, 15)], riscv_fpr[FX(data, 24, 20)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HFENCE.GVMA", riscv_gpr[FX(data, 19, 15)], riscv_gpr[FX(data, 24, 20)]);
     } break;
     case RISCV_HFENCE_VVMA: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HFENCE.VVMA", riscv_fpr[FX(data, 19, 15)], riscv_fpr[FX(data, 24, 20)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HFENCE.VVMA", riscv_gpr[FX(data, 19, 15)], riscv_gpr[FX(data, 24, 20)]);
     } break;
     case RISCV_HINVAL_GVMA: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s", "HINVAL.GVMA", riscv_gpr[FX(data, 19, 15)], riscv_gpr[FX(data, 24, 20)]);
@@ -1047,43 +1047,43 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, %s", "HINVAL.VVMA", riscv_gpr[FX(data, 19, 15)], riscv_gpr[FX(data, 24, 20)]);
     } break;
     case RISCV_HLV_B: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HLV.B", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HLV.B", riscv_gpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)]);
     } break;
     case RISCV_HLV_BU: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HLV.BU", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HLV.BU", riscv_gpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)]);
     } break;
     case RISCV_HLV_D: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HLV.D", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HLV.D", riscv_gpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)]);
     } break;
     case RISCV_HLV_H: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HLV.H", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HLV.H", riscv_gpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)]);
     } break;
     case RISCV_HLV_HU: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HLV.HU", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HLV.HU", riscv_gpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)]);
     } break;
     case RISCV_HLV_W: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HLV.W", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HLV.W", riscv_gpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)]);
     } break;
     case RISCV_HLV_WU: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HLV.WU", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HLV.WU", riscv_gpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)]);
     } break;
     case RISCV_HLVX_HU: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HLVX.HU", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HLVX.HU", riscv_gpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)]);
     } break;
     case RISCV_HLVX_WU: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HLVX.WU", riscv_fpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HLVX.WU", riscv_gpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)]);
     } break;
     case RISCV_HSV_B: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HSV.B", riscv_fpr[FX(data, 19, 15)], riscv_fpr[FX(data, 24, 20)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HSV.B", riscv_gpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)]);
     } break;
     case RISCV_HSV_D: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HSV.D", riscv_fpr[FX(data, 19, 15)], riscv_fpr[FX(data, 24, 20)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HSV.D", riscv_gpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)]);
     } break;
     case RISCV_HSV_H: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HSV.H", riscv_fpr[FX(data, 19, 15)], riscv_fpr[FX(data, 24, 20)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HSV.H", riscv_gpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)]);
     } break;
     case RISCV_HSV_W: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HSV.W", riscv_fpr[FX(data, 19, 15)], riscv_fpr[FX(data, 24, 20)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s", "HSV.W", riscv_gpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)]);
     } break;
     case RISCV_JAL: {
         snprintf(buff, sizeof(buff), "%-15s %s, 0x%x(%d)", "JAL", riscv_gpr[FX(data, 11, 7)], (unsigned int)(SIGN_EXTEND((BX(data, 31) << 20) | (FX(data, 19, 12) << 12) | (BX(data, 20) << 11) | (FX(data, 30, 21) << 1), 21)), (int)(SIGN_EXTEND((BX(data, 31) << 20) | (FX(data, 19, 12) << 12) | (BX(data, 20) << 11) | (FX(data, 30, 21) << 1), 21)));
@@ -3076,13 +3076,13 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "VABS.V", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VADC_VIM: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "VADC.VIM", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], (unsigned int)(SIGN_EXTEND(FX(data, 19, 15), 5)), (int)(SIGN_EXTEND(FX(data, 19, 15), 5)));
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d), %s", "VADC.VIM", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], (unsigned int)(SIGN_EXTEND(FX(data, 19, 15), 5)), (int)(SIGN_EXTEND(FX(data, 19, 15), 5)), "v0");
     } break;
     case RISCV_VADC_VVM: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "VADC.VVM", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VADC.VVM", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], "v0");
     } break;
     case RISCV_VADC_VXM: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "VADC.VXM", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VADC.VXM", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], "v0");
     } break;
     case RISCV_VADD_VI: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d), %s", "VADD.VI", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], (unsigned int)(SIGN_EXTEND(FX(data, 19, 15), 5)), (int)(SIGN_EXTEND(FX(data, 19, 15), 5)), riscv_vm[FX(data, 25, 25)]);
@@ -3259,19 +3259,19 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "VFEXT.VF2", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFIRST_M: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "VFIRST.M", riscv_fpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "VFIRST.M", riscv_gpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFMACC_VF: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFMACC.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_fpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFMACC.VF", riscv_vpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFMACC_VV: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFMACC.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFMACC.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFMADD_VF: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFMADD.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_fpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFMADD.VF", riscv_vpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFMADD_VV: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFMADD.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFMADD.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFMAX_VF: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFMAX.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_fpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
@@ -3289,16 +3289,16 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFMIN.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFMSAC_VF: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFMSAC.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_fpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFMSAC.VF", riscv_vpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFMSAC_VV: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFMSAC.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFMSAC.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFMSUB_VF: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFMSUB.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_fpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFMSUB.VF", riscv_vpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFMSUB_VV: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFMSUB.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFMSUB.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFMUL_VF: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFMUL.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_fpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
@@ -3352,28 +3352,28 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "VFNCVTBF16.SAT.F.F.W", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFNMACC_VF: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFNMACC.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_fpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFNMACC.VF", riscv_vpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFNMACC_VV: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFNMACC.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFNMACC.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFNMADD_VF: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFNMADD.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_fpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFNMADD.VF", riscv_vpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFNMADD_VV: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFNMADD.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFNMADD.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFNMSAC_VF: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFNMSAC.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_fpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFNMSAC.VF", riscv_vpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFNMSAC_VV: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFNMSAC.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFNMSAC.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFNMSUB_VF: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFNMSUB.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_fpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFNMSUB.VF", riscv_vpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFNMSUB_VV: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFNMSUB.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFNMSUB.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFQWBDOTA_ALT_VV: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFQWBDOTA.ALT.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
@@ -3487,22 +3487,22 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFWDOTA.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFWMACC_VF: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFWMACC.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_fpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFWMACC.VF", riscv_vpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFWMACC_VV: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFWMACC.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFWMACC.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFWMACCBF16_VF: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFWMACCBF16.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_fpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFWMACCBF16.VF", riscv_vpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFWMACCBF16_VV: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFWMACCBF16.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFWMACCBF16.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFWMSAC_VF: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFWMSAC.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_fpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFWMSAC.VF", riscv_vpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFWMSAC_VV: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFWMSAC.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFWMSAC.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFWMUL_VF: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFWMUL.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_fpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
@@ -3511,16 +3511,16 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFWMUL.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFWNMACC_VF: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFWNMACC.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_fpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFWNMACC.VF", riscv_vpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFWNMACC_VV: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFWNMACC.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFWNMACC.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFWNMSAC_VF: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFWNMSAC.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_fpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFWNMSAC.VF", riscv_vpr[FX(data, 11, 7)], riscv_fpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFWNMSAC_VV: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFWNMSAC.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFWNMSAC.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VFWREDOSUM_VS: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VFWREDOSUM.VS", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
@@ -3664,34 +3664,34 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s, %s", "VLUXEI8.V", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)], riscv_nf[FX(data, 31, 29)]);
     } break;
     case RISCV_VMACC_VV: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMACC.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMACC.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VMACC_VX: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMACC.VX", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMACC.VX", riscv_vpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VMADC_VI: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "VMADC.VI", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], (unsigned int)(SIGN_EXTEND(FX(data, 19, 15), 5)), (int)(SIGN_EXTEND(FX(data, 19, 15), 5)));
     } break;
     case RISCV_VMADC_VIM: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d)", "VMADC.VIM", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], (unsigned int)(SIGN_EXTEND(FX(data, 19, 15), 5)), (int)(SIGN_EXTEND(FX(data, 19, 15), 5)));
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d), %s", "VMADC.VIM", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], (unsigned int)(SIGN_EXTEND(FX(data, 19, 15), 5)), (int)(SIGN_EXTEND(FX(data, 19, 15), 5)), "v0");
     } break;
     case RISCV_VMADC_VV: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "VMADC.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)]);
     } break;
     case RISCV_VMADC_VVM: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "VMADC.VVM", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMADC.VVM", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], "v0");
     } break;
     case RISCV_VMADC_VX: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "VMADC.VX", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)]);
     } break;
     case RISCV_VMADC_VXM: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "VMADC.VXM", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMADC.VXM", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], "v0");
     } break;
     case RISCV_VMADD_VV: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMADD.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMADD.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VMADD_VX: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMADD.VX", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMADD.VX", riscv_vpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VMAND_MM: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "VMAND.MM", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)]);
@@ -3721,31 +3721,31 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "VMERGE.VXM", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)]);
     } break;
     case RISCV_VMFEQ_VF: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMFEQ.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMFEQ.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_fpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VMFEQ_VV: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMFEQ.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VMFGE_VF: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMFGE.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMFGE.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_fpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VMFGT_VF: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMFGT.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMFGT.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_fpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VMFLE_VF: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMFLE.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMFLE.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_fpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VMFLE_VV: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMFLE.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VMFLT_VF: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMFLT.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMFLT.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_fpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VMFLT_VV: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMFLT.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VMFNE_VF: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMFNE.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMFNE.VF", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_fpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VMFNE_VV: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMFNE.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
@@ -3778,13 +3778,13 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "VMSBC.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)]);
     } break;
     case RISCV_VMSBC_VVM: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "VMSBC.VVM", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMSBC.VVM", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], "v0");
     } break;
     case RISCV_VMSBC_VX: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "VMSBC.VX", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)]);
     } break;
     case RISCV_VMSBC_VXM: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "VMSBC.VXM", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VMSBC.VXM", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], "v0");
     } break;
     case RISCV_VMSBF_M: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "VMSBF.M", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
@@ -3931,16 +3931,16 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VNCLIPU.WX", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VNMSAC_VV: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VNMSAC.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VNMSAC.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VNMSAC_VX: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VNMSAC.VX", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VNMSAC.VX", riscv_vpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VNMSUB_VV: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VNMSUB.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VNMSUB.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VNMSUB_VX: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VNMSUB.VX", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VNMSUB.VX", riscv_vpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VNSRA_WI: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, 0x%x(%d), %s", "VNSRA.WI", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], (unsigned int)(FX(data, 19, 15)), (int)(FX(data, 19, 15)), riscv_vm[FX(data, 25, 25)]);
@@ -4090,10 +4090,10 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VSADDU.VX", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VSBC_VVM: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "VSBC.VVM", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VSBC.VVM", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], "v0");
     } break;
     case RISCV_VSBC_VXM: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s", "VSBC.VXM", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VSBC.VXM", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], "v0");
     } break;
     case RISCV_VSE16_V: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VSE16.V", riscv_vpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)], riscv_nf[FX(data, 31, 29)]);
@@ -4312,25 +4312,25 @@ std::string riscv_disassemble(uint32_t data, uint64_t addr)
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VWADDU.WX", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VWMACC_VV: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VWMACC.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VWMACC.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VWMACC_VX: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VWMACC.VX", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VWMACC.VX", riscv_vpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VWMACCSU_VV: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VWMACCSU.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VWMACCSU.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VWMACCSU_VX: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VWMACCSU.VX", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VWMACCSU.VX", riscv_vpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VWMACCU_VV: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VWMACCU.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VWMACCU.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VWMACCU_VX: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VWMACCU.VX", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VWMACCU.VX", riscv_vpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VWMACCUS_VX: {
-        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VWMACCUS.VX", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_gpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
+        snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VWMACCUS.VX", riscv_vpr[FX(data, 11, 7)], riscv_gpr[FX(data, 19, 15)], riscv_vpr[FX(data, 24, 20)], riscv_vm[FX(data, 25, 25)]);
     } break;
     case RISCV_VWMUL_VV: {
         snprintf(buff, sizeof(buff), "%-15s %s, %s, %s, %s", "VWMUL.VV", riscv_vpr[FX(data, 11, 7)], riscv_vpr[FX(data, 24, 20)], riscv_vpr[FX(data, 19, 15)], riscv_vm[FX(data, 25, 25)]);
