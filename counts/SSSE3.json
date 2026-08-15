@@ -289,7 +289,7 @@
             "VWMULSU.VV      v2, v20, v19, none",
             "VSETIVLI        zero, 16, e16, m1, tu, mu",
             "VNSRL.WI        v4, v2, 0x0(0), none",
-            "VNSRL.WI        v6, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v6, v2, 0x10(16), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VSADD.VV        v19, v4, v6, none"
         ],
@@ -302,7 +302,7 @@
             "VWMULSU.VV      v2, v18, v18, none",
             "VSETIVLI        zero, 16, e16, m1, tu, mu",
             "VNSRL.WI        v4, v2, 0x0(0), none",
-            "VNSRL.WI        v6, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v6, v2, 0x10(16), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VSADD.VV        v18, v4, v6, none"
         ],
@@ -316,7 +316,7 @@
             "VWMULSU.VV      v2, v1, v17, none",
             "VSETIVLI        zero, 16, e16, m1, tu, mu",
             "VNSRL.WI        v4, v2, 0x0(0), none",
-            "VNSRL.WI        v6, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v6, v2, 0x10(16), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VSADD.VV        v17, v4, v6, none"
         ],
@@ -330,7 +330,7 @@
             "VSLIDEUP.VI     v2, v20, 0x8(8), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v6, v2, 0x0(0), none",
-            "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v7, v2, 0x10(16), none",
             "VSUB.VV         v19, v6, v7, none"
         ],
         "disassembly": "phsubw xmm3, xmm4"
@@ -343,7 +343,7 @@
             "VSLIDEUP.VI     v2, v18, 0x8(8), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v6, v2, 0x0(0), none",
-            "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v7, v2, 0x10(16), none",
             "VSUB.VV         v18, v6, v7, none"
         ],
         "disassembly": "phsubw xmm2, xmm2"
@@ -359,7 +359,7 @@
             "VSLIDEUP.VI     v2, v4, 0x8(8), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v6, v2, 0x0(0), none",
-            "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v7, v2, 0x10(16), none",
             "VSUB.VV         v17, v6, v7, none"
         ],
         "disassembly": "phsubw xmm1, [rdi]"
@@ -417,7 +417,7 @@
             "VSLIDEUP.VI     v2, v20, 0x8(8), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v6, v2, 0x0(0), none",
-            "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v7, v2, 0x10(16), none",
             "VSSUB.VV        v19, v6, v7, none"
         ],
         "disassembly": "phsubsw xmm3, xmm4"
@@ -430,7 +430,7 @@
             "VSLIDEUP.VI     v2, v18, 0x8(8), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v6, v2, 0x0(0), none",
-            "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v7, v2, 0x10(16), none",
             "VSSUB.VV        v18, v6, v7, none"
         ],
         "disassembly": "phsubsw xmm2, xmm2"
@@ -446,7 +446,7 @@
             "VSLIDEUP.VI     v2, v4, 0x8(8), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v6, v2, 0x0(0), none",
-            "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v7, v2, 0x10(16), none",
             "VSSUB.VV        v17, v6, v7, none"
         ],
         "disassembly": "phsubsw xmm1, [rdi]"
@@ -459,7 +459,7 @@
             "VSLIDEUP.VI     v2, v20, 0x8(8), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v6, v2, 0x0(0), none",
-            "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v7, v2, 0x10(16), none",
             "VADD.VV         v19, v6, v7, none"
         ],
         "disassembly": "phaddw xmm3, xmm4"
@@ -472,7 +472,7 @@
             "VSLIDEUP.VI     v2, v18, 0x8(8), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v6, v2, 0x0(0), none",
-            "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v7, v2, 0x10(16), none",
             "VADD.VV         v18, v6, v7, none"
         ],
         "disassembly": "phaddw xmm2, xmm2"
@@ -488,7 +488,7 @@
             "VSLIDEUP.VI     v2, v4, 0x8(8), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v6, v2, 0x0(0), none",
-            "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v7, v2, 0x10(16), none",
             "VADD.VV         v17, v6, v7, none"
         ],
         "disassembly": "phaddw xmm1, [rdi]"
@@ -546,7 +546,7 @@
             "VSLIDEUP.VI     v2, v20, 0x8(8), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v6, v2, 0x0(0), none",
-            "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v7, v2, 0x10(16), none",
             "VSADD.VV        v19, v6, v7, none"
         ],
         "disassembly": "phaddsw xmm3, xmm4"
@@ -559,7 +559,7 @@
             "VSLIDEUP.VI     v2, v18, 0x8(8), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v6, v2, 0x0(0), none",
-            "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v7, v2, 0x10(16), none",
             "VSADD.VV        v18, v6, v7, none"
         ],
         "disassembly": "phaddsw xmm2, xmm2"
@@ -575,7 +575,7 @@
             "VSLIDEUP.VI     v2, v4, 0x8(8), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v6, v2, 0x0(0), none",
-            "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v7, v2, 0x10(16), none",
             "VSADD.VV        v17, v6, v7, none"
         ],
         "disassembly": "phaddsw xmm1, [rdi]"
@@ -980,7 +980,7 @@
             "VWMULSU.VV      v2, v12, v11, none",
             "VSETIVLI        zero, 16, e16, m1, tu, mu",
             "VNSRL.WI        v4, v2, 0x0(0), none",
-            "VNSRL.WI        v6, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v6, v2, 0x10(16), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VSADD.VV        v11, v4, v6, none"
         ],
@@ -996,7 +996,7 @@
             "VWMULSU.VV      v2, v10, v10, none",
             "VSETIVLI        zero, 16, e16, m1, tu, mu",
             "VNSRL.WI        v4, v2, 0x0(0), none",
-            "VNSRL.WI        v6, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v6, v2, 0x10(16), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VSADD.VV        v10, v4, v6, none"
         ],
@@ -1014,7 +1014,7 @@
             "VWMULSU.VV      v2, v1, v9, none",
             "VSETIVLI        zero, 16, e16, m1, tu, mu",
             "VNSRL.WI        v4, v2, 0x0(0), none",
-            "VNSRL.WI        v6, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v6, v2, 0x10(16), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VSADD.VV        v9, v4, v6, none"
         ],
@@ -1033,7 +1033,7 @@
             "VSLIDEUP.VI     v2, v12, 0x4(4), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v6, v2, 0x0(0), none",
-            "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v7, v2, 0x10(16), none",
             "VSUB.VV         v11, v6, v7, none"
         ],
         "disassembly": "phsubw mm3, mm4"
@@ -1049,7 +1049,7 @@
             "VSLIDEUP.VI     v2, v10, 0x4(4), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v6, v2, 0x0(0), none",
-            "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v7, v2, 0x10(16), none",
             "VSUB.VV         v10, v6, v7, none"
         ],
         "disassembly": "phsubw mm2, mm2"
@@ -1068,7 +1068,7 @@
             "VSLIDEUP.VI     v2, v4, 0x4(4), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v6, v2, 0x0(0), none",
-            "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v7, v2, 0x10(16), none",
             "VSUB.VV         v9, v6, v7, none"
         ],
         "disassembly": "phsubw mm1, [rdi]"
@@ -1142,7 +1142,7 @@
             "VSLIDEUP.VI     v2, v12, 0x4(4), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v6, v2, 0x0(0), none",
-            "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v7, v2, 0x10(16), none",
             "VSSUB.VV        v11, v6, v7, none"
         ],
         "disassembly": "phsubsw mm3, mm4"
@@ -1158,7 +1158,7 @@
             "VSLIDEUP.VI     v2, v10, 0x4(4), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v6, v2, 0x0(0), none",
-            "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v7, v2, 0x10(16), none",
             "VSSUB.VV        v10, v6, v7, none"
         ],
         "disassembly": "phsubsw mm2, mm2"
@@ -1177,7 +1177,7 @@
             "VSLIDEUP.VI     v2, v4, 0x4(4), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v6, v2, 0x0(0), none",
-            "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v7, v2, 0x10(16), none",
             "VSSUB.VV        v9, v6, v7, none"
         ],
         "disassembly": "phsubsw mm1, [rdi]"
@@ -1195,7 +1195,7 @@
             "VSLIDEUP.VI     v2, v12, 0x4(4), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v6, v2, 0x0(0), none",
-            "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v7, v2, 0x10(16), none",
             "VADD.VV         v11, v6, v7, none"
         ],
         "disassembly": "phaddw mm3, mm4"
@@ -1211,7 +1211,7 @@
             "VSLIDEUP.VI     v2, v10, 0x4(4), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v6, v2, 0x0(0), none",
-            "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v7, v2, 0x10(16), none",
             "VADD.VV         v10, v6, v7, none"
         ],
         "disassembly": "phaddw mm2, mm2"
@@ -1230,7 +1230,7 @@
             "VSLIDEUP.VI     v2, v4, 0x4(4), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v6, v2, 0x0(0), none",
-            "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v7, v2, 0x10(16), none",
             "VADD.VV         v9, v6, v7, none"
         ],
         "disassembly": "phaddw mm1, [rdi]"
@@ -1304,7 +1304,7 @@
             "VSLIDEUP.VI     v2, v12, 0x4(4), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v6, v2, 0x0(0), none",
-            "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v7, v2, 0x10(16), none",
             "VSADD.VV        v11, v6, v7, none"
         ],
         "disassembly": "phaddsw mm3, mm4"
@@ -1320,7 +1320,7 @@
             "VSLIDEUP.VI     v2, v10, 0x4(4), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v6, v2, 0x0(0), none",
-            "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v7, v2, 0x10(16), none",
             "VSADD.VV        v10, v6, v7, none"
         ],
         "disassembly": "phaddsw mm2, mm2"
@@ -1339,7 +1339,7 @@
             "VSLIDEUP.VI     v2, v4, 0x4(4), none",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "VNSRL.WI        v6, v2, 0x0(0), none",
-            "VNSRL.WI        v7, v2, 0xfffffff0(-16), none",
+            "VNSRL.WI        v7, v2, 0x10(16), none",
             "VSADD.VV        v9, v6, v7, none"
         ],
         "disassembly": "phaddsw mm1, [rdi]"

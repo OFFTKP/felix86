@@ -1,3 +1,7 @@
 external/** linguist-vendored
 tests/Binaries/**/*.out binary
 counts/** linguist-generated
+src/felix86/common/decoder.h linguist-generated
+src/felix86/common/decoder.c linguist-generated
+src/felix86/common/disassembler.h linguist-generated
+src/felix86/common/disassembler.cpp linguist-generated

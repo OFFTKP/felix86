@@ -12,7 +12,7 @@
 #include "felix86/v2/handlers.hpp"
 #include "felix86/v2/recompiler.hpp"
 
-extern "C" const char* rv64_print(uint32_t opcode, uintptr_t addr);
+extern std::string riscv_disassemble(u32 opcode, u64 addr);
 
 static FlagMode flag_mode = FlagMode::Default;
 
@@ -150,11 +150,11 @@ static void compile(const std::string& input) {
         for (int j = 0; j < riscv_size; j += 4) {
             u32 data = 0;
             memcpy(&data, (void*)(address + j), 4);
-            const char* out = rv64_print(data, address + j);
+            std::string out = riscv_disassemble(data, address + j);
             if (use_color) {
                 printf("%s", colors[span_index % color_count]);
             }
-            printf("%s", out);
+            printf("%s", out.c_str());
             if (use_color) {
                 printf("%s", reset);
             }

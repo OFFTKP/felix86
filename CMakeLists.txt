@@ -148,9 +148,14 @@ set(FELIX86_CORE_SOURCES
     src/felix86/emulator.cpp
 )
 
+set(FELIX86_DISASSEMBLER_SOURCES
+    src/felix86/common/disassembler.cpp
+    src/felix86/common/decoder.c
+)
+
 set(FELIX86_REPL_SOURCES
     src/felix86/repl.cpp
-    external/box64/rv64_printer.c
+    ${FELIX86_DISASSEMBLER_SOURCES}
 )
 
 set(FELIX86_INCLUDES
@@ -227,8 +232,8 @@ if (BUILD_INSTRUCTION_COUNTER)
     # which causes slightly different generated code, so we pin it to a vendored version
     add_library(vendored_xbyak INTERFACE)
     target_include_directories(vendored_xbyak INTERFACE external/xbyak)
-    add_executable(felix86_instruction_counter src/felix86/tools/generate_instruction_count.cpp external/box64/rv64_printer.c)
-    target_include_directories(felix86_instruction_counter PRIVATE src external/box64)
+    add_executable(felix86_instruction_counter src/felix86/tools/generate_instruction_count.cpp ${FELIX86_DISASSEMBLER_SOURCES})
+    target_include_directories(felix86_instruction_counter PRIVATE src)
     target_link_libraries(felix86_instruction_counter PRIVATE vendored_xbyak felix86_core)
 endif()
 
