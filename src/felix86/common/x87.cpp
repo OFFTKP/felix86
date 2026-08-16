@@ -10,6 +10,10 @@ static bool isNaN80(extFloat80_t* v) {
     return ((v->signExp & 0x7FFF) == 0x7FFF) && (v->signif & 0x7FFFFFFFFFFFFFFFull);
 }
 
+static void clearC2(ThreadState* state) {
+    state->ctx.fpu_sw &= ~C2_BIT;
+}
+
 using arithmetic_func_t = void (*)(const extFloat80_t*, const extFloat80_t*, extFloat80_t*);
 
 struct PrecisionGuard {
@@ -427,6 +431,7 @@ void felix86_x87_FXCH(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs, 
     extFloat80_t temp = *lhs;
     *lhs = *rhs;
     *rhs = temp;
+    state->ctx.fpu_sw &= ~C1_BIT;
 }
 
 void felix86_x87_FTST(ThreadState* state) {
@@ -453,7 +458,7 @@ void felix86_x87_FTST(ThreadState* state) {
         c2 = 0;
         c0 = 0;
     }
-    state->ctx.fpu_sw &= ~(C0_BIT | C2_BIT | C3_BIT);
+    state->ctx.fpu_sw &= ~(C0_BIT | C1_BIT | C2_BIT | C3_BIT);
     state->ctx.fpu_sw |= c0 ? C0_BIT : 0;
     state->ctx.fpu_sw |= c2 ? C2_BIT : 0;
     state->ctx.fpu_sw |= c3 ? C3_BIT : 0;
@@ -473,6 +478,7 @@ void felix86_x87_FSIN(ThreadState* state) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedFloatFallbackCount, 1);
     extFloat80_t* reg = (extFloat80_t*)&state->ctx.st[state->ctx.fpu_top];
     checkReg(state, reg);
+    clearC2(state);
     if (handle_infinity(reg))
         return;
     float128_t f128;
@@ -485,6 +491,7 @@ void felix86_x87_FCOS(ThreadState* state) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedFloatFallbackCount, 1);
     extFloat80_t* reg = (extFloat80_t*)&state->ctx.st[state->ctx.fpu_top];
     checkReg(state, reg);
+    clearC2(state);
     if (handle_infinity(reg))
         return;
     float128_t f128;
@@ -497,6 +504,7 @@ void felix86_x87_FSINCOS(ThreadState* state) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedFloatFallbackCount, 1);
     extFloat80_t* reg = (extFloat80_t*)&state->ctx.st[state->ctx.fpu_top];
     checkReg(state, reg);
+    clearC2(state);
     if (handle_infinity(reg))
         return;
     float128_t f128;
@@ -513,6 +521,7 @@ void felix86_x87_FPTAN(ThreadState* state) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedFloatFallbackCount, 1);
     extFloat80_t* reg = (extFloat80_t*)&state->ctx.st[state->ctx.fpu_top];
     checkReg(state, reg);
+    clearC2(state);
     if (handle_infinity(reg))
         return;
     float128_t f128;
@@ -592,10 +601,32 @@ void felix86_x87_FRNDINT(ThreadState* state) {
     extF80M_roundToInt(reg, softfloat_getRoundingMode(), false, reg);
 }
 
-void felix86_x87_FUCOM(ThreadState* state, extFloat80_t* rhs, extFloat80_t* lhs, int) {
+void felix86_x87_FCOM(ThreadState* state, extFloat80_t* rhs /* flipped */, extFloat80_t* lhs, int size) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedFloatFallbackCount, 1);
     checkReg(state, lhs);
-    checkReg(state, rhs);
+    extFloat80_t rhsstorage;
+    if (size != 0) {
+        if (size == 64) {
+            float64_t f64;
+            bool read = safe_memcpy(&f64, rhs, sizeof(float64_t));
+            if (!read) {
+                return;
+            }
+            f64_to_extF80M(f64, &rhsstorage);
+        } else if (size == 32) {
+            float32_t f32;
+            bool read = safe_memcpy(&f32, rhs, sizeof(float32_t));
+            if (!read) {
+                return;
+            }
+            f32_to_extF80M(f32, &rhsstorage);
+        } else {
+            UNREACHABLE();
+        }
+        rhs = &rhsstorage;
+    } else {
+        checkReg(state, rhs);
+    }
     bool c0, c2, c3;
     bool nan = isNaN80(lhs) || isNaN80(rhs);
     bool eq = extF80M_eq(lhs, rhs);
@@ -617,39 +648,43 @@ void felix86_x87_FUCOM(ThreadState* state, extFloat80_t* rhs, extFloat80_t* lhs,
         c2 = 0;
         c0 = 0;
     }
-    state->ctx.fpu_sw &= ~(C0_BIT | C2_BIT | C3_BIT);
+    state->ctx.fpu_sw &= ~(C0_BIT | C1_BIT | C2_BIT | C3_BIT);
     state->ctx.fpu_sw |= c0 ? C0_BIT : 0;
     state->ctx.fpu_sw |= c2 ? C2_BIT : 0;
     state->ctx.fpu_sw |= c3 ? C3_BIT : 0;
 }
 
-void felix86_x87_FUCOMP(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs, int) {
+void felix86_x87_FCOMP(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs, int size) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedFloatFallbackCount, 1);
-    felix86_x87_FUCOM(state, lhs, rhs, 0);
+    felix86_x87_FCOM(state, lhs, rhs, size);
     pop(state);
 }
 
-void felix86_x87_FUCOMPP(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs, int) {
+void felix86_x87_FCOMPP(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs, int size) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedFloatFallbackCount, 1);
-    felix86_x87_FUCOM(state, lhs, rhs, 0);
+    felix86_x87_FCOM(state, lhs, rhs, 0);
+    ASSERT(size == 0);
     pop(state);
     pop(state);
 }
 
-void felix86_x87_FCOM(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs, int) {
+void felix86_x87_FUCOM(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs, int size) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedFloatFallbackCount, 1);
-    felix86_x87_FUCOM(state, lhs, rhs, 0);
+    felix86_x87_FCOM(state, lhs, rhs, size);
+    ASSERT(size == 0);
 }
 
-void felix86_x87_FCOMP(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs, int) {
+void felix86_x87_FUCOMP(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs, int size) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedFloatFallbackCount, 1);
-    felix86_x87_FUCOM(state, lhs, rhs, 0);
+    felix86_x87_FCOM(state, lhs, rhs, 0);
+    ASSERT(size == 0);
     pop(state);
 }
 
-void felix86_x87_FCOMPP(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs, int) {
+void felix86_x87_FUCOMPP(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs, int size) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedFloatFallbackCount, 1);
-    felix86_x87_FUCOM(state, lhs, rhs, 0);
+    felix86_x87_FCOM(state, lhs, rhs, 0);
+    ASSERT(size == 0);
     pop(state);
     pop(state);
 }
@@ -772,6 +807,7 @@ void felix86_x87_FPREM(ThreadState* state) {
     extFloat80_t* st1 = (extFloat80_t*)&state->ctx.st[(state->ctx.fpu_top + 1) & 0b111];
     checkReg(state, st0);
     checkReg(state, st1);
+    clearC2(state);
 
     bool st0_inf = (st0->signExp & 0x7FFF) == 0x7FFF && st0->signif == 0x8000000000000000ULL;
     bool st0_nan = (st0->signExp & 0x7FFF) == 0x7FFF && (st0->signif & 0x7FFFFFFFFFFFFFFFULL) != 0;
@@ -809,8 +845,8 @@ void felix86_x87_FPREM1(ThreadState* state) {
     extFloat80_t* rhs = (extFloat80_t*)&state->ctx.st[(state->ctx.fpu_top + 1) & 0b111];
     checkReg(state, lhs);
     checkReg(state, rhs);
+    clearC2(state);
     extF80M_rem(lhs, rhs, lhs);
-    state->ctx.fpu_sw &= ~C2_BIT;
 }
 
 void felix86_x87_FSCALE(ThreadState* state) {
