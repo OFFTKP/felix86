@@ -10,6 +10,10 @@ static bool isNaN80(extFloat80_t* v) {
     return ((v->signExp & 0x7FFF) == 0x7FFF) && (v->signif & 0x7FFFFFFFFFFFFFFFull);
 }
 
+static void clearC2(ThreadState* state) {
+    state->ctx.fpu_sw &= ~C2_BIT;
+}
+
 using arithmetic_func_t = void (*)(const extFloat80_t*, const extFloat80_t*, extFloat80_t*);
 
 struct PrecisionGuard {
@@ -473,6 +477,7 @@ void felix86_x87_FSIN(ThreadState* state) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedFloatFallbackCount, 1);
     extFloat80_t* reg = (extFloat80_t*)&state->ctx.st[state->ctx.fpu_top];
     checkReg(state, reg);
+    clearC2(state);
     if (handle_infinity(reg))
         return;
     float128_t f128;
@@ -485,6 +490,7 @@ void felix86_x87_FCOS(ThreadState* state) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedFloatFallbackCount, 1);
     extFloat80_t* reg = (extFloat80_t*)&state->ctx.st[state->ctx.fpu_top];
     checkReg(state, reg);
+    clearC2(state);
     if (handle_infinity(reg))
         return;
     float128_t f128;
@@ -497,6 +503,7 @@ void felix86_x87_FSINCOS(ThreadState* state) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedFloatFallbackCount, 1);
     extFloat80_t* reg = (extFloat80_t*)&state->ctx.st[state->ctx.fpu_top];
     checkReg(state, reg);
+    clearC2(state);
     if (handle_infinity(reg))
         return;
     float128_t f128;
@@ -513,6 +520,7 @@ void felix86_x87_FPTAN(ThreadState* state) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedFloatFallbackCount, 1);
     extFloat80_t* reg = (extFloat80_t*)&state->ctx.st[state->ctx.fpu_top];
     checkReg(state, reg);
+    clearC2(state);
     if (handle_infinity(reg))
         return;
     float128_t f128;
@@ -772,6 +780,7 @@ void felix86_x87_FPREM(ThreadState* state) {
     extFloat80_t* st1 = (extFloat80_t*)&state->ctx.st[(state->ctx.fpu_top + 1) & 0b111];
     checkReg(state, st0);
     checkReg(state, st1);
+    clearC2(state);
 
     bool st0_inf = (st0->signExp & 0x7FFF) == 0x7FFF && st0->signif == 0x8000000000000000ULL;
     bool st0_nan = (st0->signExp & 0x7FFF) == 0x7FFF && (st0->signif & 0x7FFFFFFFFFFFFFFFULL) != 0;
@@ -809,8 +818,8 @@ void felix86_x87_FPREM1(ThreadState* state) {
     extFloat80_t* rhs = (extFloat80_t*)&state->ctx.st[(state->ctx.fpu_top + 1) & 0b111];
     checkReg(state, lhs);
     checkReg(state, rhs);
+    clearC2(state);
     extF80M_rem(lhs, rhs, lhs);
-    state->ctx.fpu_sw &= ~C2_BIT;
 }
 
 void felix86_x87_FSCALE(ThreadState* state) {
