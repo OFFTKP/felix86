@@ -2935,23 +2935,43 @@ void Recompiler::readMemory(biscuit::Vec vec, biscuit::GPR address, int size) {
         break;
     }
     case 32: {
-        setVectorState(SEW::E8, 4);
-        as.VLE8(vec, address);
+        if (Extensions::Zicclsm && current_sew == SEW::E32 && current_vlen == 1 && current_grouping == LMUL::M1) {
+            as.VLE32(vec, address);
+        } else {
+            setVectorState(SEW::E8, 4);
+            as.VLE8(vec, address);
+        }
         break;
     }
     case 64: {
-        setVectorState(SEW::E8, 8);
-        as.VLE8(vec, address);
+        if (Extensions::Zicclsm && current_sew == SEW::E64 && current_vlen == 1 && current_grouping == LMUL::M1) {
+            as.VLE64(vec, address);
+        } else {
+            setVectorState(SEW::E8, 8);
+            as.VLE8(vec, address);
+        }
         break;
     }
     case 128: {
-        setVectorState(SEW::E8, 16);
-        as.VLE8(vec, address);
+        if (Extensions::Zicclsm && current_sew == SEW::E64 && current_vlen == 2 && current_grouping == LMUL::M1) {
+            as.VLE64(vec, address);
+        } else if (Extensions::Zicclsm && current_sew == SEW::E32 && current_vlen == 4 && current_grouping == LMUL::M1) {
+            as.VLE32(vec, address);
+        } else {
+            setVectorState(SEW::E8, 16);
+            as.VLE8(vec, address);
+        }
         break;
     }
     case 256: {
-        setVectorState(SEW::E8, 32);
-        as.VLE8(vec, address);
+        if (Extensions::Zicclsm && current_sew == SEW::E64 && current_vlen == 4 && current_grouping == LMUL::M1) {
+            as.VLE64(vec, address);
+        } else if (Extensions::Zicclsm && current_sew == SEW::E32 && current_vlen == 8 && current_grouping == LMUL::M1) {
+            as.VLE32(vec, address);
+        } else {
+            setVectorState(SEW::E8, 32);
+            as.VLE8(vec, address);
+        }
         break;
     }
     default: {
