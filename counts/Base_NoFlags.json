@@ -1727,10 +1727,9 @@
         "disassembly": "and edx, ebx"
     },
     "4821da": {
-        "instruction_count": 2,
+        "instruction_count": 1,
         "expected_asm": [
-            "AND             ra, a2, s0",
-            "ADDI            a2, ra, 0x0(0)"
+            "AND             a2, a2, s0"
         ],
         "disassembly": "and rdx, rbx"
     },
@@ -1924,40 +1923,32 @@
         "disassembly": "and dx, 0xFFFF"
     },
     "83e201": {
-        "instruction_count": 4,
+        "instruction_count": 2,
         "expected_asm": [
-            "ADDIW           t1, zero, 0x1(1)",
-            "ADD.UW          t3, a2, zero",
-            "AND             ra, t3, t1",
-            "ADD.UW          a2, ra, zero"
+            "ANDI            a2, a2, 0x1(1)",
+            "ADD.UW          a2, a2, zero"
         ],
         "disassembly": "and edx, 0x01"
     },
     "83e2ff": {
-        "instruction_count": 4,
+        "instruction_count": 2,
         "expected_asm": [
-            "ADDIW           t1, zero, 0xffffffff(-1)",
-            "ADD.UW          t3, a2, zero",
-            "AND             ra, t3, t1",
-            "ADD.UW          a2, ra, zero"
+            "ANDI            a2, a2, 0xffffffff(-1)",
+            "ADD.UW          a2, a2, zero"
         ],
         "disassembly": "and edx, 0xFFFFFFFF"
     },
     "4883e201": {
-        "instruction_count": 3,
+        "instruction_count": 1,
         "expected_asm": [
-            "ADDIW           t1, zero, 0x1(1)",
-            "AND             ra, a2, t1",
-            "ADDI            a2, ra, 0x0(0)"
+            "ANDI            a2, a2, 0x1(1)"
         ],
         "disassembly": "and rdx, 0x01"
     },
     "4883e2ff": {
-        "instruction_count": 3,
+        "instruction_count": 1,
         "expected_asm": [
-            "ADDIW           t1, zero, 0xffffffff(-1)",
-            "AND             ra, a2, t1",
-            "ADDI            a2, ra, 0x0(0)"
+            "ANDI            a2, a2, 0xffffffff(-1)"
         ],
         "disassembly": "and rdx, 0xFFFFFFFFFFFFFFFF"
     },
@@ -1982,21 +1973,19 @@
         "disassembly": "and word ptr [rdi], 0x01"
     },
     "832701": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
-            "ADDIW           t1, zero, 0x1(1)",
-            "LWU             t3, a0, 0x0(0)",
-            "AND             ra, t3, t1",
+            "LWU             ra, a0, 0x0(0)",
+            "ANDI            ra, ra, 0x1(1)",
             "SW              ra, a0, 0x0(0)"
         ],
         "disassembly": "and dword ptr [rdi], 0x01"
     },
     "48832701": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
-            "ADDIW           t1, zero, 0x1(1)",
-            "LD              t3, a0, 0x0(0)",
-            "AND             ra, t3, t1",
+            "LD              ra, a0, 0x0(0)",
+            "ANDI            ra, ra, 0x1(1)",
             "SD              ra, a0, 0x0(0)"
         ],
         "disassembly": "and qword ptr [rdi], 0x01"

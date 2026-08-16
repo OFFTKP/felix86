@@ -1579,6 +1579,32 @@ FAST_HANDLE(XOR) {
 }
 
 FAST_HANDLE(AND) {
+    bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
+    bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
+    bool needs_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
+    bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
+    bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
+    bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf;
+    if (!needs_any_flag && operands[0].size == 64 && operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER &&
+        operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        biscuit::GPR dst = rec.getGPR(&operands[0]);
+        biscuit::GPR src = rec.getGPR(&operands[1]);
+        as.AND(dst, dst, src);
+        rec.setGPR(&operands[0], dst);
+        return;
+    } else if (!needs_any_flag && operands[0].size >= 32 && operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE &&
+               IsValidSigned12BitImm(operands[1].imm.value.s)) {
+        biscuit::GPR dst;
+        if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+            dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
+        } else {
+            dst = rec.getGPR(&operands[0]);
+        }
+        as.ANDI(dst, dst, operands[1].imm.value.s);
+        rec.setGPR(&operands[0], dst);
+        return;
+    }
+
     biscuit::GPR result = rec.scratch();
     biscuit::GPR src = rec.getGPR(&operands[1]);
     biscuit::GPR dst;
@@ -1678,7 +1704,6 @@ FAST_HANDLE(AND) {
         }
         }
 
-        // TODO: noflags opt
         as.AND(result, dst, src);
         writeback = false;
     } else {
