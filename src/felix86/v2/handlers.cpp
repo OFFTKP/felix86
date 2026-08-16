@@ -10079,6 +10079,99 @@ FAST_HANDLE(XADD_lock_8) {
     rec.setLockHandled();
 }
 
+FAST_HANDLE(XADD_lock_16) {
+    bool update_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
+    bool update_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
+    bool update_af = rec.shouldEmitFlag(rip, X86_REF_AF);
+    bool update_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
+    bool update_of = rec.shouldEmitFlag(rip, X86_REF_OF);
+    bool update_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
+    bool update_any = update_af | update_cf | update_zf | update_pf | update_of | update_sf;
+
+    biscuit::GPR dst = rec.scratch();
+    biscuit::GPR src = rec.getGPR(&operands[1]);
+    biscuit::GPR address = rec.lea(&operands[0]);
+    biscuit::Label dword_ok;
+    biscuit::Label after;
+    biscuit::Label loop;
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR masked_address = rec.scratch();
+    biscuit::GPR temp = rec.scratch();
+
+    as.ANDI(temp, address, 0b111);
+    as.ADDI(temp, temp, -0b111);
+    as.BNEZ(temp, &dword_ok);
+
+    as.ADDI(temp, rec.threadStatePointer(), offsetof(ThreadState, unaligned_atomics_counter));
+    as.LI(result, 1);
+    as.AMOADD_D(Ordering::AQRL, x0, result, temp);
+    as.FENCETSO();
+    as.LHU(dst, 0, address);
+    as.ADD(result, dst, src);
+    as.SH(result, 0, address);
+    as.FENCETSO();
+    as.J(&after);
+
+    as.Bind(&dword_ok);
+    as.ANDI(masked_address, address, -8);
+    as.SLLI(address, address, 3);
+    as.LI(temp, 0xFFFF);
+    as.SLL(temp, temp, address);
+    as.SLL(src, src, address);
+
+    as.Bind(&loop);
+    as.LR_D(Ordering::AQRL, dst, masked_address);
+    as.ADD(result, dst, src);
+    as.XOR(result, result, dst);
+    as.AND(result, result, temp);
+    as.XOR(result, result, dst);
+    as.SC_D(Ordering::AQRL, result, result, masked_address);
+    as.BNEZ(result, &loop);
+
+    as.SRL(dst, dst, address);
+    rec.zext(dst, dst, X86_SIZE_WORD);
+    as.SRL(src, src, address);
+    rec.zext(src, src, X86_SIZE_WORD);
+
+    rec.popScratch();
+    rec.popScratch();
+
+    as.Bind(&after);
+    if (!g_config.noflag_opts || update_any) {
+        biscuit::GPR result = rec.scratch();
+        as.ADD(result, dst, src);
+
+        x86_size_e size = rec.getSize(&operands[0]);
+
+        if (update_cf) {
+            rec.updateCarryAdd(dst, result, size);
+        }
+
+        if (update_pf) {
+            rec.updateParity(result);
+        }
+
+        if (update_af) {
+            rec.updateAuxiliaryAdd(dst, result);
+        }
+
+        if (update_zf) {
+            rec.updateZero(result, size);
+        }
+
+        if (update_sf) {
+            rec.updateSign(result, size);
+        }
+
+        if (update_of) {
+            rec.updateOverflowAdd(dst, src, result, size);
+        }
+    }
+
+    rec.setGPR(&operands[1], dst);
+    rec.setLockHandled();
+}
+
 FAST_HANDLE(XADD_lock_32) {
     bool update_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
     bool update_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
@@ -10232,6 +10325,9 @@ FAST_HANDLE(XADD) {
         switch (instruction.operand_width) {
         case 8: {
             return fast_XADD_lock_8(rec, rip, as, instruction, operands);
+        }
+        case 16: {
+            return fast_XADD_lock_16(rec, rip, as, instruction, operands);
         }
         case 32: {
             return fast_XADD_lock_32(rec, rip, as, instruction, operands);
