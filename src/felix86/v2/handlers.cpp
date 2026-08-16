@@ -3862,15 +3862,29 @@ FAST_HANDLE(CMOVNLE) {
 }
 
 FAST_HANDLE(MOVSXD) {
-    x86_size_e size = rec.getSize(&operands[1]);
-    biscuit::GPR src = rec.getGPR(&operands[1]);
-
-    if (size == X86_SIZE_DWORD) {
-        biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
-        as.ADDIW(dst, src, 0);
+    biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        biscuit::GPR address = rec.lea(&operands[1], false);
+        switch (operands[1].size) {
+        case 32: {
+            as.LW(dst, 0, address);
+            break;
+        }
+        default: {
+            UNREACHABLE();
+        }
+        }
         rec.setGPR(&operands[0], dst);
     } else {
-        UNREACHABLE(); // possible but why?
+        ASSERT(operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER);
+        x86_size_e size = rec.getSize(&operands[1]);
+        biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+        if (size == X86_SIZE_DWORD) {
+            as.ADDIW(dst, src, 0);
+            rec.setGPR(&operands[0], dst);
+        } else {
+            UNREACHABLE(); // possible but why?
+        }
     }
 }
 
