@@ -1704,6 +1704,7 @@ FAST_HANDLE(AND) {
         }
         }
 
+        // TODO: noflags opt
         as.AND(result, dst, src);
         writeback = false;
     } else {
