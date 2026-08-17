@@ -124,11 +124,15 @@ static void compile(const std::string& input) {
 
     std::unique_ptr<Recompiler> rec = std::make_unique<Recompiler>(true);
     rec->setFlagMode(flag_mode);
-    u64 start = (u64)rec->getAssembler().GetCursorPointer();
     rec->compileSequence(mode32, (u64)output.data());
-    u64 end = (u64)rec->getAssembler().GetCursorPointer();
 
     BlockMetadata& metadata = rec->getBlockMetadata((u64)output.data());
+
+    u64 start = metadata.host_address;
+    u64 end = start;
+    for (auto instr : metadata.translation_sizes) {
+        end += instr.riscv_instructions_size;
+    }
 
     // Remove compiled UNDEF instructions off the end, if any
     u16* fin = (u16*)(end - 2);
@@ -181,6 +185,8 @@ void __attribute__((noreturn)) enter_repl() {
     Extensions::Zbb = true;
     Extensions::Zbs = true;
     Extensions::Zbc = true;
+    Extensions::Zvbb = true;
+    Extensions::Zvbc = true;
     Extensions::C = true;
     Extensions::V = true;
     Extensions::VLEN = 256;
