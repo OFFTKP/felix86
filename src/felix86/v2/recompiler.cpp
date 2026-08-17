@@ -225,17 +225,20 @@ void Recompiler::emitDispatcher() {
         u64 offset = (u64)address_cache - (u64)as.GetCursorPointer();
         const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
         const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
+        const bool lo12overflow = (((u16)lo12 + 8) & 0xFFF) == 0;
+        ASSERT(!lo12overflow);
+        const i32 offset_guest = lo12 + 8;
+        const i32 offset_host = lo12;
         as.AUIPC(temp, hi20);
-        as.ADDI(temp, temp, lo12);
         as.SLLI(temp2, ripreg, 64 - address_cache_bits);
         // Multiply by 16, which is size of each address cache entry
         as.SRLI(temp2, temp2, 64 - address_cache_bits - 4);
         as.ADD(temp, temp, temp2);
-        as.LD(temp2, 8, temp); // read the AddressCacheEntry::guest field
+        as.LD(temp2, offset_guest, temp); // read the AddressCacheEntry::guest field
         as.BNE(temp2, ripreg, &not_equal);
 
         // Address cache was correct, jump to host address
-        as.LD(rip, 0, temp);
+        as.LD(rip, offset_host, temp);
         as.MV(t5, x0); // zero out t5, see invalidate_caller_thunk
         as.JR(rip);
 
