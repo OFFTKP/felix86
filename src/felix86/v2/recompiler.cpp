@@ -1664,18 +1664,32 @@ void Recompiler::setVec(const ZydisDecodedOperand* operand, biscuit::Vec vec) {
             break;
         }
         case 128: {
-            setVectorState(SEW::E8, 128 / 8);
-            as.VSE8(vec, address);
+            if (Extensions::Zicclsm && current_sew == SEW::E32 && current_vlen == 4 && current_grouping == LMUL::M1) {
+                as.VSE32(vec, address);
+            } else if (Extensions::Zicclsm && current_sew == SEW::E64 && current_vlen == 2 && current_grouping == LMUL::M1) {
+                as.VSE64(vec, address);
+            } else {
+                setVectorState(SEW::E8, 128 / 8);
+                as.VSE8(vec, address);
+            }
             break;
         }
         case 64: {
-            setVectorState(SEW::E8, 64 / 8);
-            as.VSE8(vec, address);
+            if (Extensions::Zicclsm && current_sew == SEW::E64 && current_vlen == 1 && current_grouping == LMUL::M1) {
+                as.VSE64(vec, address);
+            } else {
+                setVectorState(SEW::E8, 64 / 8);
+                as.VSE8(vec, address);
+            }
             break;
         }
         case 32: {
-            setVectorState(SEW::E8, 32 / 8);
-            as.VSE8(vec, address);
+            if (Extensions::Zicclsm && current_sew == SEW::E32 && current_vlen == 1 && current_grouping == LMUL::M1) {
+                as.VSE32(vec, address);
+            } else {
+                setVectorState(SEW::E8, 32 / 8);
+                as.VSE8(vec, address);
+            }
             break;
         }
         default: {

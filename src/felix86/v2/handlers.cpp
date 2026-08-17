@@ -8822,6 +8822,10 @@ FAST_HANDLE(CMPXCHG) {
 
 static void SCALAR(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen,
                    void (Assembler::*func)(Vec, Vec, Vec, VecMask)) {
+    if (Extensions::Zicclsm) {
+        // Perform loads as the vector state of the operation
+        rec.setVectorState(sew, vlen);
+    }
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
     rec.setVectorState(sew, vlen);
@@ -8831,6 +8835,10 @@ static void SCALAR(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruct
 
 static void SCALAR(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen,
                    void (Assembler::*func)(Vec, Vec, VecMask)) {
+    if (Extensions::Zicclsm) {
+        // Perform loads as the vector state of the operation
+        rec.setVectorState(sew, vlen);
+    }
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
     rec.setVectorState(sew, vlen);
