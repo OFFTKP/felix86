@@ -2942,7 +2942,11 @@ FAST_HANDLE(LEA) {
     ASSERT(operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY);
     operands[1].mem.segment = ZYDIS_REGISTER_NONE;
     operands[1].attributes &= ~ZYDIS_ATTRIB_HAS_SEGMENT;
-    biscuit::GPR forced_dst = operands[0].size == 16 ? x0 : rec.getGPR(&operands[0], X86_SIZE_QWORD);
+    bool can_use_dst_directly =
+        operands[0].size != 16 &&
+        (operands[1].mem.base == ZYDIS_REGISTER_NONE || rec.zydisToRef(operands[0].reg.value) != rec.zydisToRef(operands[1].mem.base)) &&
+        (operands[1].mem.index == ZYDIS_REGISTER_NONE || rec.zydisToRef(operands[0].reg.value) != rec.zydisToRef(operands[1].mem.index));
+    biscuit::GPR forced_dst = !can_use_dst_directly ? x0 : rec.getGPR(&operands[0], X86_SIZE_QWORD);
     biscuit::GPR address = rec.lea(&operands[1], true, forced_dst);
     rec.setGPR(&operands[0], address);
 }
