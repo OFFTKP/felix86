@@ -1713,7 +1713,7 @@ bool Recompiler::setVectorState(SEW sew, int vlen, LMUL grouping) {
     return true;
 }
 
-biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) {
+biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp, biscuit::GPR forced_dst) {
     if (cached_lea_operand == operand) {
         ASSERT(cached_lea_operand->mem.base == operand->mem.base);
         ASSERT(cached_lea_operand->mem.index == operand->mem.index);
@@ -1724,7 +1724,7 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
     }
 
     ASSERT(operand->type == ZYDIS_OPERAND_TYPE_MEMORY);
-    biscuit::GPR address = scratch();
+    biscuit::GPR address = forced_dst == x0 ? scratch() : forced_dst;
     cached_lea = address;
     cached_lea_operand = operand;
 
@@ -1925,7 +1925,7 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
         popScratch();
     }
 
-    if (current_mode32 && current_instruction->address_width != 64 /* HACK: we set address_width = 64 in handler for LEA to avoid this zext*/) {
+    if (current_mode32) {
         // The additions may have overflown the address
         as.ZEXTW(address, address);
     }
