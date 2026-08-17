@@ -23,7 +23,7 @@ const char* colors[color_count] = {
 
 const char* reset = ANSI_COLOR_RESET;
 
-static bool use_color = false;
+static bool use_color = true;
 static bool mode32 = false;
 
 static void print_help() {
