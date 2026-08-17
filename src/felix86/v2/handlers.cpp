@@ -5399,6 +5399,15 @@ FAST_HANDLE(MOVSD_sse) {
         rec.setVec(&operands[0], src);
     } else {
         biscuit::Vec dst = rec.getVec(&operands[0]);
+        if (Extensions::Zicclsm && operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+            biscuit::GPR address = rec.lea(&operands[1], false);
+            rec.setVectorState(SEW::E64, 2);
+            as.VMV(dst, 0);
+            as.VLE32(dst, address);
+            rec.setVec(&operands[0], dst);
+            return;
+        }
+
         biscuit::Vec src = rec.getVec(&operands[1]);
         if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
             rec.setVectorState(SEW::E64, 2);
@@ -9391,6 +9400,15 @@ FAST_HANDLE(MOVSS) {
         rec.setVec(&operands[0], src);
     } else if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
         biscuit::Vec dst = rec.getVec(&operands[0]);
+        if (Extensions::Zicclsm && operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+            biscuit::GPR address = rec.lea(&operands[1], false);
+            rec.setVectorState(SEW::E64, 2);
+            as.VMV(dst, 0);
+            as.VLE16(dst, address);
+            rec.setVec(&operands[0], dst);
+            return;
+        }
+
         biscuit::Vec src = rec.getVec(&operands[1]);
         if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
             rec.setVectorState(SEW::E64, 2);
