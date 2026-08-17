@@ -2974,7 +2974,9 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         }
         case felix86_x86_32_futex_time32: {
             const x86_timespec* guest_spec = (x86_timespec*)arg4;
-            if (guest_spec) {
+            int cmd = arg2 & FUTEX_CMD_MASK;
+            bool is_timespec = cmd == FUTEX_WAIT || cmd == FUTEX_LOCK_PI || cmd == FUTEX_WAIT_BITSET || cmd == FUTEX_WAIT_REQUEUE_PI;
+            if (guest_spec && is_timespec) {
                 const timespec host_spec = *guest_spec;
                 result = SYSCALL(futex, arg1, arg2, arg3, &host_spec, arg5, arg6);
             } else {

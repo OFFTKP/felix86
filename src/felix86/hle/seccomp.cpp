@@ -93,6 +93,22 @@ static_assert(Recompiler::isScratch(x29));
 static_assert(Recompiler::isScratch(x30));
 static_assert(Recompiler::isScratch(x31));
 
+static void seccomp_trap() {
+    // As seen in force_sig_info_to_task, this trap signal will unmask and switch to SIG_DFL if necessary
+    ThreadState* state = ThreadState::Get();
+    state->ctx.gprs[0] = state->ctx.orig_rax; // done in the kernel, although our seccomp impl won't modify this
+    sigset_t old;
+    ::sigprocmask(SIG_SETMASK, nullptr, &old);
+    if (sigismember(&old, SIGSYS)) {
+        sigdelset(&old, SIGSYS);
+        sigprocmask(SIG_SETMASK, &old, nullptr);
+        signal(SIGSYS, SIG_DFL); // kernel will also reset to SIG_DFL if masked
+    }
+
+    // If a signal handler exists, this signal will be deferred and handled in the safepoint after the BPF code
+    tgkill(getpid(), gettid(), SIGSYS);
+}
+
 void BPFJit::compileInstruction(const x64_sock_filter& instruction, int index) {
     Label& label = labels[index];
     as.Bind(&label);
@@ -249,6 +265,13 @@ void BPFJit::compileInstruction(const x64_sock_filter& instruction, int index) {
                 as.JALR(x1);
                 as.C_UNDEF();
                 as.C_UNDEF();
+                break;
+            }
+            case SECCOMP_RET_TRAP: {
+                as.LI(t5, (u64)seccomp_trap);
+                as.JALR(t5);
+                // Safepoint will handle the signal
+                as.J(&end_of_program);
                 break;
             }
             case SECCOMP_RET_LOG: {

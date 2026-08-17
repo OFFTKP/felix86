@@ -501,7 +501,7 @@ long Threads::Clone(ThreadState* current_state, CloneArgs* args) {
 
     u64 allowed_flags = CLONE_VM | CLONE_THREAD | CLONE_DETACHED | CLONE_SYSVSEM | CLONE_CHILD_CLEARTID | CLONE_CHILD_SETTID | CLONE_SIGHAND |
                         CLONE_FILES | CLONE_FS | CLONE_IO | CLONE_SETTLS | CLONE_PARENT_SETTID | CLONE_VFORK | CLONE_UNTRACED | CLONE_NEWNS |
-                        CLONE_NEWUSER | CLONE_NEWUTS | CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWPID | CLONE_PIDFD;
+                        CLONE_NEWUSER | CLONE_NEWUTS | CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWPID | CLONE_PIDFD | CLONE_NEWCGROUP;
     if ((args->guest_flags & ~CSIGNAL) & ~allowed_flags) {
         ERROR("Unsupported flags %s", sflags.c_str());
         return -ENOSYS;

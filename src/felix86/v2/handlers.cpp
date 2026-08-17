@@ -4554,10 +4554,6 @@ FAST_HANDLE(SYSCALL) {
     }
 
     if (Seccomp::hasFilters() && !g_config.seccomp_always_allow) {
-        if (MODE32) {
-            ERROR("Seccomp during 32-bit program");
-        }
-
         // Copy the filters over at the start of the syscall
         Seccomp::emitFilters(as);
     }
@@ -13101,6 +13097,12 @@ FAST_HANDLE(INT) {
     if (operands[0].imm.value.u == 0x80) {
         // Flush any potential x87 and MMX state so we can insert a safepoint
         rec.flushX87();
+
+        if (Seccomp::hasFilters() && !g_config.seccomp_always_allow) {
+            // Copy the filters over at the start of the syscall
+            Seccomp::emitFilters(as);
+        }
+
         u64 offset = rip - rec.getCurrentRipregValue();
         biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
         if (offset != 0) {
