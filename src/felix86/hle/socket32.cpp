@@ -397,7 +397,9 @@ int getsockopt32(int fd, int level, int optname, char* optval, u32* optlen) {
         case SO_BUSY_POLL_BUDGET:
         case SO_NETNS_COOKIE:
         case SO_BUF_LOCK:
-        case SO_RESERVE_MEM: {
+        case SO_RESERVE_MEM:
+        case SO_PASSPIDFD:
+        case SO_PEERPIDFD: {
             return ::getsockopt(fd, level, optname, optval, optlen);
         }
         default: {
