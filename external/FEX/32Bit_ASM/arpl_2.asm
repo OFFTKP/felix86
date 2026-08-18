@@ -1,12 +1,12 @@
 %ifdef CONFIG
 {
   "RegData": {
-    "RAX": "0xFFFF_01FD",
-    "RBX": "0xFFFF_0201",
-    "RCX": "0xFFFF_03FE",
-    "RDX": "0xFFFF_04FF",
-    "RSI": "0xFFFF_0501",
-    "RDI": "0xFFFF_06FC"
+    "RAX": "0xFFFF01FD",
+    "RBX": "0xFFFF0201",
+    "RCX": "0xFFFF03FE",
+    "RDX": "0xFFFF04FF",
+    "RSI": "0xFFFF0501",
+    "RDI": "0xFFFF06FC"
   },
   "Mode": "32BIT"
 }
