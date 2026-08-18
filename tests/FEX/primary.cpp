@@ -20,9 +20,14 @@
         FEXTestLoader::RunTest("32Bit_ASM/Primary/Primary_" #opcode ".asm");                                                                         \
     }
 
-#define PRIMARY_TEST32_BASE(opcode)                                                                                                                  \
+#define PRIMARY_TEST32_NO_PREFIX(opcode)                                                                                                             \
     CATCH_TEST_CASE("32Bit_" #opcode, "[Primary32]") {                                                                                               \
         FEXTestLoader::RunTest("32Bit_ASM/Primary/" #opcode ".asm");                                                                                 \
+    }
+
+#define PRIMARY_TEST32_BASE(name)                                                                                                                    \
+    CATCH_TEST_CASE("32Bit_" #name, "[Primary32]") {                                                                                                 \
+        FEXTestLoader::RunTest("32Bit_ASM/" #name ".asm");                                                                                           \
     }
 
 #define PRIMARY_TEST_KNOWN_FAILURE(opcode)
@@ -244,4 +249,6 @@ PRIMARY_TEST32(C9)
 PRIMARY_TEST32(CF)
 PRIMARY_TEST32(D4)
 PRIMARY_TEST32(D5)
-PRIMARY_TEST32_BASE(Pop_Segments)
+PRIMARY_TEST32_NO_PREFIX(Pop_Segments)
+PRIMARY_TEST32_BASE(arpl)
+PRIMARY_TEST32_BASE(arpl_2)
