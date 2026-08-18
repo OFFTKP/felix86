@@ -1,5 +1,6 @@
 // TODO: This file is a big mess, refactor
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <nlohmann/json.hpp>
@@ -43,6 +44,39 @@ static void gen_many(Recompiler& rec, const std::string& name, nlohmann::ordered
 
     auto bisc = rec.getAssembler().GetCursorPointer();
     rec.compileSequence(false, (u64)x86_start);
+    auto after = rec.getAssembler().GetCursorPointer();
+    int count = 0;
+    Instruction inst;
+    for (int i = 0; i < after - bisc;) {
+        void* address = bisc + i;
+        i += 4;
+        u32 data = 0;
+        memcpy(&data, address, 4);
+        std::string out = riscv_disassemble(data, (u64)address);
+        inst.expected_asm.push_back(out);
+        count++;
+    }
+
+    inst.count = count;
+    json[name] = inst;
+}
+
+static void gen_sequence(Recompiler& rec, nlohmann::ordered_json& json, const char* name, bool mode32) {
+    std::string command = "nasm -f bin counts/sequences/" + std::string(name) + ".asm -o /dev/stdout";
+    FILE* pipe = popen(command.c_str(), "r");
+    ASSERT_MSG(pipe, "Failed to run nasm for %s", name);
+    std::vector<u8> bytes;
+    u8 buffer[4096];
+    size_t read = 0;
+    while ((read = fread(buffer, 1, sizeof(buffer), pipe)) > 0) {
+        bytes.insert(bytes.end(), buffer, buffer + read);
+    }
+    int status = pclose(pipe);
+    ASSERT_MSG(status == 0 && !bytes.empty(), "nasm failed for %s", name);
+
+    rec.setVectorState(SEW::E1024, 0);
+    auto bisc = rec.getAssembler().GetCursorPointer();
+    rec.compileSequence(mode32, (u64)bytes.data());
     auto after = rec.getAssembler().GetCursorPointer();
     int count = 0;
     Instruction inst;
@@ -1539,6 +1573,12 @@ int main() {
         x87 << json.dump(4);
         json.clear();
     }
+
+    Extensions::Zicclsm = true;
+    rec.setFlagMode(FlagMode::Default);
+    gen_sequence(rec, json, "crysis1", false);
+    gen_sequence(rec, json, "crysis2", false);
+    gen_sequence(rec, json, "crysis3", false);
 
     std::ofstream many("counts/HotBlocks.json");
     many << json.dump(4);
