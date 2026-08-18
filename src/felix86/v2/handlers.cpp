@@ -1874,7 +1874,6 @@ FAST_HANDLE(ARPL) {
     as.ANDI(lhs, lhs, ~0b11);
     as.OR(lhs, lhs, rhs);
     as.Bind(&skip);
-    rec.setGPR(&operands[0], lhs);
 }
 
 FAST_HANDLE(UD2) {
