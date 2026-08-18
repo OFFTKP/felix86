@@ -30,7 +30,7 @@
 #endif
 
 struct Logger {
-    static void log(const char* format, ...);
+    __attribute__((format(printf, 1, 2))) static void log(const char* format, ...);
 
     static const char* getPipeName();
 
@@ -93,7 +93,7 @@ private:
 #define IMPORTANT(format, ...)                                                                                                                       \
     do {                                                                                                                                             \
         if (!g_config.quiet) {                                                                                                                       \
-            Logger::log(ANSI_COLOR_RED format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                                \
+            Logger::log(ANSI_COLOR_RED format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                                 \
         }                                                                                                                                            \
     } while (0)
 
