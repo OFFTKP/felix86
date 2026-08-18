@@ -1860,6 +1860,22 @@ FAST_HANDLE(STI) {
     rec.stopCompiling();
 }
 
+FAST_HANDLE(ARPL) {
+    biscuit::Label skip;
+    biscuit::GPR lrpl = rec.scratch();
+    biscuit::GPR lhs = rec.getGPR(&operands[0], X86_SIZE_QWORD);
+    biscuit::GPR rhs = rec.getGPR(&operands[1]);
+    biscuit::GPR zf = rec.flag(X86_REF_ZF);
+    as.MV(zf, x0);
+    as.ANDI(lrpl, lhs, 0b11);
+    as.ANDI(rhs, rhs, 0b11);
+    as.BGEU(lrpl, rhs, &skip);
+    as.LI(zf, 1);
+    as.ANDI(lhs, lhs, ~0b11);
+    as.OR(lhs, lhs, rhs);
+    as.Bind(&skip);
+}
+
 FAST_HANDLE(UD2) {
     WARN_ONCE("UD2 instruction being compiled?");
     EmitUD(rec, as);
