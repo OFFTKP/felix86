@@ -1585,6 +1585,7 @@ FAST_HANDLE(AND) {
     bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
     bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf;
+    bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
     if (!needs_any_flag && operands[0].size == 64 && operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER &&
         operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
         biscuit::GPR dst = rec.getGPR(&operands[0]);
@@ -1592,7 +1593,7 @@ FAST_HANDLE(AND) {
         as.AND(dst, dst, src);
         rec.setGPR(&operands[0], dst);
         return;
-    } else if (!needs_any_flag && operands[0].size >= 32 && operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE &&
+    } else if (!needs_any_flag && !needs_atomic && operands[0].size >= 32 && operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE &&
                IsValidSigned12BitImm(operands[1].imm.value.s)) {
         biscuit::GPR dst;
         if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
@@ -1610,7 +1611,6 @@ FAST_HANDLE(AND) {
     biscuit::GPR dst;
 
     bool writeback = true;
-    bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
     if (needs_atomic) {
         biscuit::GPR address = rec.lea(&operands[0]);
         dst = rec.scratch();
