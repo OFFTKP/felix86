@@ -11,6 +11,8 @@
   "Mode": "32BIT"
 }
 %endif
+org 10000h
+bits 32
 
 ; Tests if ARPL copies or leaves alone the correct registers.
 mov eax, 0xFFFF_01FC
