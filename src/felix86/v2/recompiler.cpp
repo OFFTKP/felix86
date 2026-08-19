@@ -2689,6 +2689,7 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
     // Check if it is branch to self
     if (IsValidBTypeImm(host_offset) && rip_true == current_block_metadata->guest_address) {
         as.MV(t5, x0);
+        ASSERT(condition != t5);
         as.BNEZ(condition, host_offset);
         ASSERT((u64)as.GetCursorPointer() == here + 8);
 
