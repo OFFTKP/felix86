@@ -2693,6 +2693,25 @@ void Recompiler::jumpAndLink(u64 rip) {
 
 void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false) {
     OptimizationGuard guard(as, optimization_guard_counter);
+    u64 here = (u64)as.GetCursorPointer();
+    i64 host_offset = here - current_block_metadata->host_address;
+    if (IsValidBTypeImm(host_offset) && rip_true == current_block_metadata->guest_address) {
+        as.MV(t5, x0);
+        as.BNEZ(condition, host_offset);
+
+        biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
+        u64 rip_false_offset = rip_false - getCurrentRipregValue();
+        addi(ripreg, ripreg, rip_false_offset);
+        if (current_mode32) {
+            zext(ripreg, ripreg, X86_SIZE_DWORD);
+            rip_false = (u32)rip_false;
+        }
+
+        as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
+        jumpAndLink(rip_false);
+        return;
+    }
+
     Label true_label;
     as.BNEZ(condition, &true_label);
 

@@ -11,6 +11,10 @@
 #include "felix86/common/types.hpp"
 #include "felix86/common/xsave.hpp"
 
+[[nodiscard]] constexpr bool IsValidBTypeImm(ptrdiff_t value) {
+    return value >= -4096 && value <= 4095;
+}
+
 [[nodiscard]] constexpr bool IsValidJTypeImm(ptrdiff_t value) {
     return value >= -0x80000 && value <= 0x7FFFF;
 }
