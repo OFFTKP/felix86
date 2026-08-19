@@ -4665,15 +4665,20 @@ FAST_HANDLE(MOVZX) {
             rec.setGPR(rec.zydisToRef(operands[0].reg.value), X86_SIZE_QWORD, dst);
         }
     } else {
+        i64 imm = 0;
+        if (IsValidSigned12BitImm(operands[1].mem.disp.value)) {
+            imm = operands[1].mem.disp.value;
+            operands[1].mem.disp.value = 0;
+        }
         biscuit::GPR address = rec.lea(&operands[1], false);
         if (size_dst == X86_SIZE_WORD) {
             biscuit::GPR result = rec.scratch();
-            rec.readMemory(result, address, 0, size_src);
+            rec.readMemory(result, address, imm, size_src);
             as.SRLI(dst, dst, 16);
             as.SLLI(dst, dst, 16);
             as.OR(dst, dst, result);
         } else {
-            rec.readMemory(dst, address, 0, size_src);
+            rec.readMemory(dst, address, imm, size_src);
         }
     }
 }
