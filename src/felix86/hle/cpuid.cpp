@@ -259,7 +259,7 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
         WARN("Unknown CPUID(%08x, %08x)", leaf, subleaf);
     }
 
-    CPUIDLOG("CPUID %x %x -> %x %x %x %x", leaf, subleaf, result.eax, result.ebx, result.ecx, result.edx);
+    CPUIDLOG("CPUID %08x %08x -> %08x %08x %08x %08x", leaf, subleaf, result.eax, result.ebx, result.ecx, result.edx);
 
     return result;
 }
