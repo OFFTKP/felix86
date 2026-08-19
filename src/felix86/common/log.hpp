@@ -66,7 +66,7 @@ private:
 
 #define CPUIDLOG(format, ...)                                                                                                                        \
     do {                                                                                                                                             \
-        if (!g_config.quiet && g_config.print_smc) {                                                                                                 \
+        if (!g_config.quiet && g_config.print_cpuid) {                                                                                               \
             Logger::log(ANSI_COLOR_BLACK_ON_BLUE format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                       \
         }                                                                                                                                            \
     } while (0)
