@@ -18,6 +18,7 @@ X(Logging, bool, print_signals, false, FELIX86_PRINT_SIGNALS, "Print on every gu
 X(Logging, bool, print_all_signals, false, FELIX86_PRINT_ALL_SIGNALS, "Print all signals, even ones that are caused by the emulator");
 X(Logging, bool, print_invalidations, false, FELIX86_PRINT_INVALIDATIONS, "Print amount of blocks invalidated");
 X(Logging, bool, print_smc, false, FELIX86_PRINT_SMC, "Print on every SMC detection");
+X(Logging, bool, print_cpuid, false, FELIX86_PRINT_CPUID, "Print on every CPUID instruction");
 X(Logging, bool, print_thunks, false, FELIX86_PRINT_THUNKS, "Print on every thunk function call");
 X(Logging, bool, print_guest_ptrace, false, FELIX86_PRINT_GUEST_PTRACE, "Print guest-side ptrace information");
 X(Logging, bool, print_host_ptrace, false, FELIX86_PRINT_HOST_PTRACE, "Print host-side ptrace information");
