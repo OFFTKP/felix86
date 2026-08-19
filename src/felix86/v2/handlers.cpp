@@ -101,7 +101,8 @@ static void EmitUD(Recompiler& rec, Assembler& as) {
     rec.stopCompiling();
 }
 
-static void CMOV(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
+static void CMOV(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond,
+                 bool needs_invert) {
     biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
     biscuit::GPR src;
     if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER)
@@ -114,19 +115,14 @@ static void CMOV(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstructio
         result = dst;
     }
 
-    if (Extensions::Zicond) {
-        biscuit::GPR tmp1 = rec.scratch();
-        biscuit::GPR tmp2 = rec.scratch();
-        as.CZERO_NEZ(tmp1, dst, cond);
-        as.CZERO_EQZ(tmp2, src, cond);
-        as.OR(result, tmp1, tmp2);
-    } else {
-        Label false_label;
-        as.MV(result, dst);
-        as.BEQZ(cond, &false_label);
-        as.MV(result, src);
-        as.Bind(&false_label);
+    biscuit::GPR tmp1 = rec.scratch();
+    biscuit::GPR tmp2 = rec.scratch();
+    if (needs_invert) {
+        std::swap(dst, src);
     }
+    as.CZERO_NEZ(tmp1, dst, cond);
+    as.CZERO_EQZ(tmp2, src, cond);
+    as.OR(result, tmp1, tmp2);
 
     rec.setGPR(&operands[0], result);
 }
@@ -176,7 +172,7 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
         }
         rec.resetScratch(); // pop all scratch except cond which was allocated first
         rec.scratch();
-        CMOV(rec, rip, as, *next_instruction, next_operands, cond);
+        CMOV(rec, rip, as, *next_instruction, next_operands, cond, false);
         rec.skipNext();
         return true;
     }
@@ -199,7 +195,7 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
         }
         rec.resetScratch();
         rec.scratch();
-        CMOV(rec, rip, as, *next_instruction, next_operands, cond);
+        CMOV(rec, rip, as, *next_instruction, next_operands, cond, false);
         rec.skipNext();
         return true;
     }
@@ -220,7 +216,7 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
         }
         rec.resetScratch();
         rec.scratch();
-        CMOV(rec, rip, as, *next_instruction, next_operands, cond);
+        CMOV(rec, rip, as, *next_instruction, next_operands, cond, false);
         rec.skipNext();
         return true;
     }
@@ -243,7 +239,7 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
         }
         rec.resetScratch();
         rec.scratch();
-        CMOV(rec, rip, as, *next_instruction, next_operands, cond);
+        CMOV(rec, rip, as, *next_instruction, next_operands, cond, false);
         rec.skipNext();
         return true;
     }
@@ -254,7 +250,7 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
         as.SLTU(cond, lhs, rhs);
         rec.resetScratch();
         rec.scratch();
-        CMOV(rec, rip, as, *next_instruction, next_operands, cond);
+        CMOV(rec, rip, as, *next_instruction, next_operands, cond, false);
         rec.skipNext();
         return true;
     }
@@ -266,7 +262,7 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
         as.XORI(cond, cond, 1);
         rec.resetScratch();
         rec.scratch();
-        CMOV(rec, rip, as, *next_instruction, next_operands, cond);
+        CMOV(rec, rip, as, *next_instruction, next_operands, cond, false);
         rec.skipNext();
         return true;
     }
@@ -278,7 +274,7 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
         as.XORI(cond, cond, 1);
         rec.resetScratch();
         rec.scratch();
-        CMOV(rec, rip, as, *next_instruction, next_operands, cond);
+        CMOV(rec, rip, as, *next_instruction, next_operands, cond, false);
         rec.skipNext();
         return true;
     }
@@ -289,7 +285,7 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
         as.SGTU(cond, lhs, rhs);
         rec.resetScratch();
         rec.scratch();
-        CMOV(rec, rip, as, *next_instruction, next_operands, cond);
+        CMOV(rec, rip, as, *next_instruction, next_operands, cond, false);
         rec.skipNext();
         return true;
     }
@@ -3830,67 +3826,68 @@ FAST_HANDLE(LOOPNE) {
 }
 
 FAST_HANDLE(CMOVO) {
-    CMOV(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    auto [reg, needs_invert] = rec.getCondNoInvert(instruction.opcode & 0xF);
+    CMOV(rec, rip, as, instruction, operands, reg, needs_invert);
 }
 
 FAST_HANDLE(CMOVNO) {
-    CMOV(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    fast_CMOVO(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(CMOVB) {
-    CMOV(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    fast_CMOVO(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(CMOVNB) {
-    CMOV(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    fast_CMOVO(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(CMOVZ) {
-    CMOV(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    fast_CMOVO(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(CMOVNZ) {
-    CMOV(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    fast_CMOVO(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(CMOVBE) {
-    CMOV(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    fast_CMOVO(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(CMOVNBE) {
-    CMOV(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    fast_CMOVO(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(CMOVP) {
-    CMOV(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    fast_CMOVO(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(CMOVNP) {
-    CMOV(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    fast_CMOVO(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(CMOVS) {
-    CMOV(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    fast_CMOVO(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(CMOVNS) {
-    CMOV(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    fast_CMOVO(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(CMOVL) {
-    CMOV(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    fast_CMOVO(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(CMOVNL) {
-    CMOV(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    fast_CMOVO(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(CMOVLE) {
-    CMOV(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    fast_CMOVO(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(CMOVNLE) {
-    CMOV(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    fast_CMOVO(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(MOVSXD) {
