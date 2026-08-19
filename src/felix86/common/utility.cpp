@@ -555,11 +555,6 @@ void update_symbols() {
                 continue;
             }
 
-            if (std::string(buffer).find(g_config.rootfs_path.string()) != 0) {
-                // It's our emulator or its libraries, skip
-                continue;
-            }
-
             if (it == regions.end()) {
                 regions[buffer] = {UINT64_MAX, 0};
             }
