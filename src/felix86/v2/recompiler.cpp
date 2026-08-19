@@ -571,27 +571,6 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
         VERBOSE("Jumped to address %lx which has a sequence of zeroes -- probably a bad jump?", rip);
     }
 
-    // When invalidating from other threads we need to do it in a single atomic instruction, thus block starts
-    // need to be aligned to 8 bytes as we exchange two instructions
-    switch ((u64)as.GetCursorPointer() & 0x7) {
-    case 0: {
-        break;
-    }
-    case 4: {
-        as.NOP();
-        break;
-    }
-    case 2: {
-        as.C_NOP();
-        as.NOP();
-        break;
-    }
-    case 6: {
-        as.C_NOP();
-        break;
-    }
-    }
-
     ASSERT(((u64)as.GetCursorPointer() & 0x7) == 0);
 
     current_mode32 = mode32;
