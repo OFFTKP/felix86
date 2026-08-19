@@ -2695,12 +2695,12 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
         if (getCurrentRipregValue() != rip_true) { // ripreg might've changed during the block, set it back to the start if so
             ASSERT(getCurrentRipregValue() > rip_true);
             u64 rip_true_offset = getCurrentRipregValue() - rip_true;
-            addi(ripreg, ripreg, rip_true_offset);
-            setCurrentRipregValue(rip_true);
+            addi(ripreg, ripreg, -rip_true_offset);
             if (current_mode32) {
                 zext(ripreg, ripreg, X86_SIZE_DWORD);
                 rip_true = (u32)rip_true;
             }
+            setCurrentRipregValue(rip_true);
         }
         i64 host_offset = current_block_metadata->host_address - here;
         ASSERT(IsValidBTypeImm(host_offset)); // max_instr_space should guarantee it
