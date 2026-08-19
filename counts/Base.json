@@ -13287,12 +13287,11 @@
         "disassembly": "cmovo rcx, rbx"
     },
     "480f41cb": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
-            "XORI            ra, s9, 0x1(1)",
-            "CZERO.NEZ       t3, s10, ra",
-            "CZERO.EQZ       t4, s0, ra",
-            "OR              s10, t3, t4"
+            "CZERO.NEZ       t1, s0, s9",
+            "CZERO.EQZ       t3, s10, s9",
+            "OR              s10, t1, t3"
         ],
         "disassembly": "cmovno rcx, rbx"
     },
@@ -13306,12 +13305,11 @@
         "disassembly": "cmovb rcx, rbx"
     },
     "480f43cb": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
-            "XORI            ra, s5, 0x1(1)",
-            "CZERO.NEZ       t3, s10, ra",
-            "CZERO.EQZ       t4, s0, ra",
-            "OR              s10, t3, t4"
+            "CZERO.NEZ       t1, s0, s5",
+            "CZERO.EQZ       t3, s10, s5",
+            "OR              s10, t1, t3"
         ],
         "disassembly": "cmovnb rcx, rbx"
     },
@@ -13325,12 +13323,11 @@
         "disassembly": "cmovz rcx, rbx"
     },
     "480f45cb": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
-            "XORI            ra, s7, 0x1(1)",
-            "CZERO.NEZ       t3, s10, ra",
-            "CZERO.EQZ       t4, s0, ra",
-            "OR              s10, t3, t4"
+            "CZERO.NEZ       t1, s0, s7",
+            "CZERO.EQZ       t3, s10, s7",
+            "OR              s10, t1, t3"
         ],
         "disassembly": "cmovnz rcx, rbx"
     },
@@ -13345,12 +13342,11 @@
         "disassembly": "cmovbe rcx, rbx"
     },
     "480f47cb": {
-        "instruction_count": 5,
+        "instruction_count": 4,
         "expected_asm": [
             "OR              ra, s5, s7",
-            "XORI            ra, ra, 0x1(1)",
-            "CZERO.NEZ       t3, s10, ra",
-            "CZERO.EQZ       t4, s0, ra",
+            "CZERO.NEZ       t3, s0, ra",
+            "CZERO.EQZ       t4, s10, ra",
             "OR              s10, t3, t4"
         ],
         "disassembly": "cmovnbe rcx, rbx"
@@ -13366,12 +13362,11 @@
         "disassembly": "cmovp rcx, rbx"
     },
     "480f4bcb": {
-        "instruction_count": 5,
+        "instruction_count": 4,
         "expected_asm": [
             "LBU             ra, gp, 0x2d9(729)",
-            "XORI            ra, ra, 0x1(1)",
-            "CZERO.NEZ       t3, s10, ra",
-            "CZERO.EQZ       t4, s0, ra",
+            "CZERO.NEZ       t3, s0, ra",
+            "CZERO.EQZ       t4, s10, ra",
             "OR              s10, t3, t4"
         ],
         "disassembly": "cmovnp rcx, rbx"
@@ -13386,12 +13381,11 @@
         "disassembly": "cmovs rcx, rbx"
     },
     "480f49cb": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
-            "XORI            ra, s8, 0x1(1)",
-            "CZERO.NEZ       t3, s10, ra",
-            "CZERO.EQZ       t4, s0, ra",
-            "OR              s10, t3, t4"
+            "CZERO.NEZ       t1, s0, s8",
+            "CZERO.EQZ       t3, s10, s8",
+            "OR              s10, t1, t3"
         ],
         "disassembly": "cmovns rcx, rbx"
     },
@@ -13406,12 +13400,11 @@
         "disassembly": "cmovl rcx, rbx"
     },
     "480f4dcb": {
-        "instruction_count": 5,
+        "instruction_count": 4,
         "expected_asm": [
             "XOR             ra, s8, s9",
-            "XORI            ra, ra, 0x1(1)",
-            "CZERO.NEZ       t3, s10, ra",
-            "CZERO.EQZ       t4, s0, ra",
+            "CZERO.NEZ       t3, s0, ra",
+            "CZERO.EQZ       t4, s10, ra",
             "OR              s10, t3, t4"
         ],
         "disassembly": "cmovnl rcx, rbx"
@@ -13428,13 +13421,12 @@
         "disassembly": "cmovle rcx, rbx"
     },
     "480f4fcb": {
-        "instruction_count": 6,
+        "instruction_count": 5,
         "expected_asm": [
             "XOR             ra, s8, s9",
             "OR              ra, ra, s7",
-            "XORI            ra, ra, 0x1(1)",
-            "CZERO.NEZ       t3, s10, ra",
-            "CZERO.EQZ       t4, s0, ra",
+            "CZERO.NEZ       t3, s0, ra",
+            "CZERO.EQZ       t4, s10, ra",
             "OR              s10, t3, t4"
         ],
         "disassembly": "cmovnle rcx, rbx"
@@ -13450,13 +13442,12 @@
         "disassembly": "cmovo ecx, ebx"
     },
     "0f41cb": {
-        "instruction_count": 5,
+        "instruction_count": 4,
         "expected_asm": [
-            "XORI            ra, s9, 0x1(1)",
-            "CZERO.NEZ       t3, s10, ra",
-            "CZERO.EQZ       t4, s0, ra",
-            "OR              t1, t3, t4",
-            "ADD.UW          s10, t1, zero"
+            "CZERO.NEZ       t1, s0, s9",
+            "CZERO.EQZ       t3, s10, s9",
+            "OR              ra, t1, t3",
+            "ADD.UW          s10, ra, zero"
         ],
         "disassembly": "cmovno ecx, ebx"
     },
@@ -13471,13 +13462,12 @@
         "disassembly": "cmovb ecx, ebx"
     },
     "0f43cb": {
-        "instruction_count": 5,
+        "instruction_count": 4,
         "expected_asm": [
-            "XORI            ra, s5, 0x1(1)",
-            "CZERO.NEZ       t3, s10, ra",
-            "CZERO.EQZ       t4, s0, ra",
-            "OR              t1, t3, t4",
-            "ADD.UW          s10, t1, zero"
+            "CZERO.NEZ       t1, s0, s5",
+            "CZERO.EQZ       t3, s10, s5",
+            "OR              ra, t1, t3",
+            "ADD.UW          s10, ra, zero"
         ],
         "disassembly": "cmovnb ecx, ebx"
     },
@@ -13492,13 +13482,12 @@
         "disassembly": "cmovz ecx, ebx"
     },
     "0f45cb": {
-        "instruction_count": 5,
+        "instruction_count": 4,
         "expected_asm": [
-            "XORI            ra, s7, 0x1(1)",
-            "CZERO.NEZ       t3, s10, ra",
-            "CZERO.EQZ       t4, s0, ra",
-            "OR              t1, t3, t4",
-            "ADD.UW          s10, t1, zero"
+            "CZERO.NEZ       t1, s0, s7",
+            "CZERO.EQZ       t3, s10, s7",
+            "OR              ra, t1, t3",
+            "ADD.UW          s10, ra, zero"
         ],
         "disassembly": "cmovnz ecx, ebx"
     },
@@ -13514,12 +13503,11 @@
         "disassembly": "cmovbe ecx, ebx"
     },
     "0f47cb": {
-        "instruction_count": 6,
+        "instruction_count": 5,
         "expected_asm": [
             "OR              ra, s5, s7",
-            "XORI            ra, ra, 0x1(1)",
-            "CZERO.NEZ       t3, s10, ra",
-            "CZERO.EQZ       t4, s0, ra",
+            "CZERO.NEZ       t3, s0, ra",
+            "CZERO.EQZ       t4, s10, ra",
             "OR              t1, t3, t4",
             "ADD.UW          s10, t1, zero"
         ],
@@ -13537,12 +13525,11 @@
         "disassembly": "cmovp ecx, ebx"
     },
     "0f4bcb": {
-        "instruction_count": 6,
+        "instruction_count": 5,
         "expected_asm": [
             "LBU             ra, gp, 0x2d9(729)",
-            "XORI            ra, ra, 0x1(1)",
-            "CZERO.NEZ       t3, s10, ra",
-            "CZERO.EQZ       t4, s0, ra",
+            "CZERO.NEZ       t3, s0, ra",
+            "CZERO.EQZ       t4, s10, ra",
             "OR              t1, t3, t4",
             "ADD.UW          s10, t1, zero"
         ],
@@ -13559,13 +13546,12 @@
         "disassembly": "cmovs ecx, ebx"
     },
     "0f49cb": {
-        "instruction_count": 5,
+        "instruction_count": 4,
         "expected_asm": [
-            "XORI            ra, s8, 0x1(1)",
-            "CZERO.NEZ       t3, s10, ra",
-            "CZERO.EQZ       t4, s0, ra",
-            "OR              t1, t3, t4",
-            "ADD.UW          s10, t1, zero"
+            "CZERO.NEZ       t1, s0, s8",
+            "CZERO.EQZ       t3, s10, s8",
+            "OR              ra, t1, t3",
+            "ADD.UW          s10, ra, zero"
         ],
         "disassembly": "cmovns ecx, ebx"
     },
@@ -13581,12 +13567,11 @@
         "disassembly": "cmovl ecx, ebx"
     },
     "0f4dcb": {
-        "instruction_count": 6,
+        "instruction_count": 5,
         "expected_asm": [
             "XOR             ra, s8, s9",
-            "XORI            ra, ra, 0x1(1)",
-            "CZERO.NEZ       t3, s10, ra",
-            "CZERO.EQZ       t4, s0, ra",
+            "CZERO.NEZ       t3, s0, ra",
+            "CZERO.EQZ       t4, s10, ra",
             "OR              t1, t3, t4",
             "ADD.UW          s10, t1, zero"
         ],
@@ -13605,13 +13590,12 @@
         "disassembly": "cmovle ecx, ebx"
     },
     "0f4fcb": {
-        "instruction_count": 7,
+        "instruction_count": 6,
         "expected_asm": [
             "XOR             ra, s8, s9",
             "OR              ra, ra, s7",
-            "XORI            ra, ra, 0x1(1)",
-            "CZERO.NEZ       t3, s10, ra",
-            "CZERO.EQZ       t4, s0, ra",
+            "CZERO.NEZ       t3, s0, ra",
+            "CZERO.EQZ       t4, s10, ra",
             "OR              t1, t3, t4",
             "ADD.UW          s10, t1, zero"
         ],

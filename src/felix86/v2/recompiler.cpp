@@ -2831,82 +2831,84 @@ void Recompiler::sexth(biscuit::GPR dest, biscuit::GPR src) {
     as.SEXTH(dest, src);
 }
 
-biscuit::GPR Recompiler::getCond(int cond) {
+std::pair<biscuit::GPR, bool> Recompiler::getCondNoInvert(int cond) {
     switch (cond & 0xF) {
     case 0:
-        return flag(X86_REF_OF);
+        return {flag(X86_REF_OF), false};
     case 1: {
-        biscuit::GPR of = scratch();
-        as.XORI(of, flag(X86_REF_OF), 1);
-        return of;
+        return {flag(X86_REF_OF), true};
     }
     case 2:
-        return flag(X86_REF_CF);
+        return {flag(X86_REF_CF), false};
     case 3: {
-        biscuit::GPR cf = scratch();
-        as.XORI(cf, flag(X86_REF_CF), 1);
-        return cf;
+        return {flag(X86_REF_CF), true};
     }
     case 4:
-        return flag(X86_REF_ZF);
+        return {flag(X86_REF_ZF), false};
     case 5: {
-        biscuit::GPR zf = scratch();
-        as.XORI(zf, flag(X86_REF_ZF), 1);
-        return zf;
+        return {flag(X86_REF_ZF), true};
     }
     case 6: {
         biscuit::GPR cond = scratch();
         as.OR(cond, flag(X86_REF_CF), flag(X86_REF_ZF));
-        return cond;
+        return {cond, false};
     }
     case 7: {
         biscuit::GPR cond = scratch();
         as.OR(cond, flag(X86_REF_CF), flag(X86_REF_ZF));
-        as.XORI(cond, cond, 1);
-        return cond;
+        return {cond, true};
     }
     case 8:
-        return flag(X86_REF_SF);
+        return {flag(X86_REF_SF), false};
     case 9: {
-        biscuit::GPR sf = scratch();
-        as.XORI(sf, flag(X86_REF_SF), 1);
-        return sf;
+        return {flag(X86_REF_SF), true};
     }
     case 10:
-        return flag(X86_REF_PF);
+        return {flag(X86_REF_PF), false};
     case 11: {
         biscuit::GPR pf = flag(X86_REF_PF);
-        as.XORI(pf, pf, 1);
-        return pf;
+        return {pf, true};
     }
     case 12: {
         biscuit::GPR cond = scratch();
         as.XOR(cond, flag(X86_REF_SF), flag(X86_REF_OF));
-        return cond;
+        return {cond, false};
     }
     case 13: {
         biscuit::GPR cond = scratch();
         as.XOR(cond, flag(X86_REF_SF), flag(X86_REF_OF));
-        as.XORI(cond, cond, 1);
-        return cond;
+        return {cond, true};
     }
     case 14: {
         biscuit::GPR cond = scratch();
         as.XOR(cond, flag(X86_REF_SF), flag(X86_REF_OF));
         as.OR(cond, cond, flag(X86_REF_ZF));
-        return cond;
+        return {cond, false};
     }
     case 15: {
         biscuit::GPR cond = scratch();
         as.XOR(cond, flag(X86_REF_SF), flag(X86_REF_OF));
         as.OR(cond, cond, flag(X86_REF_ZF));
-        as.XORI(cond, cond, 1);
-        return cond;
+        return {cond, true};
     }
     }
 
     UNREACHABLE();
-    return x0;
+    return {x0, false};
+}
+
+biscuit::GPR Recompiler::getCond(int cond) {
+    auto [reg, needs_invert] = getCondNoInvert(cond);
+    if (needs_invert) {
+        if (isScratch(reg)) {
+            as.XORI(reg, reg, 1);
+        } else {
+            biscuit::GPR temp = scratch();
+            as.XORI(temp, reg, 1);
+            return temp;
+        }
+    }
+    return reg;
 }
 
 void Recompiler::readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size) {
