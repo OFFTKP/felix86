@@ -45,9 +45,8 @@
         ]
     },
     "crysis2": {
-        "instruction_count": 72,
+        "instruction_count": 71,
         "expected_asm": [
-            "ADDI            zero, zero, 0x0(0)",
             "SD              zero, gp, 0xfffffff8(-8)",
             "LUI             t1, 0xd8(216)",
             "ADDIW           t1, t1, 0x42f(1071)",
@@ -122,7 +121,7 @@
         ]
     },
     "crysis3": {
-        "instruction_count": 325,
+        "instruction_count": 322,
         "expected_asm": [
             "SD              zero, gp, 0xfffffff8(-8)",
             "ADDI            ra, s2, 0xfffffff0(-16)",
@@ -439,12 +438,9 @@
             "XOR             s9, s9, t3",
             "ADDI            a0, ra, 0x0(0)",
             "XORI            ra, s7, 0x1(1)",
-            "BNE             zero, ra, 0x18(24)",
+            "ADDI            t5, zero, 0x0(0)",
+            "BNE             zero, ra, 0xfffffb10(-1264)",
             "ADDI            s11, s11, 0x1d2(466)",
-            "AUIPC           t5, 0x0(0)",
-            "LD              t6, gp, 0x398(920)",
-            "LD              t6, t6, 0x90(144)",
-            "JALR            zero, t6, 0x0(0)",
             "AUIPC           t5, 0x0(0)",
             "LD              t6, gp, 0x398(920)",
             "LD              t6, t6, 0x90(144)",

@@ -572,27 +572,18 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
     }
 
     // When invalidating from other threads we need to do it in a single atomic instruction, thus block starts
-    // need to be aligned to 8 bytes as we exchange two instructions
-    switch ((u64)as.GetCursorPointer() & 0x7) {
+    // need to be aligned to 4 bytes
+    switch ((u64)as.GetCursorPointer() & 0x3) {
     case 0: {
         break;
     }
-    case 4: {
-        as.NOP();
-        break;
-    }
     case 2: {
-        as.C_NOP();
-        as.NOP();
-        break;
-    }
-    case 6: {
         as.C_NOP();
         break;
     }
     }
 
-    ASSERT(((u64)as.GetCursorPointer() & 0x7) == 0);
+    ASSERT(((u64)as.GetCursorPointer() & 0x2) == 0);
 
     current_mode32 = mode32;
     current_decoder_initialized = false; // TODO: don't invalidate if same mode32 as before
@@ -2693,6 +2684,39 @@ void Recompiler::jumpAndLink(u64 rip) {
 
 void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false) {
     OptimizationGuard guard(as, optimization_guard_counter);
+    constexpr u64 max_instr_space = 80;
+    i64 host_offset = current_block_metadata->host_address - (u64)as.GetCursorPointer();
+    // Check if it is branch to self
+    if (rip_true == current_block_metadata->guest_address && host_offset > -4096 + max_instr_space) {
+        biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
+        as.MV(t5, x0);
+        ASSERT(condition != t5);
+        if (getCurrentRipregValue() != rip_true) { // ripreg might've changed during the block, set it back to the start if so
+            ASSERT(getCurrentRipregValue() > rip_true);
+            u64 rip_true_offset = rip_true - getCurrentRipregValue();
+            addi(ripreg, ripreg, rip_true_offset);
+            if (current_mode32) {
+                zext(ripreg, ripreg, X86_SIZE_DWORD);
+                rip_true = (u32)rip_true;
+            }
+            setCurrentRipregValue(rip_true);
+        }
+        i64 host_offset = current_block_metadata->host_address - (u64)as.GetCursorPointer();
+        ASSERT(IsValidBTypeImm(host_offset)); // max_instr_space should guarantee it
+        as.BNEZ(condition, host_offset);
+
+        u64 rip_false_offset = rip_false - getCurrentRipregValue();
+        addi(ripreg, ripreg, rip_false_offset);
+        if (current_mode32) {
+            zext(ripreg, ripreg, X86_SIZE_DWORD);
+            rip_false = (u32)rip_false;
+        }
+
+        as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
+        jumpAndLink(rip_false);
+        return;
+    }
+
     Label true_label;
     as.BNEZ(condition, &true_label);
 
@@ -3315,7 +3339,7 @@ void Recompiler::invalidateBlock(BlockMetadata* block) {
     // so we use C.LDSP here
     tas.C_LDSP(t4, offsetof(felix86_frame, invalidate_caller_thunk_ptr));
     tas.C_JALR(t4); // ra is used in invalidate_caller_thunk
-    ASSERT(((u64)address & 0x4) == 0);
+    ASSERT(((u64)address & 0x3) == 0);
     __atomic_exchange_n(address, storage, __ATOMIC_SEQ_CST);
 }
 
