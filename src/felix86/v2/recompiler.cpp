@@ -571,6 +571,20 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
         VERBOSE("Jumped to address %lx which has a sequence of zeroes -- probably a bad jump?", rip);
     }
 
+    // When invalidating from other threads we need to do it in a single atomic instruction, thus block starts
+    // need to be aligned to 4 bytes
+    switch ((u64)as.GetCursorPointer() & 0x3) {
+    case 0: {
+        break;
+    }
+    case 2: {
+        as.C_NOP();
+        break;
+    }
+    }
+
+    ASSERT(((u64)as.GetCursorPointer() & 0x2) == 0);
+
     current_mode32 = mode32;
     current_decoder_initialized = false; // TODO: don't invalidate if same mode32 as before
     scanAhead(rip);
@@ -3313,7 +3327,7 @@ void Recompiler::invalidateBlock(BlockMetadata* block) {
     // so we use C.LDSP here
     tas.C_LDSP(t4, offsetof(felix86_frame, invalidate_caller_thunk_ptr));
     tas.C_JALR(t4); // ra is used in invalidate_caller_thunk
-    ASSERT(((u64)address & 0x4) == 0);
+    ASSERT(((u64)address & 0x3) == 0);
     __atomic_exchange_n(address, storage, __ATOMIC_SEQ_CST);
 }
 
