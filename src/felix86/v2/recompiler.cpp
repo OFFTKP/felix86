@@ -2685,8 +2685,7 @@ void Recompiler::jumpAndLink(u64 rip) {
 void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false) {
     OptimizationGuard guard(as, optimization_guard_counter);
     constexpr u64 max_instr_space = 80;
-    u64 here = (u64)as.GetCursorPointer();
-    i64 host_offset = current_block_metadata->host_address - here;
+    i64 host_offset = current_block_metadata->host_address - (u64)as.GetCursorPointer();
     // Check if it is branch to self
     if (rip_true == current_block_metadata->guest_address && host_offset > -4096 + max_instr_space) {
         biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
@@ -2702,7 +2701,7 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
             }
             setCurrentRipregValue(rip_true);
         }
-        i64 host_offset = current_block_metadata->host_address - here;
+        i64 host_offset = current_block_metadata->host_address - (u64)as.GetCursorPointer();
         ASSERT(IsValidBTypeImm(host_offset)); // max_instr_space should guarantee it
         as.BNEZ(condition, host_offset);
 
