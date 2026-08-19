@@ -2693,7 +2693,8 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
         as.MV(t5, x0);
         ASSERT(condition != t5);
         if (getCurrentRipregValue() != rip_true) { // ripreg might've changed during the block, set it back to the start if so
-            u64 rip_true_offset = rip_true - getCurrentRipregValue();
+            ASSERT(getCurrentRipregValue() > rip_true);
+            u64 rip_true_offset = getCurrentRipregValue() - rip_true;
             addi(ripreg, ripreg, rip_true_offset);
             if (current_mode32) {
                 zext(ripreg, ripreg, X86_SIZE_DWORD);
