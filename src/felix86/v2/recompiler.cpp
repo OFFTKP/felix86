@@ -2694,7 +2694,7 @@ void Recompiler::jumpAndLink(u64 rip) {
 void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false) {
     OptimizationGuard guard(as, optimization_guard_counter);
     u64 here = (u64)as.GetCursorPointer();
-    i64 host_offset = here - current_block_metadata->host_address;
+    i64 host_offset = (here + 4) - current_block_metadata->host_address;
     if (IsValidBTypeImm(host_offset) && rip_true == current_block_metadata->guest_address) {
         as.MV(t5, x0);
         as.BNEZ(condition, host_offset);
