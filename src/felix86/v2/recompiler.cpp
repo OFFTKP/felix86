@@ -571,8 +571,6 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
         VERBOSE("Jumped to address %lx which has a sequence of zeroes -- probably a bad jump?", rip);
     }
 
-    ASSERT(((u64)as.GetCursorPointer() & 0x7) == 0);
-
     current_mode32 = mode32;
     current_decoder_initialized = false; // TODO: don't invalidate if same mode32 as before
     scanAhead(rip);
