@@ -273,7 +273,7 @@ bool felix86_xsave_contains_ymms() {
 void felix86_xsave(const UserContext& ctx, void* address, bool save_all) {
     if ((u64)address & 63) {
         // This would cause #GP, so warn
-        WARN("Improperly aligned xsave area: %lx", address);
+        WARN("Improperly aligned xsave area: %lx", (u64)address);
     }
     u64 rfbm = (u64)(u32)ctx.gprs[X86_REF_RDX] << 32 | (u32)ctx.gprs[X86_REF_RAX];
     bool save_x87 = (rfbm & 0b001) || save_all;
@@ -281,10 +281,11 @@ void felix86_xsave(const UserContext& ctx, void* address, bool save_all) {
     bool save_avx = (rfbm & 0b100) || save_all;
     bool save_mxcsr = save_xmm || save_avx;
     felix86_fxsave(ctx, address, save_x87, save_xmm, save_mxcsr);
-    if (felix86_xsave_contains_ymms() && save_avx) {
+    if (save_all || rfbm != 0) {
         xsave_header* header = (xsave_header*)((u8*)address + sizeof(fxsave_frame));
-        header->xstate_bv = get_xfeature_enabled_mask();
-        header->xcomp_bv = 0; // use standard form
+        header->xstate_bv = save_all ? get_xfeature_enabled_mask() : (rfbm & get_xfeature_enabled_mask());
+    }
+    if (felix86_xsave_contains_ymms() && save_avx) {
         ymm_hi* ymm_storage = (ymm_hi*)((u8*)address + sizeof(fxsave_frame) + sizeof(xsave_header));
         for (int i = 0; i < 16; i++) {
             memcpy((u8*)ymm_storage->data + 16 * i, &ctx.xmm[i].data[2], sizeof(u64) * 2);
@@ -294,15 +295,48 @@ void felix86_xsave(const UserContext& ctx, void* address, bool save_all) {
 
 void felix86_xrstor(UserContext& ctx, void* address, bool restore_all) {
     u64 rfbm = (u64)(u32)ctx.gprs[X86_REF_RDX] << 32 | (u32)ctx.gprs[X86_REF_RAX];
-    bool restore_x87 = (rfbm & 0b001) || restore_all;
-    bool restore_xmm = (rfbm & 0b010) || restore_all;
-    bool restore_avx = (rfbm & 0b100) || restore_all;
-    bool restore_mxcsr = restore_xmm || restore_avx;
+    u64 xcr0 = get_xfeature_enabled_mask();
+    u64 hdr_bv = 0;
+    if (!restore_all) {
+        xsave_header* header = (xsave_header*)((u8*)address + sizeof(fxsave_frame));
+        hdr_bv = header->xstate_bv;
+    }
+    u64 req_x87 = restore_all || (rfbm & 0b001);
+    u64 req_xmm = restore_all || (rfbm & 0b010);
+    u64 req_avx = restore_all || (rfbm & 0b100);
+    bool restore_x87 = req_x87 && (restore_all || (hdr_bv & 0b001)) && (xcr0 & 0b001);
+    bool restore_xmm = req_xmm && (restore_all || (hdr_bv & 0b010)) && (xcr0 & 0b010);
+    bool restore_avx = req_avx && (restore_all || (hdr_bv & 0b100)) && (xcr0 & 0b100);
+    bool restore_mxcsr = req_xmm;
     felix86_fxrstor(ctx, address, restore_x87, restore_xmm, restore_mxcsr);
     if (felix86_xsave_contains_ymms() && restore_avx) {
         ymm_hi* ymm_storage = (ymm_hi*)((u8*)address + sizeof(fxsave_frame) + sizeof(xsave_header));
         for (int i = 0; i < 16; i++) {
             memcpy(&ctx.xmm[i].data[2], (u8*)ymm_storage->data + 16 * i, sizeof(u64) * 2);
+        }
+    }
+
+    if (!restore_x87 && req_x87) {
+        ctx.fpu_cw = 0x37F;
+        ctx.fpu_sw = 0;
+        ctx.fpu_tw = 0xFF;
+        ctx.fpu_top = 0;
+        for (int i = 0; i < 8; i++) {
+            ctx.st[i] = Float80{};
+        }
+        ctx.x87_state = x87State::x87;
+        ctx.rmode_x87 = rounding_mode(x86RoundingMode((ctx.fpu_cw >> 10) & 0b11));
+    }
+    if (!restore_xmm) {
+        for (int i = 0; i < 16; i++) {
+            ctx.xmm[i] = XmmReg{};
+        }
+        ctx.rmode_sse = rounding_mode(x86RoundingMode((ctx.mxcsr >> 13) & 0b11));
+    }
+    if (!restore_avx) {
+        for (int i = 0; i < 16; i++) {
+            ctx.xmm[i].data[2] = 0;
+            ctx.xmm[i].data[3] = 0;
         }
     }
 }
