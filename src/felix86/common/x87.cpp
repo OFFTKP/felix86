@@ -660,9 +660,9 @@ void felix86_x87_FCOMP(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs,
     pop(state);
 }
 
-void felix86_x87_FCOMPP(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs, int size) {
+void felix86_x87_FCOMPP(ThreadState* state, extFloat80_t* st0, extFloat80_t* sti, int size) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedFloatFallbackCount, 1);
-    felix86_x87_FCOM(state, lhs, rhs, 0);
+    felix86_x87_FCOM(state, sti, st0, 0);
     ASSERT(size == 0);
     pop(state);
     pop(state);
@@ -674,16 +674,16 @@ void felix86_x87_FUCOM(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs,
     ASSERT(size == 0);
 }
 
-void felix86_x87_FUCOMP(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs, int size) {
+void felix86_x87_FUCOMP(ThreadState* state, extFloat80_t* st0, extFloat80_t* sti, int size) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedFloatFallbackCount, 1);
-    felix86_x87_FCOM(state, lhs, rhs, 0);
+    felix86_x87_FCOM(state, sti, st0, 0);
     ASSERT(size == 0);
     pop(state);
 }
 
-void felix86_x87_FUCOMPP(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs, int size) {
+void felix86_x87_FUCOMPP(ThreadState* state, extFloat80_t* st0, extFloat80_t* sti, int size) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedFloatFallbackCount, 1);
-    felix86_x87_FCOM(state, lhs, rhs, 0);
+    felix86_x87_FCOM(state, sti, st0, 0);
     ASSERT(size == 0);
     pop(state);
     pop(state);
