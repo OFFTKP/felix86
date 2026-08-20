@@ -13012,9 +13012,9 @@ void FCMOV_80(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, bis
     as.ADD(top0, top0, Recompiler::threadStatePointer());
     as.ADD(topi, topi, Recompiler::threadStatePointer());
     as.LD(temp1, offsetof(ThreadState, ctx.st), topi);
-    as.LWU(temp2, offsetof(ThreadState, ctx.st) + sizeof(u64), topi);
+    as.LHU(temp2, offsetof(ThreadState, ctx.st) + sizeof(u64), topi);
     as.SD(temp1, offsetof(ThreadState, ctx.st), top0);
-    as.SW(temp2, offsetof(ThreadState, ctx.st) + sizeof(u64), top0);
+    as.SH(temp2, offsetof(ThreadState, ctx.st) + sizeof(u64), top0);
     as.LBU(temp1, offsetof(ThreadState, ctx.fpu_tw), Recompiler::threadStatePointer());
     as.BSET(temp1, temp1, top);
     as.SB(temp1, offsetof(ThreadState, ctx.fpu_tw), Recompiler::threadStatePointer());
