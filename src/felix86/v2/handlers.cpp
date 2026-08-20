@@ -7653,8 +7653,9 @@ FAST_HANDLE(BZHI) {
     rec.popScratch();
     if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
         biscuit::GPR cf = rec.flag(X86_REF_CF);
+        as.ANDI(temp, index, 0xFF);
         as.LI(max, operands[0].size - 1);
-        as.SGTU(cf, index, max);
+        as.SGTU(cf, temp, max);
     }
     rec.setGPR(&operands[0], result);
     if (rec.shouldEmitFlag(rip, X86_REF_ZF)) {
