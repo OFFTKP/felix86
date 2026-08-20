@@ -13841,7 +13841,7 @@
         "disassembly": "pop rsp"
     },
     "9c": {
-        "instruction_count": 25,
+        "instruction_count": 31,
         "expected_asm": [
             "LBU             t3, gp, 0x2d9(729)",
             "LBU             t4, gp, 0x2da(730)",
@@ -13860,11 +13860,17 @@
             "OR              ra, ra, s5",
             "ORI             ra, ra, 0x2(2)",
             "ORI             ra, ra, 0x200(512)",
-            "LBU             t1, gp, 0x738(1848)",
+            "LBU             t1, gp, 0x740(1856)",
             "SLLI            t1, t1, 0x15(21)",
             "OR              ra, ra, t1",
-            "LBU             t1, gp, 0x739(1849)",
+            "LBU             t1, gp, 0x741(1857)",
             "SLLI            t1, t1, 0x12(18)",
+            "OR              ra, ra, t1",
+            "LBU             t1, gp, 0x2df(735)",
+            "SLLI            t1, t1, 0x8(8)",
+            "OR              ra, ra, t1",
+            "LBU             t1, gp, 0x2e0(736)",
+            "SLLI            t1, t1, 0x10(16)",
             "OR              ra, ra, t1",
             "ADDI            s1, s1, 0xfffffff8(-8)",
             "SD              ra, s1, 0x0(0)"
@@ -13872,7 +13878,7 @@
         "disassembly": "pushfq"
     },
     "9d": {
-        "instruction_count": 92,
+        "instruction_count": 95,
         "expected_asm": [
             "LD              ra, s1, 0x0(0)",
             "ORI             ra, ra, 0x202(514)",
@@ -13895,10 +13901,13 @@
             "ANDI            s9, s9, 0x1(1)",
             "SRLI            t1, ra, 0x15(21)",
             "ANDI            t1, t1, 0x1(1)",
-            "SB              t1, gp, 0x738(1848)",
+            "SB              t1, gp, 0x740(1856)",
             "SRLI            t1, ra, 0x12(18)",
             "ANDI            t1, t1, 0x1(1)",
-            "SB              t1, gp, 0x739(1849)",
+            "SB              t1, gp, 0x741(1857)",
+            "SRLI            t1, ra, 0x10(16)",
+            "ANDI            t1, t1, 0x1(1)",
+            "SB              t1, gp, 0x2e0(736)",
             "ADDI            s11, s11, 0x1(1)",
             "LB              t3, gp, 0x2df(735)",
             "SRLI            t1, ra, 0x8(8)",
@@ -13932,7 +13941,7 @@
             "SB              s9, gp, 0x2dd(733)",
             "ADDI            a1, t1, 0x0(0)",
             "ADDI            a0, gp, 0x0(0)",
-            "LD              t4, gp, 0x4b8(1208)",
+            "LD              t4, gp, 0x4c0(1216)",
             "JALR            ra, t4, 0x0(0)",
             "LD              s11, gp, 0x80(128)",
             "LD              t0, gp, 0x0(0)",
@@ -13960,10 +13969,10 @@
             "LBU             s7, gp, 0x2db(731)",
             "LBU             s8, gp, 0x2dc(732)",
             "LBU             s9, gp, 0x2dd(733)",
-            "LBU             t4, gp, 0x38c(908)",
+            "LBU             t4, gp, 0x394(916)",
             "CSRRW           zero, t4, 0x2(2)",
             "FENCE          ",
-            "LD              t6, gp, 0x398(920)",
+            "LD              t6, gp, 0x3a0(928)",
             "LD              t6, t6, 0x90(144)",
             "JALR            zero, t6, 0x0(0)"
         ],
@@ -16678,7 +16687,7 @@
             "LWU             t4, ra, 0x0(0)",
             "SW              t1, ra, 0x0(0)",
             "FENCE          ",
-            "ADDI            t2, gp, 0x740(1856)",
+            "ADDI            t2, gp, 0x748(1864)",
             "ADDIW           t3, zero, 0x1(1)",
             "AMOADD.D        zero, t2, t3, aq, rl",
             "ADD.UW          s0, t4, zero"
@@ -16698,7 +16707,7 @@
             "LD              t3, ra, 0x0(0)",
             "SD              s0, ra, 0x0(0)",
             "FENCE          ",
-            "ADDI            t4, gp, 0x740(1856)",
+            "ADDI            t4, gp, 0x748(1864)",
             "ADDIW           t1, zero, 0x1(1)",
             "AMOADD.D        zero, t4, t1, aq, rl",
             "ADDI            s0, t3, 0x0(0)"
