@@ -7935,6 +7935,7 @@ FAST_HANDLE(ROL) {
         biscuit::GPR of = rec.flag(X86_REF_OF);
         as.ANDI(count, src, rec.getBitSize(size) == 64 ? 63 : 31);
         as.BEQZ(count, &zero_count);
+        as.ANDI(count, count, rec.getBitSize(size) - 1);
 
         biscuit::GPR temp = rec.scratch();
         biscuit::GPR neg_count = rec.scratch();
@@ -7945,6 +7946,7 @@ FAST_HANDLE(ROL) {
         as.OR(dst, temp, neg_count);
         as.ANDI(cf, dst, 1);
         as.SRLI(of, dst, rec.getBitSize(size) - 1);
+        as.ANDI(of, of, 1);
         as.XOR(of, of, cf);
 
         as.Bind(&zero_count);
@@ -8005,6 +8007,7 @@ FAST_HANDLE(ROR) {
         biscuit::GPR of = rec.flag(X86_REF_OF);
         as.ANDI(count, src, rec.getBitSize(size) == 64 ? 63 : 31);
         as.BEQZ(count, &zero_count);
+        as.ANDI(count, count, rec.getBitSize(size) - 1);
 
         biscuit::GPR temp = rec.scratch();
         biscuit::GPR neg_count = rec.scratch();
