@@ -416,7 +416,16 @@ void Elf::Load(const std::filesystem::path& path) {
                 ERROR("Failed to read interpreter from file %s", path.c_str());
             }
 
-            ASSERT(!interpreter_str.empty() && interpreter_str[0] == '/');
+            interpreter_str.resize(strnlen(interpreter_str.c_str(), interpreter_str.size()));
+
+            if (interpreter_str.empty()) {
+                ERROR("File %s has an empty interpreter path", path.c_str());
+            }
+
+            if (interpreter_str[0] != '/') {
+                WARN("File %s has relative interpreter path: %s", path.c_str(), interpreter_str.c_str());
+            }
+
             interpreter = interpreter_str;
             break;
         }
