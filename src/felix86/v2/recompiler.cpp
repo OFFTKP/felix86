@@ -2135,7 +2135,7 @@ void Recompiler::scanAhead(u64 rip) {
         bool is_call = mnemonic == ZYDIS_MNEMONIC_CALL;
         bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2 || mnemonic == ZYDIS_MNEMONIC_OUTSB || mnemonic == ZYDIS_MNEMONIC_OUTSW ||
                           mnemonic == ZYDIS_MNEMONIC_OUTSD || mnemonic == ZYDIS_MNEMONIC_INSB || mnemonic == ZYDIS_MNEMONIC_INSW ||
-                          mnemonic == ZYDIS_MNEMONIC_INSD;
+                          mnemonic == ZYDIS_MNEMONIC_INSD || mnemonic == ZYDIS_MNEMONIC_IN || mnemonic == ZYDIS_MNEMONIC_OUT;
         bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
         bool is_int3 = mnemonic == ZYDIS_MNEMONIC_INT3;
 
