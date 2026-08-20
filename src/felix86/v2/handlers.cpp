@@ -11305,6 +11305,10 @@ FAST_HANDLE(POPFQ) {
     as.ANDI(temp, temp, 1);
     as.SB(temp, offsetof(ThreadState, ac_bit), Recompiler::threadStatePointer());
 
+    as.SRLI(temp, flags, 16);
+    as.ANDI(temp, temp, 1);
+    as.SB(temp, offsetof(ThreadState, ctx.rf), Recompiler::threadStatePointer());
+
     biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
     u64 offset = (rip + instruction.length) - rec.getCurrentRipregValue();
     ASSERT(offset != 0);

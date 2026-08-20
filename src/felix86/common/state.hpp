@@ -110,6 +110,7 @@ typedef enum : u8 {
     X86_REF_SF,
     X86_REF_DF,
     X86_REF_OF,
+    X86_REF_RF,
     X86_REF_TF,
     X86_REF_GS,
     X86_REF_FS,
@@ -257,6 +258,7 @@ struct UserContext {
     bool of{};
     bool df{};
     bool tf{};
+    bool rf{};
     // Actual segment values
     // These are 64-bit here to simplify our life in PTRACE_POKEUSER emulation
     // Since host is 64-bit but guest can be 32-bit, it's nice to be able to use host PTRACE_POKEDATA that does 64-bit write
@@ -294,13 +296,16 @@ struct UserContext {
     u64 GetFlags() const {
         u64 flags = 0;
         flags |= cf;
+        flags |= 1 << 1;
         flags |= pf << 2;
         flags |= af << 4;
         flags |= zf << 6;
         flags |= sf << 7;
         flags |= tf << 8;
+        flags |= 1 << 9;
         flags |= df << 10;
         flags |= of << 11;
+        flags |= rf << 16;
         return flags;
     }
 
@@ -324,6 +329,7 @@ struct UserContext {
         tf = (flags >> 8) & 1;
         df = (flags >> 10) & 1;
         of = (flags >> 11) & 1;
+        rf = (flags >> 16) & 1;
     }
 };
 
@@ -454,6 +460,9 @@ struct ThreadState {
             break;
         case X86_REF_TF:
             ctx.tf = value;
+            break;
+        case X86_REF_RF:
+            ctx.rf = value;
             break;
         default:
             ERROR("Invalid flag reference: %d", flag);
