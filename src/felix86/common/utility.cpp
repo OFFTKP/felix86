@@ -255,7 +255,7 @@ __attribute__((visibility("default"))) void disassemble(u64 host_address) {
         ZydisDecodedOperand operands[10];
         ZyanStatus status = ZydisDecoderDecodeFull(&decoder, (void*)cur, 15, &instruction, operands);
         if (!ZYAN_SUCCESS(status)) {
-            printf("Failed to decode instruction at %016lx\n", cur);
+            PLAIN("Failed to decode instruction at %016lx\n", cur);
             break;
         }
 
