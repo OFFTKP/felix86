@@ -3155,6 +3155,12 @@ biscuit::GPR Recompiler::getFlags() {
     as.LBU(temp, offsetof(ThreadState, ac_bit), threadStatePointer());
     as.SLLI(temp, temp, 18);
     as.OR(reg, reg, temp);
+    as.LBU(temp, offsetof(ThreadState, ctx.tf), threadStatePointer());
+    as.SLLI(temp, temp, 8);
+    as.OR(reg, reg, temp);
+    as.LBU(temp, offsetof(ThreadState, ctx.rf), threadStatePointer());
+    as.SLLI(temp, temp, 16);
+    as.OR(reg, reg, temp);
     popScratch();
     return reg;
 }
