@@ -13269,6 +13269,12 @@ FAST_HANDLE(ANDN) {
     if (rec.shouldEmitFlag(rip, X86_REF_ZF)) {
         rec.updateZero(result, rec.zydisToSize(operands[0].size));
     }
+    if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
+        rec.clearFlag(X86_REF_OF);
+    }
+    if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
+        rec.clearFlag(X86_REF_CF);
+    }
     rec.setGPR(&operands[0], result);
 }
 
