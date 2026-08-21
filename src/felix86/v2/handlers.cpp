@@ -4537,6 +4537,23 @@ FAST_HANDLE(MOVDQU) {
 FAST_HANDLE(RDTSC) {
     biscuit::GPR tsc = rec.scratch();
     as.RDTIME(tsc);
+    if (g_config.rdtsc_scaling) {
+        int shift = rdtime_frequency_shift();
+        if (shift > 0) {
+            biscuit::GPR tmp = rec.scratch();
+            ASSERT(shift < 63);
+            u64 mask = (1ull << shift) - 1;
+            // Make the lower bits appear plausible by duplicating them
+            if (IsValidSigned12BitImm(mask)) {
+                as.ANDI(tmp, tsc, mask);
+            } else {
+                as.LI(tmp, mask);
+                as.AND(tmp, tsc, tmp);
+            }
+            as.SLLI(tsc, tsc, shift);
+            as.OR(tsc, tsc, tmp);
+        }
+    }
     rec.setGPR(X86_REF_RAX, X86_SIZE_DWORD, tsc);
     as.SRLI(tsc, tsc, 32);
     rec.setGPR(X86_REF_RDX, X86_SIZE_QWORD, tsc);

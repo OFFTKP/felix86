@@ -1231,6 +1231,31 @@ u64 mmap_max_addr() {
     return addr;
 }
 
+u64 rdtime_frequency() {
+    static u64 freq = []() {
+        biscuit::CPUInfo info;
+        return info.GetTimeFrequency();
+    }();
+    return freq;
+}
+
+int rdtime_frequency_shift() {
+    u64 freq = rdtime_frequency();
+    if (freq == 0)
+        return 0;
+
+    // Aim for plausible x86 values, an x86 CPU will never have a 24MHz RDTSC clock
+    // so without scaling software can detect emulation
+    constexpr u64 target = 2'400'000'000;
+    constexpr u64 ceiling = 4'000'000'000;
+    int shift = 0;
+    while (shift < 63 && (freq << shift) < target)
+        shift++;
+    if (shift > 0 && (freq << shift) > ceiling)
+        shift--;
+    return shift;
+}
+
 void felix86_set_segment(ThreadState* state, u64 value, int segment) {
     int index = value >> 3;
     u32 base = state->gdt[index];
