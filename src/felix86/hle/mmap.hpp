@@ -50,7 +50,7 @@ struct Mapper {
 
 private:
     Freelist freelist;
-    std::unordered_map<u32, int> page_to_shmid{};
+    std::unordered_map<u64, int> page_to_shmid{};
     /// Tracks the amount of currently mapped regions in memory.
     /// This will merge multiple mappings together.
     std::list<GuestRegion> allocated_regions;
