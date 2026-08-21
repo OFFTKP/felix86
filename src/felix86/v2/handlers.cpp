@@ -2262,6 +2262,55 @@ FAST_HANDLE(DAA) {
     rec.setGPR(X86_REF_RAX, X86_SIZE_BYTE, old_al);
 }
 
+FAST_HANDLE(DAS) {
+    ASSERT(MODE32);
+    biscuit::Label skip, end, skip2;
+    biscuit::GPR old_al = rec.getGPR(X86_REF_RAX, X86_SIZE_BYTE);
+    biscuit::GPR new_al = rec.scratch();
+    biscuit::GPR temp_cf = rec.scratch();
+    biscuit::GPR af = rec.flag(X86_REF_AF);
+    biscuit::GPR cf = rec.flag(X86_REF_CF);
+    biscuit::GPR cond = rec.scratch();
+    as.MV(temp_cf, cf);
+    as.MV(new_al, old_al);
+    as.LI(cf, 0);
+    as.ANDI(cond, old_al, 0xF);
+    as.SLTIU(cond, cond, 10);
+    as.XORI(cond, cond, 1);
+    as.OR(cond, cond, af);
+    as.BEQZ(cond, &skip);
+    as.ADDI(new_al, new_al, -6);
+    as.SLTIU(cf, old_al, 6);
+    as.OR(cf, cf, temp_cf);
+    rec.setFlag(X86_REF_AF);
+    as.J(&end);
+    as.Bind(&skip);
+    rec.clearFlag(X86_REF_AF);
+    as.Bind(&end);
+
+    as.SLTIU(cond, old_al, 0x99 + 1);
+    as.XORI(cond, cond, 1);
+    as.OR(cond, cond, temp_cf);
+    as.BEQZ(cond, &skip2);
+    as.ADDI(new_al, new_al, -0x60);
+    as.LI(cf, 1);
+    as.Bind(&skip2);
+
+    if (rec.shouldEmitFlag(rip, X86_REF_PF)) {
+        rec.updateParity(new_al);
+    }
+
+    if (rec.shouldEmitFlag(rip, X86_REF_ZF)) {
+        rec.updateZero(new_al, X86_SIZE_BYTE);
+    }
+
+    if (rec.shouldEmitFlag(rip, X86_REF_SF)) {
+        rec.updateSign(new_al, X86_SIZE_BYTE);
+    }
+
+    rec.setGPR(X86_REF_RAX, X86_SIZE_BYTE, new_al);
+}
+
 FAST_HANDLE(AAM) {
     // TODO: optimize the div by constant to mul by recip+shift
     ASSERT(MODE32);
