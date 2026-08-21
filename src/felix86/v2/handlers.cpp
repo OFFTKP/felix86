@@ -1356,7 +1356,8 @@ FAST_HANDLE(OR_mem) {
 
                 as.ANDI(masked_address, address, -4);
                 as.SLLI(shifted_address, address, 3);
-                as.SLLW(shifted_src, src, shifted_address);
+                rec.zext(shifted_src, src, X86_SIZE_BYTE);
+                as.SLLW(shifted_src, shifted_src, shifted_address);
                 as.AMOOR_W(Ordering::AQRL, dst, shifted_src, masked_address);
                 as.SRLW(dst, dst, shifted_address);
                 rec.zext(dst, dst, X86_SIZE_BYTE);
@@ -1379,7 +1380,8 @@ FAST_HANDLE(OR_mem) {
 
                 as.ANDI(masked_address, address, -4);
                 as.SLLI(shifted_address, address, 3);
-                as.SLLW(shifted_src, src, shifted_address);
+                rec.zext(shifted_src, src, X86_SIZE_WORD);
+                as.SLLW(shifted_src, shifted_src, shifted_address);
                 as.AMOOR_W(Ordering::AQRL, dst, shifted_src, masked_address);
                 as.SRLW(dst, dst, shifted_address);
                 rec.zext(dst, dst, X86_SIZE_WORD);
