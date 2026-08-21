@@ -23,7 +23,6 @@ void verifyGuestRegions(Mapper& mapper, const std::vector<GuestRegionExpected>& 
             bool yes = true;
             yes &= region.start == guest_region.start;
             yes &= region.start + region.len == guest_region.end;
-            // Include the implicit flags here
             yes &= region.flags == guest_region.flags;
             yes &= region.prot == guest_region.prot;
             yes &= guest_region.shmem;
@@ -34,6 +33,7 @@ void verifyGuestRegions(Mapper& mapper, const std::vector<GuestRegionExpected>& 
         }
     }
     CATCH_REQUIRE(found_regions == expected_regions.size());    
+    CATCH_REQUIRE(guest_regions.size() == expected_regions.size());
 }
 
 CATCH_TEST_CASE("Simple1", "[shmat32]") {
