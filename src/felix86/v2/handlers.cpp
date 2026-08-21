@@ -15592,6 +15592,10 @@ static void VGATHER(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& ins
         // we need to sign-extend them since AVX2 gather can do negative indexing
         rec.setVectorState(SEW::E64, 8, LMUL::M2);
         as.VSEXTVF2(sexted_index, index);
+    } else if (sew == SEW::E32 && scale == 1 && index.Index() % 2 != 0) {
+        // In this scenario shifted_index won't be used but index is odd and EMUL is 2
+        // So we need to copy index to an even register
+        as.VMV1R(sexted_index, index);
     } else {
         sexted_index = index;
     }
