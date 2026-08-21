@@ -113,14 +113,15 @@
         "disassembly": "lock xadd [rdi], rax"
     },
     "f00827": {
-        "instruction_count": 9,
+        "instruction_count": 10,
         "expected_asm": [
             "SRLI            t3, t0, 0x8(8)",
             "ANDI            t3, t3, 0xff(255)",
             "ADDI            t4, a0, 0x0(0)",
             "ANDI            t2, t4, 0xfffffffc(-4)",
             "SLLI            t5, t4, 0x3(3)",
-            "SLLW            t6, t3, t5",
+            "ANDI            t6, t3, 0xff(255)",
+            "SLLW            t6, t6, t5",
             "AMOOR.W         ra, t2, t6, aq, rl",
             "SRLW            ra, ra, t5",
             "ANDI            ra, ra, 0xff(255)"
@@ -128,13 +129,14 @@
         "disassembly": "lock or [rdi], ah"
     },
     "f0660907": {
-        "instruction_count": 8,
+        "instruction_count": 9,
         "expected_asm": [
             "ZEXT.H          t3, t0",
             "ADDI            t4, a0, 0x0(0)",
             "ANDI            t2, t4, 0xfffffffc(-4)",
             "SLLI            t5, t4, 0x3(3)",
-            "SLLW            t6, t3, t5",
+            "ZEXT.H          t6, t3",
+            "SLLW            t6, t6, t5",
             "AMOOR.W         ra, t2, t6, aq, rl",
             "SRLW            ra, ra, t5",
             "ZEXT.H          ra, ra"
