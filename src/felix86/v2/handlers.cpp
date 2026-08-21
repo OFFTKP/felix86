@@ -786,6 +786,7 @@ FAST_HANDLE(ADD) {
                 biscuit::Label loop, good_alignment;
                 biscuit::GPR masked_address = rec.scratch();
                 biscuit::GPR mask = rec.scratch();
+                biscuit::GPR src_shifted = rec.scratch();
                 as.LI(mask, 0b11);
                 as.ANDI(masked_address, address, 0b11);
                 as.BNE(masked_address, mask, &good_alignment);
@@ -795,27 +796,21 @@ FAST_HANDLE(ADD) {
 
                 as.Bind(&good_alignment);
 
-                biscuit::GPR s_a1 = rec.scratch();
-                biscuit::GPR s_a3 = mask;
-                biscuit::GPR s_a2 = rec.flag(X86_REF_CF); // ran out of scratch and these get modified later
-                biscuit::GPR s_a4 = rec.flag(X86_REF_SF);
-                biscuit::GPR s_a5 = rec.flag(X86_REF_ZF);
-                biscuit::GPR s_a6 = masked_address;
-                as.ANDI(s_a6, address, -4);
+                as.ANDI(masked_address, address, -4);
                 as.SLLI(address, address, 3);
-                as.LI(s_a3, 0xFFFF);
-                as.SLLW(s_a4, s_a3, address);
-                as.SLLW(s_a1, src, address);
+                as.LI(mask, 0xFFFF);
+                as.SLLW(mask, mask, address);
+                as.SLLW(src_shifted, src, address);
                 as.Bind(&loop);
-                as.LR_W(Ordering::AQRL, s_a5, s_a6);
-                as.ADD(s_a2, s_a5, s_a1);
-                as.XOR(s_a2, s_a2, s_a5);
-                as.AND(s_a2, s_a2, s_a4);
-                as.XOR(s_a2, s_a2, s_a5);
-                as.SC_W(Ordering::AQRL, s_a2, s_a2, s_a6);
-                as.BNEZ(s_a2, &loop);
-                as.SRLW(dst, s_a5, address);
-                as.AND(dst, dst, s_a3);
+                as.LR_W(Ordering::AQRL, dst, masked_address);
+                as.ADD(result, dst, src_shifted);
+                as.XOR(result, result, dst);
+                as.AND(result, result, mask);
+                as.XOR(result, result, dst);
+                as.SC_W(Ordering::AQRL, result, result, masked_address);
+                as.BNEZ(result, &loop);
+                as.SRLW(dst, dst, address);
+                rec.zext(dst, dst, X86_SIZE_WORD);
 
                 rec.popScratch();
                 rec.popScratch();
@@ -977,6 +972,7 @@ FAST_HANDLE(SUB) {
             biscuit::Label loop, good_alignment;
             biscuit::GPR masked_address = rec.scratch();
             biscuit::GPR mask = rec.scratch();
+            biscuit::GPR src_shifted = rec.scratch();
             as.LI(mask, 0b11);
             as.ANDI(masked_address, address, 0b11);
             as.BNE(masked_address, mask, &good_alignment);
@@ -986,27 +982,21 @@ FAST_HANDLE(SUB) {
 
             as.Bind(&good_alignment);
 
-            biscuit::GPR s_a1 = rec.scratch();
-            biscuit::GPR s_a3 = mask;
-            biscuit::GPR s_a2 = rec.flag(X86_REF_CF); // ran out of scratch and these get modified later
-            biscuit::GPR s_a4 = rec.flag(X86_REF_SF);
-            biscuit::GPR s_a5 = rec.flag(X86_REF_ZF);
-            biscuit::GPR s_a6 = masked_address;
-            as.ANDI(s_a6, address, -4);
+            as.ANDI(masked_address, address, -4);
             as.SLLI(address, address, 3);
-            as.LI(s_a3, 0xFFFF);
-            as.SLLW(s_a4, s_a3, address);
-            as.SLLW(s_a1, src, address);
+            as.LI(mask, 0xFFFF);
+            as.SLLW(mask, mask, address);
+            as.SLLW(src_shifted, src, address);
             as.Bind(&loop);
-            as.LR_W(Ordering::AQRL, s_a5, s_a6);
-            as.SUB(s_a2, s_a5, s_a1);
-            as.XOR(s_a2, s_a2, s_a5);
-            as.AND(s_a2, s_a2, s_a4);
-            as.XOR(s_a2, s_a2, s_a5);
-            as.SC_W(Ordering::AQRL, s_a2, s_a2, s_a6);
-            as.BNEZ(s_a2, &loop);
-            as.SRLW(dst, s_a5, address);
-            as.AND(dst, dst, s_a3);
+            as.LR_W(Ordering::AQRL, dst, masked_address);
+            as.SUB(result, dst, src_shifted);
+            as.XOR(result, result, dst);
+            as.AND(result, result, mask);
+            as.XOR(result, result, dst);
+            as.SC_W(Ordering::AQRL, result, result, masked_address);
+            as.BNEZ(result, &loop);
+            as.SRLW(dst, dst, address);
+            rec.zext(dst, dst, X86_SIZE_WORD);
 
             rec.popScratch();
             rec.popScratch();
@@ -1028,26 +1018,21 @@ FAST_HANDLE(SUB) {
             as.C_UNDEF();
             as.Bind(&good_alignment);
 
-            biscuit::GPR s_a3 = mask;
-            biscuit::GPR s_a2 = rec.flag(X86_REF_CF); // ran out of scratch and these get modified later
-            biscuit::GPR s_a4 = rec.flag(X86_REF_SF);
-            biscuit::GPR s_a5 = rec.flag(X86_REF_ZF);
-            biscuit::GPR s_a6 = masked_address;
-            as.ANDI(s_a6, address, -8);
+            as.ANDI(masked_address, address, -8);
             as.SLLI(address, address, 3);
-            as.LI(s_a3, 0xFFFF'FFFF);
-            as.SLL(s_a4, s_a3, address);
+            as.LI(mask, 0xFFFF'FFFF);
+            as.SLL(mask, mask, address);
             as.SLL(s_a1, src, address);
             as.Bind(&loop);
-            as.LR_D(Ordering::AQRL, s_a5, s_a6);
-            as.SUB(s_a2, s_a5, s_a1);
-            as.XOR(s_a2, s_a2, s_a5);
-            as.AND(s_a2, s_a2, s_a4);
-            as.XOR(s_a2, s_a2, s_a5);
-            as.SC_D(Ordering::AQRL, s_a2, s_a2, s_a6);
-            as.BNEZ(s_a2, &loop);
-            as.SRL(dst, s_a5, address);
-            as.AND(dst, dst, s_a3);
+            as.LR_D(Ordering::AQRL, dst, masked_address);
+            as.SUB(result, dst, s_a1);
+            as.XOR(result, result, dst);
+            as.AND(result, result, mask);
+            as.XOR(result, result, dst);
+            as.SC_D(Ordering::AQRL, result, result, masked_address);
+            as.BNEZ(result, &loop);
+            as.SRL(dst, dst, address);
+            rec.zext(dst, dst, X86_SIZE_DWORD);
             as.J(&end);
 
             rec.popScratch();
