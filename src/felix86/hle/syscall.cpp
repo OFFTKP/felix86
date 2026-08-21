@@ -1685,7 +1685,8 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         // If execve fails, set it back
         ThreadState::Set(state);
 
-        ASSERT_MSG(false, "Error during execve: %d %s (executable: %s)", strerror(result), executable.c_str());
+        ssize_t error = result;
+        ASSERT_MSG(false, "Error during execve: %d %s (executable: %s)", (int)error, strerror(-error), executable.c_str());
         break;
     }
     case felix86_riscv64_umask: {
