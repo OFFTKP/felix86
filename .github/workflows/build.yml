@@ -71,8 +71,25 @@ jobs:
           name: test_artifact
           path: ${{ github.workspace }}/test
           retention-days: 1
+  instruction_counter:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential cmake libxbyak-dev nasm
+      - name: Configure
+        run: cmake -B ${{ github.workspace }}/build_counter -DBUILD_INSTRUCTION_COUNTER=ON -DFELIX86_BUILD_THUNKING=OFF -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build ${{ github.workspace }}/build_counter --target felix86_instruction_counter -j$(nproc)
+      - name: Run instruction counter
+        run: ${{ github.workspace }}/build_counter/felix86_instruction_counter
+      - name: Check for differences
+        run: git diff --exit-code counts/
   test:
-    needs: build
+    needs: [build, instruction_counter]
     runs-on: bpi-f3
     steps:
       - name: Download main artifact
