@@ -75,7 +75,9 @@ static bool flag_passthrough(ZydisMnemonic mnemonic) {
     case ZYDIS_MNEMONIC_SHRD:
     case ZYDIS_MNEMONIC_SAR:
     case ZYDIS_MNEMONIC_ROL:
-    case ZYDIS_MNEMONIC_ROR: {
+    case ZYDIS_MNEMONIC_ROR:
+    case ZYDIS_MNEMONIC_RCL:
+    case ZYDIS_MNEMONIC_RCR: {
         return true;
     }
     default: {
@@ -2181,8 +2183,8 @@ void Recompiler::scanAhead(u64 rip) {
                 instruction.cpu_flags->modified | instruction.cpu_flags->set_0 | instruction.cpu_flags->set_1 | instruction.cpu_flags->undefined;
             u32 used = instruction.cpu_flags->tested;
             bool passthrough = flag_passthrough(instruction.mnemonic);
+            flags_used |= used & ALL_CPUFLAGS;
             if (!passthrough) {
-                flags_used |= used & ALL_CPUFLAGS;
                 flags_changed |= changed & ALL_CPUFLAGS;
             }
             scan_entries.push_back({.rip = rip, .flags_used = flags_used, .flags_changed = flags_changed});

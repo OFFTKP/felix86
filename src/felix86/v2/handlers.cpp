@@ -10732,19 +10732,17 @@ FAST_HANDLE(RCL) {
 
     as.MV(dst_temp, dst);
 
-    Label loop, end;
-    as.Bind(&loop);
-    as.BEQZ(temp_count, &end);
+    Label loop, zero_count;
+    as.BEQZ(temp_count, &zero_count);
 
+    as.Bind(&loop);
     as.SRLI(cf_temp, dst_temp, instruction.operand_width - 1);
     as.ANDI(cf_temp, cf_temp, 1);
     as.SLLI(dst_temp, dst_temp, 1);
     as.OR(dst_temp, dst_temp, cf);
     as.MV(cf, cf_temp);
     as.ADDI(temp_count, temp_count, -1);
-    as.J(&loop);
-
-    as.Bind(&end);
+    as.BNEZ(temp_count, &loop);
 
     if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
         biscuit::GPR of = rec.flag(X86_REF_OF);
@@ -10752,6 +10750,8 @@ FAST_HANDLE(RCL) {
         as.ANDI(of, of, 1);
         as.XOR(of, of, cf);
     }
+
+    as.Bind(&zero_count);
 
     rec.setGPR(&operands[0], dst_temp);
 }
