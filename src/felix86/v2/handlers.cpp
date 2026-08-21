@@ -7884,7 +7884,9 @@ FAST_HANDLE(MOVHLPS) {
 
 FAST_HANDLE(ROL) {
     if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE && operands[1].imm.value.u == 0) {
-        WARN("ROL with imm==0?");
+        if (operands[0].size == 32 && operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+            rec.setGPR(&operands[0], rec.getGPR(&operands[0]));
+        }
         return;
     }
 
@@ -7907,12 +7909,9 @@ FAST_HANDLE(ROL) {
                 rec.setGPR(&operands[0], dst);
             }
         } else if (operands[0].size == 32) {
-            // We need to do extra work here to make sure not to zero-extend if the rotated count is zero
             biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD); // we will mask it ourselves
             biscuit::GPR masked_src = rec.scratch();
-            biscuit::GPR is_zero = rec.scratch();
             as.ANDI(masked_src, src, operands[0].size - 1);
-            as.SEQZ(is_zero, masked_src);
             biscuit::GPR rotated = rec.scratch();
             as.ROLW(rotated, dst, masked_src);
             rec.setGPR(&operands[0], rotated);
@@ -7957,7 +7956,9 @@ FAST_HANDLE(ROL) {
 
 FAST_HANDLE(ROR) {
     if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE && operands[1].imm.value.u == 0) {
-        WARN("ROR with imm==0?");
+        if (operands[0].size == 32 && operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+            rec.setGPR(&operands[0], rec.getGPR(&operands[0]));
+        }
         return;
     }
 
@@ -7980,12 +7981,9 @@ FAST_HANDLE(ROR) {
                 rec.setGPR(&operands[0], dst);
             }
         } else if (operands[0].size == 32) {
-            // We need to do extra work here to make sure not to zero-extend if the rotated count is zero
             biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD); // we will mask it ourselves
             biscuit::GPR masked_src = rec.scratch();
-            biscuit::GPR is_zero = rec.scratch();
             as.ANDI(masked_src, src, operands[0].size - 1);
-            as.SEQZ(is_zero, masked_src);
             biscuit::GPR rotated = rec.scratch();
             as.RORW(rotated, dst, masked_src);
             rec.setGPR(&operands[0], rotated);
