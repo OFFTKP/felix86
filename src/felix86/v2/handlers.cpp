@@ -2364,11 +2364,11 @@ FAST_HANDLE(SHL_imm) {
     u8 shift = rec.getImmediate(&operands[1]);
     shift &= instruction.operand_width == 64 ? 0x3F : 0x1F;
 
-    bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
     bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
     bool needs_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
     bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
     bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF) && shift == 1;
+    bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_CF) || needs_of;
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf;
     if (!needs_any_flag && operands[0].size == 64 && g_config.noflag_opts) {
         result = dst; // shift the allocated register directly
@@ -2537,11 +2537,11 @@ FAST_HANDLE(SHL) {
         return fast_SHL_imm(rec, rip, as, instruction, operands);
     }
 
-    bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
     bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
     bool needs_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
     bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
     bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
+    bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_CF) || needs_of;
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf;
 
     if (g_config.noflag_opts && !needs_any_flag) {
