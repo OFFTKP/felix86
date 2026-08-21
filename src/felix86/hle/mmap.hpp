@@ -5,13 +5,15 @@
 #include "felix86/common/freelist.hpp"
 #include "felix86/common/types.hpp"
 
-struct AllocatedRegion {
+struct GuestRegion {
     /// Inclusive end address.
     u64 start;
     /// Non inclusive end address.
     u64 end;
     /// Flags used for mapping this region.
     int flags;
+    /// Protection levels of the mapped region.
+    int prot;
     /// If the allocated region is shared memory.
     bool shmem;
 };
@@ -26,8 +28,8 @@ struct Mapper {
     int unmap32(void* addr, u64 size);
     [[nodiscard]] void* remap32(void* old_address, u64 old_size, u64 new_size, int flags, void* new_address);
 
-    int shmat32(int shmid, void* address, int flags, u32* result_address);
-    int shmdt32(void* address);
+    int shmat(bool mode32, int shmid, void* address, int flags, u64* result_address);
+    int shmdt(bool mode32, void* address);
 
     // Directly allocate in the freelist
     void* allocate(u64 addr, u64 size) {
@@ -41,22 +43,22 @@ struct Mapper {
     bool is_guest_address(void* address);
 
     /// Return the tracked allocated regions.
-    std::vector<AllocatedRegion> get_allocated_regions();
+    std::vector<GuestRegion> get_guest_regions();
 
     /// Marks memory as reserved and tracked by the guest.
-    void reserve(u64 address, u64 len, int flags);
+    void reserve(u64 address, u64 len, int flags, int prot);
 
 private:
     Freelist freelist;
     std::unordered_map<u32, int> page_to_shmid{};
     /// Tracks the amount of currently mapped regions in memory.
     /// This will merge multiple mappings together.
-    std::list<AllocatedRegion> allocated_regions;
+    std::list<GuestRegion> allocated_regions;
 
     std::vector<std::pair<u32, u32>> getRegions();
 
     friend void verifyRegions(Mapper& mapper, const std::vector<std::pair<u32, u32>>& regions);
 
-    void add_tracked_region(u64 address, u64 len, int flags, bool shmem = false);
+    void add_tracked_region(u64 address, u64 len, int flags, int prot, bool shmem = false);
     void remove_tracked_region(u64 address, u64 len);
 };

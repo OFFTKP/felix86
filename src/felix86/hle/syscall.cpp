@@ -339,8 +339,12 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             g_is_single_thread = false;
             Recompiler::invalidateRangeGlobal(0, UINT64_MAX & ~0xFFFull, "shmat happened");
         }
-        // TODO: use g_mapper here to track 64-bit shmat.
-        result = SYSCALL(shmat, arg1, arg2, arg3);
+        u64 result_address = 0;
+        result = g_mapper->shmat(false, (int)arg1, (void*)arg2, (int)arg3, &result_address);
+        if (result == 0) {
+            ASSERT(result_address != 0);
+            result = result_address;
+        }
         if (result >= 0 && ((u64)result) > mmap_min_addr() && result <= UINT32_MAX) {
             WARN("shmat in 32-bit address space, this could cause problems with MAP_32BIT");
         }
@@ -351,11 +355,10 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_shmdt: {
-        // TODO: use g_mapper here to track 64-bit shmdt.
         if (arg1 > mmap_min_addr() && arg1 <= UINT32_MAX) {
             WARN("shmdt in 32-bit address space, this could cause problems with MAP_32BIT");
         }
-        result = SYSCALL(shmdt, arg1);
+        result = g_mapper->shmdt(false, (void*)arg1);
         break;
     }
     case felix86_riscv64_getsid: {
@@ -2751,16 +2754,17 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                 g_is_single_thread = false;
                 Recompiler::invalidateRangeGlobal(0, UINT64_MAX & ~0xFFFull, "shmat happened");
             }
-            u32 result_address = 0;
-            result = g_mapper->shmat32((int)arg1, (void*)arg2, (int)arg3, &result_address);
+            u64 result_address = 0;
+            result = g_mapper->shmat(true, (int)arg1, (void*)arg2, (int)arg3, &result_address);
             if (result == 0) {
                 ASSERT(result_address != 0);
+                ASSERT(result_address >> 32 == 0 || result_address >> 32 == 0xFFFF'FFFF);
                 result = result_address;
             }
             break;
         }
         case felix86_x86_32_shmdt: {
-            result = g_mapper->shmdt32((void*)arg1);
+            result = g_mapper->shmdt(true, (void*)arg1);
             break;
         }
         case felix86_x86_32_waitid: {
