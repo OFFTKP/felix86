@@ -80,3 +80,4 @@ X(Performance, bool, scan_ahead_multi, true, FELIX86_SCAN_AHEAD_MULTI, "Scan ahe
 X(Performance, bool, no_address_overflow, true, FELIX86_NO_ADDRESS_OVERFLOW, "Assume addresses won't overflow in 32-bit apps, which allows for some optimizations")
 X(Performance, bool, group_loadstore, true, FELIX86_GROUP_LOADSTORE, "Load/store SIMD state in groups of eight, may improve performance")
 X(Performance, bool, reduced_precision, false, FELIX86_REDUCED_PRECISION, "Use 64-bit floats for x87, may improve performance but cause issues in some games")
+X(Performance, bool, rdtsc_scaling, true, FELIX86_RDTSC_SCALING, "Scale RDTIME frequency to plausible x86 frequencies")
