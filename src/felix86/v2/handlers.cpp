@@ -5567,12 +5567,13 @@ FAST_HANDLE(SCASQ) {
 }
 
 FAST_HANDLE(LODSB) {
-    ASSERT(!HAS_REP); // it can have rep, but it would be too silly
     ASSERT(instruction.address_width > 16);
+    Label loop_end, loop_body;
     int width = instruction.operand_width;
     x86_size_e address_width = rec.zydisToSize(instruction.address_width);
     x86_size_e size = rec.zydisToSize(width);
     biscuit::GPR rsi = rec.getGPR(X86_REF_RSI, address_width);
+    biscuit::GPR rcx = rec.getGPR(X86_REF_RCX, address_width);
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR loaded = rec.scratch();
     biscuit::GPR df = rec.scratch();
@@ -5583,6 +5584,7 @@ FAST_HANDLE(LODSB) {
     as.BNEZ(df, &end);
     as.LI(temp, width / 8);
     as.Bind(&end);
+    rec.popScratch();
 
     if (MODE32) {
         as.LD(loaded, offsetof(ThreadState, ctx.dsbase), Recompiler::threadStatePointer());
@@ -5590,12 +5592,24 @@ FAST_HANDLE(LODSB) {
         as.ZEXTW(rsi, rsi);
     }
 
+    if (HAS_REP) {
+        rec.repPrologue(&loop_end, rcx);
+        as.Bind(&loop_body);
+    }
+
     rec.readMemory(loaded, rsi, 0, size);
 
     as.ADD(rsi, rsi, temp);
 
     rec.setGPR(X86_REF_RAX, size, loaded);
+
+    if (HAS_REP) {
+        rec.repEpilogue(&loop_body, rcx);
+        as.Bind(&loop_end);
+    }
+
     rec.setGPR(X86_REF_RSI, address_width, rsi);
+    rec.setGPR(X86_REF_RCX, address_width, rcx);
 }
 
 FAST_HANDLE(LODSW) {

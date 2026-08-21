@@ -14371,9 +14371,9 @@
             "ADDIW           ra, zero, 0x1(1)",
             "LBU             t1, a1, 0x0(0)",
             "ADD             a1, a1, ra",
-            "ANDI            t4, t1, 0xff(255)",
+            "ANDI            t3, t1, 0xff(255)",
             "ANDI            t0, t0, 0xffffff00(-256)",
-            "OR              t0, t0, t4"
+            "OR              t0, t0, t3"
         ],
         "disassembly": "lodsb"
     },
@@ -14386,10 +14386,10 @@
             "ADDIW           ra, zero, 0x2(2)",
             "LHU             t1, a1, 0x0(0)",
             "ADD             a1, a1, ra",
-            "ZEXT.H          t4, t1",
+            "ZEXT.H          t3, t1",
             "SRLI            t0, t0, 0x10(16)",
             "SLLI            t0, t0, 0x10(16)",
-            "OR              t0, t0, t4"
+            "OR              t0, t0, t3"
         ],
         "disassembly": "lodsw"
     },

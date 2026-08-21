@@ -67,8 +67,8 @@ private:
 // Some instructions modify the flags conditionally or sometimes they don't modify them at all.
 // This needs to be marked as a usage of the flag as it can be passed through if they don't modify,
 // and previous instructions need to know that.
-static bool flag_passthrough(ZydisMnemonic mnemonic) {
-    switch (mnemonic) {
+static bool flag_passthrough(const ZydisDecodedInstruction& instruction) {
+    switch (instruction.mnemonic) {
     case ZYDIS_MNEMONIC_SHL:
     case ZYDIS_MNEMONIC_SHLD:
     case ZYDIS_MNEMONIC_SHR:
@@ -79,6 +79,16 @@ static bool flag_passthrough(ZydisMnemonic mnemonic) {
     case ZYDIS_MNEMONIC_RCL:
     case ZYDIS_MNEMONIC_RCR: {
         return true;
+    }
+    case ZYDIS_MNEMONIC_CMPSB:
+    case ZYDIS_MNEMONIC_CMPSW:
+    case ZYDIS_MNEMONIC_CMPSD:
+    case ZYDIS_MNEMONIC_CMPSQ:
+    case ZYDIS_MNEMONIC_SCASB:
+    case ZYDIS_MNEMONIC_SCASW:
+    case ZYDIS_MNEMONIC_SCASD:
+    case ZYDIS_MNEMONIC_SCASQ: {
+        return instruction.attributes & (ZYDIS_ATTRIB_HAS_REP | ZYDIS_ATTRIB_HAS_REPZ | ZYDIS_ATTRIB_HAS_REPNZ);
     }
     default: {
         return false;
@@ -2186,7 +2196,7 @@ void Recompiler::scanAhead(u64 rip) {
             u32 changed =
                 instruction.cpu_flags->modified | instruction.cpu_flags->set_0 | instruction.cpu_flags->set_1 | instruction.cpu_flags->undefined;
             u32 used = instruction.cpu_flags->tested;
-            bool passthrough = flag_passthrough(instruction.mnemonic);
+            bool passthrough = flag_passthrough(instruction);
             flags_used |= used & ALL_CPUFLAGS;
             if (!passthrough) {
                 flags_changed |= changed & ALL_CPUFLAGS;
@@ -2254,7 +2264,7 @@ void Recompiler::scanAhead(u64 rip) {
                             u32 changed = instruction_ahead.cpu_flags->modified | instruction_ahead.cpu_flags->set_0 |
                                           instruction_ahead.cpu_flags->set_1 | instruction_ahead.cpu_flags->undefined;
                             u32 used = instruction_ahead.cpu_flags->tested;
-                            if (flag_passthrough(mnemonic)) {
+                            if (flag_passthrough(instruction_ahead)) {
                                 // Act as if this instruction didn't change any flags, since it may not if shift == 0
                                 changed = 0;
                             }
