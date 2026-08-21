@@ -24,8 +24,8 @@ namespace Catch {
 
 #define SUCCESS_MESSAGE() SUCCESS("Test passed: %s", Catch::getResultCapture().getCurrentTestName().c_str())
 
-const int FCOMMON = MAP_ANONYMOUS | MAP_PRIVATE;
-const int FCOMMON_FIXED = FCOMMON | MAP_FIXED;
+static const int FCOMMON = MAP_ANONYMOUS | MAP_PRIVATE;
+static const int FCOMMON_FIXED = FCOMMON | MAP_FIXED;
 
 #define MMAP_AT(addr, size, prot, flags) \
     do { \
@@ -77,7 +77,7 @@ struct GuestRegionExpected {
     int flags;
 };
 
-void verifyGuestRegions(Mapper& mapper, const std::vector<GuestRegionExpected>& expected_regions) {
+static void verifyGuestRegions(Mapper& mapper, const std::vector<GuestRegionExpected>& expected_regions) {
     auto guest_regions = mapper.get_guest_regions();
     int found_regions = 0;
     for (const auto region : expected_regions) {

@@ -503,14 +503,16 @@ int Mapper::shmat(bool mode32, int shmid, void* address, int flags, u64* result_
     u64 top_bits = (u64)shm_mem >> 32;
     ASSERT_MSG(!mode32 || top_bits == 0 || top_bits == 0xFFFF'FFFF, "shmat returned address in 64-bit address space?");
     *result_address = (u64)shm_mem;
-    page_to_shmid[(u32)(u64)shm_mem & ~0xFFFull] = shmid;
-    add_tracked_region((u64)shm_mem, size, flags, true);
+    page_to_shmid[(u64)shm_mem & ~0xFFFull] = shmid;
+    add_tracked_region((u64)shm_mem, size, flags, 0, true);
 
     return 0;
 }
 
 int Mapper::shmdt(bool mode32, void* address) {
-    auto it = page_to_shmid.find((u32)(u64)address & ~0xFFFull);
+    let guard = freelist.lock();
+
+    auto it = page_to_shmid.find((u64)address & ~0xFFFull);
     if (it == page_to_shmid.end()) {
         WARN("Could not find page during shmdt: %lx", (u64)address & ~0xFFFull);
         return -EINVAL;
