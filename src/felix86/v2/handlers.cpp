@@ -10464,10 +10464,13 @@ FAST_HANDLE(XADD) {
         rec.updateOverflowAdd(dst, src, result, size);
     }
 
-    // Set operands[1] first, as dst could be an allocated register, if we did it the other way
-    // around it could cause problems -- result is a scratch so it won't be modified by this set
-    rec.setGPR(&operands[1], dst);
-    rec.setGPR(&operands[0], result);
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        rec.setGPR(&operands[0], result);
+        rec.setGPR(&operands[1], dst);
+    } else {
+        rec.setGPR(&operands[1], dst);
+        rec.setGPR(&operands[0], result);
+    }
 }
 
 FAST_HANDLE(CMPSD_sse) {
