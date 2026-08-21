@@ -1583,6 +1583,10 @@ void Recompiler::setGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
 void Recompiler::setVec(x86_ref_e ref, biscuit::Vec vec) {
     biscuit::Vec dest = allocatedVec(ref);
 
+    if (isMM(ref)) {
+        mmx_reg_cache[ref - X86_REF_MM0].loaded = true;
+    }
+
     if (dest != vec) {
         if (Extensions::VLEN == 128) {
             ASSERT_MSG(isXMM(ref) || isMM(ref), "setVec dealing with YMM registers but your VLEN is 128");
