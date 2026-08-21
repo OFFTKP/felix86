@@ -3,6 +3,7 @@
 #include <iterator>
 #include <memory>
 #include <utility>
+#include <vector>
 #include <sys/mman.h>
 #include <sys/shm.h>
 #include "felix86/common/global.hpp"
@@ -93,16 +94,6 @@ void* Mapper::remap32(void* old_address, u64 old_size, u64 new_size, int flags, 
 
     auto guard = freelist.lock();
 
-    int prot = 0;
-    bool found = false;
-    for (auto& region : allocated_regions) {
-        if (region.start <= (u64)old_address && (u64)old_address < region.end) {
-            prot = region.prot;
-            found = true;
-            break;
-        }
-    }
-
     if ((flags & MREMAP_FIXED) || !(flags & MREMAP_MAYMOVE)) {
         // Give it to the kernel first
         ASSERT((u64)new_address < UINT32_MAX);
@@ -112,20 +103,16 @@ void* Mapper::remap32(void* old_address, u64 old_size, u64 new_size, int flags, 
         }
 
         ASSERT(result == new_address);
-        ASSERT(found);
 
         // Since the mapping succeeded we also need to update our freelist allocator
         if (!(flags & MREMAP_DONTUNMAP)) {
             freelist.deallocate((u64)old_address, old_size);
-            remove_tracked_region((u64)old_address, old_size);
-        } else {
-            remove_tracked_region((u64)result, new_size);
         }
 
         void* mapping = freelist.allocate((u64)result, new_size);
         ASSERT(mapping == result);
 
-        add_tracked_region((u64)result, new_size, flags, prot);
+        move_tracked_region((u64)old_address, old_size, (u64)result, new_size, !(flags & MREMAP_DONTUNMAP));
 
         return result;
     } else {
@@ -150,14 +137,9 @@ void* Mapper::remap32(void* old_address, u64 old_size, u64 new_size, int flags, 
         // After everything goes ok we can unmap the old region
         if (!(flags & MREMAP_DONTUNMAP)) {
             freelist.deallocate((u64)old_address, old_size);
-            remove_tracked_region((u64)old_address, old_size);
-        } else {
-            remove_tracked_region((u64)result, new_size);
         }
 
-        ASSERT(found);
-
-        add_tracked_region((u64)result, new_size, flags, prot);
+        move_tracked_region((u64)old_address, old_size, (u64)result, new_size, !(flags & MREMAP_DONTUNMAP));
 
         ASSERT(result == new_address);
         return result;
@@ -214,21 +196,9 @@ void* Mapper::remap(bool mode32, void* old_address, u64 old_size, u64 new_size, 
             // Lock access to 'allocated_regions'.
             auto guard = freelist.lock();
 
-            int prot = 0;
-            bool found = false;
-            for (auto& region : allocated_regions) {
-                if (region.start <= (u64)old_address && (u64)old_address < region.end) {
-                    prot = region.prot;
-                    found = true;
-                    break;
-                }
-            }
-
             // On success, remap the tracked allocation
             if (result != (void*)-1) {
-                ASSERT(found);
-                remove_tracked_region((u64)old_address, old_size);
-                add_tracked_region((u64)result, new_size, flags, prot);
+                move_tracked_region((u64)old_address, old_size, (u64)result, new_size, !(flags & MREMAP_DONTUNMAP));
             }
 
             return result;
@@ -241,9 +211,9 @@ void Mapper::add_tracked_region(u64 address, u64 len, int flags, int prot, bool 
         return;
 
     // Assume 4KiB alignment.
-    address = address & ~0x3ff;
+    address = address & ~0xfff;
     u64 end = address + len;
-    end = (end + 0x3ff) & ~0x3ff;
+    end = (end + 0xfff) & ~0xfff;
 
     // We assume at this point, that the allocated region will not overlap with any existing region.
     // This works because any invocation to mmap cannot share the same region of address space as
@@ -263,19 +233,13 @@ void Mapper::add_tracked_region(u64 address, u64 len, int flags, int prot, bool 
         }
         // Region extends another trailing.
         else if (can_merge && r.end == address) {
-            auto r = *it;
-            r.end = end;
+            r.end = std::max(r.end, end);
             // Check if we can continue merging onwards.
             it++;
-            for (; it != allocated_regions.end(); it++) {
-                if ((*it).start == r.end && (*it).shmem == shmem && (*it).prot == prot && (*it).flags == flags) {
-                    r.end = (*it).end;
+            while (it != allocated_regions.end()) {
+                if ((*it).start <= r.end && (*it).shmem == shmem && (*it).prot == prot && (*it).flags == flags) {
+                    r.end = std::max(r.end, (*it).end);
                     it = allocated_regions.erase(it);
-                } else if ((*it).start < r.end) {
-                    (*it).start = r.end;
-                    if ((*it).start >= (*it).end) {
-                        it = allocated_regions.erase(it);
-                    }
                 } else {
                     break;
                 }
@@ -297,16 +261,85 @@ void Mapper::add_tracked_region(u64 address, u64 len, int flags, int prot, bool 
     allocated_regions.emplace_back(v);
 }
 
+void Mapper::move_tracked_region(u64 old_address, u64 old_len, u64 new_address, u64 new_len, bool remove_src) {
+    old_address &= ~0xfff;
+    old_len = (old_len + 0xfff) & ~0xfff;
+    new_address &= ~0xfff;
+    new_len = (new_len + 0xfff) & ~0xfff;
+
+    std::vector<GuestRegion> to_add;
+
+    bool is_increase = new_len > old_len;
+    u64 old_end = old_address + old_len;
+
+    for (auto it = allocated_regions.begin(); it != allocated_regions.end();) {
+        auto& r = *it;
+
+        if (old_address > r.start && old_end < r.end) {
+            auto n = r;
+            n.start = new_address;
+            n.end = new_address + new_len;
+            auto nl = r;
+            nl.end = old_address;
+            auto nr = r;
+            nr.start = old_end;
+            it = allocated_regions.erase(it);
+
+            to_add.push_back(n);
+            it = allocated_regions.insert(it, nr);
+            it = allocated_regions.insert(it, nl);
+            it++;
+            continue;
+        }
+
+        bool is_start_in = r.start >= old_address && r.start < old_end;
+        bool is_end_in = r.end > old_address && r.end <= old_end;
+
+        auto n = r;
+        n.start = new_address + std::min((std::max(r.start, old_address) - old_address), new_len);
+        n.end = new_address + (is_increase ? new_len : std::min((std::min(r.end, old_end) - old_address), new_len));
+        if (is_start_in && is_end_in) {
+            to_add.push_back(n);
+            if (remove_src)
+                it = allocated_regions.erase(it);
+            else
+                it++;
+        } else if (is_start_in) {
+            to_add.push_back(n);
+            if (remove_src)
+                r.start = old_end;
+            it++;
+        } else if (is_end_in) {
+            to_add.push_back(n);
+            if (remove_src)
+                r.end = old_address;
+            it++;
+        } else {
+            it++;
+        }
+
+        if (is_increase && (is_start_in || is_end_in))
+            break;
+    }
+
+    ASSERT(!is_increase || to_add.size() <= 1);
+
+    remove_tracked_region(new_address, new_len);
+    for (auto add : to_add) {
+        add_tracked_region(add.start, add.end - add.start, add.flags, add.prot, add.shmem);
+    }
+}
+
 void Mapper::remove_tracked_region(u64 address, u64 len) {
     if (len == 0)
         return;
 
-    address = address & ~0x3ff;
+    address = address & ~0xfff;
     u64 end = address + len;
-    end = (end + 0x3ff) & ~0x3ff;
+    end = (end + 0xfff) & ~0xfff;
 
     for (auto it = allocated_regions.begin(); it != allocated_regions.end();) {
-        auto r = *it;
+        auto& r = *it;
         // Because the linked list is ordered, we know if the start address is greater than end,
         // then there is no more regions to remove with this unmap.
         if (end <= r.start || address == end) {
@@ -321,31 +354,31 @@ void Mapper::remove_tracked_region(u64 address, u64 len) {
 
         /// The unmapped region is entirely within an existing region.
         if (r.start <= address && r.end >= end) {
+            auto m = r;
             it = allocated_regions.erase(it);
 
-            if (address - r.start > 0) {
-                it = allocated_regions.insert(it, GuestRegion{r.start, address, r.flags, r.prot, r.shmem});
+            if (address - m.start > 0) {
+                it = allocated_regions.insert(it, GuestRegion{m.start, address, m.flags, m.prot, m.shmem});
                 it++;
             }
-            if (r.end - end > 0) {
-                it = allocated_regions.insert(it, GuestRegion{end, r.end, r.flags, r.prot, r.shmem});
+            if (m.end - end > 0) {
+                it = allocated_regions.insert(it, GuestRegion{end, m.end, m.flags, m.prot, m.shmem});
                 it++;
             }
             continue;
         }
 
-        auto& m = *it;
         /// The unmapped region removes from the left side.
-        if (m.start >= address && m.end > address) {
-            m.start = end;
+        if (r.start >= address && r.start < end) {
+            r.start = end;
         }
 
         /// The unmapped region removes from the right side.
-        if (m.start <= address && m.end > address) {
-            m.end = address;
+        if (r.end > address && r.end <= end) {
+            r.end = address;
         }
 
-        if (m.start >= m.end) {
+        if (r.start >= r.end) {
             it = allocated_regions.erase(it);
         } else {
             it++;

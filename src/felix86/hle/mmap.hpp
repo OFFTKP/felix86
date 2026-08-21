@@ -60,5 +60,6 @@ private:
     friend void verifyRegions(Mapper& mapper, const std::vector<std::pair<u32, u32>>& regions);
 
     void add_tracked_region(u64 address, u64 len, int flags, int prot, bool shmem = false);
+    void move_tracked_region(u64 old_address, u64 old_len, u64 new_address, u64 new_len, bool remove_source);
     void remove_tracked_region(u64 address, u64 len);
 };
