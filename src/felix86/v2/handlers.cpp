@@ -7475,16 +7475,16 @@ FAST_HANDLE(MULX) {
         }
         as.MUL(lo_dst, src, rdx);
         as.MULHU(hi_dst, src, rdx);
-        rec.setGPR(&operands[0], hi_dst);
         rec.setGPR(&operands[1], lo_dst);
+        rec.setGPR(&operands[0], hi_dst);
     } else if (operands[0].size == 32) {
         biscuit::GPR src = rec.getGPR(&operands[2]);
         biscuit::GPR rdx = rec.getGPR(X86_REF_RDX, X86_SIZE_DWORD);
         as.MUL(lo_dst, src, rdx);
         as.SRLI(hi_dst, lo_dst, 32);
         as.ZEXTW(lo_dst, lo_dst);
-        rec.setGPR(operands[0].reg.value, X86_SIZE_QWORD, hi_dst);
         rec.setGPR(operands[1].reg.value, X86_SIZE_QWORD, lo_dst);
+        rec.setGPR(operands[0].reg.value, X86_SIZE_QWORD, hi_dst);
     } else {
         UNREACHABLE();
     }
