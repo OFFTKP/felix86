@@ -3041,6 +3041,11 @@ FAST_HANDLE(DIV) {
         biscuit::GPR rdx = rec.getGPR(X86_REF_RDX, X86_SIZE_QWORD);
         biscuit::Label do_128bit, end;
 
+        // We call flushX87 when the branch is taken but if it's not taken then
+        // the local register state will differ from the runtime state so
+        // let's flush them unconditionally here
+        rec.flushX87();
+
         as.BNEZ(rdx, &do_128bit);
 
         biscuit::GPR mod = rec.scratch();
@@ -3150,6 +3155,11 @@ FAST_HANDLE(IDIV) {
         biscuit::GPR rax = rec.getGPR(X86_REF_RAX, X86_SIZE_QWORD);
         biscuit::GPR rdx = rec.getGPR(X86_REF_RDX, X86_SIZE_QWORD);
         biscuit::Label do_128bit, end;
+
+        // We call flushX87 when the branch is taken but if it's not taken then
+        // the local register state will differ from the runtime state so
+        // let's flush them unconditionally here
+        rec.flushX87();
 
         biscuit::GPR rax_sext = rec.scratch();
         as.SRAI(rax_sext, rax, 63);
