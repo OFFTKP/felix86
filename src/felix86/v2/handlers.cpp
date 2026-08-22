@@ -1097,7 +1097,7 @@ FAST_HANDLE(SBB) {
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_AF)) {
-        rec.updateAuxiliarySbb(dst, src, result, cf);
+        rec.updateAuxiliarySbb(dst, src, result_2);
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
@@ -1146,7 +1146,7 @@ FAST_HANDLE(ADC) {
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_AF)) {
-        rec.updateAuxiliaryAdc(dst, result, cf, result_2);
+        rec.updateAuxiliaryAdc(dst, src, result_2);
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
