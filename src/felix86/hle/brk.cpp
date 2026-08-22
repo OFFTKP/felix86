@@ -37,13 +37,15 @@ u64 BRK::set(bool mode32, u64 new_brk) {
     u64 result;
     if (new_brk == 0) {
         result = g_current_brk;
+    } else if (new_brk < g_initial_brk) {
+        result = g_current_brk;
     } else {
-        if (new_brk > g_initial_brk + g_current_brk_size) {
-            // Try to allocate some more space
-            u64 end_brk = g_initial_brk + g_current_brk_size;
-            ASSERT(!(end_brk & 0xFFF)); // assert page aligned
-            u64 new_size = g_current_brk_size + 8 * 1024 * 1024;
-            u64 size_past_end = new_size - g_current_brk_size;
+        // Try to allocate some more space
+        u64 end_brk = g_initial_brk + g_current_brk_size;
+        ASSERT(!(end_brk & 0xFFF)); // assert page aligned
+        u64 aligned_brk = (new_brk + 0xFFF) & ~0xFFFull;
+        if (aligned_brk > end_brk) {
+            u64 size_past_end = aligned_brk - end_brk;
             int flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE;
             void* new_map = g_mapper->map(mode32, (void*)end_brk, size_past_end, PROT_READ | PROT_WRITE, flags, -1, 0);
             if ((u64)new_map != end_brk) {
@@ -51,7 +53,16 @@ u64 BRK::set(bool mode32, u64 new_brk) {
             } else {
                 g_current_brk = new_brk;
                 result = new_brk;
-                g_current_brk_size = new_size;
+                g_current_brk_size += size_past_end;
+            }
+        } else if (aligned_brk < end_brk) {
+            u64 size_to_free = end_brk - aligned_brk;
+            if (g_mapper->unmap(mode32, (void*)aligned_brk, size_to_free) < 0) {
+                result = g_current_brk;
+            } else {
+                g_current_brk = new_brk;
+                result = new_brk;
+                g_current_brk_size -= size_to_free;
             }
         } else {
             g_current_brk = new_brk;
