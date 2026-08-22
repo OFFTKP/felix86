@@ -1370,7 +1370,9 @@ biscuit::Vec Recompiler::getVec(const ZydisDecodedOperand* operand) {
 
         readMemory(vec, address, operand->size);
 
-        popScratch(); // pop lea scratch
+        if (isScratch(address)) {
+            popScratch(); // pop lea scratch
+        }
 
         return vec;
     }
@@ -1748,6 +1750,22 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp, 
     }
 
     ASSERT(operand->type == ZYDIS_OPERAND_TYPE_MEMORY);
+
+    bool has_base = operand->mem.base != ZYDIS_REGISTER_NONE;
+    bool has_index = operand->mem.index != ZYDIS_REGISTER_NONE;
+    bool has_segment = current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT;
+    bool has_disp = operand->mem.disp.value != 0;
+
+    if (!use_temp && forced_dst == x0 && !has_segment && !has_disp && operand->mem.base != ZYDIS_REGISTER_RIP) {
+        if (has_base && !has_index) {
+            return getGPR(operand->mem.base);
+        }
+
+        if (!has_base && has_index && operand->mem.scale == 1) {
+            return getGPR(operand->mem.index);
+        }
+    }
+
     biscuit::GPR address = forced_dst == x0 ? scratch() : forced_dst;
     cached_lea = address;
     cached_lea_operand = operand;
@@ -1770,11 +1788,6 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp, 
         return address;
     }
 
-    bool has_base = operand->mem.base != ZYDIS_REGISTER_NONE;
-    bool has_index = operand->mem.index != ZYDIS_REGISTER_NONE;
-    bool has_segment = current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT;
-    bool has_disp = operand->mem.disp.value != 0;
-
     // Cover the case of just a segment register
     if (has_segment && !has_base && !has_index && !has_disp) {
         if (operand->mem.segment == ZYDIS_REGISTER_FS) {
@@ -1785,20 +1798,6 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp, 
             UNREACHABLE();
         }
         return address;
-    }
-
-    if (!use_temp) {
-        if (!has_segment && has_base && !has_index && !has_disp) {
-            cached_lea_operand = nullptr;
-            biscuit::GPR base = getGPR(operand->mem.base);
-            return base;
-        }
-
-        if (!has_segment && !has_base && has_index && !has_disp && operand->mem.scale == 1) {
-            cached_lea_operand = nullptr;
-            biscuit::GPR index = getGPR(operand->mem.index);
-            return index;
-        }
     }
 
     if (has_disp) {
@@ -2476,31 +2475,23 @@ void Recompiler::updateAuxiliarySub(biscuit::GPR lhs, biscuit::GPR rhs) {
     popScratch();
 }
 
-void Recompiler::updateAuxiliaryAdc(biscuit::GPR lhs, biscuit::GPR result, biscuit::GPR cf, biscuit::GPR result_2) {
+void Recompiler::updateAuxiliaryAdc(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result) {
     biscuit::GPR af = scratch();
-    biscuit::GPR temp = scratch();
-    as.ANDI(af, result, 0xF);
-    as.ANDI(temp, lhs, 0xF);
-    as.SLTU(af, af, temp);
-    as.ANDI(temp, result_2, 0xF);
-    as.SLTU(temp, temp, cf);
-    as.OR(af, af, temp);
+    as.XOR(af, lhs, rhs);
+    as.XOR(af, af, result);
+    as.SRLI(af, af, 4);
+    as.ANDI(af, af, 1);
     as.SB(af, offsetof(ThreadState, ctx.af), threadStatePointer());
-    popScratch();
     popScratch();
 }
 
-void Recompiler::updateAuxiliarySbb(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, biscuit::GPR cf) {
+void Recompiler::updateAuxiliarySbb(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result) {
     biscuit::GPR af = scratch();
-    biscuit::GPR temp = scratch();
-    as.ANDI(af, rhs, 0xF);
-    as.ANDI(temp, lhs, 0xF);
-    as.SLTU(af, temp, af);
-    as.ANDI(temp, result, 0xF);
-    as.SLTU(temp, temp, cf);
-    as.OR(af, af, temp);
+    as.XOR(af, lhs, rhs);
+    as.XOR(af, af, result);
+    as.SRLI(af, af, 4);
+    as.ANDI(af, af, 1);
     as.SB(af, offsetof(ThreadState, ctx.af), threadStatePointer());
-    popScratch();
     popScratch();
 }
 
@@ -2516,15 +2507,13 @@ void Recompiler::updateCarrySub(biscuit::GPR lhs, biscuit::GPR rhs) {
 }
 
 void Recompiler::updateCarryAdc(biscuit::GPR lhs, biscuit::GPR result, biscuit::GPR result_2, x86_size_e size) {
-    biscuit::GPR temp = scratch();
-    biscuit::GPR temp2 = scratch();
     biscuit::GPR cf = flag(X86_REF_CF);
-    zext(temp, result, size);
-    zext(temp2, result_2, size);
-    as.SLTU(temp, temp, lhs);
-    as.SLTU(temp2, temp2, cf);
-    as.OR(cf, temp, temp2);
-    popScratch();
+    biscuit::GPR temp = scratch();
+    zext(temp, result_2, size);
+    as.SLTU(temp, temp, cf);
+    zext(cf, result, size);
+    as.SLTU(cf, cf, lhs);
+    as.OR(cf, cf, temp);
     popScratch();
 }
 

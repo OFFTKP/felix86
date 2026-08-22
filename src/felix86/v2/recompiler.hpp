@@ -554,9 +554,9 @@ struct Recompiler {
 
     void updateAuxiliarySub(biscuit::GPR lhs, biscuit::GPR rhs);
 
-    void updateAuxiliaryAdc(biscuit::GPR lhs, biscuit::GPR result, biscuit::GPR cf, biscuit::GPR result_2);
+    void updateAuxiliaryAdc(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result);
 
-    void updateAuxiliarySbb(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, biscuit::GPR cf);
+    void updateAuxiliarySbb(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result);
 
     void updateCarryAdc(biscuit::GPR dst, biscuit::GPR result, biscuit::GPR result_2, x86_size_e size);
 
