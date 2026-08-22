@@ -7549,11 +7549,15 @@ FAST_HANDLE(RORX) {
 FAST_HANDLE(MULX) {
     biscuit::GPR hi_dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
     biscuit::GPR lo_dst = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    bool same_dst = lo_dst == hi_dst;
     if (operands[0].size == 64) {
         biscuit::GPR src = rec.getGPR(&operands[2]);
         biscuit::GPR rdx = rec.getGPR(X86_REF_RDX, X86_SIZE_QWORD);
         if (lo_dst == src || lo_dst == rdx) {
             lo_dst = rec.scratch();
+        }
+        if (same_dst) {
+            hi_dst = rec.scratch();
         }
         as.MUL(lo_dst, src, rdx);
         as.MULHU(hi_dst, src, rdx);
@@ -8681,6 +8685,9 @@ FAST_HANDLE(CMPXCHG_lock) {
             as.SRLW(dst, dst, address);
             as.ANDI(dst, dst, 0xFF);
 
+            as.MV(rax_shifted, x0);
+            as.MV(src_shifted, x0);
+
             rec.popScratch();
             rec.popScratch();
             rec.popScratch();
@@ -8753,6 +8760,10 @@ FAST_HANDLE(CMPXCHG_lock) {
             as.Bind(&not_equal);
             as.SRLW(dst, dst, address);
             as.AND(dst, dst, mask);
+
+            as.MV(mask_shifted, x0);
+            as.MV(rax_shifted, x0);
+            as.MV(src_shifted, x0);
 
             rec.popScratch();
             rec.popScratch();
