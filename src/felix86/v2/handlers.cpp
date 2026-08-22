@@ -13663,7 +13663,8 @@ using FuncPtr3 = void (Assembler::*)(biscuit::Vec, biscuit::Vec, biscuit::Vec, b
 template <typename Func>
 inline static void AVX_Operation(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, Func operation,
                                  SEW sew, int elements) {
-    bool is_xmms = !instruction.raw.vex.L;
+    ASSERT(operands[0].size == 128 || operands[0].size == 256);
+    bool is_xmms = operands[0].size == 128;
     biscuit::Vec dst = is_xmms ? rec.scratchVec() : rec.getVec(&operands[0]);
     biscuit::Vec src1 = rec.getVec(&operands[1]);
     int element_count = elements == 1 ? 1 : elements / (is_xmms ? 2 : 1);
@@ -13876,7 +13877,8 @@ FAST_HANDLE(VPAND) {
 }
 
 static void VRCP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int elements) {
-    bool is_xmms = !instruction.raw.vex.L;
+    ASSERT(operands[0].size == 128 || operands[0].size == 256);
+    bool is_xmms = operands[0].size == 128;
     biscuit::Vec dst = is_xmms ? rec.scratchVec() : rec.getVec(&operands[0]);
     biscuit::Vec src1 = rec.getVec(&operands[1]);
     biscuit::Vec onevec = rec.scratchVec();
@@ -14312,7 +14314,8 @@ FAST_HANDLE(VCVTPS2PH) {
 }
 
 static void VRSQRT(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int elements) {
-    bool is_xmms = !instruction.raw.vex.L;
+    ASSERT(operands[0].size == 128 || operands[0].size == 256);
+    bool is_xmms = operands[0].size == 128;
     biscuit::Vec dst = is_xmms ? rec.scratchVec() : rec.getVec(&operands[0]);
     biscuit::Vec src1 = rec.getVec(&operands[1]);
     biscuit::Vec onevec = rec.scratchVec();
@@ -17392,7 +17395,8 @@ FAST_HANDLE(VPSRAW) {
 
 static void VFMADD(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int length,
                    int order) {
-    bool is_xmms = !instruction.raw.vex.L;
+    ASSERT(operands[0].size == 128 || operands[0].size == 256);
+    bool is_xmms = operands[0].size == 128;
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src2 = rec.getVec(&operands[1]);
     biscuit::Vec src3 = rec.getVec(&operands[2]);
@@ -17423,7 +17427,8 @@ static void VFMADD(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& inst
 
 static void VFNMADD(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int length,
                     int order) {
-    bool is_xmms = !instruction.raw.vex.L;
+    ASSERT(operands[0].size == 128 || operands[0].size == 256);
+    bool is_xmms = operands[0].size == 128;
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src2 = rec.getVec(&operands[1]);
     biscuit::Vec src3 = rec.getVec(&operands[2]);
@@ -17454,7 +17459,8 @@ static void VFNMADD(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& ins
 
 static void VFMSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int length,
                    int order) {
-    bool is_xmms = !instruction.raw.vex.L;
+    ASSERT(operands[0].size == 128 || operands[0].size == 256);
+    bool is_xmms = operands[0].size == 128;
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src2 = rec.getVec(&operands[1]);
     biscuit::Vec src3 = rec.getVec(&operands[2]);
@@ -17485,7 +17491,8 @@ static void VFMSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& inst
 
 static void VFNMSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int length,
                     int order) {
-    bool is_xmms = !instruction.raw.vex.L;
+    ASSERT(operands[0].size == 128 || operands[0].size == 256);
+    bool is_xmms = operands[0].size == 128;
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src2 = rec.getVec(&operands[1]);
     biscuit::Vec src3 = rec.getVec(&operands[2]);
