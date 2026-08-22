@@ -44,6 +44,10 @@ u64 BRK::set(bool mode32, u64 new_brk) {
         u64 end_brk = g_initial_brk + g_current_brk_size;
         ASSERT(!(end_brk & 0xFFF)); // assert page aligned
         u64 aligned_brk = (new_brk + 0xFFF) & ~0xFFFull;
+        if (aligned_brk < new_brk) { // brk overflows
+            return g_current_brk;
+        }
+
         if (aligned_brk > end_brk) {
             u64 size_past_end = aligned_brk - end_brk;
             int flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE;
