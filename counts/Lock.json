@@ -374,7 +374,7 @@
         "disassembly": "lock xchg [rdi], rax"
     },
     "f00fb027": {
-        "instruction_count": 25,
+        "instruction_count": 27,
         "expected_asm": [
             "ADDI            ra, a0, 0x0(0)",
             "SRLI            t1, t0, 0x8(8)",
@@ -396,6 +396,8 @@
             "BNE             zero, t6, 0xffffffe4(-28)",
             "SRLW            t4, t4, ra",
             "ANDI            t4, t4, 0xff(255)",
+            "ADDI            s5, zero, 0x0(0)",
+            "ADDI            s7, zero, 0x0(0)",
             "SUB             t2, t3, t4",
             "BEQ             t2, zero, 0x10(16)",
             "ANDI            t5, t4, 0xff(255)",
@@ -405,7 +407,7 @@
         "disassembly": "lock cmpxchg [rdi], ah"
     },
     "f0660fb107": {
-        "instruction_count": 30,
+        "instruction_count": 33,
         "expected_asm": [
             "ADDI            ra, a0, 0x0(0)",
             "ZEXT.H          t1, t0",
@@ -431,6 +433,9 @@
             "BNE             zero, t5, 0xffffffe4(-28)",
             "SRLW            t4, t4, ra",
             "AND             t4, t4, t6",
+            "ADDI            s8, zero, 0x0(0)",
+            "ADDI            s5, zero, 0x0(0)",
+            "ADDI            s7, zero, 0x0(0)",
             "SUB             t2, t3, t4",
             "BEQ             t2, zero, 0x14(20)",
             "ZEXT.H          t5, t4",
