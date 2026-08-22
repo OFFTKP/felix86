@@ -13879,7 +13879,15 @@ FAST_HANDLE(VANDPD) {
 }
 
 FAST_HANDLE(VPAND) {
-    fast_VANDPD(rec, rip, as, instruction, operands);
+    bool is_xmms = operands[0].size == 128;
+    biscuit::Vec dst = is_xmms ? rec.scratchVec() : rec.getVec(&operands[0]);
+    biscuit::Vec src1 = rec.getVec(&operands[1]);
+    biscuit::Vec src2 = rec.getVec(&operands[2]);
+    if (!rec.isCurrentLength256() && (!is_xmms || !rec.isCurrentLength128())) {
+        rec.setVectorState(SEW::E64, 4);
+    }
+    as.VAND(dst, src1, src2);
+    rec.setVec(&operands[0], dst);
 }
 
 static void VRCP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int elements) {
@@ -14633,11 +14641,14 @@ FAST_HANDLE(VPCMPGTQ) {
 }
 
 static void VANDN(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int elements) {
-    bool is_xmms = !instruction.raw.vex.L;
+    ASSERT(operands[0].size == 128 || operands[0].size == 256);
+    bool is_xmms = operands[0].size == 128;
     biscuit::Vec dst = is_xmms ? rec.scratchVec() : rec.getVec(&operands[0]);
     biscuit::Vec src1 = rec.getVec(&operands[1]);
     biscuit::Vec src2 = rec.getVec(&operands[2]);
-    rec.setVectorState(sew, elements);
+    if (!rec.isCurrentLength256() && (!is_xmms || !rec.isCurrentLength128())) {
+        rec.setVectorState(sew, elements);
+    }
     if (Extensions::Zvbb) {
         as.VANDN(dst, src2, src1);
     } else {
@@ -14669,7 +14680,15 @@ FAST_HANDLE(VORPD) {
 }
 
 FAST_HANDLE(VPOR) {
-    fast_VORPD(rec, rip, as, instruction, operands);
+    bool is_xmms = operands[0].size == 128;
+    biscuit::Vec dst = is_xmms ? rec.scratchVec() : rec.getVec(&operands[0]);
+    biscuit::Vec src1 = rec.getVec(&operands[1]);
+    biscuit::Vec src2 = rec.getVec(&operands[2]);
+    if (!rec.isCurrentLength256() && (!is_xmms || !rec.isCurrentLength128())) {
+        rec.setVectorState(SEW::E64, 4);
+    }
+    as.VOR(dst, src1, src2);
+    rec.setVec(&operands[0], dst);
 }
 
 FAST_HANDLE(VXORPS) {
@@ -14681,7 +14700,15 @@ FAST_HANDLE(VXORPD) {
 }
 
 FAST_HANDLE(VPXOR) {
-    fast_VXORPD(rec, rip, as, instruction, operands);
+    bool is_xmms = operands[0].size == 128;
+    biscuit::Vec dst = is_xmms ? rec.scratchVec() : rec.getVec(&operands[0]);
+    biscuit::Vec src1 = rec.getVec(&operands[1]);
+    biscuit::Vec src2 = rec.getVec(&operands[2]);
+    if (!rec.isCurrentLength256() && (!is_xmms || !rec.isCurrentLength128())) {
+        rec.setVectorState(SEW::E64, 4);
+    }
+    as.VXOR(dst, src1, src2);
+    rec.setVec(&operands[0], dst);
 }
 
 FAST_HANDLE(VPADDB) {
