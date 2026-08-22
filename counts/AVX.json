@@ -10087,7 +10087,7 @@
         "disassembly": "vmovntpd [rdi], ymm1"
     },
     "c5dbd0dd": {
-        "instruction_count": 7,
+        "instruction_count": 10,
         "expected_asm": [
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
             "VID.V           v2, none",
@@ -10095,22 +10095,28 @@
             "VMSEQ.VI        v0, v2, 0x0(0), none",
             "VMV.V.V         v3, v21",
             "VFSGNJN.VV      v3, v3, v3, v0.t",
-            "VFADD.VV        v19, v20, v3, none"
+            "VFADD.VV        v5, v20, v3, none",
+            "VSETIVLI        zero, 4, e64, m1, tu, mu",
+            "VMV.V.I         v0, 0xfffffffc(-4)",
+            "VMERGE.VIM      v19, v5, 0x0(0)"
         ],
         "disassembly": "vaddsubps xmm3, xmm4, xmm5"
     },
     "c5ebd00f": {
-        "instruction_count": 9,
+        "instruction_count": 12,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v5, a0, none, 1",
+            "VLE8.V          v6, a0, none, 1",
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
             "VID.V           v2, none",
             "VAND.VI         v2, v2, 0x1(1), none",
             "VMSEQ.VI        v0, v2, 0x0(0), none",
-            "VMV.V.V         v3, v5",
+            "VMV.V.V         v3, v6",
             "VFSGNJN.VV      v3, v3, v3, v0.t",
-            "VFADD.VV        v17, v18, v3, none"
+            "VFADD.VV        v5, v18, v3, none",
+            "VSETIVLI        zero, 4, e64, m1, tu, mu",
+            "VMV.V.I         v0, 0xfffffffc(-4)",
+            "VMERGE.VIM      v17, v5, 0x0(0)"
         ],
         "disassembly": "vaddsubps xmm1, xmm2, [rdi]"
     },
@@ -10144,7 +10150,7 @@
         "disassembly": "vaddsubps ymm1, ymm2, [rdi]"
     },
     "c5d9d0dd": {
-        "instruction_count": 7,
+        "instruction_count": 10,
         "expected_asm": [
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VID.V           v2, none",
@@ -10152,22 +10158,28 @@
             "VMSEQ.VI        v0, v2, 0x0(0), none",
             "VMV.V.V         v3, v21",
             "VFSGNJN.VV      v3, v3, v3, v0.t",
-            "VFADD.VV        v19, v20, v3, none"
+            "VFADD.VV        v5, v20, v3, none",
+            "VSETIVLI        zero, 4, e64, m1, tu, mu",
+            "VMV.V.I         v0, 0xfffffffc(-4)",
+            "VMERGE.VIM      v19, v5, 0x0(0)"
         ],
         "disassembly": "vaddsubpd xmm3, xmm4, xmm5"
     },
     "c5e9d00f": {
-        "instruction_count": 9,
+        "instruction_count": 12,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v5, a0, none, 1",
+            "VLE8.V          v6, a0, none, 1",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VID.V           v2, none",
             "VAND.VI         v2, v2, 0x1(1), none",
             "VMSEQ.VI        v0, v2, 0x0(0), none",
-            "VMV.V.V         v3, v5",
+            "VMV.V.V         v3, v6",
             "VFSGNJN.VV      v3, v3, v3, v0.t",
-            "VFADD.VV        v17, v18, v3, none"
+            "VFADD.VV        v5, v18, v3, none",
+            "VSETIVLI        zero, 4, e64, m1, tu, mu",
+            "VMV.V.I         v0, 0xfffffffc(-4)",
+            "VMERGE.VIM      v17, v5, 0x0(0)"
         ],
         "disassembly": "vaddsubpd xmm1, xmm2, [rdi]"
     },
@@ -13578,7 +13590,7 @@
         "disassembly": "vpcmpistri xmm1, [rdi], 0xAA"
     },
     "c4e37962dcaa": {
-        "instruction_count": 62,
+        "instruction_count": 64,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -13613,6 +13625,8 @@
             "ADDIW           a4, zero, 0xaa(170)",
             "LD              t4, gp, 0x4a0(1184)",
             "JALR            ra, t4, 0x0(0)",
+            "SD              zero, gp, 0xe8(232)",
+            "SD              zero, gp, 0xf0(240)",
             "LD              s11, gp, 0x80(128)",
             "LD              t0, gp, 0x0(0)",
             "LD              s10, gp, 0x8(8)",
@@ -13646,7 +13660,7 @@
         "disassembly": "vpcmpistrm xmm3, xmm4, 0xAA"
     },
     "c4e379620faa": {
-        "instruction_count": 63,
+        "instruction_count": 65,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -13682,6 +13696,8 @@
             "ADDIW           a4, zero, 0xaa(170)",
             "LD              t4, gp, 0x4a0(1184)",
             "JALR            ra, t4, 0x0(0)",
+            "SD              zero, gp, 0xe8(232)",
+            "SD              zero, gp, 0xf0(240)",
             "LD              s11, gp, 0x80(128)",
             "LD              t0, gp, 0x0(0)",
             "LD              s10, gp, 0x8(8)",
@@ -13852,7 +13868,7 @@
         "disassembly": "vpcmpestri xmm1, [rdi], 0xAA"
     },
     "c4e37960dcaa": {
-        "instruction_count": 62,
+        "instruction_count": 64,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -13887,6 +13903,8 @@
             "ADDIW           a4, zero, 0xaa(170)",
             "LD              t4, gp, 0x4a0(1184)",
             "JALR            ra, t4, 0x0(0)",
+            "SD              zero, gp, 0xe8(232)",
+            "SD              zero, gp, 0xf0(240)",
             "LD              s11, gp, 0x80(128)",
             "LD              t0, gp, 0x0(0)",
             "LD              s10, gp, 0x8(8)",
@@ -13920,7 +13938,7 @@
         "disassembly": "vpcmpestrm xmm3, xmm4, 0xAA"
     },
     "c4e379600faa": {
-        "instruction_count": 63,
+        "instruction_count": 65,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -13956,6 +13974,8 @@
             "ADDIW           a4, zero, 0xaa(170)",
             "LD              t4, gp, 0x4a0(1184)",
             "JALR            ra, t4, 0x0(0)",
+            "SD              zero, gp, 0xe8(232)",
+            "SD              zero, gp, 0xf0(240)",
             "LD              s11, gp, 0x80(128)",
             "LD              t0, gp, 0x0(0)",
             "LD              s10, gp, 0x8(8)",
