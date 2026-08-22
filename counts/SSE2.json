@@ -596,14 +596,14 @@
             "VFMV.F.S        f28, v17",
             "FLD             f29, a0, 0x0(0)",
             "FEQ.D           s7, f28, f29",
-            "FEQ.D           t3, f28, f28",
-            "FEQ.D           t1, f29, f29",
+            "FEQ.D           t1, f28, f28",
+            "FEQ.D           ra, f29, f29",
             "FLT.D           s5, f28, f29",
-            "AND             t1, t1, t3",
-            "XORI            t1, t1, 0x1(1)",
-            "SB              t1, gp, 0x2d9(729)",
-            "OR              s5, s5, t1",
-            "OR              s7, s7, t1"
+            "AND             ra, ra, t1",
+            "XORI            ra, ra, 0x1(1)",
+            "SB              ra, gp, 0x2d9(729)",
+            "OR              s5, s5, ra",
+            "OR              s7, s7, ra"
         ],
         "disassembly": "comisd xmm1, [rdi]"
     },
@@ -659,14 +659,14 @@
             "VFMV.F.S        f28, v17",
             "FLD             f29, a0, 0x0(0)",
             "FEQ.D           s7, f28, f29",
-            "FEQ.D           t3, f28, f28",
-            "FEQ.D           t1, f29, f29",
+            "FEQ.D           t1, f28, f28",
+            "FEQ.D           ra, f29, f29",
             "FLT.D           s5, f28, f29",
-            "AND             t1, t1, t3",
-            "XORI            t1, t1, 0x1(1)",
-            "SB              t1, gp, 0x2d9(729)",
-            "OR              s5, s5, t1",
-            "OR              s7, s7, t1"
+            "AND             ra, ra, t1",
+            "XORI            ra, ra, 0x1(1)",
+            "SB              ra, gp, 0x2d9(729)",
+            "OR              s5, s5, ra",
+            "OR              s7, s7, ra"
         ],
         "disassembly": "ucomisd xmm1, [rdi]"
     },
