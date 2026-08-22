@@ -11209,6 +11209,12 @@ static void PCMPXSTRX(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstr
     as.LI(a4, operands[2].imm.value.u);
 
     rec.callPointer(offsetof(ThreadState, felix86_pcmpxstrx));
+
+    if (((u8)type & 1) && instruction.encoding == ZYDIS_INSTRUCTION_ENCODING_VEX) {
+        as.SD(x0, offsetof(ThreadState, ctx.xmm) + 16, rec.threadStatePointer());
+        as.SD(x0, offsetof(ThreadState, ctx.xmm) + 24, rec.threadStatePointer());
+    }
+
     rec.restoreState();
 }
 
@@ -16566,7 +16572,7 @@ static void VADDSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& ins
     biscuit::Vec temp = rec.scratchVec();
     biscuit::Vec negated_src = rec.scratchVec();
     biscuit::Vec v0_storage = rec.scratchVec();
-    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec dst = is_xmms ? rec.scratchVec() : rec.getVec(&operands[0]);
     biscuit::Vec src1 = rec.getVec(&operands[1]);
     biscuit::Vec src2 = rec.getVec(&operands[2]);
 
