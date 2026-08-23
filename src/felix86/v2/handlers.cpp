@@ -3940,7 +3940,8 @@ FAST_HANDLE(MOVSXD) {
     biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
     if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         i64 imm = 0;
-        if (IsValidSigned12BitImm(operands[1].mem.disp.value)) {
+        if (IsValidSigned12BitImm(operands[1].mem.disp.value) && !(instruction.attributes & ZYDIS_ATTRIB_HAS_SEGMENT) &&
+            !g_config.paranoid && g_config.no_address_overflow) {
             imm = operands[1].mem.disp.value;
             operands[1].mem.disp.value = 0;
         }
@@ -3953,6 +3954,9 @@ FAST_HANDLE(MOVSXD) {
         default: {
             UNREACHABLE();
         }
+        }
+        if (rec.needsTsoFence()) {
+            as.FENCE(FenceOrder::R, FenceOrder::RW);
         }
         rec.setGPR(&operands[0], dst);
     } else {
@@ -4731,7 +4735,8 @@ FAST_HANDLE(MOVZX) {
         }
     } else {
         i64 imm = 0;
-        if (IsValidSigned12BitImm(operands[1].mem.disp.value)) {
+        if (IsValidSigned12BitImm(operands[1].mem.disp.value) && !(instruction.attributes & ZYDIS_ATTRIB_HAS_SEGMENT) &&
+            !g_config.paranoid && g_config.no_address_overflow) {
             imm = operands[1].mem.disp.value;
             operands[1].mem.disp.value = 0;
         }
@@ -8413,7 +8418,8 @@ FAST_HANDLE(MFENCE) {
 FAST_HANDLE(MOVSX) {
     if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         i64 imm = 0;
-        if (IsValidSigned12BitImm(operands[1].mem.disp.value)) {
+        if (IsValidSigned12BitImm(operands[1].mem.disp.value) && !(instruction.attributes & ZYDIS_ATTRIB_HAS_SEGMENT) &&
+            !g_config.paranoid && g_config.no_address_overflow) {
             imm = operands[1].mem.disp.value;
             operands[1].mem.disp.value = 0;
         }
@@ -8435,6 +8441,9 @@ FAST_HANDLE(MOVSX) {
         default: {
             UNREACHABLE();
         }
+        }
+        if (rec.needsTsoFence()) {
+            as.FENCE(FenceOrder::R, FenceOrder::RW);
         }
         rec.setGPR(&operands[0], dst);
     } else {
