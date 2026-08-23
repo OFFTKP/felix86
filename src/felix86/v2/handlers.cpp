@@ -8955,6 +8955,7 @@ FAST_HANDLE(EMMS) {
     // Set FPU tag word to empty
     // Since our internal tag word is abridged, we use zeroes for empty
     as.SB(x0, offsetof(ThreadState, ctx.fpu_tw), rec.threadStatePointer());
+    rec.setTOP(x0);
     rec.switchToX87();
 }
 
@@ -9343,21 +9344,59 @@ FAST_HANDLE(CVTPI2PS) {
 }
 
 FAST_HANDLE(CVTPS2PI) {
+    biscuit::Vec result = rec.scratchVec();
+    biscuit::GPR mask = rec.scratch();
+    biscuit::GPR indefinite = rec.scratch();
+    biscuit::GPR largest_int = rec.scratch();
+    biscuit::FPR limit = rec.scratchFPR();
+    biscuit::Vec class_bits = rec.scratchVec();
+    biscuit::Vec bigger_bits = rec.scratchVec();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
 
+    as.LI(indefinite, 0x8000'0000);
+    as.LI(mask, 0b1110000001);
+    as.ADDI(largest_int, indefinite, -1);
+    as.FCVT_S_W(limit, largest_int);
+
     rec.setVectorState(SEW::E32, 2);
-    as.VFCVT_X_F(dst, src);
+    as.VFCLASS(class_bits, src);
+    as.VAND(class_bits, class_bits, mask);
+    as.VMFGE(bigger_bits, src, limit);
+    as.VMSNE(class_bits, class_bits, x0);
+    as.VFCVT_X_F(result, src);
+    as.VMOR(v0, class_bits, bigger_bits);
+    rec.v0Modified();
+    as.VMERGE(dst, result, indefinite);
 
     rec.setVec(&operands[0], dst);
 }
 
 FAST_HANDLE(CVTTPS2PI) {
+    biscuit::Vec result = rec.scratchVec();
+    biscuit::GPR mask = rec.scratch();
+    biscuit::GPR indefinite = rec.scratch();
+    biscuit::GPR largest_int = rec.scratch();
+    biscuit::FPR limit = rec.scratchFPR();
+    biscuit::Vec class_bits = rec.scratchVec();
+    biscuit::Vec bigger_bits = rec.scratchVec();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
 
+    as.LI(indefinite, 0x8000'0000);
+    as.LI(mask, 0b1110000001);
+    as.ADDI(largest_int, indefinite, -1);
+    as.FCVT_S_W(limit, largest_int);
+
     rec.setVectorState(SEW::E32, 2);
-    as.VFCVT_RTZ_X_F(dst, src);
+    as.VFCLASS(class_bits, src);
+    as.VAND(class_bits, class_bits, mask);
+    as.VMFGE(bigger_bits, src, limit);
+    as.VMSNE(class_bits, class_bits, x0);
+    as.VFCVT_RTZ_X_F(result, src);
+    as.VMOR(v0, class_bits, bigger_bits);
+    rec.v0Modified();
+    as.VMERGE(dst, result, indefinite);
 
     rec.setVec(&operands[0], dst);
 }
