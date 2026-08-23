@@ -620,6 +620,8 @@ int main(int argc, char* argv[]) {
         // DOTNET tries to allocate too much heap memory, and many RISC-V boards currently come with 39-bit address space
         // To counteract this by default, we'll limit the heap memory dotnet allocates
         g_params.envp.push_back("DOTNET_GCHeapHardLimit=1C0000000");
+        // Some DOTNET games will use W^X mappings which will break our current SMC detection, disable it for now
+        g_params.envp.push_back("DOTNET_EnableWriteXorExecute=0");
     }
 
     auto it = g_params.envp.begin();
