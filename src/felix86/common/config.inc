@@ -22,6 +22,7 @@ X(Logging, bool, print_cpuid, false, FELIX86_PRINT_CPUID, "Print on every CPUID 
 X(Logging, bool, print_thunks, false, FELIX86_PRINT_THUNKS, "Print on every thunk function call");
 X(Logging, bool, print_guest_ptrace, false, FELIX86_PRINT_GUEST_PTRACE, "Print guest-side ptrace information");
 X(Logging, bool, print_host_ptrace, false, FELIX86_PRINT_HOST_PTRACE, "Print host-side ptrace information");
+X(Logging, bool, log_file, false, FELIX86_LOG_FILE, "Write logs to a file in /tmp");
 
 X(CPUID, bool, no_sse2, false, FELIX86_NO_SSE2, "Disable SSE2 instructions")
 X(CPUID, bool, no_sse3, false, FELIX86_NO_SSE3, "Disable SSE3 instructions")

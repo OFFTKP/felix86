@@ -35,7 +35,11 @@ struct Logger {
 
     static const char* getPipeName();
 
-    static void startServer(bool detach = false);
+    static void openTerminal();
+
+    static void openLogFile();
+
+    static void startServer();
 
     static void joinServer();
 
