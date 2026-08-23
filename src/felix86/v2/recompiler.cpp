@@ -678,7 +678,7 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
             ran_mmx_once = true;
             WARN_ONCE("This program makes use of MMX");
             if (local_x87_state != x87State::MMX) {
-                if (local_x87_state == x87State::x87 && g_config.reduced_precision) {
+                if (local_x87_state == x87State::x87) {
                     flushX87();
                 }
                 switchToMMX();
@@ -704,6 +704,7 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
         if (is_x87) {
             if (local_x87_state == x87State::MMX) {
                 WARN("x87 and MMX mixed in a block?");
+                flushX87();
             }
 
             ZydisMnemonic mnemonic = instruction.mnemonic;

@@ -74,11 +74,7 @@ void felix86_fsave_16(const UserContext& ctx, void* address) {
     }
 
     data->cw = ctx.fpu_cw;
-    if (is_mmx) {
-        data->tw = 0; // All registers valid in MMX state
-    } else {
-        data->tw = tw_8_to_16(ctx.st, ctx.fpu_tw);
-    }
+    data->tw = tw_8_to_16(ctx.st, ctx.fpu_tw);
     data->sw = (ctx.fpu_top << 11) | (ctx.fpu_sw & ~(0b111 << 11));
 
     if (g_config.reduced_precision) {
@@ -111,11 +107,7 @@ void felix86_fsave_32(const UserContext& ctx, void* address) {
     }
 
     data->cw = ctx.fpu_cw;
-    if (is_mmx) {
-        data->tw = 0; // All registers valid in MMX state
-    } else {
-        data->tw = tw_8_to_16(ctx.st, ctx.fpu_tw);
-    }
+    data->tw = tw_8_to_16(ctx.st, ctx.fpu_tw);
     data->sw = (ctx.fpu_top << 11) | (ctx.fpu_sw & ~(0b111 << 11));
 
     if (g_config.reduced_precision) {
@@ -344,24 +336,14 @@ void felix86_xrstor(UserContext& ctx, void* address, bool restore_all) {
 void felix86_fstenv_16(ThreadState* state, u64 address) {
     fenv_data_16* env = (fenv_data_16*)address;
     env->cw = state->ctx.fpu_cw;
-    bool is_mmx = (x87State)state->ctx.x87_state == x87State::MMX;
-    if (is_mmx) {
-        env->tw = 0; // All registers valid in MMX state
-    } else {
-        env->tw = tw_8_to_16(state->ctx.st, state->ctx.fpu_tw);
-    }
+    env->tw = tw_8_to_16(state->ctx.st, state->ctx.fpu_tw);
     env->sw = (state->ctx.fpu_top << 11) | (state->ctx.fpu_sw & ~(0b111 << 11));
 }
 
 void felix86_fstenv_32(ThreadState* state, u64 address) {
     fenv_data_32* env = (fenv_data_32*)address;
     env->cw = state->ctx.fpu_cw;
-    bool is_mmx = (x87State)state->ctx.x87_state == x87State::MMX;
-    if (is_mmx) {
-        env->tw = 0; // All registers valid in MMX state
-    } else {
-        env->tw = tw_8_to_16(state->ctx.st, state->ctx.fpu_tw);
-    }
+    env->tw = tw_8_to_16(state->ctx.st, state->ctx.fpu_tw);
     env->sw = (state->ctx.fpu_top << 11) | (state->ctx.fpu_sw & ~(0b111 << 11));
 }
 
