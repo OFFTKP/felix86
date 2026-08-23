@@ -1,3 +1,5 @@
+#include <cerrno>
+#include <climits>
 #include <csignal>
 #include <cstdarg>
 #include <sys/file.h>
@@ -9,19 +11,88 @@
 #include "felix86/hle/fd.hpp"
 
 static std::string g_pipe_name;
+static int g_log_file_fd = -1;
+
+static void write_fully(int fd, const char* buffer, int size) {
+    int offset = 0;
+    while (offset < size) {
+        ssize_t written = write(fd, buffer + offset, size - offset);
+        if (written < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            return;
+        }
+
+        if (written == 0) {
+            return;
+        }
+
+        offset += written;
+    }
+}
 
 void Logger::log(const char* format, ...) {
+    if (g_output_fd < 0 && g_log_file_fd < 0) {
+        return;
+    }
+
+    char buffer[PIPE_BUF];
     va_list args;
     va_start(args, format);
-    vdprintf(g_output_fd, format, args);
+    int size = vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
+
+    if (size < 0) {
+        return;
+    }
+
+    if (size >= (int)sizeof(buffer)) {
+        size = sizeof(buffer) - 1;
+    }
+
+    if (g_output_fd >= 0) {
+        write_fully(g_output_fd, buffer, size);
+    }
+
+    if (g_log_file_fd >= 0) {
+        write_fully(g_log_file_fd, buffer, size);
+    }
+}
+
+void Logger::openTerminal() {
+    int fd = open("/dev/tty", O_WRONLY);
+    if (fd < 0) {
+        g_output_fd = -1;
+        return;
+    }
+
+    fd = FD::moveToHighNumber(fd);
+    FD::protect(fd);
+    g_output_fd = fd;
+}
+
+void Logger::openLogFile() {
+    if (!g_config.log_file) {
+        return;
+    }
+
+    std::string log_path = "/tmp/felix86-" + std::to_string(getpid()) + "-XXXXXX.log";
+    int fd = mkstemps(log_path.data(), 4);
+    if (fd < 0) {
+        return;
+    }
+
+    fd = FD::moveToHighNumber(fd);
+    FD::protect(fd);
+    g_log_file_fd = fd;
 }
 
 const char* Logger::getPipeName() {
     return g_pipe_name.c_str();
 }
 
-void Logger::startServer(bool detach) {
+void Logger::startServer() {
     std::string log_path = "/tmp/felix86-" + std::to_string(getpid());
     g_pipe_name = log_path + ".pipe";
     log_path += "-XXXXXX.log";
@@ -35,36 +106,18 @@ void Logger::startServer(bool detach) {
     ok = chmod(g_pipe_name.c_str(), 0600);
     ASSERT(ok == 0);
 
-    if (detach) {
-        std::string message = "Started the log server in the background. Use `export __FELIX86_PIPE=";
-        message += Logger::getPipeName();
-        message += "` to join to this log server from future felix86 instances.\n";
-        printf("%s", message.c_str());
-        setsid();
-    }
+    std::string message = "Started the log server in the background. Use `export __FELIX86_PIPE=";
+    message += Logger::getPipeName();
+    message += "` to join to this log server from future felix86 instances.\n";
+    printf("%s", message.c_str());
+    fflush(stdout);
+    setsid();
 
-    if (!detach) {
-        int pid = fork();
-        if (pid == 0) {
-            // When the parent dies (main emulator thread), make sure the logging "server" also dies
-            prctl(PR_SET_PDEATHSIG, SIGTERM);
-            serverLoop(fd);
-        } else {
-            // Close the log file from this side
-            ASSERT(close(fd) == 0);
-            // Open write end of pipe -- we need to do it here otherwise the thing will hang (both ends need to be opened simultaneously)
-            g_output_fd = open(g_pipe_name.c_str(), O_WRONLY, 0644);
-            ASSERT(g_output_fd > 0);
-            g_output_fd = FD::moveToHighNumber(g_output_fd);
-            FD::protect(g_output_fd);
-        }
+    int pid = fork();
+    if (pid == 0) {
+        serverLoop(fd);
     } else {
-        int pid = fork();
-        if (pid == 0) {
-            serverLoop(fd);
-        } else {
-            exit(0);
-        }
+        exit(0);
     }
 }
 
@@ -77,7 +130,7 @@ void Logger::joinServer() {
         printf("__FELIX86_PIPE not set?\n");
         exit(1);
     }
-    g_output_fd = open(file, O_WRONLY, 0644);
+    g_output_fd = open(file, O_RDWR | O_NONBLOCK, 0644);
     if (g_output_fd == -1) {
         printf("Bad g_output_fd -- errno: %d -- pipe: %s", errno, file);
         exit(1);
@@ -101,9 +154,6 @@ void Logger::serverLoop(int fd) {
         }                                                                                                                                            \
     } while (false)
 
-    // This is going to be the logging "server". Basically we don't want to print anything to stdout
-    // as applications may read it. So we start a separate process with its own stdout to handle
-    // the displaying of messages.
     sigset_t mask;
     sigfillset(&mask);
     sigdelset(&mask, SIGTERM);
@@ -111,6 +161,9 @@ void Logger::serverLoop(int fd) {
 
     int read_pipe = open(g_pipe_name.c_str(), O_RDONLY, 0666);
     ASSERT(read_pipe > 0);
+    // Ensure there's always a writer, so that the reader will sleep even when there's no processes attached
+    int keepalive_pipe = open(g_pipe_name.c_str(), O_WRONLY, 0666);
+    ASSERT(keepalive_pipe > 0);
     FILE* f = fdopen(fd, "w"); // create the log file to store the log if we need it later
     constexpr size_t buffer_size = 0x10000;
     char buffer[buffer_size];
@@ -129,6 +182,7 @@ void Logger::serverLoop(int fd) {
         // Print the message to our stdout
         std::string message(buffer, size);
         printf("%s", message.c_str());
+        fflush(stdout);
 
         // Also write it to the file
         size_t written = fwrite(message.c_str(), 1, message.size(), f);

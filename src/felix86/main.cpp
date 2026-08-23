@@ -438,7 +438,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         break;
     }
     case 'l': {
-        Logger::startServer(true);
+        Logger::startServer();
         exit(0);
         break;
     }
@@ -578,24 +578,24 @@ int main(int argc, char* argv[]) {
     }
 
     Config::initialize();
-    if (!g_config.no_rootfs && g_config.rootfs_path.empty()) {
-        rootfs_not_set_error();
-    }
-    initialize_globals();
-    Signals::initialize();
 
     if (getenv("__FELIX86_QUIET")) {
         g_config.quiet = true;
     }
 
-    if (!g_config.quiet) {
-        const char* pipe = secure_getenv("__FELIX86_PIPE"); // don't inherit pipe from different uid
-        if (!pipe) {
-            Logger::startServer();
-        } else {
-            Logger::joinServer();
-        }
+    const char* pipe = secure_getenv("__FELIX86_PIPE"); // don't inherit pipe from different uid
+    if (!pipe || !*pipe) {
+        Logger::openTerminal();
+    } else {
+        Logger::joinServer();
     }
+    Logger::openLogFile();
+
+    if (!g_config.no_rootfs && g_config.rootfs_path.empty()) {
+        rootfs_not_set_error();
+    }
+    initialize_globals();
+    Signals::initialize();
 
     const char* argv0_original = getenv("__FELIX86_ARGV0");
     if (argv0_original) {
