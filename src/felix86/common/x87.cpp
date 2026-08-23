@@ -380,34 +380,40 @@ void felix86_x87_FLD1(ThreadState* state) {
     push(state, &value);
 }
 
+static void push_rounded_constant(ThreadState* state, const float128_t* value) {
+    extFloat80_t rounded;
+    f128M_to_extF80M(value, &rounded);
+    push(state, &rounded);
+}
+
 void felix86_x87_FLDL2T(ThreadState* state) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedFloatFallbackCount, 1);
-    extFloat80_t value = {0xD49A'784B'CD1B'8AFEULL, 0x4000};
-    push(state, &value);
+    static const float128_t value = {{0x15FC9257EDFE9B60ull, 0x4000A934F0979A37ull}};
+    push_rounded_constant(state, &value);
 }
 
 void felix86_x87_FLDL2E(ThreadState* state) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedFloatFallbackCount, 1);
-    extFloat80_t value = {0xB8AA'3B29'5C17'F0BCULL, 0x3FFF};
-    push(state, &value);
+    static const float128_t value = {{0xE1777D0FFDA0D23Aull, 0x3FFF71547652B82Full}};
+    push_rounded_constant(state, &value);
 }
 
 void felix86_x87_FLDPI(ThreadState* state) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedFloatFallbackCount, 1);
-    extFloat80_t value = {0xC90F'DAA2'2168'C235ULL, 0x4000};
-    push(state, &value);
+    static const float128_t value = {{0x8469898CC51701B8ull, 0x4000921FB54442D1ull}};
+    push_rounded_constant(state, &value);
 }
 
 void felix86_x87_FLDLG2(ThreadState* state) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedFloatFallbackCount, 1);
-    extFloat80_t value = {0x9A20'9A84'FBCF'F799ULL, 0x3FFD};
-    push(state, &value);
+    static const float128_t value = {{0xEF311F12B35816F9ull, 0x3FFD34413509F79Full}};
+    push_rounded_constant(state, &value);
 }
 
 void felix86_x87_FLDLN2(ThreadState* state) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedFloatFallbackCount, 1);
-    extFloat80_t value = {0xB172'17F7'D1CF'79ACULL, 0x3FFE};
-    push(state, &value);
+    static const float128_t value = {{0xF35793C7673007E6ull, 0x3FFE62E42FEFA39Eull}};
+    push_rounded_constant(state, &value);
 }
 
 void felix86_x87_FABS(ThreadState* state) {
