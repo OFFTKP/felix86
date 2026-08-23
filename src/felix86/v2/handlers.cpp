@@ -3939,10 +3939,15 @@ FAST_HANDLE(CMOVNLE) {
 FAST_HANDLE(MOVSXD) {
     biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
     if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        i64 imm = 0;
+        if (IsValidSigned12BitImm(operands[1].mem.disp.value)) {
+            imm = operands[1].mem.disp.value;
+            operands[1].mem.disp.value = 0;
+        }
         biscuit::GPR address = rec.lea(&operands[1], false);
         switch (operands[1].size) {
         case 32: {
-            as.LW(dst, 0, address);
+            as.LW(dst, imm, address);
             break;
         }
         default: {
@@ -8406,27 +8411,55 @@ FAST_HANDLE(MFENCE) {
 }
 
 FAST_HANDLE(MOVSX) {
-    biscuit::GPR result = rec.scratch();
-    biscuit::GPR src = rec.getGPR(&operands[1]);
-    x86_size_e size = rec.getSize(&operands[1]);
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        i64 imm = 0;
+        if (IsValidSigned12BitImm(operands[1].mem.disp.value)) {
+            imm = operands[1].mem.disp.value;
+            operands[1].mem.disp.value = 0;
+        }
+        biscuit::GPR dst = operands[0].size == 16 ? rec.scratch() : rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
+        biscuit::GPR address = rec.lea(&operands[1], false);
+        switch (operands[1].size) {
+        case 8: {
+            as.LB(dst, imm, address);
+            break;
+        }
+        case 16: {
+            as.LH(dst, imm, address);
+            break;
+        }
+        case 32: {
+            as.LW(dst, imm, address);
+            break;
+        }
+        default: {
+            UNREACHABLE();
+        }
+        }
+        rec.setGPR(&operands[0], dst);
+    } else {
+        biscuit::GPR result = rec.scratch();
+        biscuit::GPR src = rec.getGPR(&operands[1]);
+        x86_size_e size = rec.getSize(&operands[1]);
 
-    switch (size) {
-    case X86_SIZE_BYTE:
-    case X86_SIZE_BYTE_HIGH: {
-        rec.sextb(result, src);
-        break;
-    }
-    case X86_SIZE_WORD: {
-        rec.sexth(result, src);
-        break;
-    }
-    default: {
-        UNREACHABLE();
-        break;
-    }
-    }
+        switch (size) {
+        case X86_SIZE_BYTE:
+        case X86_SIZE_BYTE_HIGH: {
+            rec.sextb(result, src);
+            break;
+        }
+        case X86_SIZE_WORD: {
+            rec.sexth(result, src);
+            break;
+        }
+        default: {
+            UNREACHABLE();
+            break;
+        }
+        }
 
-    rec.setGPR(&operands[0], result);
+        rec.setGPR(&operands[0], result);
+    }
 }
 
 static void COMIS(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew) {
