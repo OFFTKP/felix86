@@ -16764,50 +16764,43 @@
         "disassembly": "movsx rax, bx"
     },
     "660fbe07": {
-        "instruction_count": 6,
+        "instruction_count": 5,
         "expected_asm": [
-            "LBU             t1, a0, 0x0(0)",
-            "SEXT.B          ra, t1",
-            "ZEXT.H          t3, ra",
+            "LB              ra, a0, 0x0(0)",
+            "ZEXT.H          t1, ra",
             "SRLI            t0, t0, 0x10(16)",
             "SLLI            t0, t0, 0x10(16)",
-            "OR              t0, t0, t3"
+            "OR              t0, t0, t1"
         ],
         "disassembly": "movsx ax, byte ptr [rdi]"
     },
     "0fbe07": {
-        "instruction_count": 3,
+        "instruction_count": 2,
         "expected_asm": [
-            "LBU             t1, a0, 0x0(0)",
-            "SEXT.B          ra, t1",
-            "ADD.UW          t0, ra, zero"
+            "LB              t0, a0, 0x0(0)",
+            "ADD.UW          t0, t0, zero"
         ],
         "disassembly": "movsx eax, byte ptr [rdi]"
     },
     "0fbf07": {
-        "instruction_count": 3,
+        "instruction_count": 2,
         "expected_asm": [
-            "LHU             t1, a0, 0x0(0)",
-            "SEXT.H          ra, t1",
-            "ADD.UW          t0, ra, zero"
+            "LH              t0, a0, 0x0(0)",
+            "ADD.UW          t0, t0, zero"
         ],
         "disassembly": "movsx eax, word ptr [rdi]"
     },
     "480fbe07": {
-        "instruction_count": 3,
+        "instruction_count": 1,
         "expected_asm": [
-            "LBU             t1, a0, 0x0(0)",
-            "SEXT.B          ra, t1",
-            "ADDI            t0, ra, 0x0(0)"
+            "LB              t0, a0, 0x0(0)"
         ],
         "disassembly": "movsx rax, byte ptr [rdi]"
     },
     "480fbf07": {
-        "instruction_count": 3,
+        "instruction_count": 1,
         "expected_asm": [
-            "LHU             t1, a0, 0x0(0)",
-            "SEXT.H          ra, t1",
-            "ADDI            t0, ra, 0x0(0)"
+            "LH              t0, a0, 0x0(0)"
         ],
         "disassembly": "movsx rax, word ptr [rdi]"
     },
