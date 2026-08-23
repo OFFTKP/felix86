@@ -1,4 +1,6 @@
 #include <csignal>
+#include <memory>
+#include <new>
 #include <errno.h>
 #include <fcntl.h>
 #include <fmt/format.h>
@@ -263,7 +265,17 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_personality: {
-        result = SYSCALL(personality, arg1 & ~PER_LINUX32);
+        u32 persona = arg1;
+        u64 old_persona = state->persona;
+        if (persona == 0xffffffff) {
+            result = old_persona;
+        } else {
+            result = SYSCALL(personality, persona & ~PER_LINUX32);
+            if (result >= 0) {
+                state->persona = persona;
+                result = old_persona;
+            }
+        }
         break;
     }
     case felix86_riscv64_process_vm_readv: {
@@ -438,8 +450,17 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_epoll_pwait: {
-        epoll_event* host_events = (epoll_event*)alloca(std::max(0, (int)arg3) * sizeof(epoll_event));
-        result = SYSCALL(epoll_pwait, arg1, host_events, arg3, arg4, arg5, arg6);
+        int max_events = INT_MAX / sizeof(x86_epoll_event);
+        if ((int)arg3 <= 0 || (int)arg3 > max_events) {
+            result = -EINVAL;
+            break;
+        }
+        std::unique_ptr<epoll_event[]> host_events(new (std::nothrow) epoll_event[(int)arg3]);
+        if (!host_events) {
+            result = -ENOMEM;
+            break;
+        }
+        result = SYSCALL(epoll_pwait, arg1, host_events.get(), arg3, arg4, arg5, arg6);
         if (result >= 0) {
             x86_epoll_event* guest_event = (x86_epoll_event*)arg2;
             for (int i = 0; i < result; i++) {
@@ -449,8 +470,17 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_epoll_pwait2: {
-        epoll_event* host_events = (epoll_event*)alloca(std::max(0, (int)arg3) * sizeof(epoll_event));
-        result = SYSCALL(epoll_pwait2, arg1, host_events, arg3, arg4, arg5, arg6);
+        int max_events = INT_MAX / sizeof(x86_epoll_event);
+        if ((int)arg3 <= 0 || (int)arg3 > max_events) {
+            result = -EINVAL;
+            break;
+        }
+        std::unique_ptr<epoll_event[]> host_events(new (std::nothrow) epoll_event[(int)arg3]);
+        if (!host_events) {
+            result = -ENOMEM;
+            break;
+        }
+        result = SYSCALL(epoll_pwait2, arg1, host_events.get(), arg3, arg4, arg5, arg6);
         if (result >= 0) {
             x86_epoll_event* guest_event = (x86_epoll_event*)arg2;
             for (int i = 0; i < result; i++) {
@@ -1034,11 +1064,10 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             WARN("Failed to determine host node name");
         }
         strcpy(guest_uname->sysname, "Linux");
-        strcpy(guest_uname->release, "5.0.0");
+        strcpy(guest_uname->release, (state->persona & UNAME26) ? "2.6.60" : "5.0.0");
         std::string version = "#1 SMP " __DATE__ " " __TIME__;
         strcpy(guest_uname->version, version.c_str());
-        strcpy(guest_uname->machine, (state->persona & PER_LINUX32) ? "i686" : "x86_64");
-        ASSERT(!(state->persona & UNAME26));
+        strcpy(guest_uname->machine, ((state->persona & PER_MASK) == PER_LINUX32) ? "i686" : "x86_64");
         result = 0;
         break;
     }
@@ -1194,7 +1223,12 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_rt_sigaction: {
-        if (arg1 > 64) {
+        if (arg4 != sizeof(u64)) {
+            result = -EINVAL;
+            break;
+        }
+
+        if (arg1 > 64 || arg1 == 0) {
             result = -EINVAL;
             break;
         }
@@ -1368,7 +1402,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_sched_setattr: {
-        result = SYSCALL(sched_getattr, arg1, arg2, arg3);
+        result = SYSCALL(sched_setattr, arg1, arg2, arg3);
         break;
     }
     case felix86_riscv64_sched_setaffinity: {
@@ -1513,15 +1547,14 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             executable = g_emulator_path;
             argv.push_back(executable.c_str());
 
-            if (check_if_privileged_executable(path)) {
-                ASSERT_MSG(!is_script, "Script with setuid...?");
-
+            if (!is_script && check_if_privileged_executable(path)) {
                 // If this is a privileged executable, it won't work out if we don't have binfmt_misc support
                 // Because binfmt_misc would see that the binary has extra permissions and give the emulator
                 // those permissions as well. When we run it through the emulator manually however, we can't
                 // do the same. So warn that this might end badly.
                 WARN("About to run privileged executable %s, but there's no binfmt_misc support, so things may go wrong. Please enable "
-                     "binfmt_misc support by running `felix86 -b` and disabling it for any other x86/x86-64 emulators");
+                     "binfmt_misc support by running `felix86 -b` and disabling it for any other x86/x86-64 emulators",
+                     path.c_str());
             }
         } else {
             executable = path;
@@ -1534,8 +1567,11 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             const std::string& args = script.GetArgs();
             script_interpreter = script.GetInterpreter();
             FdPath interpreter_fd_path = Filesystem::resolve(script_interpreter.c_str(), true);
-            ASSERT_MSG(!interpreter_fd_path.is_error(), "Interpreter not found: %s", script_interpreter.c_str());
-            ASSERT(interpreter_fd_path.full_path());
+            if (interpreter_fd_path.is_error() || !interpreter_fd_path.full_path()) {
+                WARN("Interpreter not found during execve: %s", script_interpreter.c_str());
+                result = -ENOENT;
+                break;
+            }
             ASSERT(interpreter_fd_path.full_path()[0] == '/');
             script_interpreter = interpreter_fd_path.full_path();
             script_args = split_string(args, ' ');
@@ -1654,8 +1690,12 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         std::string mounts_env = std::string("__FELIX86_MOUNTS=") + g_mounts_path.string();
         envp.push_back(mounts_env.c_str());
         size_t current_mount = 0;
+        std::vector<std::string> mount_envs;
         for (auto& mount_path : g_process_globals.mount_paths) {
-            envp.push_back(strdup((std::string("__FELIX86_MOUNT_") + std::to_string(current_mount++) + "=" + mount_path.string()).c_str()));
+            mount_envs.push_back(std::string("__FELIX86_MOUNT_") + std::to_string(current_mount++) + "=" + mount_path.string());
+        }
+        for (auto& mount_env : mount_envs) {
+            envp.push_back(mount_env.c_str());
         }
         // We only care about the first u64 and this is unlikely to ever change
         std::string mask_env = std::string("__FELIX86_SIGNAL_MASK=") + std::to_string(state->signal_mask.__val[0]);
@@ -1686,7 +1726,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         ThreadState::Set(state);
 
         ssize_t error = result;
-        ASSERT_MSG(false, "Error during execve: %d %s (executable: %s)", (int)error, strerror(-error), executable.c_str());
+        WARN("Error during execve: %d %s (executable: %s)", (int)error, strerror(-error), executable.c_str());
         break;
     }
     case felix86_riscv64_umask: {
@@ -1696,7 +1736,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
     case felix86_riscv64_ptrace: {
         if (!g_config.ptrace_enabled) {
             // TODO: remove me when we rewrite result/SYSCALL macro to not use errno
-            errno = -EPERM; // since -EPERM == -1 the result operator= will use errno...
+            errno = EPERM; // since -EPERM == -1 the result operator= will use errno...
             result = -EPERM;
             break;
         }
@@ -1725,31 +1765,53 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
     }
     case felix86_riscv64_rt_sigsuspend: {
         SIGLOG("Entering rt_sigsuspend");
-        // In most programs, before a call to sigsuspend, a sigprocmask will be called to make sure no signal happens until
-        // the actual sigsuspend kernel handler is reached. As a sanity check (which granted, might fail if a signal happens after the sanity check
-        // but before the syscall), check if we have any pending signals and warn if so.
-        if (state->deferred_signals) {
-            WARN("There are deferred signals before running sigsuspend");
+        if (arg2 != sizeof(u64)) {
+            result = -EINVAL;
+            break;
         }
+
+        sigset_t* guest_mask = (sigset_t*)arg1;
+        if (!guest_mask || !felix86_address_check(guest_mask)) {
+            result = -EFAULT;
+            break;
+        }
+
         // If a signal happens during sigsuspend we need to defer it and activate the fault page
         // The signal needs to be set in effective_deferred_signals accordingly, so we need to temporarily change the mask
         sigset_t old_mask = state->signal_mask;
-        sigset_t* new_mask = (sigset_t*)arg1;
-        if (new_mask && arg2) {
-            state->signal_mask.__val[0] = new_mask->__val[0];
-        } else {
-            WARN("Couldn't copy sigsuspend mask");
+        sigset_t new_mask = state->signal_mask;
+        new_mask.__val[0] = guest_mask->__val[0];
+        sigdelset(&new_mask, SIGKILL);
+        sigdelset(&new_mask, SIGSTOP);
+
+        u64 host_mask = new_mask.__val[0] & Signals::hostSignalMask()->__val[0];
+        u64 old_host_mask = old_mask.__val[0] & Signals::hostSignalMask()->__val[0];
+
+        u64 full = -1ull;
+        ASSERT(syscall(SYS_rt_sigprocmask, SIG_BLOCK, &full, nullptr, sizeof(full)) == 0);
+
+        state->signal_mask.__val[0] = new_mask.__val[0];
+        state->effective_deferred_signals |= state->deferred_signals & ~new_mask.__val[0];
+        if (state->effective_deferred_signals) {
+            ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
+            state->signal_mask.__val[0] = old_mask.__val[0];
+            ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old_host_mask, nullptr, sizeof(old_host_mask)) == 0);
+            SIGLOG("rt_sigsuspend returning without waiting, a deferred signal is already deliverable");
+            result = -EINTR;
+            break;
         }
-        result = SYSCALL(rt_sigsuspend, arg1, arg2);
+
+        result = SYSCALL(rt_sigsuspend, &host_mask, sizeof(host_mask));
         state->signal_mask.__val[0] = old_mask.__val[0];
-        SIGLOG("rt_sigsuspend returned with %d", result);
+        ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old_host_mask, nullptr, sizeof(old_host_mask)) == 0);
+        SIGLOG("rt_sigsuspend returned with %d", (int)result);
         // Will set RAX to EINTR and the actual signal will be handled in the safepoint after the syscall
         break;
     }
     case felix86_riscv64_rt_sigpending: {
         SIGLOG("Entering rt_sigpending");
         result = SYSCALL(rt_sigpending, arg1, arg2);
-        SIGLOG("rt_sigpending returned with %d", result);
+        SIGLOG("rt_sigpending returned with %d", (int)result);
         break;
     }
     case felix86_riscv64_epoll_create1: {
@@ -1903,8 +1965,17 @@ void felix86_syscall(felix86_frame* frame) {
             break;
         }
         case felix86_x86_64_epoll_wait: {
-            epoll_event* host_events = (epoll_event*)alloca(std::max(0, (int)arg3) * sizeof(epoll_event));
-            result = epoll_wait((int)arg1, host_events, (int)arg3, (int)arg4);
+            int max_events = INT_MAX / sizeof(x86_epoll_event);
+            if ((int)arg3 <= 0 || (int)arg3 > max_events) {
+                result = -EINVAL;
+                break;
+            }
+            std::unique_ptr<epoll_event[]> host_events(new (std::nothrow) epoll_event[(int)arg3]);
+            if (!host_events) {
+                result = -ENOMEM;
+                break;
+            }
+            result = epoll_wait((int)arg1, host_events.get(), (int)arg3, (int)arg4);
             if (result >= 0) {
                 x86_epoll_event* guest_event = (x86_epoll_event*)arg2;
                 for (int i = 0; i < result; i++) {
@@ -2361,7 +2432,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_getegid16: {
-            result = SYSCALL(geteuid);
+            result = SYSCALL(getegid);
             break;
         }
         case felix86_x86_32_geteuid16: {
@@ -2385,6 +2456,12 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                 host_offset_ptr = &host_offset;
             }
             result = SYSCALL(sendfile, arg1, arg2, host_offset_ptr, arg4);
+            if (result >= 0 && offset) {
+                if (host_offset > UINT32_MAX) {
+                    WARN("Host offset during sendfile exceeds UINT32_MAX: %lx", host_offset);
+                }
+                *offset = (u32)host_offset;
+            }
             break;
         }
         case felix86_x86_32_sendfile64: {
@@ -2405,12 +2482,20 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         }
         case felix86_x86_32_readv: {
             x86_iovec* iovecs32 = (x86_iovec*)arg2;
+            if (arg3 > UIO_MAXIOV) {
+                result = -EINVAL;
+                break;
+            }
             std::vector<iovec> iovecs(iovecs32, iovecs32 + arg3);
             result = SYSCALL(readv, arg1, iovecs.data(), arg3);
             break;
         }
         case felix86_x86_32_writev: {
             x86_iovec* iovecs32 = (x86_iovec*)arg2;
+            if (arg3 > UIO_MAXIOV) {
+                result = -EINVAL;
+                break;
+            }
             std::vector<iovec> iovecs(iovecs32, iovecs32 + arg3);
             result = SYSCALL(writev, arg1, iovecs.data(), arg3);
             break;
@@ -2421,8 +2506,17 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_epoll_wait: {
-            epoll_event* host_events = (epoll_event*)alloca(std::max(0, (int)arg3) * sizeof(epoll_event));
-            result = epoll_wait((int)arg1, host_events, (int)arg3, (int)arg4);
+            int max_events = INT_MAX / sizeof(x86_epoll_event);
+            if ((int)arg3 <= 0 || (int)arg3 > max_events) {
+                result = -EINVAL;
+                break;
+            }
+            std::unique_ptr<epoll_event[]> host_events(new (std::nothrow) epoll_event[(int)arg3]);
+            if (!host_events) {
+                result = -ENOMEM;
+                break;
+            }
+            result = epoll_wait((int)arg1, host_events.get(), (int)arg3, (int)arg4);
             if (result >= 0) {
                 x86_epoll_event* guest_event = (x86_epoll_event*)arg2;
                 for (int i = 0; i < result; i++) {
@@ -2458,19 +2552,16 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             }
             break;
         }
-        case felix86_x86_32_mlockall: {
-            result = SYSCALL(mlock2, mmap_min_addr(), 0x1'0000'0000 - mmap_min_addr(), arg1);
-            break;
-        }
-        case felix86_x86_32_munlockall: {
-            result = SYSCALL(munlock, mmap_min_addr(), 0x1'0000'0000 - mmap_min_addr());
-            break;
-        }
         case felix86_x86_32_process_vm_readv: {
             x86_iovec* lvec = (x86_iovec*)arg2;
             size_t liovcnt = arg3;
             x86_iovec* rvec = (x86_iovec*)arg4;
             size_t riovcnt = arg5;
+
+            if (liovcnt > UIO_MAXIOV || riovcnt > UIO_MAXIOV) {
+                result = -EINVAL;
+                break;
+            }
 
             std::vector<iovec> lvec_host(lvec, lvec + liovcnt);
             std::vector<iovec> rvec_host(rvec, rvec + riovcnt);
@@ -2483,6 +2574,11 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             size_t liovcnt = arg3;
             x86_iovec* rvec = (x86_iovec*)arg4;
             size_t riovcnt = arg5;
+
+            if (liovcnt > UIO_MAXIOV || riovcnt > UIO_MAXIOV) {
+                result = -EINVAL;
+                break;
+            }
 
             std::vector<iovec> lvec_host(lvec, lvec + liovcnt);
             std::vector<iovec> rvec_host(rvec, rvec + riovcnt);
@@ -2502,6 +2598,26 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         }
         case felix86_x86_32_sigprocmask: {
             result = Signals::sigprocmask(state, arg1, (sigset_t*)arg2, (sigset_t*)arg3);
+            break;
+        }
+        case felix86_x86_32_mmap: {
+            x86_mmap_arg_struct* mmap_args = (x86_mmap_arg_struct*)arg1;
+            u64 offset = mmap_args->offset;
+            if (offset & 0xFFF) {
+                result = -EINVAL;
+                break;
+            }
+
+            u64 size = mmap_args->len;
+            int fd = mmap_args->fd;
+            result = (ssize_t)g_mapper->map(mode32, (void*)(u64)mmap_args->addr, size, mmap_args->prot, mmap_args->flags, fd, offset);
+            if (result > 0) {
+                Recompiler::invalidateRangeGlobal(result, result + size, "mmap");
+
+                if (fd != -1) {
+                    g_symbols_cached = false;
+                }
+            }
             break;
         }
         case felix86_x86_32_mmap_pgoff: {
@@ -2526,7 +2642,12 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_rt_sigaction: {
-            if (arg1 > 64) {
+            if (arg4 != sizeof(u64)) {
+                result = -EINVAL;
+                break;
+            }
+
+            if (arg1 > 64 || arg1 == 0) {
                 result = -EINVAL;
                 break;
             }
@@ -2823,10 +2944,12 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_time32: {
-            time_t time;
-            result = ::time(&time);
-            if (result == 0) {
-                *(u32*)arg1 = time;
+            result = ::time(nullptr);
+            if (result >= 0 && arg1) {
+                if (result > UINT32_MAX) {
+                    WARN("Host time during time32 exceeds UINT32_MAX: %lx", (u64)result);
+                }
+                *(u32*)arg1 = result;
             }
             break;
         }
@@ -2837,7 +2960,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             u64 len = arg4;
             int advice = arg5;
             u64 offset = offset_low | (offset_high << 32);
-            result = posix_fadvise64(fd, offset, len, advice);
+            result = SYSCALL(fadvise64, fd, offset, len, advice);
             break;
         }
         case felix86_x86_32_ia32_fadvise64_64: {
@@ -2849,7 +2972,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             int advice = arg6;
             u64 offset = offset_low | (offset_high << 32);
             u64 len = len_low | (len_high << 32);
-            result = posix_fadvise64(fd, offset, len, advice);
+            result = SYSCALL(fadvise64, fd, offset, len, advice);
             break;
         }
         case felix86_x86_32_readlink: {
@@ -2976,7 +3099,8 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         case felix86_x86_32_futex_time32: {
             const x86_timespec* guest_spec = (x86_timespec*)arg4;
             int cmd = arg2 & FUTEX_CMD_MASK;
-            bool is_timespec = cmd == FUTEX_WAIT || cmd == FUTEX_LOCK_PI || cmd == FUTEX_WAIT_BITSET || cmd == FUTEX_WAIT_REQUEUE_PI;
+            bool is_timespec =
+                cmd == FUTEX_WAIT || cmd == FUTEX_LOCK_PI || cmd == FUTEX_WAIT_BITSET || cmd == FUTEX_WAIT_REQUEUE_PI || cmd == FUTEX_LOCK_PI2;
             if (guest_spec && is_timespec) {
                 const timespec host_spec = *guest_spec;
                 result = SYSCALL(futex, arg1, arg2, arg3, &host_spec, arg5, arg6);

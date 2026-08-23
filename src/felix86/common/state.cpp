@@ -47,6 +47,7 @@ ThreadState* ThreadState::Create(ThreadState* copy_state) {
 
         state->alt_stack = copy_state->alt_stack;
         state->signal_mask = copy_state->signal_mask;
+        state->persona = copy_state->persona;
         state->ptrace_data.constants.tracer_pid = copy_state->ptrace_data.constants.tracer_pid;
         state->ptrace_data.constants.flags = copy_state->ptrace_data.constants.flags;
 

@@ -46,6 +46,18 @@ struct x86_sigset_argpack {
     u32 size;
 };
 
+struct x86_mmap_arg_struct {
+    u32 addr;
+    u32 len;
+    u32 prot;
+    u32 flags;
+    u32 fd;
+    u32 offset;
+};
+
+static_assert(std::is_trivially_copyable_v<x86_mmap_arg_struct>);
+static_assert(sizeof(x86_mmap_arg_struct) == 24);
+
 struct x64_sigaction {
     u64 handler;
     u64 sa_flags;
