@@ -1717,12 +1717,10 @@
         "disassembly": "and dx, bx"
     },
     "21da": {
-        "instruction_count": 4,
+        "instruction_count": 2,
         "expected_asm": [
-            "ADD.UW          t1, s0, zero",
-            "ADD.UW          t3, a2, zero",
-            "AND             ra, t3, t1",
-            "ADD.UW          a2, ra, zero"
+            "AND             a2, a2, s0",
+            "ADD.UW          a2, a2, zero"
         ],
         "disassembly": "and edx, ebx"
     },
@@ -1923,10 +1921,9 @@
         "disassembly": "and dx, 0xFFFF"
     },
     "83e201": {
-        "instruction_count": 2,
+        "instruction_count": 1,
         "expected_asm": [
-            "ANDI            a2, a2, 0x1(1)",
-            "ADD.UW          a2, a2, zero"
+            "ANDI            a2, a2, 0x1(1)"
         ],
         "disassembly": "and edx, 0x01"
     },

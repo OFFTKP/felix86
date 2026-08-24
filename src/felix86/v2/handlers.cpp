@@ -1569,23 +1569,23 @@ FAST_HANDLE(AND) {
     bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf;
     bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
-    if (!needs_any_flag && operands[0].size == 64 && operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER &&
-        operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-        biscuit::GPR dst = rec.getGPR(&operands[0]);
-        biscuit::GPR src = rec.getGPR(&operands[1]);
-        as.AND(dst, dst, src);
-        rec.setGPR(&operands[0], dst);
-        return;
-    } else if (!needs_any_flag && !needs_atomic && operands[0].size >= 32 && operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE &&
-               IsValidSigned12BitImm(operands[1].imm.value.s)) {
-        biscuit::GPR dst;
-        if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-            dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
+    bool dst_is_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
+    bool src_is_imm = operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE;
+    bool src_is_reg = operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER;
+    bool is_reg_reg = dst_is_reg && src_is_reg;
+    if (!needs_any_flag && !needs_atomic && operands[0].size >= 32 && (src_is_imm || is_reg_reg)) {
+        biscuit::GPR dst = dst_is_reg ? rec.getGPR(&operands[0], X86_SIZE_QWORD) : rec.getGPR(&operands[0]);
+        if (src_is_imm && IsValidSigned12BitImm(operands[1].imm.value.s)) {
+            as.ANDI(dst, dst, operands[1].imm.value.s);
         } else {
-            dst = rec.getGPR(&operands[0]);
+            biscuit::GPR src = src_is_reg ? rec.getGPR(&operands[1], X86_SIZE_QWORD) : rec.getGPR(&operands[1]);
+            as.AND(dst, dst, src);
         }
-        as.ANDI(dst, dst, operands[1].imm.value.s);
-        rec.setGPR(&operands[0], dst);
+        if (dst_is_reg && operands[0].size == 32 && src_is_imm && operands[1].imm.value.u < UINT32_MAX) {
+            rec.setGPR(rec.zydisToRef(operands[0].reg.value), X86_SIZE_QWORD, dst); // no need to zext
+        } else {
+            rec.setGPR(&operands[0], dst);
+        }
         return;
     }
 
