@@ -93,6 +93,7 @@ extern std::filesystem::path g_executable_path_guest_override;
 extern std::filesystem::path g_mounts_path;
 extern bool g_testing;
 extern bool g_emit_stats;
+extern bool g_is_single_thread;
 
 struct FakeMountNode {
     std::filesystem::path src_path;

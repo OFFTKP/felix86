@@ -328,6 +328,11 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_shmat: {
+        if (g_is_single_thread) {
+            // Similar to mmap with MAP_SHARED
+            g_is_single_thread = false;
+            Recompiler::invalidateRangeGlobal(0, UINT64_MAX & ~0xFFFull, "shmat happened");
+        }
         result = SYSCALL(shmat, arg1, arg2, arg3);
         if (result >= 0 && ((u64)result) > mmap_min_addr() && result < UINT32_MAX) {
             WARN("shmat in 32-bit address space, this could cause problems with MAP_32BIT");
@@ -855,6 +860,12 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
 #define MAP_32BIT 0x40
 #endif
         u64 flags = arg4;
+        if (g_is_single_thread && (flags & MAP_TYPE) != MAP_PRIVATE) {
+            // If a MAP_SHARED happens we can no longer do single threaded optimizations like not emitting TSO fences
+            g_is_single_thread = false;
+            Recompiler::invalidateRangeGlobal(0, UINT64_MAX & ~0xFFFull, "MAP_SHARED happened");
+        }
+
         bool is_fixed = (flags & MAP_FIXED) || (flags & MAP_FIXED_NOREPLACE);
         if ((flags & MAP_32BIT) || (is_fixed && arg1 < UINT32_MAX) || mode32) {
             // The MAP_32BIT flag is x86 only so we need to emulate it
@@ -2610,6 +2621,12 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                 break;
             }
 
+            if (g_is_single_thread && (mmap_args->flags & MAP_TYPE) != MAP_PRIVATE) {
+                // If a MAP_SHARED happens we can no longer do single threaded optimizations like not emitting TSO fences
+                g_is_single_thread = false;
+                Recompiler::invalidateRangeGlobal(0, UINT64_MAX & ~0xFFFull, "MAP_SHARED happened");
+            }
+
             u64 size = mmap_args->len;
             int fd = mmap_args->fd;
             result = (ssize_t)g_mapper->map(mode32, (void*)(u64)mmap_args->addr, size, mmap_args->prot, mmap_args->flags, fd, offset);
@@ -2625,6 +2642,13 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         case felix86_x86_32_mmap_pgoff: {
             // mmap2 is like mmap but file offset is in pages (4096 bytes) to help with the lack of big enough integers in x86-32
             u64 offset = arg6 * 4096;
+
+            if (g_is_single_thread && (arg4 & MAP_TYPE) != MAP_PRIVATE) {
+                // If a MAP_SHARED happens we can no longer do single threaded optimizations like not emitting TSO fences
+                g_is_single_thread = false;
+                Recompiler::invalidateRangeGlobal(0, UINT64_MAX & ~0xFFFull, "MAP_SHARED happened");
+            }
+
             result = (ssize_t)g_mapper->map(mode32, (void*)arg1, arg2, arg3, arg4, arg5, offset);
             if (result > 0) {
                 Recompiler::invalidateRangeGlobal(result, result + arg2, "mmap_pgoff");
@@ -2688,6 +2712,11 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_shmat: {
+            if (g_is_single_thread) {
+                // Similar to mmap with MAP_SHARED
+                g_is_single_thread = false;
+                Recompiler::invalidateRangeGlobal(0, UINT64_MAX & ~0xFFFull, "shmat happened");
+            }
             u32 result_address = 0;
             result = g_mapper->shmat32((int)arg1, (void*)arg2, (int)arg3, &result_address);
             if (result == 0) {
