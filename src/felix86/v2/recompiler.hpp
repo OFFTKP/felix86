@@ -429,6 +429,8 @@ struct Recompiler {
     // Return a GPR and whether it needs to be inverted
     std::pair<biscuit::GPR, bool> getCondNoInvert(int cond);
 
+    bool needsTsoFence() const;
+
     void readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size);
 
     void readMemory(biscuit::Vec dest, biscuit::GPR address, int size);
