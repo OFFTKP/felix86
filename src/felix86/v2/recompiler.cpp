@@ -17,6 +17,7 @@
 #include "felix86/hle/ptrace.hpp"
 #include "felix86/hle/syscall.hpp"
 #include "felix86/v2/handlers.hpp"
+#include "felix86/v2/optimizer.hpp"
 #include "felix86/v2/recompiler.hpp"
 #include "fmt/format.h"
 
@@ -802,6 +803,12 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
     }
 
     resetScratch();
+
+    if (g_config.always_tso && !Extensions::TSO) {
+        Optimizer::native_pass((u8*)block_meta.host_address,
+                               (u64)as.GetCursorPointer() - block_meta.host_address);
+    }
+
     flush_icache(block_meta.host_address, (u64)as.GetCursorPointer());
 
     current_block_metadata = nullptr;
