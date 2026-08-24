@@ -107,6 +107,7 @@ set(FELIX86_COMMON_SOURCES
     src/felix86/common/binfmt.cpp
     src/felix86/common/x87.cpp
     src/felix86/common/xsave.cpp
+    src/felix86/common/decoder.c
 )
 
 set(FELIX86_HLE_SOURCES
@@ -139,6 +140,7 @@ set(FELIX86_HLE_SOURCES
 set(FELIX86_V2_SOURCES
     src/felix86/v2/recompiler.cpp
     src/felix86/v2/handlers.cpp
+    src/felix86/v2/optimizer.cpp
 )
 
 set(FELIX86_CORE_SOURCES

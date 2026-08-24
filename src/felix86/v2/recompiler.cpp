@@ -17,6 +17,7 @@
 #include "felix86/hle/ptrace.hpp"
 #include "felix86/hle/syscall.hpp"
 #include "felix86/v2/handlers.hpp"
+#include "felix86/v2/optimizer.hpp"
 #include "felix86/v2/recompiler.hpp"
 #include "fmt/format.h"
 
@@ -802,6 +803,11 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
     }
 
     resetScratch();
+
+    if (g_config.always_tso && !g_is_single_thread && !Extensions::TSO) {
+        Optimizer::native_pass((u8*)block_meta.host_address, (u64)as.GetCursorPointer() - block_meta.host_address);
+    }
+
     flush_icache(block_meta.host_address, (u64)as.GetCursorPointer());
 
     current_block_metadata = nullptr;
@@ -2951,7 +2957,8 @@ biscuit::GPR Recompiler::getCond(int cond) {
 }
 
 bool Recompiler::needsTsoFence() const {
-    return g_config.always_tso && !Extensions::TSO && !(g_config.no_tso_stack && current_instruction_on_stack && !g_config.paranoid);
+    return g_config.always_tso && !g_is_single_thread && !Extensions::TSO &&
+           !(g_config.no_tso_stack && current_instruction_on_stack && !g_config.paranoid);
 }
 
 void Recompiler::readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size) {

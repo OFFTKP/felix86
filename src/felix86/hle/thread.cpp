@@ -10,6 +10,7 @@
 #include <sys/resource.h>
 #include <sys/syscall.h>
 #include "felix86/common/exit.hpp"
+#include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
@@ -481,6 +482,12 @@ long Threads::Clone(ThreadState* current_state, CloneArgs* args) {
 
     bool clone_fs = args->guest_flags & CLONE_FS;
     bool clone_vm = args->guest_flags & CLONE_VM;
+    if (g_is_single_thread && clone_vm) {
+        // No longer single threaded, start emitting fences
+        g_is_single_thread = false;
+        Recompiler::invalidateRangeGlobal(0, UINT64_MAX & ~0xFFFull, "clone with CLONE_VM happened");
+    }
+
     if (clone_fs && !clone_vm) {
         // This would be quite cursed, because we'd have to use IPC to communicate any FS changes to the processes
         // that share the FS info. Hopefully we won't reach this ever but add a warning here
