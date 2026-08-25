@@ -66,16 +66,17 @@
         "disassembly": "aesdec xmm3, xmm4"
     },
     "660f38ded2": {
-        "instruction_count": 8,
+        "instruction_count": 9,
         "expected_asm": [
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VMV1R.V         v4, v18",
             "VXOR.VV         v3, v3, v3, none",
             "VAESDF.VV       v18, v3",
             "LUI             ra, 0x63636(407094)",
             "ADDIW           ra, ra, 0x363(867)",
             "VMV.V.X         v2, ra",
             "VAESDM.VV       v2, v18",
-            "VXOR.VV         v18, v2, v18, none"
+            "VXOR.VV         v18, v2, v4, none"
         ],
         "disassembly": "aesdec xmm2, xmm2"
     },
@@ -122,37 +123,40 @@
         "disassembly": "aesdeclast xmm1, [rdi]"
     },
     "660f38dbdc": {
-        "instruction_count": 5,
+        "instruction_count": 6,
         "expected_asm": [
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
             "LUI             ra, 0x63636(407094)",
             "ADDIW           ra, ra, 0x363(867)",
-            "VMV.V.X         v19, ra",
-            "VAESDM.VV       v19, v20"
+            "VMV.V.X         v2, ra",
+            "VAESDM.VV       v2, v20",
+            "VMV.V.V         v19, v2"
         ],
         "disassembly": "aesimc xmm3, xmm4"
     },
     "660f38dbd2": {
-        "instruction_count": 5,
+        "instruction_count": 6,
         "expected_asm": [
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
             "LUI             ra, 0x63636(407094)",
             "ADDIW           ra, ra, 0x363(867)",
-            "VMV.V.X         v18, ra",
-            "VAESDM.VV       v18, v18"
+            "VMV.V.X         v2, ra",
+            "VAESDM.VV       v2, v18",
+            "VMV.V.V         v18, v2"
         ],
         "disassembly": "aesimc xmm2, xmm2"
     },
     "660f38db0f": {
-        "instruction_count": 7,
+        "instruction_count": 8,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v2, a0, none, 1",
+            "VLE8.V          v3, a0, none, 1",
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
             "LUI             ra, 0x63636(407094)",
             "ADDIW           ra, ra, 0x363(867)",
-            "VMV.V.X         v17, ra",
-            "VAESDM.VV       v17, v2"
+            "VMV.V.X         v2, ra",
+            "VAESDM.VV       v2, v3",
+            "VMV.V.V         v17, v2"
         ],
         "disassembly": "aesimc xmm1, [rdi]"
     },
