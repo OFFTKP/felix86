@@ -346,10 +346,10 @@ int main() {
         GEN_BitScan(bsf);
         GEN_BitScan(bsr);
         GEN_BitScan(popcnt);
-        GEN_BitTest(bt);
-        GEN_BitTest(btc);
-        GEN_BitTest(btr);
-        GEN_BitTest(bts);
+        // GEN_BitTest(bt);
+        // GEN_BitTest(btc);
+        // GEN_BitTest(btr);
+        // GEN_BitTest(bts);
         GEN_DoubleShift(shld);
         GEN_DoubleShift(shrd);
         GEN(adcx(eax, ebx));
