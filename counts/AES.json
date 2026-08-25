@@ -1,0 +1,357 @@
+{
+    "660f38dcdc": {
+        "instruction_count": 2,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VAESEM.VV       v19, v20"
+        ],
+        "disassembly": "aesenc xmm3, xmm4"
+    },
+    "660f38dcd2": {
+        "instruction_count": 2,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VAESEM.VV       v18, v18"
+        ],
+        "disassembly": "aesenc xmm2, xmm2"
+    },
+    "660f38dc0f": {
+        "instruction_count": 4,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VLE8.V          v2, a0, none, 1",
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VAESEM.VV       v17, v2"
+        ],
+        "disassembly": "aesenc xmm1, [rdi]"
+    },
+    "660f38dddc": {
+        "instruction_count": 2,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VAESEF.VV       v19, v20"
+        ],
+        "disassembly": "aesenclast xmm3, xmm4"
+    },
+    "660f38ddd2": {
+        "instruction_count": 2,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VAESEF.VV       v18, v18"
+        ],
+        "disassembly": "aesenclast xmm2, xmm2"
+    },
+    "660f38dd0f": {
+        "instruction_count": 4,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VLE8.V          v2, a0, none, 1",
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VAESEF.VV       v17, v2"
+        ],
+        "disassembly": "aesenclast xmm1, [rdi]"
+    },
+    "660f38dedc": {
+        "instruction_count": 8,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VXOR.VV         v3, v3, v3, none",
+            "VAESDF.VV       v19, v3",
+            "LUI             ra, 0x63636(407094)",
+            "ADDIW           ra, ra, 0x363(867)",
+            "VMV.V.X         v2, ra",
+            "VAESDM.VV       v2, v19",
+            "VXOR.VV         v19, v2, v20, none"
+        ],
+        "disassembly": "aesdec xmm3, xmm4"
+    },
+    "660f38ded2": {
+        "instruction_count": 9,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VMV1R.V         v4, v18",
+            "VXOR.VV         v3, v3, v3, none",
+            "VAESDF.VV       v18, v3",
+            "LUI             ra, 0x63636(407094)",
+            "ADDIW           ra, ra, 0x363(867)",
+            "VMV.V.X         v2, ra",
+            "VAESDM.VV       v2, v18",
+            "VXOR.VV         v18, v2, v4, none"
+        ],
+        "disassembly": "aesdec xmm2, xmm2"
+    },
+    "660f38de0f": {
+        "instruction_count": 10,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VLE8.V          v2, a0, none, 1",
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VXOR.VV         v4, v4, v4, none",
+            "VAESDF.VV       v17, v4",
+            "LUI             ra, 0x63636(407094)",
+            "ADDIW           ra, ra, 0x363(867)",
+            "VMV.V.X         v3, ra",
+            "VAESDM.VV       v3, v17",
+            "VXOR.VV         v17, v3, v2, none"
+        ],
+        "disassembly": "aesdec xmm1, [rdi]"
+    },
+    "660f38dfdc": {
+        "instruction_count": 2,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VAESDF.VV       v19, v20"
+        ],
+        "disassembly": "aesdeclast xmm3, xmm4"
+    },
+    "660f38dfd2": {
+        "instruction_count": 2,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VAESDF.VV       v18, v18"
+        ],
+        "disassembly": "aesdeclast xmm2, xmm2"
+    },
+    "660f38df0f": {
+        "instruction_count": 4,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VLE8.V          v2, a0, none, 1",
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VAESDF.VV       v17, v2"
+        ],
+        "disassembly": "aesdeclast xmm1, [rdi]"
+    },
+    "660f38dbdc": {
+        "instruction_count": 6,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "LUI             ra, 0x63636(407094)",
+            "ADDIW           ra, ra, 0x363(867)",
+            "VMV.V.X         v2, ra",
+            "VAESDM.VV       v2, v20",
+            "VMV.V.V         v19, v2"
+        ],
+        "disassembly": "aesimc xmm3, xmm4"
+    },
+    "660f38dbd2": {
+        "instruction_count": 6,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "LUI             ra, 0x63636(407094)",
+            "ADDIW           ra, ra, 0x363(867)",
+            "VMV.V.X         v2, ra",
+            "VAESDM.VV       v2, v18",
+            "VMV.V.V         v18, v2"
+        ],
+        "disassembly": "aesimc xmm2, xmm2"
+    },
+    "660f38db0f": {
+        "instruction_count": 8,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VLE8.V          v3, a0, none, 1",
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "LUI             ra, 0x63636(407094)",
+            "ADDIW           ra, ra, 0x363(867)",
+            "VMV.V.X         v2, ra",
+            "VAESDM.VV       v2, v3",
+            "VMV.V.V         v17, v2"
+        ],
+        "disassembly": "aesimc xmm1, [rdi]"
+    },
+    "660f3adfd3aa": {
+        "instruction_count": 60,
+        "expected_asm": [
+            "SD              s11, gp, 0x80(128)",
+            "SD              t0, gp, 0x0(0)",
+            "SD              s10, gp, 0x8(8)",
+            "SD              a2, gp, 0x10(16)",
+            "SD              s0, gp, 0x18(24)",
+            "SD              s1, gp, 0x20(32)",
+            "SD              s2, gp, 0x28(40)",
+            "SD              a1, gp, 0x30(48)",
+            "SD              a0, gp, 0x38(56)",
+            "SD              a4, gp, 0x40(64)",
+            "SD              a5, gp, 0x48(72)",
+            "SD              a3, gp, 0x50(80)",
+            "SD              a6, gp, 0x58(88)",
+            "SD              a7, gp, 0x60(96)",
+            "SD              s6, gp, 0x68(104)",
+            "SD              s3, gp, 0x70(112)",
+            "SD              s4, gp, 0x78(120)",
+            "VSETVLI         ra, zero, e64, m8, tu, mu",
+            "ADDI            ra, gp, 0xd8(216)",
+            "VSE64.V         v16, ra, none, 1",
+            "ADDI            ra, gp, 0x1d8(472)",
+            "VSE64.V         v24, ra, none, 1",
+            "SB              s5, gp, 0x2d8(728)",
+            "SB              s7, gp, 0x2db(731)",
+            "SB              s8, gp, 0x2dc(732)",
+            "SB              s9, gp, 0x2dd(733)",
+            "ADDI            a1, gp, 0x138(312)",
+            "ADDI            a0, gp, 0x118(280)",
+            "ADDIW           a2, zero, 0xaa(170)",
+            "LD              t4, gp, 0x4c8(1224)",
+            "JALR            ra, t4, 0x0(0)",
+            "LD              s11, gp, 0x80(128)",
+            "LD              t0, gp, 0x0(0)",
+            "LD              s10, gp, 0x8(8)",
+            "LD              a2, gp, 0x10(16)",
+            "LD              s0, gp, 0x18(24)",
+            "LD              s1, gp, 0x20(32)",
+            "LD              s2, gp, 0x28(40)",
+            "LD              a1, gp, 0x30(48)",
+            "LD              a0, gp, 0x38(56)",
+            "LD              a4, gp, 0x40(64)",
+            "LD              a5, gp, 0x48(72)",
+            "LD              a3, gp, 0x50(80)",
+            "LD              a6, gp, 0x58(88)",
+            "LD              a7, gp, 0x60(96)",
+            "LD              s6, gp, 0x68(104)",
+            "LD              s3, gp, 0x70(112)",
+            "LD              s4, gp, 0x78(120)",
+            "VSETVLI         t1, zero, e64, m8, tu, mu",
+            "ADDI            t1, gp, 0xd8(216)",
+            "VLE64.V         v16, t1, none, 1",
+            "ADDI            t1, gp, 0x1d8(472)",
+            "VLE64.V         v24, t1, none, 1",
+            "LBU             s5, gp, 0x2d8(728)",
+            "LBU             s7, gp, 0x2db(731)",
+            "LBU             s8, gp, 0x2dc(732)",
+            "LBU             s9, gp, 0x2dd(733)",
+            "LBU             t1, gp, 0x394(916)",
+            "CSRRW           zero, t1, 0x2(2)",
+            "FENCE          "
+        ],
+        "disassembly": "aeskeygenassist xmm2, xmm3, 0xAA"
+    },
+    "660f3adf0faa": {
+        "instruction_count": 61,
+        "expected_asm": [
+            "SD              s11, gp, 0x80(128)",
+            "SD              t0, gp, 0x0(0)",
+            "SD              s10, gp, 0x8(8)",
+            "SD              a2, gp, 0x10(16)",
+            "SD              s0, gp, 0x18(24)",
+            "SD              s1, gp, 0x20(32)",
+            "SD              s2, gp, 0x28(40)",
+            "SD              a1, gp, 0x30(48)",
+            "SD              a0, gp, 0x38(56)",
+            "SD              a4, gp, 0x40(64)",
+            "SD              a5, gp, 0x48(72)",
+            "SD              a3, gp, 0x50(80)",
+            "SD              a6, gp, 0x58(88)",
+            "SD              a7, gp, 0x60(96)",
+            "SD              s6, gp, 0x68(104)",
+            "SD              s3, gp, 0x70(112)",
+            "SD              s4, gp, 0x78(120)",
+            "VSETVLI         ra, zero, e64, m8, tu, mu",
+            "ADDI            ra, gp, 0xd8(216)",
+            "VSE64.V         v16, ra, none, 1",
+            "ADDI            ra, gp, 0x1d8(472)",
+            "VSE64.V         v24, ra, none, 1",
+            "SB              s5, gp, 0x2d8(728)",
+            "SB              s7, gp, 0x2db(731)",
+            "SB              s8, gp, 0x2dc(732)",
+            "SB              s9, gp, 0x2dd(733)",
+            "ADDI            t1, a0, 0x0(0)",
+            "ADDI            a1, t1, 0x0(0)",
+            "ADDI            a0, gp, 0xf8(248)",
+            "ADDIW           a2, zero, 0xaa(170)",
+            "LD              t4, gp, 0x4c8(1224)",
+            "JALR            ra, t4, 0x0(0)",
+            "LD              s11, gp, 0x80(128)",
+            "LD              t0, gp, 0x0(0)",
+            "LD              s10, gp, 0x8(8)",
+            "LD              a2, gp, 0x10(16)",
+            "LD              s0, gp, 0x18(24)",
+            "LD              s1, gp, 0x20(32)",
+            "LD              s2, gp, 0x28(40)",
+            "LD              a1, gp, 0x30(48)",
+            "LD              a0, gp, 0x38(56)",
+            "LD              a4, gp, 0x40(64)",
+            "LD              a5, gp, 0x48(72)",
+            "LD              a3, gp, 0x50(80)",
+            "LD              a6, gp, 0x58(88)",
+            "LD              a7, gp, 0x60(96)",
+            "LD              s6, gp, 0x68(104)",
+            "LD              s3, gp, 0x70(112)",
+            "LD              s4, gp, 0x78(120)",
+            "VSETVLI         t3, zero, e64, m8, tu, mu",
+            "ADDI            t3, gp, 0xd8(216)",
+            "VLE64.V         v16, t3, none, 1",
+            "ADDI            t3, gp, 0x1d8(472)",
+            "VLE64.V         v24, t3, none, 1",
+            "LBU             s5, gp, 0x2d8(728)",
+            "LBU             s7, gp, 0x2db(731)",
+            "LBU             s8, gp, 0x2dc(732)",
+            "LBU             s9, gp, 0x2dd(733)",
+            "LBU             t3, gp, 0x394(916)",
+            "CSRRW           zero, t3, 0x2(2)",
+            "FENCE          "
+        ],
+        "disassembly": "aeskeygenassist xmm1, [rdi], 0xAA"
+    },
+    "660f3a44d300": {
+        "instruction_count": 5,
+        "expected_asm": [
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
+            "VCLMUL.VV       v4, v18, v19, none",
+            "VCLMULH.VV      v5, v18, v19, none",
+            "VSLIDEUP.VI     v4, v5, 0x1(1), none",
+            "VMV.V.V         v18, v4"
+        ],
+        "disassembly": "pclmulqdq xmm2, xmm3, 0x00"
+    },
+    "660f3a44d301": {
+        "instruction_count": 6,
+        "expected_asm": [
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
+            "VSLIDEDOWN.VI   v2, v18, 0x1(1), none",
+            "VCLMUL.VV       v4, v2, v19, none",
+            "VCLMULH.VV      v5, v2, v19, none",
+            "VSLIDEUP.VI     v4, v5, 0x1(1), none",
+            "VMV.V.V         v18, v4"
+        ],
+        "disassembly": "pclmulqdq xmm2, xmm3, 0x01"
+    },
+    "660f3a44d310": {
+        "instruction_count": 6,
+        "expected_asm": [
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
+            "VSLIDEDOWN.VI   v3, v19, 0x1(1), none",
+            "VCLMUL.VV       v4, v18, v3, none",
+            "VCLMULH.VV      v5, v18, v3, none",
+            "VSLIDEUP.VI     v4, v5, 0x1(1), none",
+            "VMV.V.V         v18, v4"
+        ],
+        "disassembly": "pclmulqdq xmm2, xmm3, 0x10"
+    },
+    "660f3a44d311": {
+        "instruction_count": 7,
+        "expected_asm": [
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
+            "VSLIDEDOWN.VI   v2, v18, 0x1(1), none",
+            "VSLIDEDOWN.VI   v3, v19, 0x1(1), none",
+            "VCLMUL.VV       v4, v2, v3, none",
+            "VCLMULH.VV      v5, v2, v3, none",
+            "VSLIDEUP.VI     v4, v5, 0x1(1), none",
+            "VMV.V.V         v18, v4"
+        ],
+        "disassembly": "pclmulqdq xmm2, xmm3, 0x11"
+    },
+    "660f3a440f00": {
+        "instruction_count": 7,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VLE8.V          v2, a0, none, 1",
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
+            "VCLMUL.VV       v5, v17, v2, none",
+            "VCLMULH.VV      v6, v17, v2, none",
+            "VSLIDEUP.VI     v5, v6, 0x1(1), none",
+            "VMV.V.V         v17, v5"
+        ],
+        "disassembly": "pclmulqdq xmm1, [rdi], 0x00"
+    }
+}
