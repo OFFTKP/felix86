@@ -189,6 +189,11 @@ static bool try_strace_ioctl(int rdi, u64 rsi, u64 rdx, u64 result) {
     return false;
 }
 
+static bool is_xdg_open_url(const char* arg) {
+    std::string_view url = arg;
+    return url.starts_with("https://") || url.starts_with("http://");
+}
+
 static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5, u64 arg6) {
     ThreadState* state = frame->state;
     bool mode32 = state->ctx.Mode32();
@@ -1526,10 +1531,44 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             break;
         }
 
+        if (g_config.xdg_open_passthrough && std::filesystem::path((char*)arg1).filename() == "xdg-open") {
+            const char* url = nullptr;
+            if (arg2) {
+                size_t ptr_size = mode32 ? 4 : 8;
+                u64 argv0_ptr = 0, url_ptr = 0, next_ptr = 0;
+                memcpy(&argv0_ptr, (u8*)arg2, ptr_size);
+                if (argv0_ptr) {
+                    memcpy(&url_ptr, (u8*)arg2 + ptr_size, ptr_size);
+                }
+                if (url_ptr) {
+                    memcpy(&next_ptr, (u8*)arg2 + ptr_size * 2, ptr_size);
+                }
+                if (url_ptr && !next_ptr && is_xdg_open_url((const char*)url_ptr)) {
+                    url = (const char*)url_ptr;
+                }
+            }
+
+            if (!url) {
+                VERBOSE("xdg-open wasn't called with a URL, using the guest xdg-open instead");
+            } else {
+                const char* xdg_argv[] = {"xdg-open", url, nullptr};
+
+                LOG("Calling host xdg-open: %s", url);
+
+                g_process_globals.shm_manager.unlink();
+
+                ThreadState::Set(nullptr);
+                execvpe("xdg-open", (char* const*)xdg_argv, environ);
+                ThreadState::Set(state);
+
+                WARN("Couldn't run the host xdg-open with error %s, running the guest xdg-open instead", strerror(errno));
+            }
+        }
+
         FdPath fd_path = Filesystem::resolve((char*)arg1, true);
 
         if (!fd_path.path() || !std::filesystem::exists(fd_path.full_path())) {
-            WARN("Execve couldn't find path: %s", arg1);
+            WARN("Execve couldn't find path: %s", (char*)arg1);
             result = -ENOENT;
             break;
         }
