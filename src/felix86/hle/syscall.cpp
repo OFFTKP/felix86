@@ -1531,28 +1531,17 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             break;
         }
 
-        FdPath fd_path = Filesystem::resolve((char*)arg1, true);
-
-        if (!fd_path.path() || !std::filesystem::exists(fd_path.full_path())) {
-            WARN("Execve couldn't find path: %s", (char*)arg1);
-            result = -ENOENT;
-            break;
-        }
-
-        std::filesystem::path path = fd_path.full_path();
-        if (!std::filesystem::is_regular_file(path)) {
-            WARN("Not regular file during execve: %s", path.c_str());
-            result = -ENOENT;
-            break;
-        }
-
-        if (g_config.xdg_open_passthrough && path.filename() == "xdg-open") {
+        if (g_config.xdg_open_passthrough && std::filesystem::path((char*)arg1).filename() == "xdg-open") {
             const char* url = nullptr;
             if (arg2) {
-                u64 url_ptr = 0, next_ptr = 0;
-                memcpy(&url_ptr, (u8*)arg2 + (mode32 ? 4 : 8), mode32 ? 4 : 8);
+                size_t ptr_size = mode32 ? 4 : 8;
+                u64 argv0_ptr = 0, url_ptr = 0, next_ptr = 0;
+                memcpy(&argv0_ptr, (u8*)arg2, ptr_size);
+                if (argv0_ptr) {
+                    memcpy(&url_ptr, (u8*)arg2 + ptr_size, ptr_size);
+                }
                 if (url_ptr) {
-                    memcpy(&next_ptr, (u8*)arg2 + (mode32 ? 8 : 16), mode32 ? 4 : 8);
+                    memcpy(&next_ptr, (u8*)arg2 + ptr_size * 2, ptr_size);
                 }
                 if (url_ptr && !next_ptr && is_xdg_open_url((const char*)url_ptr)) {
                     url = (const char*)url_ptr;
@@ -1574,6 +1563,21 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
 
                 WARN("Couldn't run the host xdg-open with error %s, running the guest xdg-open instead", strerror(errno));
             }
+        }
+
+        FdPath fd_path = Filesystem::resolve((char*)arg1, true);
+
+        if (!fd_path.path() || !std::filesystem::exists(fd_path.full_path())) {
+            WARN("Execve couldn't find path: %s", (char*)arg1);
+            result = -ENOENT;
+            break;
+        }
+
+        std::filesystem::path path = fd_path.full_path();
+        if (!std::filesystem::is_regular_file(path)) {
+            WARN("Not regular file during execve: %s", path.c_str());
+            result = -ENOENT;
+            break;
         }
 
         std::vector<const char*> argv;
