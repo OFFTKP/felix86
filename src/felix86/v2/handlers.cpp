@@ -3940,8 +3940,8 @@ FAST_HANDLE(MOVSXD) {
     biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
     if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         i64 imm = 0;
-        if (IsValidSigned12BitImm(operands[1].mem.disp.value) && !(instruction.attributes & ZYDIS_ATTRIB_HAS_SEGMENT) &&
-            !g_config.paranoid && g_config.no_address_overflow) {
+        if (IsValidSigned12BitImm(operands[1].mem.disp.value) && !(instruction.attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
+            g_config.no_address_overflow) {
             imm = operands[1].mem.disp.value;
             operands[1].mem.disp.value = 0;
         }
@@ -4735,8 +4735,8 @@ FAST_HANDLE(MOVZX) {
         }
     } else {
         i64 imm = 0;
-        if (IsValidSigned12BitImm(operands[1].mem.disp.value) && !(instruction.attributes & ZYDIS_ATTRIB_HAS_SEGMENT) &&
-            !g_config.paranoid && g_config.no_address_overflow) {
+        if (IsValidSigned12BitImm(operands[1].mem.disp.value) && !(instruction.attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
+            g_config.no_address_overflow) {
             imm = operands[1].mem.disp.value;
             operands[1].mem.disp.value = 0;
         }
@@ -8418,8 +8418,8 @@ FAST_HANDLE(MFENCE) {
 FAST_HANDLE(MOVSX) {
     if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         i64 imm = 0;
-        if (IsValidSigned12BitImm(operands[1].mem.disp.value) && !(instruction.attributes & ZYDIS_ATTRIB_HAS_SEGMENT) &&
-            !g_config.paranoid && g_config.no_address_overflow) {
+        if (IsValidSigned12BitImm(operands[1].mem.disp.value) && !(instruction.attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
+            g_config.no_address_overflow) {
             imm = operands[1].mem.disp.value;
             operands[1].mem.disp.value = 0;
         }
@@ -11288,6 +11288,7 @@ static void PCMPXSTRX(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstr
     ASSERT(operands[0].reg.value >= ZYDIS_REGISTER_XMM0 && operands[0].reg.value <= ZYDIS_REGISTER_XMM15);
     as.ADDI(a2, rec.threadStatePointer(), offsetof(ThreadState, ctx.xmm) + (sizeof(XmmReg) * (operands[0].reg.value - ZYDIS_REGISTER_XMM0)));
     as.LI(a4, operands[2].imm.value.u);
+    as.LI(a5, instruction.operand_width == 64);
 
     rec.callPointer(offsetof(ThreadState, felix86_pcmpxstrx));
 
@@ -16406,8 +16407,9 @@ FAST_HANDLE(VMPSADBW) {
         as.VADD(result, temp3, temp2);
 
         rec.setVectorState(SEW::E8, 32);
-        as.LI(scratch, 16);
+        as.LI(scratch, 16 + (!!(imm & 0b100000) - !!(imm & 0b100)) * 4);
         as.VADD(iota1, iota1, scratch);
+        as.LI(scratch, 16 + (((imm >> 3) & 0b11) - (imm & 0b11)) * 4);
         as.VADD(iota2, iota2, scratch);
         as.VRGATHER(temp1, src1, iota1);
         as.VRGATHER(temp2, src2, iota2);

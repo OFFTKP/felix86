@@ -943,7 +943,7 @@ void felix86_fyl2xp1(ThreadState* state) {
 }
 
 template <class Int, int Count = 128 / (sizeof(Int) * 8), int UpperBound = Count - 1 /* 7 or 15 */, u32 Mask = (1u << Count) - 1u>
-void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 control) {
+void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 control, bool rexw) {
     enum Mode {
         EqualAny = 0b00,
         Ranges = 0b01,
@@ -992,16 +992,10 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
             }
         }
     } else {
-        dst_length = (i64)state->ctx.gprs[0]; // eax
-        src_length = (i64)state->ctx.gprs[2]; // edx
-
-        if (std::abs(dst_length) > Count) {
-            dst_length = Count;
-        }
-
-        if (std::abs(src_length) > Count) {
-            src_length = Count;
-        }
+        i64 rax = rexw ? (i64)state->ctx.gprs[0] : (i32)state->ctx.gprs[0];
+        i64 rdx = rexw ? (i64)state->ctx.gprs[2] : (i32)state->ctx.gprs[2];
+        dst_length = (rax < -Count || rax > Count) ? Count : std::abs(rax);
+        src_length = (rdx < -Count || rdx > Count) ? Count : std::abs(rdx);
     }
 
     for (int j = 0; j < Count; j++) {
@@ -1174,7 +1168,7 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
     state->ctx.pf = 0;
 }
 
-void felix86_pcmpxstrx(ThreadState* state, pcmpxstrx type, u8* dst, u8* src, u8 control) {
+void felix86_pcmpxstrx(ThreadState* state, pcmpxstrx type, u8* dst, u8* src, u8 control, bool rexw) {
     enum Type {
         UnsignedBytes = 0b00,
         UnsignedWords = 0b01,
@@ -1184,16 +1178,16 @@ void felix86_pcmpxstrx(ThreadState* state, pcmpxstrx type, u8* dst, u8* src, u8 
 
     switch ((Type)(control & 0b11)) {
     case UnsignedBytes: {
-        return pcmpxstrx_impl<u8>(state, type, (u8*)dst, (u8*)src, control);
+        return pcmpxstrx_impl<u8>(state, type, (u8*)dst, (u8*)src, control, rexw);
     }
     case UnsignedWords: {
-        return pcmpxstrx_impl<u16>(state, type, (u16*)dst, (u16*)src, control);
+        return pcmpxstrx_impl<u16>(state, type, (u16*)dst, (u16*)src, control, rexw);
     }
     case SignedBytes: {
-        return pcmpxstrx_impl<i8>(state, type, (i8*)dst, (i8*)src, control);
+        return pcmpxstrx_impl<i8>(state, type, (i8*)dst, (i8*)src, control, rexw);
     }
     case SignedWords: {
-        return pcmpxstrx_impl<i16>(state, type, (i16*)dst, (i16*)src, control);
+        return pcmpxstrx_impl<i16>(state, type, (i16*)dst, (i16*)src, control, rexw);
     }
     }
 
