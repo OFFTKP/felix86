@@ -11735,6 +11735,11 @@ FAST_HANDLE(AESDEC) {
         biscuit::Vec zeroes = rec.scratchVec();
         biscuit::GPR temp = rec.scratch();
         rec.setVectorState(SEW::E32, 4);
+        if (src == dst) {
+            biscuit::Vec temp = rec.scratchVec();
+            as.VMV1R(temp, src);
+            src = temp;
+        }
         as.VXOR(zeroes, zeroes, zeroes);
         as.VAESDF_VV(dst, zeroes);
         as.LI(temp, constant);
@@ -11764,7 +11769,7 @@ FAST_HANDLE(AESIMC) {
     if (Extensions::Zvkned) {
         WARN_ONCE("This program uses AESIMC");
         biscuit::GPR temp = rec.scratch();
-        biscuit::Vec dst = rec.getVec(&operands[0]);
+        biscuit::Vec dst = rec.scratchVec();
         biscuit::Vec src = rec.getVec(&operands[1]);
         rec.setVectorState(SEW::E32, 4);
         u64 constant = 0x63636363; // see AESDEC
@@ -13459,6 +13464,10 @@ FAST_HANDLE(ANDN) {
 // AVX starts here...
 FAST_HANDLE(VMOVAPS) {
     biscuit::Vec src = rec.getVec(&operands[1]);
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER &&
+        operands[0].reg.value == operands[1].reg.value && operands[0].size == 128) {
+        rec.vzeroTopBits(src, src);
+    }
     rec.setVec(&operands[0], src);
 }
 
