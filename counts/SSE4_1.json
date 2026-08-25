@@ -890,5 +890,254 @@
             "0B0C0D0E ???"
         ],
         "disassembly": "mpsadbw xmm0, [rdi], 0x07"
+    },
+    "660f3a41d333": {
+        "instruction_count": 8,
+        "expected_asm": [
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
+            "VMV.V.I         v0, 0x3(3)",
+            "VMV.V.I         v2, 0x0(0)",
+            "VMV.V.I         v3, 0x0(0)",
+            "VFMUL.VV        v2, v18, v19, v0.t",
+            "VFREDUSUM.VS    v3, v2, v3, none",
+            "VMV.X.S         ra, v3",
+            "VMV.V.X         v18, ra"
+        ],
+        "disassembly": "dppd xmm2, xmm3, 0x33"
+    },
+    "660f3a410f33": {
+        "instruction_count": 10,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VLE8.V          v4, a0, none, 1",
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
+            "VMV.V.I         v0, 0x3(3)",
+            "VMV.V.I         v2, 0x0(0)",
+            "VMV.V.I         v3, 0x0(0)",
+            "VFMUL.VV        v2, v17, v4, v0.t",
+            "VFREDUSUM.VS    v3, v2, v3, none",
+            "VMV.X.S         ra, v3",
+            "VMV.V.X         v17, ra"
+        ],
+        "disassembly": "dppd xmm1, [rdi], 0x33"
+    },
+    "660f3a08d303": {
+        "instruction_count": 14,
+        "expected_asm": [
+            "LUI             t3, 0x4b000(307200)",
+            "FMV.W.X         f28, t3",
+            "FSGNJN.S        f29, f28, f28",
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "ADDIW           t1, zero, 0x1(1)",
+            "CSRRW           ra, t1, 0x2(2)",
+            "VMFLT.VF        v0, v19, f28, none",
+            "VMFGT.VF        v2, v19, f29, none",
+            "VMAND.MM        v0, v0, v2",
+            "VMV1R.V         v3, v19",
+            "VFCVT.X.F.V     v3, v3, v0.t",
+            "VFCVT.F.X.V     v3, v3, v0.t",
+            "VFSGNJ.VV       v18, v3, v19, none",
+            "CSRRW           zero, ra, 0x2(2)"
+        ],
+        "disassembly": "roundps xmm2, xmm3, 0x03"
+    },
+    "660f3a080f03": {
+        "instruction_count": 16,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VLE8.V          v2, a0, none, 1",
+            "LUI             t3, 0x4b000(307200)",
+            "FMV.W.X         f28, t3",
+            "FSGNJN.S        f29, f28, f28",
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "ADDIW           t1, zero, 0x1(1)",
+            "CSRRW           ra, t1, 0x2(2)",
+            "VMFLT.VF        v0, v2, f28, none",
+            "VMFGT.VF        v3, v2, f29, none",
+            "VMAND.MM        v0, v0, v3",
+            "VMV1R.V         v4, v2",
+            "VFCVT.X.F.V     v4, v4, v0.t",
+            "VFCVT.F.X.V     v4, v4, v0.t",
+            "VFSGNJ.VV       v17, v4, v2, none",
+            "CSRRW           zero, ra, 0x2(2)"
+        ],
+        "disassembly": "roundps xmm1, [rdi], 0x03"
+    },
+    "660f3a09d303": {
+        "instruction_count": 15,
+        "expected_asm": [
+            "ADDIW           t3, zero, 0x433(1075)",
+            "SLLI            t3, t3, 0x34(52)",
+            "FMV.D.X         f28, t3",
+            "FSGNJN.D        f29, f28, f28",
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
+            "ADDIW           t1, zero, 0x1(1)",
+            "CSRRW           ra, t1, 0x2(2)",
+            "VMFLT.VF        v0, v19, f28, none",
+            "VMFGT.VF        v2, v19, f29, none",
+            "VMAND.MM        v0, v0, v2",
+            "VMV1R.V         v3, v19",
+            "VFCVT.X.F.V     v3, v3, v0.t",
+            "VFCVT.F.X.V     v3, v3, v0.t",
+            "VFSGNJ.VV       v18, v3, v19, none",
+            "CSRRW           zero, ra, 0x2(2)"
+        ],
+        "disassembly": "roundpd xmm2, xmm3, 0x03"
+    },
+    "660f3a090f03": {
+        "instruction_count": 17,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VLE8.V          v2, a0, none, 1",
+            "ADDIW           t3, zero, 0x433(1075)",
+            "SLLI            t3, t3, 0x34(52)",
+            "FMV.D.X         f28, t3",
+            "FSGNJN.D        f29, f28, f28",
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
+            "ADDIW           t1, zero, 0x1(1)",
+            "CSRRW           ra, t1, 0x2(2)",
+            "VMFLT.VF        v0, v2, f28, none",
+            "VMFGT.VF        v3, v2, f29, none",
+            "VMAND.MM        v0, v0, v3",
+            "VMV1R.V         v4, v2",
+            "VFCVT.X.F.V     v4, v4, v0.t",
+            "VFCVT.F.X.V     v4, v4, v0.t",
+            "VFSGNJ.VV       v17, v4, v2, none",
+            "CSRRW           zero, ra, 0x2(2)"
+        ],
+        "disassembly": "roundpd xmm1, [rdi], 0x03"
+    },
+    "660f3a21d312": {
+        "instruction_count": 6,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VSLIDEUP.VI     v2, v19, 0x1(1), none",
+            "VMV.V.I         v0, 0x2(2)",
+            "VMERGE.VVM      v18, v18, v2",
+            "VMV.V.I         v0, 0x2(2)",
+            "VXOR.VV         v18, v18, v18, v0.t"
+        ],
+        "disassembly": "insertps xmm2, xmm3, 0x12"
+    },
+    "660f3a210f12": {
+        "instruction_count": 8,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e8, m1, tu, mu",
+            "VLE8.V          v2, a0, none, 1",
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VSLIDEUP.VI     v3, v2, 0x1(1), none",
+            "VMV.V.I         v0, 0x2(2)",
+            "VMERGE.VVM      v17, v17, v3",
+            "VMV.V.I         v0, 0x2(2)",
+            "VXOR.VV         v17, v17, v17, v0.t"
+        ],
+        "disassembly": "insertps xmm1, dword ptr [rdi], 0x12"
+    },
+    "660f3a17d002": {
+        "instruction_count": 4,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VSLIDEDOWN.VI   v2, v18, 0x2(2), none",
+            "VMV.X.S         ra, v2",
+            "ADD.UW          t0, ra, zero"
+        ],
+        "disassembly": "extractps eax, xmm2, 0x02"
+    },
+    "660f3a171702": {
+        "instruction_count": 4,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VSLIDEDOWN.VI   v2, v18, 0x2(2), none",
+            "VMV.X.S         ra, v2",
+            "SW              ra, a0, 0x0(0)"
+        ],
+        "disassembly": "extractps dword ptr [rdi], xmm2, 0x02"
+    },
+    "66480f3a22d001": {
+        "instruction_count": 3,
+        "expected_asm": [
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
+            "VMV.S.X         v2, t0",
+            "VSLIDEUP.VI     v18, v2, 0x1(1), none"
+        ],
+        "disassembly": "pinsrq xmm2, rax, 0x01"
+    },
+    "66480f3a221701": {
+        "instruction_count": 4,
+        "expected_asm": [
+            "VSETIVLI        zero, 8, e8, m1, tu, mu",
+            "VLE8.V          v2, a0, none, 1",
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
+            "VSLIDEUP.VI     v18, v2, 0x1(1), none"
+        ],
+        "disassembly": "pinsrq xmm2, qword ptr [rdi], 0x01"
+    },
+    "66480f3a22d000": {
+        "instruction_count": 2,
+        "expected_asm": [
+            "VSETIVLI        zero, 1, e64, m1, tu, mu",
+            "VMV.S.X         v18, t0"
+        ],
+        "disassembly": "pinsrq xmm2, rax, 0x00"
+    },
+    "660f3a14d005": {
+        "instruction_count": 5,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VSLIDEDOWN.VI   v2, v18, 0x5(5), none",
+            "VMV.X.S         ra, v2",
+            "ANDI            ra, ra, 0xff(255)",
+            "ADD.UW          t0, ra, zero"
+        ],
+        "disassembly": "pextrb eax, xmm2, 0x05"
+    },
+    "660fc5c204": {
+        "instruction_count": 5,
+        "expected_asm": [
+            "VSETIVLI        zero, 8, e16, m1, tu, mu",
+            "VSLIDEDOWN.VI   v2, v18, 0x4(4), none",
+            "VMV.X.S         ra, v2",
+            "ZEXT.H          ra, ra",
+            "ADD.UW          t0, ra, zero"
+        ],
+        "disassembly": "pextrw eax, xmm2, 0x04"
+    },
+    "660f3a16d003": {
+        "instruction_count": 4,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VSLIDEDOWN.VI   v2, v18, 0x3(3), none",
+            "VMV.X.S         ra, v2",
+            "ADD.UW          t0, ra, zero"
+        ],
+        "disassembly": "pextrd eax, xmm2, 0x03"
+    },
+    "66480f3a16d001": {
+        "instruction_count": 4,
+        "expected_asm": [
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
+            "VSLIDEDOWN.VI   v2, v18, 0x1(1), none",
+            "VMV.X.S         ra, v2",
+            "ADDI            t0, ra, 0x0(0)"
+        ],
+        "disassembly": "pextrq rax, xmm2, 0x01"
+    },
+    "66480f3a161701": {
+        "instruction_count": 4,
+        "expected_asm": [
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
+            "VSLIDEDOWN.VI   v2, v18, 0x1(1), none",
+            "VMV.X.S         ra, v2",
+            "SD              ra, a0, 0x0(0)"
+        ],
+        "disassembly": "pextrq qword ptr [rdi], xmm2, 0x01"
+    },
+    "660f382a0f": {
+        "instruction_count": 2,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VLE8.V          v17, a0, none, 1"
+        ],
+        "disassembly": "movntdqa xmm1, [rdi]"
     }
 }
