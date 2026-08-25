@@ -60,6 +60,21 @@ void Logger::log(const char* format, ...) {
     }
 }
 
+void felix86_assert(const char* file, int line, const char* format, ...) {
+    char buffer[4096];
+    va_list args;
+    va_start(args, format);
+    int size = vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
+
+    if (size < 0) {
+        buffer[0] = '\0';
+    }
+
+    Logger::log(ANSI_COLOR_BLACK_ON_RED "%s:%d (Thread: %d) %s" ANSI_COLOR_RESET "\n", file, line, gettid(), buffer);
+    felix86_exit(1);
+}
+
 void Logger::openTerminal() {
     int fd = open("/dev/tty", O_WRONLY);
     if (fd < 0) {

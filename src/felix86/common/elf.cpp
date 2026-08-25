@@ -100,11 +100,19 @@ private:
     bool mode32;
 
     Elf32_Ehdr& inner32() {
-        return std::get<Elf32_Ehdr>(inner);
+        Elf32_Ehdr* ptr = std::get_if<Elf32_Ehdr>(&inner);
+        if (!ptr) {
+            ERROR("ELF file header is not 32-bit");
+        }
+        return *ptr;
     }
 
     Elf64_Ehdr& inner64() {
-        return std::get<Elf64_Ehdr>(inner);
+        Elf64_Ehdr* ptr = std::get_if<Elf64_Ehdr>(&inner);
+        if (!ptr) {
+            ERROR("ELF file header is not 64-bit");
+        }
+        return *ptr;
     }
 
     std::variant<Elf64_Ehdr, Elf32_Ehdr> inner;
@@ -164,11 +172,19 @@ private:
     bool mode32;
 
     Elf32_Phdr& inner32() {
-        return std::get<Elf32_Phdr>(inner);
+        Elf32_Phdr* ptr = std::get_if<Elf32_Phdr>(&inner);
+        if (!ptr) {
+            ERROR("ELF program header is not 32-bit");
+        }
+        return *ptr;
     }
 
     Elf64_Phdr& inner64() {
-        return std::get<Elf64_Phdr>(inner);
+        Elf64_Phdr* ptr = std::get_if<Elf64_Phdr>(&inner);
+        if (!ptr) {
+            ERROR("ELF program header is not 64-bit");
+        }
+        return *ptr;
     }
 
     std::variant<Elf64_Phdr, Elf32_Phdr> inner;
@@ -224,11 +240,19 @@ private:
     bool mode32;
 
     Elf32_Shdr& inner32() {
-        return std::get<Elf32_Shdr>(inner);
+        Elf32_Shdr* ptr = std::get_if<Elf32_Shdr>(&inner);
+        if (!ptr) {
+            ERROR("ELF section header is not 32-bit");
+        }
+        return *ptr;
     }
 
     Elf64_Shdr& inner64() {
-        return std::get<Elf64_Shdr>(inner);
+        Elf64_Shdr* ptr = std::get_if<Elf64_Shdr>(&inner);
+        if (!ptr) {
+            ERROR("ELF section header is not 64-bit");
+        }
+        return *ptr;
     }
 
     std::variant<Elf64_Shdr, Elf32_Shdr> inner;
@@ -285,11 +309,19 @@ private:
     bool mode32;
 
     Elf32_Sym& inner32() {
-        return std::get<Elf32_Sym>(inner);
+        Elf32_Sym* ptr = std::get_if<Elf32_Sym>(&inner);
+        if (!ptr) {
+            ERROR("ELF symbol is not 32-bit");
+        }
+        return *ptr;
     }
 
     Elf64_Sym& inner64() {
-        return std::get<Elf64_Sym>(inner);
+        Elf64_Sym* ptr = std::get_if<Elf64_Sym>(&inner);
+        if (!ptr) {
+            ERROR("ELF symbol is not 64-bit");
+        }
+        return *ptr;
     }
 
     std::variant<Elf64_Sym, Elf32_Sym> inner;

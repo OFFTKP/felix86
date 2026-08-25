@@ -493,6 +493,8 @@ int main(int argc, char* argv[]) {
         return 0x42;
     }
 
+    std::set_terminate([]() { ERROR("std::terminate was called"); });
+
 #ifdef __x86_64__
     WARN("You're running an x86-64 executable version of felix86, get ready for a crash soon");
 #endif

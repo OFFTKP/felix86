@@ -34,10 +34,7 @@ FMT_BEGIN_NAMESPACE
 namespace detail {
 
 FMT_FUNC void assert_fail(const char* file, int line, const char* message) {
-  // Use unchecked std::fprintf to avoid triggering another assertion when
-  // writing to stderr fails.
-  fprintf(stderr, "%s:%d: assertion failed: %s", file, line, message);
-  abort();
+  felix86_assert(file, line, "fmt error: %s", message);
 }
 
 FMT_FUNC void format_error_code(detail::buffer<char>& out, int error_code,
@@ -136,8 +133,7 @@ FMT_FUNC void report_error(const char* message) {
 #if FMT_USE_EXCEPTIONS
   throw format_error(message);
 #else
-  fputs(message, stderr);
-  abort();
+  felix86_assert(__FILE__, __LINE__, "fmt error: %s", message);
 #endif
 }
 
