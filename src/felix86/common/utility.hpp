@@ -139,7 +139,7 @@ inline void replace_all(std::string& str, const std::string& from, const std::st
 
 enum class pcmpxstrx { ImplicitIndex = 0b00, ImplicitMask = 0b01, ExplicitIndex = 0b10, ExplicitMask = 0b11 };
 
-void felix86_pcmpxstrx(ThreadState* state, pcmpxstrx type, u8* dst, u8* src, u8 control);
+void felix86_pcmpxstrx(ThreadState* state, pcmpxstrx type, u8* dst, u8* src, u8 control, bool rexw);
 
 inline bool is_subpath(const std::filesystem::path& path, const std::filesystem::path& base) {
     const auto mismatch_pair = std::mismatch(path.begin(), path.end(), base.begin(), base.end());
