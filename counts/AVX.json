@@ -13080,11 +13080,11 @@
         "disassembly": "vmpsadbw xmm1, xmm2, [rdi], 0xAA"
     },
     "c4e35d42ddaa": {
-        "instruction_count": 47,
+        "instruction_count": 48,
         "expected_asm": [
             "ADDIW           ra, zero, 0x80(128)",
             "AUIPC           t1, 0x0(0)",
-            "ADDI            t1, t1, 0x98(152)",
+            "ADDI            t1, t1, 0x9c(156)",
             "ADDIW           t3, zero, 0x20(32)",
             "VSETVLI         zero, t3, e8, m1, tu, mu",
             "VMV.V.X         v5, ra",
@@ -13104,8 +13104,9 @@
             "VADD.VV         v7, v6, v5, none",
             "ADDIW           t3, zero, 0x20(32)",
             "VSETVLI         zero, t3, e8, m1, tu, mu",
-            "ADDIW           ra, zero, 0x10(16)",
+            "ADDIW           ra, zero, 0x14(20)",
             "VADD.VX         v2, v2, ra, none",
+            "ADDIW           ra, zero, 0xc(12)",
             "VADD.VX         v3, v3, ra, none",
             "VRGATHER.VV     v4, v20, v2, none",
             "VRGATHER.VV     v5, v21, v3, none",
@@ -13133,14 +13134,14 @@
         "disassembly": "vmpsadbw ymm3, ymm4, ymm5, 0xAA"
     },
     "c4e36d420faa": {
-        "instruction_count": 48,
+        "instruction_count": 49,
         "expected_asm": [
             "ADDIW           ra, zero, 0x20(32)",
             "VSETVLI         zero, ra, e8, m1, tu, mu",
             "VLE8.V          v2, a0, none, 1",
             "ADDIW           ra, zero, 0x80(128)",
             "AUIPC           t1, 0x0(0)",
-            "ADDI            t1, t1, 0x90(144)",
+            "ADDI            t1, t1, 0x94(148)",
             "VMV.V.X         v6, ra",
             "VIOTA.M         v4, v6, none",
             "VADD.VI         v4, v4, 0x8(8), none",
@@ -13158,8 +13159,9 @@
             "VADD.VV         v1, v7, v6, none",
             "ADDIW           t3, zero, 0x20(32)",
             "VSETVLI         zero, t3, e8, m1, tu, mu",
-            "ADDIW           ra, zero, 0x10(16)",
+            "ADDIW           ra, zero, 0x14(20)",
             "VADD.VX         v3, v3, ra, none",
+            "ADDIW           ra, zero, 0xc(12)",
             "VADD.VX         v4, v4, ra, none",
             "VRGATHER.VV     v5, v18, v3, none",
             "VRGATHER.VV     v6, v2, v4, none",
@@ -13440,7 +13442,7 @@
         "disassembly": "vzeroupper"
     },
     "c4e37963dcaa": {
-        "instruction_count": 62,
+        "instruction_count": 63,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -13473,6 +13475,7 @@
             "ADDIW           a1, zero, 0x0(0)",
             "ADDI            a2, gp, 0x138(312)",
             "ADDIW           a4, zero, 0xaa(170)",
+            "ADDIW           a5, zero, 0x0(0)",
             "LD              t4, gp, 0x4a0(1184)",
             "JALR            ra, t4, 0x0(0)",
             "LD              s11, gp, 0x80(128)",
@@ -13508,7 +13511,7 @@
         "disassembly": "vpcmpistri xmm3, xmm4, 0xAA"
     },
     "c4e379630faa": {
-        "instruction_count": 63,
+        "instruction_count": 64,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -13542,6 +13545,7 @@
             "ADDIW           a1, zero, 0x0(0)",
             "ADDI            a2, gp, 0xf8(248)",
             "ADDIW           a4, zero, 0xaa(170)",
+            "ADDIW           a5, zero, 0x0(0)",
             "LD              t4, gp, 0x4a0(1184)",
             "JALR            ra, t4, 0x0(0)",
             "LD              s11, gp, 0x80(128)",
@@ -13577,7 +13581,7 @@
         "disassembly": "vpcmpistri xmm1, [rdi], 0xAA"
     },
     "c4e37962dcaa": {
-        "instruction_count": 64,
+        "instruction_count": 65,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -13610,6 +13614,7 @@
             "ADDIW           a1, zero, 0x1(1)",
             "ADDI            a2, gp, 0x138(312)",
             "ADDIW           a4, zero, 0xaa(170)",
+            "ADDIW           a5, zero, 0x0(0)",
             "LD              t4, gp, 0x4a0(1184)",
             "JALR            ra, t4, 0x0(0)",
             "SD              zero, gp, 0xe8(232)",
@@ -13647,7 +13652,7 @@
         "disassembly": "vpcmpistrm xmm3, xmm4, 0xAA"
     },
     "c4e379620faa": {
-        "instruction_count": 65,
+        "instruction_count": 66,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -13681,6 +13686,7 @@
             "ADDIW           a1, zero, 0x1(1)",
             "ADDI            a2, gp, 0xf8(248)",
             "ADDIW           a4, zero, 0xaa(170)",
+            "ADDIW           a5, zero, 0x0(0)",
             "LD              t4, gp, 0x4a0(1184)",
             "JALR            ra, t4, 0x0(0)",
             "SD              zero, gp, 0xe8(232)",
@@ -13718,7 +13724,7 @@
         "disassembly": "vpcmpistrm xmm1, [rdi], 0xAA"
     },
     "c4e37961dcaa": {
-        "instruction_count": 62,
+        "instruction_count": 63,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -13751,6 +13757,7 @@
             "ADDIW           a1, zero, 0x2(2)",
             "ADDI            a2, gp, 0x138(312)",
             "ADDIW           a4, zero, 0xaa(170)",
+            "ADDIW           a5, zero, 0x0(0)",
             "LD              t4, gp, 0x4a0(1184)",
             "JALR            ra, t4, 0x0(0)",
             "LD              s11, gp, 0x80(128)",
@@ -13786,7 +13793,7 @@
         "disassembly": "vpcmpestri xmm3, xmm4, 0xAA"
     },
     "c4e379610faa": {
-        "instruction_count": 63,
+        "instruction_count": 64,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -13820,6 +13827,7 @@
             "ADDIW           a1, zero, 0x2(2)",
             "ADDI            a2, gp, 0xf8(248)",
             "ADDIW           a4, zero, 0xaa(170)",
+            "ADDIW           a5, zero, 0x0(0)",
             "LD              t4, gp, 0x4a0(1184)",
             "JALR            ra, t4, 0x0(0)",
             "LD              s11, gp, 0x80(128)",
@@ -13855,7 +13863,7 @@
         "disassembly": "vpcmpestri xmm1, [rdi], 0xAA"
     },
     "c4e37960dcaa": {
-        "instruction_count": 64,
+        "instruction_count": 65,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -13888,6 +13896,7 @@
             "ADDIW           a1, zero, 0x3(3)",
             "ADDI            a2, gp, 0x138(312)",
             "ADDIW           a4, zero, 0xaa(170)",
+            "ADDIW           a5, zero, 0x0(0)",
             "LD              t4, gp, 0x4a0(1184)",
             "JALR            ra, t4, 0x0(0)",
             "SD              zero, gp, 0xe8(232)",
@@ -13925,7 +13934,7 @@
         "disassembly": "vpcmpestrm xmm3, xmm4, 0xAA"
     },
     "c4e379600faa": {
-        "instruction_count": 65,
+        "instruction_count": 66,
         "expected_asm": [
             "SD              s11, gp, 0x80(128)",
             "SD              t0, gp, 0x0(0)",
@@ -13959,6 +13968,7 @@
             "ADDIW           a1, zero, 0x3(3)",
             "ADDI            a2, gp, 0xf8(248)",
             "ADDIW           a4, zero, 0xaa(170)",
+            "ADDIW           a5, zero, 0x0(0)",
             "LD              t4, gp, 0x4a0(1184)",
             "JALR            ra, t4, 0x0(0)",
             "SD              zero, gp, 0xe8(232)",
