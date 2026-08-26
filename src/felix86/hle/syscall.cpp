@@ -775,7 +775,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_getdents64: {
-        result = SYSCALL(getdents64, arg1, arg2, arg3, arg4, arg5, arg6);
+        result = FD::getdents64(arg1, arg2, arg3);
         break;
     }
     case felix86_riscv64_lgetxattr: {
@@ -2121,7 +2121,7 @@ void felix86_syscall(felix86_frame* frame) {
             u64 dirp = arg2;
             u32 count = arg3;
 
-            result = SYSCALL(getdents64, fd, dirp, count);
+            result = FD::getdents64(fd, dirp, count);
             if (result > 0) {
                 size_t bytes = result;
                 for (size_t i = 0; i < bytes;) {
@@ -3082,7 +3082,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             u64 dirp = arg2;
             u32 count = arg3;
 
-            result = SYSCALL(getdents64, fd, dirp, count);
+            result = FD::getdents64(fd, dirp, count);
             if (result >= 0) {
                 size_t bytes = result;
                 size_t num = 0;

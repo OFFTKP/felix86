@@ -184,6 +184,8 @@ struct Filesystem {
 
     static bool FakeMount(const std::filesystem::path& mount_me, const std::filesystem::path& dst);
 
+    static void SetRootfs(const std::filesystem::path& path);
+
     // Emulated syscall functions
     int OpenAt(bool mode32, int fd, const char* filename, int flags, u64 mode);
 

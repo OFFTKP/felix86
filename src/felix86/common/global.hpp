@@ -56,6 +56,8 @@ struct ProcessGlobals {
     // But we don't care for now
     std::vector<std::filesystem::path> mount_paths;
 
+    char* vfork_rootfs = nullptr;
+
     SHMManager shm_manager;
 };
 

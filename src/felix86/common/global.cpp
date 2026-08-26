@@ -103,6 +103,8 @@ void ProcessGlobals::initialize() {
 
     memset(cas128_locks, 0, sizeof(cas128_locks));
 
+    vfork_rootfs = nullptr;
+
     // HACK: Don't clear as they get shared per mount namespace
     // TODO: proper mount namespacing when we need it
     // mount_paths.clear();

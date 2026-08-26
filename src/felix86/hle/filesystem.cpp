@@ -554,6 +554,22 @@ std::filesystem::path create_unique_mount_path() {
     return dir;
 }
 
+void Filesystem::SetRootfs(const std::filesystem::path& path) {
+    auto guard = g_process_globals.states_lock.lock();
+    g_config.rootfs_path = path;
+    g_process_globals.mount_paths.push_back(g_config.rootfs_path);
+    int old_rootfs_fd = g_rootfs_fd;
+    g_rootfs_fd = open(path.c_str(), O_PATH | O_DIRECTORY);
+    FD::unprotectAndClose(old_rootfs_fd);
+    ASSERT_MSG(g_rootfs_fd > 0, "Failed to open new rootfs dir: %s", path.c_str());
+    g_rootfs_fd = FD::moveToHighNumber(g_rootfs_fd);
+    FD::protect(g_rootfs_fd);
+    if (g_process_globals.vfork_rootfs) {
+        strncpy(g_process_globals.vfork_rootfs, path.c_str(), PATH_MAX - 1);
+        g_process_globals.vfork_rootfs[PATH_MAX - 1] = 0;
+    }
+}
+
 int Filesystem::Chroot(const char* path) {
     WARN("chroot(%s)", path);
     if (g_config.no_rootfs) {
@@ -594,15 +610,7 @@ int Filesystem::Chroot(const char* path) {
     }
 
     // TODO: setting rootfs_path is most likely thread unsafe?
-    auto guard = g_process_globals.states_lock.lock();
-    g_config.rootfs_path = final_path;
-    g_process_globals.mount_paths.push_back(g_config.rootfs_path);
-    int old_rootfs_fd = g_rootfs_fd;
-    g_rootfs_fd = open(final_path.c_str(), O_PATH | O_DIRECTORY);
-    FD::unprotectAndClose(old_rootfs_fd);
-    ASSERT_MSG(g_rootfs_fd > 0, "Failed to open new rootfs dir: %s", final_path.c_str());
-    g_rootfs_fd = FD::moveToHighNumber(g_rootfs_fd);
-    FD::protect(g_rootfs_fd);
+    SetRootfs(final_path);
     return 0;
 }
 
@@ -645,16 +653,7 @@ int Filesystem::PivotRoot(const char* new_root, const char* put_old) {
         WARN("Failed to move mount during pivot_root %s -> %s, error: %s", new_root_full, path.c_str(), strerror(errno));
         return -errno;
     } else {
-        auto lock = g_process_globals.states_lock.lock();
-        int old_rootfs_fd = g_rootfs_fd;
-        g_rootfs_fd = open(path.c_str(), O_PATH | O_DIRECTORY);
-        FD::unprotectAndClose(old_rootfs_fd);
-        ASSERT_MSG(g_rootfs_fd > 0, "Failed to open new rootfs dir: %s", path.c_str());
-        g_rootfs_fd = FD::moveToHighNumber(g_rootfs_fd);
-        FD::protect(g_rootfs_fd);
-        g_config.rootfs_path = path;
-
-        g_process_globals.mount_paths.push_back(g_config.rootfs_path);
+        SetRootfs(path);
     }
 
     // TODO: Super HACK: when there's a pivot_root(".", "."), don't mount the old directory

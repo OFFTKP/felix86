@@ -20,6 +20,8 @@ struct FD {
 
     static int close(int fd);
 
+    static long getdents64(int fd, u64 dirp, u32 count);
+
     static int close_range(u32 start, u32 end, int flags);
 
     static int dup2(int old_fd, int new_fd);

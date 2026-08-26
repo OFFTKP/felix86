@@ -16,6 +16,7 @@
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/hle/fd.hpp"
+#include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/mmap.hpp"
 #include "felix86/hle/signals.hpp"
 #include "felix86/hle/thread.hpp"
@@ -376,6 +377,12 @@ static long VForkMe(CloneArgs& args) {
     int pipes[2];
     ASSERT(pipe2(pipes, O_CLOEXEC) != -1);
 
+    char* shared_rootfs = nullptr;
+    if ((args.guest_flags & CLONE_FS) && !g_config.no_rootfs) {
+        shared_rootfs = (char*)mmap(nullptr, PATH_MAX, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+        ASSERT(shared_rootfs != MAP_FAILED);
+    }
+
     ThreadState* state = ThreadState::Get();
     u64 parent_flags = state->ptrace_data.constants.flags;
     bool trace_vfork = parent_flags & PTRACE_O_TRACEVFORK;
@@ -394,6 +401,7 @@ static long VForkMe(CloneArgs& args) {
         int pid = getpid();
         SIGLOG("%d vforked to %d", parent_pid, pid);
         ThreadState* state = ThreadState::Get();
+        g_process_globals.vfork_rootfs = shared_rootfs;
 
         // TODO: probably clean up states here, but it doesn't matter cus it gets execve'd anyway
         if (args.new_rsp) {
@@ -463,6 +471,16 @@ static long VForkMe(CloneArgs& args) {
 
         // Close the read end now.
         close(pipes[0]);
+
+        // HACK: Chromium will vfork and change the rootfs. We don't CLONE_VM so g_config.rootfs won't be updated here
+        // but also g_rootfs_fd wouldn't be updated because the clone happens without CLONE_FILES. For now, allow chroot
+        // to propagate through vfork like this
+        if (shared_rootfs) {
+            if (shared_rootfs[0]) {
+                Filesystem::SetRootfs(shared_rootfs);
+            }
+            ::munmap(shared_rootfs, PATH_MAX);
+        }
 
         if (Ptrace::is_traced(state) && trace_vfork_done) {
             int sig = SIGTRAP;
