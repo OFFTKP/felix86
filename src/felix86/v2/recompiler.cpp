@@ -471,7 +471,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
         u64 start_masked = start_rip & ~0xFFFull;
         u64 end_masked = (end_rip - 1) & ~0xFFFull;
         for (u64 page = start_masked; page <= end_masked; page += 0x1000) {
-            page_map[page].push_back(&block_meta);
+            page_map[page].blocks.push_back(&block_meta);
         }
     }
 
@@ -554,8 +554,31 @@ void Recompiler::markPagesAsReadOnly(u64 start, u64 end) {
         return;
     }
 
-    u64 start_page = start & ~0xFFFull;
-    u64 end_page = (end + 0xFFF) & ~0xFFFull;
+    u64 first_page = start & ~0xFFFull;
+    u64 last_page = (end - 1) & ~0xFFFull;
+
+    u64 start_page = UINT64_MAX;
+    u64 end_page = 0;
+    {
+        auto guard = page_map_lock.lock();
+        for (u64 page = first_page; page <= last_page; page += 0x1000) {
+            PageMetadata& page_meta = page_map[page];
+            if (page_meta.read_only) {
+                continue;
+            }
+
+            page_meta.read_only = true;
+            if (start_page == UINT64_MAX) {
+                start_page = page;
+            }
+            end_page = page + 0x1000;
+        }
+    }
+
+    if (start_page == UINT64_MAX) {
+        return;
+    }
+
     u64 size = end_page - start_page;
     int result = mprotect((void*)start_page, size, PROT_READ);
     if (result != 0) {
@@ -3382,12 +3405,13 @@ int Recompiler::invalidateRange(u64 start, u64 end) {
 
     int blocks = 0;
     for (auto it = lower; it != upper; it++) {
-        auto& blocks_in_page = it->second;
-        for (BlockMetadata* block : blocks_in_page) {
+        auto& page_meta = it->second;
+        for (BlockMetadata* block : page_meta.blocks) {
             invalidateBlock(block);
             blocks++;
         }
-        blocks_in_page.clear();
+        page_meta.blocks.clear();
+        page_meta.read_only = false;
     }
     return blocks;
 }
