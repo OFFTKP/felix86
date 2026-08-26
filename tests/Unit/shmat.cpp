@@ -30,9 +30,6 @@ struct GuestRegionExpected {
 static void verifyGuestRegions(Mapper& mapper, const std::vector<GuestRegionExpected>& expected_regions) {
     auto guest_regions = mapper.get_guest_regions();
     int found_regions = 0;
-    for (auto& region : guest_regions) {
-        printf("[%lx, %lx], %lx, %lx, %b\n", region.start, region.end, region.prot, region.flags, region.shmem);
-    }
     for (const auto region : expected_regions) {
         for (const auto guest_region : guest_regions) {
             bool yes = true;
@@ -128,4 +125,4 @@ CATCH_TEST_CASE("DistinctSegments", "[shmat]") {
     CATCH_REQUIRE(shmctl(first_shmid, IPC_RMID, nullptr) == 0);
     CATCH_REQUIRE(shmctl(second_shmid, IPC_RMID, nullptr) == 0);
     SUCCESS_MESSAGE();
- }
+}
