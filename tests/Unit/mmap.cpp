@@ -76,22 +76,17 @@ struct GuestRegionExpected {
     u64 start;
     u64 len;
     int prot;
-    int flags;
 };
 
 static void verifyGuestRegions(Mapper& mapper, const std::vector<GuestRegionExpected>& expected_regions) {
     auto guest_regions = mapper.get_guest_regions();
     int found_regions = 0;
-    for (auto& region : guest_regions) {
-        printf("[%lx, %lx], %lx, %lx, %b\n", region.start, region.end, region.prot, region.flags, region.shmem);
-    }
     for (const auto region : expected_regions) {
         for (const auto guest_region : guest_regions) {
             bool yes = true;
             yes &= region.start == guest_region.start;
             yes &= region.start + region.len == guest_region.end;
             // Include the implicit flags here
-            yes &= region.flags == guest_region.flags;
             yes &= region.prot == guest_region.prot;
             yes &= !guest_region.shmem;
             if (yes) {
@@ -122,7 +117,7 @@ CATCH_TEST_CASE("Simple1", "[mmap32]") {
     });
 
     verifyGuestRegions(mapper, { 
-        {0x20000, 0x10000, PROT_NONE, FCOMMON_FIXED},
+        {0x20000, 0x10000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -143,7 +138,7 @@ CATCH_TEST_CASE("Simple2", "[mmap32]") {
     });
 
     verifyGuestRegions(mapper, { 
-        {0x20000, 0x20000, PROT_NONE, FCOMMON_FIXED},
+        {0x20000, 0x20000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -165,7 +160,7 @@ CATCH_TEST_CASE("Simple3", "[mmap32]") {
     });
 
     verifyGuestRegions(mapper, { 
-        {0x20000, 0x30000, PROT_NONE, FCOMMON_FIXED},
+        {0x20000, 0x30000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -184,7 +179,7 @@ CATCH_TEST_CASE("FirstPages", "[mmap32]") {
     });
 
     verifyGuestRegions(mapper, { 
-        {mmap_min_addr(), 0x10000, PROT_NONE, FCOMMON_FIXED}
+        {mmap_min_addr(), 0x10000, PROT_NONE}
     });
 
     MUNMAP_ALL();
@@ -203,7 +198,7 @@ CATCH_TEST_CASE("FirstPagesUnmap", "[mmap32]") {
     });
 
     verifyGuestRegions(mapper, { 
-        {mmap_min_addr(), 0x10000, PROT_NONE, FCOMMON_FIXED}
+        {mmap_min_addr(), 0x10000, PROT_NONE}
     });
 
     UNMAP_AT(mmap_min_addr(), 0x10000);
@@ -232,7 +227,7 @@ CATCH_TEST_CASE("LastPages", "[mmap32]") {
     });
 
     verifyGuestRegions(mapper, { 
-        {end - 0x10000, 0x10000, PROT_NONE, FCOMMON_FIXED}
+        {end - 0x10000, 0x10000, PROT_NONE}
     });
 
     MUNMAP_ALL();
@@ -254,8 +249,8 @@ CATCH_TEST_CASE("Split2", "[mmap32]") {
     });
 
     verifyGuestRegions(mapper, { 
-        {0x30000, 0x10000, PROT_NONE, FCOMMON_FIXED},
-        {0x50000, 0x10000, PROT_NONE, FCOMMON_FIXED},
+        {0x30000, 0x10000, PROT_NONE},
+        {0x50000, 0x10000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -279,7 +274,7 @@ CATCH_TEST_CASE("Split2Pick1", "[mmap32]") {
     });
 
     verifyGuestRegions(mapper, { 
-        {0x30000, 0x30000, PROT_NONE, FCOMMON_FIXED},
+        {0x30000, 0x30000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -300,7 +295,7 @@ CATCH_TEST_CASE("Overlapping1", "[mmap32]") {
     });
 
     verifyGuestRegions(mapper, { 
-        {0x20000, 0x100000, PROT_NONE, FCOMMON_FIXED},
+        {0x20000, 0x100000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -322,7 +317,7 @@ CATCH_TEST_CASE("Overlapping2", "[mmap32]") {
     });
 
     verifyGuestRegions(mapper, { 
-        {0x20000, 0x100000, PROT_NONE, FCOMMON_FIXED},
+        {0x20000, 0x100000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -346,9 +341,9 @@ CATCH_TEST_CASE("Overlapping2ConsumeLast", "[mmap32]") {
     });
 
     verifyGuestRegions(mapper, { 
-        {0x30000, 0x10000, PROT_NONE, FCOMMON_FIXED},
-        {0x50000, 0x10000, PROT_NONE, FCOMMON_FIXED},
-        {0x100000, 0x1000, PROT_NONE, FCOMMON_FIXED},
+        {0x30000, 0x10000, PROT_NONE},
+        {0x50000, 0x10000, PROT_NONE},
+        {0x100000, 0x1000, PROT_NONE},
     });
 
     MMAP_AT(0x20000, 0x100000 - 0x20000, PROT_NONE, 0); // this mapping consumes the first two
@@ -359,7 +354,7 @@ CATCH_TEST_CASE("Overlapping2ConsumeLast", "[mmap32]") {
     });
 
     verifyGuestRegions(mapper, { 
-        {0x20000, 0x101000 - 0x20000, PROT_NONE, FCOMMON_FIXED},
+        {0x20000, 0x101000 - 0x20000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -379,7 +374,7 @@ CATCH_TEST_CASE("UnmapPerfect", "[mmap32]") {
     });
 
     verifyGuestRegions(mapper, { 
-        {0x30000, 0x10000, PROT_NONE, FCOMMON_FIXED},
+        {0x30000, 0x10000, PROT_NONE},
     });
 
     UNMAP_AT(0x30000, 0x10000);
@@ -409,7 +404,7 @@ CATCH_TEST_CASE("UnmapMiddle", "[mmap32]") {
     });
 
     verifyGuestRegions(mapper, { 
-        {0x20000, 0x30000, PROT_NONE, FCOMMON_FIXED},
+        {0x20000, 0x30000, PROT_NONE},
     });
 
     UNMAP_AT(0x30000, 0x10000);
@@ -421,8 +416,8 @@ CATCH_TEST_CASE("UnmapMiddle", "[mmap32]") {
     });
 
     verifyGuestRegions(mapper, { 
-        {0x20000, 0x10000, PROT_NONE, FCOMMON_FIXED},
-        {0x40000, 0x10000, PROT_NONE, FCOMMON_FIXED},
+        {0x20000, 0x10000, PROT_NONE},
+        {0x40000, 0x10000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -442,7 +437,7 @@ CATCH_TEST_CASE("UnmapGreedyMin", "[mmap32]") {
     });
 
     verifyGuestRegions(mapper, { 
-        {0x20000, 0x100000, PROT_NONE, FCOMMON_FIXED},
+        {0x20000, 0x100000, PROT_NONE},
     });
 
     // Unmap more pages than we mapped, this is allowed
@@ -454,7 +449,7 @@ CATCH_TEST_CASE("UnmapGreedyMin", "[mmap32]") {
     });
 
     verifyGuestRegions(mapper, { 
-        {0x2F000, 0x120000 - 0x2F000, PROT_NONE, FCOMMON_FIXED},
+        {0x2F000, 0x120000 - 0x2F000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -474,7 +469,7 @@ CATCH_TEST_CASE("UnmapGreedyMax", "[mmap32]") {
     });
 
     verifyGuestRegions(mapper, { 
-        {0x20000, 0x100000, PROT_NONE, FCOMMON_FIXED},
+        {0x20000, 0x100000, PROT_NONE},
     });
 
     // Unmap more pages than we mapped, this is allowed
@@ -486,7 +481,7 @@ CATCH_TEST_CASE("UnmapGreedyMax", "[mmap32]") {
     });
 
     verifyGuestRegions(mapper, { 
-        {0x20000, 0x115000 - 0x20000, PROT_NONE, FCOMMON_FIXED},
+        {0x20000, 0x115000 - 0x20000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -507,7 +502,7 @@ CATCH_TEST_CASE("MapRandom", "[mmap32]") {
     });
 
     verifyGuestRegions(mapper, { 
-        {(u64)address, 0x100000, PROT_NONE, FCOMMON},
+        {(u64)address, 0x100000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -528,7 +523,7 @@ CATCH_TEST_CASE("OverwriteFixed", "[mmap32]") {
     });
 
     verifyGuestRegions(mapper, { 
-        {0x10000, 0x63000, PROT_NONE, FCOMMON_FIXED},
+        {0x10000, 0x63000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -549,7 +544,7 @@ CATCH_TEST_CASE("OverwriteFixed2", "[mmap32]") {
     });
 
     verifyGuestRegions(mapper, { 
-        {0x12000, 0x60000, PROT_NONE, FCOMMON_FIXED},
+        {0x12000, 0x60000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -570,7 +565,7 @@ CATCH_TEST_CASE("Mremap", "[mmap32]") {
     });
 
     verifyGuestRegions(mapper, { 
-        {0x40000, 0x20000, PROT_NONE, FCOMMON_FIXED},
+        {0x40000, 0x20000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -594,9 +589,9 @@ CATCH_TEST_CASE("MMap bug", "[mmap32]") {
     });
 
     verifyGuestRegions(mapper, { 
-        {0x85800000, 0x8d400000-0x85800000, PROT_NONE, FCOMMON_FIXED},
-        {0xFFF00000, 0xFFF7d000-0xFFF00000, PROT_READ | PROT_WRITE, FCOMMON_FIXED},
-        {0xFFF7d000, 0x100000000-0xFFF7d000, PROT_NONE, FCOMMON_FIXED},
+        {0x85800000, 0x8d400000-0x85800000, PROT_NONE},
+        {0xFFF00000, 0xFFF7d000-0xFFF00000, PROT_READ | PROT_WRITE},
+        {0xFFF7d000, 0x100000000-0xFFF7d000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -611,7 +606,7 @@ CATCH_TEST_CASE("Simple1", "[mmap]") {
     MMAP_AT(0x20000, 0x10000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x20000, 0x10000, PROT_NONE, FCOMMON_FIXED},
+        {0x20000, 0x10000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -627,7 +622,7 @@ CATCH_TEST_CASE("Simple2", "[mmap]") {
     MMAP_AT(0x30000, 0x10000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x20000, 0x20000, PROT_NONE, FCOMMON_FIXED},
+        {0x20000, 0x20000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -644,7 +639,7 @@ CATCH_TEST_CASE("Simple3", "[mmap]") {
     MMAP_AT(0x40000, 0x10000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x20000, 0x30000, PROT_NONE, FCOMMON_FIXED},
+        {0x20000, 0x30000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -658,7 +653,7 @@ CATCH_TEST_CASE("FirstPages", "[mmap]") {
     MMAP_AT(mmap_min_addr(), 0x10000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {mmap_min_addr(), 0x10000, PROT_NONE, FCOMMON_FIXED}
+        {mmap_min_addr(), 0x10000, PROT_NONE}
     });
 
     MUNMAP_ALL();
@@ -673,7 +668,7 @@ CATCH_TEST_CASE("FirstPagesUnmap", "[mmap]") {
     MMAP_AT(mmap_min_addr(), 0x10000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {mmap_min_addr(), 0x10000, PROT_NONE, FCOMMON_FIXED}
+        {mmap_min_addr(), 0x10000, PROT_NONE}
     });
 
     UNMAP_AT(mmap_min_addr(), 0x10000);
@@ -694,7 +689,7 @@ CATCH_TEST_CASE("LastPages", "[mmap]") {
     MMAP_AT(end - 0x10000, 0x10000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {end - 0x10000, 0x10000, PROT_NONE, FCOMMON_FIXED}
+        {end - 0x10000, 0x10000, PROT_NONE}
     });
 
     MUNMAP_ALL();
@@ -710,8 +705,8 @@ CATCH_TEST_CASE("Split2", "[mmap]") {
     MMAP_AT(0x50000, 0x10000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x30000, 0x10000, PROT_NONE, FCOMMON_FIXED},
-        {0x50000, 0x10000, PROT_NONE, FCOMMON_FIXED},
+        {0x30000, 0x10000, PROT_NONE},
+        {0x50000, 0x10000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -730,7 +725,7 @@ CATCH_TEST_CASE("Split2Pick1", "[mmap]") {
     MMAP_AT(0x40000, 0x10000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x30000, 0x30000, PROT_NONE, FCOMMON_FIXED},
+        {0x30000, 0x30000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -746,7 +741,7 @@ CATCH_TEST_CASE("Overlapping1", "[mmap]") {
     MMAP_AT(0x20000, 0x100000, PROT_NONE, 0); // this mapping consumes the first
 
     verifyGuestRegions(mapper, { 
-        {0x20000, 0x100000, PROT_NONE, FCOMMON_FIXED},
+        {0x20000, 0x100000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -763,7 +758,7 @@ CATCH_TEST_CASE("Overlapping2", "[mmap]") {
     MMAP_AT(0x20000, 0x100000, PROT_NONE, 0); // this mapping consumes the other two
 
     verifyGuestRegions(mapper, { 
-        {0x20000, 0x100000, PROT_NONE, FCOMMON_FIXED},
+        {0x20000, 0x100000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -780,15 +775,15 @@ CATCH_TEST_CASE("Overlapping2ConsumeLast", "[mmap]") {
     MMAP_AT(0x100000, 0x1000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x30000, 0x10000, PROT_NONE, FCOMMON_FIXED},
-        {0x50000, 0x10000, PROT_NONE, FCOMMON_FIXED},
-        {0x100000, 0x1000, PROT_NONE, FCOMMON_FIXED},
+        {0x30000, 0x10000, PROT_NONE},
+        {0x50000, 0x10000, PROT_NONE},
+        {0x100000, 0x1000, PROT_NONE},
     });
 
     MMAP_AT(0x20000, 0x100000 - 0x20000, PROT_NONE, 0); // this mapping consumes the first two
 
     verifyGuestRegions(mapper, { 
-        {0x20000, 0x101000 - 0x20000, PROT_NONE, FCOMMON_FIXED},
+        {0x20000, 0x101000 - 0x20000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -803,7 +798,7 @@ CATCH_TEST_CASE("UnmapPerfect", "[mmap]") {
     MMAP_AT(0x30000, 0x10000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x30000, 0x10000, PROT_NONE, FCOMMON_FIXED},
+        {0x30000, 0x10000, PROT_NONE},
     });
 
     UNMAP_AT(0x30000, 0x10000);
@@ -824,14 +819,14 @@ CATCH_TEST_CASE("UnmapMiddle", "[mmap]") {
     MMAP_AT(0x40000, 0x10000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x20000, 0x30000, PROT_NONE, FCOMMON_FIXED},
+        {0x20000, 0x30000, PROT_NONE},
     });
 
     UNMAP_AT(0x30000, 0x10000);
 
     verifyGuestRegions(mapper, { 
-        {0x20000, 0x10000, PROT_NONE, FCOMMON_FIXED},
-        {0x40000, 0x10000, PROT_NONE, FCOMMON_FIXED},
+        {0x20000, 0x10000, PROT_NONE},
+        {0x40000, 0x10000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -846,14 +841,14 @@ CATCH_TEST_CASE("UnmapGreedyMin", "[mmap]") {
     MMAP_AT(0x20000, 0x100000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x20000, 0x100000, PROT_NONE, FCOMMON_FIXED},
+        {0x20000, 0x100000, PROT_NONE},
     });
 
     // Unmap more pages than we mapped, this is allowed
     UNMAP_AT(0x1F000, 0x10000);
 
     verifyGuestRegions(mapper, { 
-        {0x2F000, 0x100000 - 0x0F000, PROT_NONE, FCOMMON_FIXED},
+        {0x2F000, 0x100000 - 0x0F000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -868,14 +863,14 @@ CATCH_TEST_CASE("UnmapGreedyMax", "[mmap]") {
     MMAP_AT(0x20000, 0x100000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x20000, 0x100000, PROT_NONE, FCOMMON_FIXED},
+        {0x20000, 0x100000, PROT_NONE},
     });
 
     // Unmap more pages than we mapped, this is allowed
     UNMAP_AT(0x115000, 0x10000);
 
     verifyGuestRegions(mapper, { 
-        {0x20000, 0x115000 - 0x20000, PROT_NONE, FCOMMON_FIXED},
+        {0x20000, 0x115000 - 0x20000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -891,7 +886,7 @@ CATCH_TEST_CASE("MapRandom", "[mmap]") {
     MMAP_AT_R(address, 0x100000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {(u64)address, 0x100000, PROT_NONE, FCOMMON},
+        {(u64)address, 0x100000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -908,7 +903,7 @@ CATCH_TEST_CASE("OverwriteFixed", "[mmap]") {
     MMAP_AT(0x13000, 0x60000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x10000, 0x63000, PROT_NONE, FCOMMON_FIXED},
+        {0x10000, 0x63000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -924,7 +919,7 @@ CATCH_TEST_CASE("OverwriteFixed2", "[mmap]") {
     MMAP_AT(0x12000, 0x60000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x12000, 0x60000, PROT_NONE, FCOMMON_FIXED},
+        {0x12000, 0x60000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -940,14 +935,14 @@ CATCH_TEST_CASE("OverwriteFixedNonMergeableNeighbor", "[mmap]") {
     MMAP_AT(0x34000, 0x3000, PROT_READ, 0);
 
     verifyGuestRegions(mapper, {
-        {0x30000, 0x4000, PROT_NONE, FCOMMON_FIXED},
-        {0x34000, 0x3000, PROT_READ, FCOMMON_FIXED},
+        {0x30000, 0x4000, PROT_NONE},
+        {0x34000, 0x3000, PROT_READ},
     });
 
     MMAP_AT(0x34000, 0x6000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, {
-        {0x30000, 0xa000, PROT_NONE, FCOMMON_FIXED},
+        {0x30000, 0xa000, PROT_NONE},
     });
 
     CATCH_REQUIRE(mapper.total_mapped_memory() == 0xa000);
@@ -965,7 +960,7 @@ CATCH_TEST_CASE("MremapMove", "[mmap]") {
     MREMAP_AT(0x13000, 0x10000, 0x40000, 0x10000, MREMAP_FIXED | MREMAP_MAYMOVE);
 
     verifyGuestRegions(mapper, { 
-        {0x40000, 0x10000, PROT_NONE, FCOMMON_FIXED},
+        {0x40000, 0x10000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -981,7 +976,7 @@ CATCH_TEST_CASE("MremapMoveKeepsFlagsAndProt", "[mmap]") {
     MREMAP_AT(0x13000, 0x10000, 0x40000, 0x20000, MREMAP_FIXED | MREMAP_MAYMOVE);
 
     verifyGuestRegions(mapper, { 
-        {0x40000, 0x20000, PROT_READ, FCOMMON_FIXED | MAP_DENYWRITE},
+        {0x40000, 0x20000, PROT_READ},
     });
 
     MUNMAP_ALL();
@@ -997,8 +992,8 @@ CATCH_TEST_CASE("MremapMoveDoNotUnmap", "[mmap]") {
     MREMAP_AT(0x13000, 0x10000, 0x40000, 0x10000, MREMAP_FIXED | MREMAP_MAYMOVE | MREMAP_DONTUNMAP);
 
     verifyGuestRegions(mapper, { 
-        {0x13000, 0x10000, PROT_NONE, FCOMMON_FIXED},
-        {0x40000, 0x10000, PROT_NONE, FCOMMON_FIXED},
+        {0x13000, 0x10000, PROT_NONE},
+        {0x40000, 0x10000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -1013,13 +1008,13 @@ CATCH_TEST_CASE("MremapGrow", "[mmap]") {
     MMAP_AT(0x10000, 0x10000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x10000, 0x10000, PROT_NONE, FCOMMON_FIXED},
+        {0x10000, 0x10000, PROT_NONE},
     });
 
     MREMAP(0x10000, 0x10000, 0x20000, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x10000, 0x20000, PROT_NONE, FCOMMON_FIXED},
+        {0x10000, 0x20000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -1034,13 +1029,13 @@ CATCH_TEST_CASE("MremapMoveGrow", "[mmap]") {
     MMAP_AT(0x10000, 0x10000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x10000, 0x10000, PROT_NONE, FCOMMON_FIXED},
+        {0x10000, 0x10000, PROT_NONE},
     });
 
     MREMAP_AT(0x10000, 0x10000, 0x40000, 0x20000, MREMAP_FIXED | MREMAP_MAYMOVE);
 
     verifyGuestRegions(mapper, { 
-        {0x40000, 0x20000, PROT_NONE, FCOMMON_FIXED},
+        {0x40000, 0x20000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -1055,13 +1050,13 @@ CATCH_TEST_CASE("MremapShrink", "[mmap]") {
     MMAP_AT(0x10000, 0x20000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x10000, 0x20000, PROT_NONE, FCOMMON_FIXED},
+        {0x10000, 0x20000, PROT_NONE},
     });
 
     MREMAP(0x10000, 0x20000, 0x10000, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x10000, 0x10000, PROT_NONE, FCOMMON_FIXED},
+        {0x10000, 0x10000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -1076,13 +1071,13 @@ CATCH_TEST_CASE("MremapMoveShrink", "[mmap]") {
     MMAP_AT(0x10000, 0x20000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x10000, 0x20000, PROT_NONE, FCOMMON_FIXED},
+        {0x10000, 0x20000, PROT_NONE},
     });
 
     MREMAP_AT(0x10000, 0x20000, 0x40000, 0x10000, MREMAP_FIXED | MREMAP_MAYMOVE);
 
     verifyGuestRegions(mapper, { 
-        {0x40000, 0x10000, PROT_NONE, FCOMMON_FIXED},
+        {0x40000, 0x10000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -1097,15 +1092,15 @@ CATCH_TEST_CASE("MremapMoveMiddle", "[mmap]") {
     MMAP_AT(0x10000, 0x30000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x10000, 0x30000, PROT_NONE, FCOMMON_FIXED},
+        {0x10000, 0x30000, PROT_NONE},
     });
 
     MREMAP_AT(0x20000, 0x10000, 0x60000, 0x10000, MREMAP_FIXED | MREMAP_MAYMOVE);
 
     verifyGuestRegions(mapper, { 
-        {0x10000, 0x10000, PROT_NONE, FCOMMON_FIXED},
-        {0x30000, 0x10000, PROT_NONE, FCOMMON_FIXED},
-        {0x60000, 0x10000, PROT_NONE, FCOMMON_FIXED},
+        {0x10000, 0x10000, PROT_NONE},
+        {0x30000, 0x10000, PROT_NONE},
+        {0x60000, 0x10000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -1120,15 +1115,15 @@ CATCH_TEST_CASE("MremapMoveShrinkMiddle", "[mmap]") {
     MMAP_AT(0x10000, 0x40000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x10000, 0x40000, PROT_NONE, FCOMMON_FIXED},
+        {0x10000, 0x40000, PROT_NONE},
     });
 
     MREMAP_AT(0x20000, 0x20000, 0x60000, 0x10000, MREMAP_FIXED | MREMAP_MAYMOVE);
 
     verifyGuestRegions(mapper, { 
-        {0x10000, 0x10000, PROT_NONE, FCOMMON_FIXED},
-        {0x40000, 0x10000, PROT_NONE, FCOMMON_FIXED},
-        {0x60000, 0x10000, PROT_NONE, FCOMMON_FIXED},
+        {0x10000, 0x10000, PROT_NONE},
+        {0x40000, 0x10000, PROT_NONE},
+        {0x60000, 0x10000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -1143,15 +1138,15 @@ CATCH_TEST_CASE("MremapMoveGrowMiddle", "[mmap]") {
     MMAP_AT(0x10000, 0x30000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x10000, 0x30000, PROT_NONE, FCOMMON_FIXED},
+        {0x10000, 0x30000, PROT_NONE},
     });
 
     MREMAP_AT(0x20000, 0x10000, 0x60000, 0x20000, MREMAP_FIXED | MREMAP_MAYMOVE);
 
     verifyGuestRegions(mapper, { 
-        {0x10000, 0x10000, PROT_NONE, FCOMMON_FIXED},
-        {0x30000, 0x10000, PROT_NONE, FCOMMON_FIXED},
-        {0x60000, 0x20000, PROT_NONE, FCOMMON_FIXED},
+        {0x10000, 0x10000, PROT_NONE},
+        {0x30000, 0x10000, PROT_NONE},
+        {0x60000, 0x20000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -1166,14 +1161,14 @@ CATCH_TEST_CASE("MremapShrinkMiddle", "[mmap]") {
     MMAP_AT(0x10000, 0x30000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x10000, 0x30000, PROT_NONE, FCOMMON_FIXED},
+        {0x10000, 0x30000, PROT_NONE},
     });
 
     MREMAP(0x20000, 0x10000, 0x1000, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x10000, 0x11000, PROT_NONE, FCOMMON_FIXED},
-        {0x30000, 0x10000, PROT_NONE, FCOMMON_FIXED},
+        {0x10000, 0x11000, PROT_NONE},
+        {0x30000, 0x10000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -1190,15 +1185,15 @@ CATCH_TEST_CASE("MremapShrinkDifferentPriv", "[mmap]") {
     MMAP_AT(0x30000, 0x10000, PROT_READ, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x10000, 0x10000, PROT_NONE, FCOMMON_FIXED},
-        {0x20000, 0x10000, PROT_WRITE, FCOMMON_FIXED},
-        {0x30000, 0x10000, PROT_READ, FCOMMON_FIXED},
+        {0x10000, 0x10000, PROT_NONE},
+        {0x20000, 0x10000, PROT_WRITE},
+        {0x30000, 0x10000, PROT_READ},
     });
 
     MREMAP(0x10000, 0x30000, 0x1000, 0);
 
     verifyGuestRegions(mapper, {
-        {0x10000, 0x1000, PROT_NONE, FCOMMON_FIXED},     
+        {0x10000, 0x1000, PROT_NONE},     
     });
 
     MUNMAP_ALL();
@@ -1216,10 +1211,10 @@ CATCH_TEST_CASE("DifferentNeighborProt", "[mmap]") {
     MMAP_AT(0x40000, 0x10000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x10000, 0x10000, PROT_NONE, FCOMMON_FIXED},
-        {0x20000, 0x10000, PROT_WRITE, FCOMMON_FIXED},
-        {0x30000, 0x10000, PROT_READ, FCOMMON_FIXED},
-        {0x40000, 0x10000, PROT_NONE, FCOMMON_FIXED},
+        {0x10000, 0x10000, PROT_NONE},
+        {0x20000, 0x10000, PROT_WRITE},
+        {0x30000, 0x10000, PROT_READ},
+        {0x40000, 0x10000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -1236,9 +1231,7 @@ CATCH_TEST_CASE("DifferentNeighborFlags", "[mmap]") {
     MMAP_AT(0x30000, 0x10000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x10000, 0x10000, PROT_NONE, FCOMMON_FIXED},
-        {0x20000, 0x10000, PROT_NONE, FCOMMON_FIXED | MAP_DENYWRITE},
-        {0x30000, 0x10000, PROT_NONE, FCOMMON_FIXED},
+        {0x10000, 0x30000, PROT_NONE},
     });
 
     MUNMAP_ALL();
@@ -1257,7 +1250,7 @@ CATCH_TEST_CASE("PlacementFlagsDoNotAffectMerging", "[mmap]") {
     unmap_me.push_back({0x40000, 0x10000});
 
     verifyGuestRegions(mapper, {
-        {0x30000, 0x20000, PROT_READ, FCOMMON},
+        {0x30000, 0x20000, PROT_READ},
     });
 
     MUNMAP_ALL();
@@ -1273,7 +1266,7 @@ CATCH_TEST_CASE("PopulateDoesNotAffectMerging", "[mmap]") {
     MMAP_AT(0x40000, 0x10000, PROT_READ, MAP_POPULATE);
 
     verifyGuestRegions(mapper, {
-        {0x30000, 0x20000, PROT_READ, FCOMMON},
+        {0x30000, 0x20000, PROT_READ},
     });
 
     MUNMAP_ALL();
@@ -1347,15 +1340,15 @@ CATCH_TEST_CASE("MergeChain", "[mmap]") {
     MMAP_AT(0x50000, 0x10000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x10000, 0x10000, PROT_NONE, FCOMMON_FIXED},
-        {0x30000, 0x10000, PROT_NONE, FCOMMON_FIXED},
-        {0x50000, 0x10000, PROT_NONE, FCOMMON_FIXED},
+        {0x10000, 0x10000, PROT_NONE},
+        {0x30000, 0x10000, PROT_NONE},
+        {0x50000, 0x10000, PROT_NONE},
     });
 
     MMAP_AT(0x20000, 0x30000, PROT_NONE, 0);
 
     verifyGuestRegions(mapper, { 
-        {0x10000, 0x50000, PROT_NONE, FCOMMON_FIXED},
+        {0x10000, 0x50000, PROT_NONE},
     });
 
     MUNMAP_ALL();

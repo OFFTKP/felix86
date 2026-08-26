@@ -7,6 +7,7 @@
 #include <sys/mman.h>
 #include <sys/shm.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/hle/mmap.hpp"
@@ -14,6 +15,11 @@
 void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offset) {
     size = (size + 0xFFFull) & ~0xFFFull;
     auto guard = freelist.lock();
+
+    struct stat64 stat{0};
+    if ((flags & MAP_ANONYMOUS) == 0) {
+        fstat64(fd, &stat);
+    }
 
     if ((flags & MAP_FIXED) || (flags & MAP_FIXED_NOREPLACE)) {
         // Fixed mapping, make sure it's inside 32-bit address space
@@ -45,7 +51,7 @@ void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offse
 
         void* mapping = freelist.allocate((u64)result, size);
         ASSERT_MSG(mapping == result, "Failed with mmap(%lx, %lx, %x, %x, %d, %lx)", addr, size, prot, flags, fd, offset);
-        add_tracked_region((u64)result, size, flags, prot, fd);
+        add_tracked_region((u64)result, size, prot, stat.st_dev, stat.st_ino, offset, (flags & MAP_SHARED) != 0);
         return result;
     } else {
         void* address = freelist.allocate(0, size);
@@ -62,7 +68,7 @@ void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offse
             return (void*)error;
         }
 
-        add_tracked_region((u64)result, size, flags, prot, fd);
+        add_tracked_region((u64)result, size, prot, stat.st_dev, stat.st_ino, offset, (flags & MAP_SHARED) != 0);
         ASSERT(result == address);
         return address;
     }
@@ -156,7 +162,13 @@ void* Mapper::map(bool mode32, void* addr, u64 size, int prot, int flags, int fd
         // On success, add tracked allocation.
         if (result != (void*)-1) {
             auto guard = freelist.lock();
-            add_tracked_region((u64)result, size, flags, prot, fd);
+
+            struct stat64 stat{0};
+            if ((flags & MAP_ANONYMOUS) == 0) {
+                fstat64(fd, &stat);
+            }
+
+            add_tracked_region((u64)result, size, prot, stat.st_dev, stat.st_ino, offset, (flags & MAP_SHARED) != 0);
         }
 
         return result;
@@ -277,7 +289,12 @@ int Mapper::shmat(bool mode32, int shmid, void* address, int flags, u64* result_
     ASSERT_MSG(!mode32 || top_bits == 0 || top_bits == 0xFFFF'FFFF, "shmat returned address in 64-bit address space?");
     *result_address = (u64)shm_mem;
     page_to_shmid[(u64)shm_mem & ~0xFFFull] = shmid;
-    add_tracked_region((u64)shm_mem, size, flags, 0, 0, true);
+    int prot = PROT_READ | PROT_WRITE;
+    if ((flags & SHM_EXEC) != 0)
+        prot |= PROT_EXEC;
+    if ((flags & SHM_RDONLY) != 0)
+        prot &= ~PROT_WRITE;
+    add_tracked_region((u64)shm_mem, size, prot, 0, 0, 0, true);
 
     return 0;
 }
@@ -322,10 +339,11 @@ int Mapper::shmdt(bool mode32, void* address) {
 }
 
 static bool can_guest_regions_merge(GuestRegion& a, GuestRegion& b) {
-    return a.flags == b.flags && a.prot == b.prot && a.dev == b.dev && a.ino == b.ino && a.fd == b.fd && a.shmem == b.shmem;
+    return a.prot == b.prot && a.dev == b.dev && a.ino == b.ino &&
+           ((a.offset + (a.end - a.start) == b.offset) || (b.offset + (b.end - b.start) == a.offset) || !a.ino) && a.shmem == b.shmem;
 }
 
-void Mapper::add_tracked_region(u64 address, u64 len, int flags, int prot, int fd, bool shmem) {
+void Mapper::add_tracked_region(u64 address, u64 len, int prot, dev_t dev, ino_t ino, u64 offset, bool shmem) {
     if (len == 0)
         return;
 
@@ -334,17 +352,9 @@ void Mapper::add_tracked_region(u64 address, u64 len, int flags, int prot, int f
     u64 end = address + len;
     end = (end + 0xfff) & ~0xfff;
 
-    struct stat64 stat{0};
-    if ((flags & MAP_ANONYMOUS) == 0 && !shmem) {
-        fstat64(fd, &stat);
-    }
-    GuestRegion v = GuestRegion{address, end, flags, prot, fd, stat.st_dev, stat.st_ino, shmem};
+    GuestRegion v = GuestRegion{address, end, prot, dev, ino, offset, shmem};
 
-    // We assume at this point, that the allocated region will not overlap with any existing region.
-    // This works because any invocation to mmap cannot share the same region of address space as
-    // an already existing mapping UNLESS it has the MAP_FIXED flag, in which case the mapped region
-    // is removed before a call to this function.
-
+    remove_tracked_region(address, len);
     for (auto it = allocated_regions.begin(); it != allocated_regions.end(); it++) {
         auto& r = *it;
         bool can_merge = can_guest_regions_merge(v, r);
@@ -372,8 +382,7 @@ void Mapper::add_tracked_region(u64 address, u64 len, int flags, int prot, int f
         // Overlap.
         else if ((r.start >= address && r.start < end) || (r.end > address && r.end <= end) || (address >= r.start && address < r.end) ||
                  (end > r.start && end <= r.end)) {
-            remove_tracked_region(address, len);
-            add_tracked_region(address, len, flags, prot, fd, shmem);
+            add_tracked_region(address, len, prot, dev, ino, offset, shmem);
             return;
         } else if (end <= r.start) {
             allocated_regions.insert(it, v);
@@ -398,7 +407,6 @@ void Mapper::move_tracked_region(u64 old_address, u64 old_len, u64 new_address, 
     for (auto it = allocated_regions.begin(); it != allocated_regions.end();) {
         auto& r = *it;
 
-        printf("%lx, %lx, %lx, %lx\n", r.start, r.end, old_address, old_end);
         if (old_address > r.start && old_end < r.end) {
             auto n = r;
             n.start = new_address;
@@ -409,7 +417,6 @@ void Mapper::move_tracked_region(u64 old_address, u64 old_len, u64 new_address, 
             nr.start = old_end;
             it = allocated_regions.erase(it);
 
-            printf("split!\n %lx, %lx, %lx, %lx | %lx %lx\n", nl.start, nl.end, nr.start, nr.end, n.start, n.end);
             to_add.push_back(n);
             it = allocated_regions.insert(it, nr);
             it = allocated_regions.insert(it, nl);
@@ -417,7 +424,6 @@ void Mapper::move_tracked_region(u64 old_address, u64 old_len, u64 new_address, 
             it++;
             continue;
         }
-        printf("clean!\n");
 
         bool is_start_in = r.start >= old_address && r.start < old_end;
         bool is_end_in = r.end > old_address && r.end <= old_end;
@@ -427,7 +433,6 @@ void Mapper::move_tracked_region(u64 old_address, u64 old_len, u64 new_address, 
         n.end = new_address + (is_increase ? new_len : std::min((std::min(r.end, old_end) - old_address), new_len));
         if (is_start_in && is_end_in) {
             to_add.push_back(n);
-            printf("remove!\n");
             if (remove_src)
                 it = allocated_regions.erase(it);
             else
@@ -453,8 +458,8 @@ void Mapper::move_tracked_region(u64 old_address, u64 old_len, u64 new_address, 
     ASSERT(!is_increase || to_add.size() <= 1);
 
     remove_tracked_region(new_address, new_len);
-    for (auto add : to_add) {
-        add_tracked_region(add.start, add.end - add.start, add.flags, add.prot, add.fd, add.shmem);
+    for (auto add : std::move(to_add)) {
+        add_tracked_region(add.start, add.end - add.start, add.prot, add.dev, add.ino, add.offset, add.shmem);
     }
 }
 
@@ -486,11 +491,11 @@ void Mapper::remove_tracked_region(u64 address, u64 len) {
             it = allocated_regions.erase(it);
 
             if (address - m.start > 0) {
-                it = allocated_regions.insert(it, GuestRegion{m.start, address, m.flags, m.prot, m.fd, m.dev, m.ino, m.shmem});
+                it = allocated_regions.insert(it, GuestRegion{m.start, address, m.prot, m.dev, m.ino, m.offset, m.shmem});
                 it++;
             }
             if (m.end - end > 0) {
-                it = allocated_regions.insert(it, GuestRegion{end, m.end, m.flags, m.prot, m.fd, m.dev, m.ino, m.shmem});
+                it = allocated_regions.insert(it, GuestRegion{end, m.end, m.prot, m.dev, m.ino, m.offset, m.shmem});
                 it++;
             }
             continue;
