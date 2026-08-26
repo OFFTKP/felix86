@@ -1,6 +1,7 @@
 // clang-format off
 // Test our shmat implementation
 #include <catch2/catch_test_macros.hpp>
+#include <sys/mman.h>
 #include <sys/shm.h>
 #include <sys/types.h>
 #include "felix86/common/log.hpp"
@@ -24,7 +25,6 @@ struct GuestRegionExpected {
     u64 start;
     u64 len;
     int prot;
-    int flags;
 };
 
 static void verifyGuestRegions(Mapper& mapper, const std::vector<GuestRegionExpected>& expected_regions) {
@@ -35,7 +35,6 @@ static void verifyGuestRegions(Mapper& mapper, const std::vector<GuestRegionExpe
             bool yes = true;
             yes &= region.start == guest_region.start;
             yes &= region.start + region.len == guest_region.end;
-            yes &= region.flags == guest_region.flags;
             yes &= region.prot == guest_region.prot;
             yes &= guest_region.shmem;
             if (yes) {
@@ -60,7 +59,30 @@ CATCH_TEST_CASE("Simple1", "[shmat32]") {
     CATCH_REQUIRE(result == 0x50000);
 
     verifyGuestRegions(mapper, { 
-        {result, 0x1000, 0, 0},
+        {result, 0x1000, PROT_READ | PROT_WRITE},
+    });
+
+    CATCH_REQUIRE(mapper.shmdt(true, (void*)result) == 0);
+
+    verifyGuestRegions(mapper, {});
+
+    CATCH_REQUIRE(shmctl(shmid, IPC_RMID, 0) == 0);
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("Simple2", "[shmat32]") {
+    Mapper mapper;
+
+    key_t key;
+    int shmid = shmget(IPC_PRIVATE, 0x1000, 0777 | IPC_CREAT);
+    CATCH_REQUIRE(shmid != -1);
+
+    u64 result = 0;
+    CATCH_REQUIRE(mapper.shmat(true, shmid, (void*)0x50000, SHM_EXEC | SHM_RDONLY, &result) == 0);
+    CATCH_REQUIRE(result == 0x50000);
+
+    verifyGuestRegions(mapper, { 
+        {result, 0x1000, PROT_READ | PROT_EXEC},
     });
 
     CATCH_REQUIRE(mapper.shmdt(true, (void*)result) == 0);
@@ -83,7 +105,30 @@ CATCH_TEST_CASE("Simple1", "[shmat]") {
     CATCH_REQUIRE(result == 0x50000);
 
     verifyGuestRegions(mapper, { 
-        {result, 0x1000, 0, 0},
+        {result, 0x1000, PROT_READ | PROT_WRITE},
+    });
+
+    CATCH_REQUIRE(mapper.shmdt(false, (void*)result) == 0);
+
+    verifyGuestRegions(mapper, {});
+
+    CATCH_REQUIRE(shmctl(shmid, IPC_RMID, 0) == 0);
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("Simple2", "[shmat]") {
+    Mapper mapper;
+
+    key_t key;
+    int shmid = shmget(IPC_PRIVATE, 0x1000, 0777 | IPC_CREAT);
+    CATCH_REQUIRE(shmid != -1);
+
+    u64 result = 0;
+    CATCH_REQUIRE(mapper.shmat(false, shmid, (void*)0x50000, SHM_EXEC | SHM_RDONLY, &result) == 0);
+    CATCH_REQUIRE(result == 0x50000);
+
+    verifyGuestRegions(mapper, { 
+        {result, 0x1000, PROT_READ | PROT_EXEC},
     });
 
     CATCH_REQUIRE(mapper.shmdt(false, (void*)result) == 0);
@@ -108,14 +153,14 @@ CATCH_TEST_CASE("DistinctSegments", "[shmat]") {
     CATCH_REQUIRE(mapper.shmat(false, second_shmid, (void*)0x200005000ull, 0, &second) == 0);
 
     verifyGuestRegions(mapper, { 
-        {first, 0x1000, 0, 0},
-        {second, 0x2000, 0, 0},
+        {first, 0x1000, PROT_READ | PROT_WRITE},
+        {second, 0x2000, PROT_READ | PROT_WRITE},
     });
 
     CATCH_REQUIRE(mapper.shmdt(false, (void*)first) == 0);
  
     verifyGuestRegions(mapper, { 
-       {second, 0x2000, 0, 0},
+       {second, 0x2000, PROT_READ | PROT_WRITE},
     });
  
     CATCH_REQUIRE(mapper.shmdt(false, (void*)second) == 0);

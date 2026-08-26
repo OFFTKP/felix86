@@ -11,16 +11,14 @@ struct GuestRegion {
     u64 start;
     /// Non inclusive end address.
     u64 end;
-    /// Flags used for mapping this region.
-    int flags;
     /// Protection levels of the mapped region.
     int prot;
-    /// The file descriptor the region was mapped with.
-    int fd;
     /// The device containing the file.
     dev_t dev;
     /// The associated inode.
     ino_t ino;
+    /// Offset into the associated file.
+    u64 offset;
     /// If the allocated region is shared memory.
     bool shmem;
 
@@ -67,7 +65,7 @@ private:
 
     friend void verifyRegions(Mapper& mapper, const std::vector<std::pair<u32, u32>>& regions);
 
-    void add_tracked_region(u64 address, u64 len, int flags, int prot, int fd, bool shmem = false);
+    void add_tracked_region(u64 address, u64 len, int prot, dev_t dev, ino_t ino, u64 offset, bool shmem);
     void move_tracked_region(u64 old_address, u64 old_len, u64 new_address, u64 new_len, bool remove_source);
     void remove_tracked_region(u64 address, u64 len);
 };
