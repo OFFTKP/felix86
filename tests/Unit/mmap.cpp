@@ -44,7 +44,7 @@ static const int FCOMMON_FIXED = FCOMMON | MAP_FIXED;
 #define MREMAP(old_addr, old_size, new_size, flags) \
     do {\
         void* address = mapper.remap(g_mode32, (void*)old_addr, old_size, new_size, flags, 0); \
-        CATCH_REQUIRE(address != (void*)-1); \
+        CATCH_REQUIRE(address == (void*)old_addr); \
         unmap_me.push_back({(u64)address, new_size}); \
     } while(0)
 
@@ -80,6 +80,9 @@ struct GuestRegionExpected {
 static void verifyGuestRegions(Mapper& mapper, const std::vector<GuestRegionExpected>& expected_regions) {
     auto guest_regions = mapper.get_guest_regions();
     int found_regions = 0;
+    for (auto& region : guest_regions) {
+        printf("[%lx, %lx], %lx, %lx, %b\n", region.start, region.end, region.prot, region.flags, region.shmem);
+    }
     for (const auto region : expected_regions) {
         for (const auto guest_region : guest_regions) {
             bool yes = true;
@@ -967,6 +970,7 @@ CATCH_TEST_CASE("MremapMoveDoNotUnmap", "[mmap]") {
     MREMAP_AT(0x13000, 0x10000, 0x40000, 0x10000, MREMAP_FIXED | MREMAP_MAYMOVE | MREMAP_DONTUNMAP);
 
     verifyGuestRegions(mapper, { 
+        {0x13000, 0x10000, PROT_NONE, FCOMMON_FIXED},
         {0x40000, 0x10000, PROT_NONE, FCOMMON_FIXED},
     });
 
@@ -1127,7 +1131,7 @@ CATCH_TEST_CASE("MremapMoveGrowMiddle", "[mmap]") {
     SUCCESS_MESSAGE();
 }
 
-CATCH_TEST_CASE("MremapDeleteMiddle", "[mmap]") {
+CATCH_TEST_CASE("MremapShrinkMiddle", "[mmap]") {
     std::vector<std::pair<u32, u32>> unmap_me;
     Mapper mapper;
     g_mode32 = false;
@@ -1149,7 +1153,7 @@ CATCH_TEST_CASE("MremapDeleteMiddle", "[mmap]") {
     SUCCESS_MESSAGE();
 }
 
-CATCH_TEST_CASE("MremapOverwriteDelete", "[mmap]") {
+CATCH_TEST_CASE("MremapShrinkDifferentPriv", "[mmap]") {
     std::vector<std::pair<u32, u32>> unmap_me;
     Mapper mapper;
     g_mode32 = false;
