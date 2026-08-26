@@ -17,7 +17,7 @@ void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offse
 
     if ((flags & MAP_FIXED) || (flags & MAP_FIXED_NOREPLACE)) {
         // Fixed mapping, make sure it's inside 32-bit address space
-        ASSERT_MSG((u64)addr < UINT32_MAX, "felix86_mmap tried to FIXED allocate outside of 32-bit address space");
+        ASSERT_MSG((u64)addr <= UINT32_MAX, "felix86_mmap tried to FIXED allocate outside of 32-bit address space");
 
         // MAP_FIXED says allocate it at that address, and we don't care if it overlaps with other stuff
         // MAP_FIXED_NOREPLACE will fail if other stuff is at that address
@@ -70,7 +70,7 @@ void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offse
 
 int Mapper::unmap32(void* addr, u64 size) {
     size = (size + 0xFFFull) & ~0xFFFull;
-    ASSERT((u64)addr < UINT32_MAX);
+    ASSERT((u64)addr <= UINT32_MAX);
     int result = munmap(addr, size);
     if (result != -1) {
         // unmap it from our freelist as well
@@ -97,7 +97,7 @@ void* Mapper::remap32(void* old_address, u64 old_size, u64 new_size, int flags, 
 
     if ((flags & MREMAP_FIXED) || !(flags & MREMAP_MAYMOVE)) {
         // Give it to the kernel first
-        ASSERT((u64)new_address < UINT32_MAX);
+        ASSERT((u64)new_address <= UINT32_MAX);
         void* result = ::mremap(old_address, old_size, new_size, flags, new_address);
         if (result == MAP_FAILED) {
             return MAP_FAILED;
@@ -287,22 +287,22 @@ int Mapper::shmdt(bool mode32, void* address) {
 
     auto it = page_to_shmid.find((u64)address & ~0xFFFull);
     if (it == page_to_shmid.end()) {
-        WARN("Could not find page during shmdt: %lx", (u64)address & ~0xFFFull);
-        return -EINVAL;
+        IMPORTANT("Could not find page during shmdt: %lx", (u64)address & ~0xFFFull);
+        return ::shmdt(address);
     }
 
     int shmid = it->second;
+    size_t size = 0;
+    bool size_known = false;
     struct shmid_ds ds;
     if (shmctl(shmid, IPC_STAT, &ds) == 0) {
-        size_t size = ds.shm_segsz;
+        size = ds.shm_segsz;
         if (size & 0xFFF) {
             size_t new_size = (size + 0xFFFull) & ~0xFFFull;
             WARN("shmctl returned size not aligned to a page: %lx, setting to new size: %lx", size, new_size);
             size = new_size;
         }
-        remove_tracked_region((u64)address, size);
-        if (mode32)
-            freelist.deallocate((u64)address, size);
+        size_known = true;
     } else {
         WARN("shmctl returned error %d", -errno);
     }
@@ -310,6 +310,11 @@ int Mapper::shmdt(bool mode32, void* address) {
     int result = ::shmdt(address);
 
     if (result == 0) {
+        if (size_known) {
+            remove_tracked_region((u64)address, size);
+            if (mode32)
+                freelist.deallocate((u64)address, size);
+        }
         page_to_shmid.erase(it);
     }
 
