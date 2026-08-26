@@ -1,6 +1,8 @@
 // clang-format off
 // Test our mmap implementation
+#include <cstdlib>
 #include <catch2/catch_test_macros.hpp>
+#include <unistd.h>
 #include <sys/mman.h>
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
@@ -929,6 +931,31 @@ CATCH_TEST_CASE("OverwriteFixed2", "[mmap]") {
     SUCCESS_MESSAGE();
 }
 
+CATCH_TEST_CASE("OverwriteFixedNonMergeableNeighbor", "[mmap]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = false;
+
+    MMAP_AT(0x30000, 0x4000, PROT_NONE, 0);
+    MMAP_AT(0x34000, 0x3000, PROT_READ, 0);
+
+    verifyGuestRegions(mapper, {
+        {0x30000, 0x4000, PROT_NONE, FCOMMON_FIXED},
+        {0x34000, 0x3000, PROT_READ, FCOMMON_FIXED},
+    });
+
+    MMAP_AT(0x34000, 0x6000, PROT_NONE, 0);
+
+    verifyGuestRegions(mapper, {
+        {0x30000, 0xa000, PROT_NONE, FCOMMON_FIXED},
+    });
+
+    CATCH_REQUIRE(mapper.total_mapped_memory() == 0xa000);
+
+    MUNMAP_ALL();
+    SUCCESS_MESSAGE();
+}
+
 CATCH_TEST_CASE("MremapMove", "[mmap]") {
     std::vector<std::pair<u32, u32>> unmap_me;
     Mapper mapper;
@@ -1214,6 +1241,98 @@ CATCH_TEST_CASE("DifferentNeighborFlags", "[mmap]") {
         {0x30000, 0x10000, PROT_NONE, FCOMMON_FIXED},
     });
 
+    MUNMAP_ALL();
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("PlacementFlagsDoNotAffectMerging", "[mmap]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = false;
+
+    MMAP_AT(0x30000, 0x10000, PROT_READ, 0);
+
+    void* second = mapper.map(g_mode32, (void*)0x40000, 0x10000, PROT_READ, FCOMMON | MAP_FIXED_NOREPLACE, -1, 0);
+    CATCH_REQUIRE(second == (void*)0x40000);
+    unmap_me.push_back({0x40000, 0x10000});
+
+    verifyGuestRegions(mapper, {
+        {0x30000, 0x20000, PROT_READ, FCOMMON},
+    });
+
+    MUNMAP_ALL();
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("PopulateDoesNotAffectMerging", "[mmap]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = false;
+
+    MMAP_AT(0x30000, 0x10000, PROT_READ, 0);
+    MMAP_AT(0x40000, 0x10000, PROT_READ, MAP_POPULATE);
+
+    verifyGuestRegions(mapper, {
+        {0x30000, 0x20000, PROT_READ, FCOMMON},
+    });
+
+    MUNMAP_ALL();
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("FileOffsetAffectsMerging", "[mmap]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = false;
+
+    char path[] = "/tmp/felix86_mmap_testXXXXXX";
+    int fd = mkstemp(path);
+    CATCH_REQUIRE(fd != -1);
+    CATCH_REQUIRE(ftruncate(fd, 0x10000) == 0);
+    unlink(path);
+
+    int flags = MAP_PRIVATE | MAP_FIXED;
+    CATCH_REQUIRE(mapper.map(g_mode32, (void*)0x30000, 0x1000, PROT_READ, flags, fd, 0) == (void*)0x30000);
+    CATCH_REQUIRE(mapper.map(g_mode32, (void*)0x31000, 0x1000, PROT_READ, flags, fd, 0xF000) == (void*)0x31000);
+    unmap_me.push_back({0x30000, 0x2000});
+
+    auto regions = mapper.get_guest_regions();
+    CATCH_REQUIRE(regions.size() == 2);
+    CATCH_REQUIRE(regions[0].start == 0x30000);
+    CATCH_REQUIRE(regions[0].end == 0x31000);
+    CATCH_REQUIRE(regions[1].start == 0x31000);
+    CATCH_REQUIRE(regions[1].end == 0x32000);
+
+    close(fd);
+    MUNMAP_ALL();
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("SameFileThroughDifferentFdsMerges", "[mmap]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = false;
+
+    char path[] = "/tmp/felix86_mmap_testXXXXXX";
+    int fd = mkstemp(path);
+    CATCH_REQUIRE(fd != -1);
+    CATCH_REQUIRE(ftruncate(fd, 0x10000) == 0);
+    int other_fd = dup(fd);
+    CATCH_REQUIRE(other_fd != -1);
+    unlink(path);
+
+    int flags = MAP_PRIVATE | MAP_FIXED;
+    CATCH_REQUIRE(mapper.map(g_mode32, (void*)0x30000, 0x1000, PROT_READ, flags, fd, 0) == (void*)0x30000);
+    CATCH_REQUIRE(mapper.map(g_mode32, (void*)0x31000, 0x1000, PROT_READ, flags, other_fd, 0x1000) == (void*)0x31000);
+    unmap_me.push_back({0x30000, 0x2000});
+
+    auto regions = mapper.get_guest_regions();
+    CATCH_REQUIRE(regions.size() == 1);
+    CATCH_REQUIRE(regions[0].start == 0x30000);
+    CATCH_REQUIRE(regions[0].end == 0x32000);
+
+    close(fd);
+    close(other_fd);
     MUNMAP_ALL();
     SUCCESS_MESSAGE();
 }
