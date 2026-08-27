@@ -11776,6 +11776,18 @@ FAST_HANDLE(AESKEYGENASSIST) {
 
 FAST_HANDLE(CMPXCHG16B) {
     biscuit::GPR address = rec.lea(&operands[0]);
+    {
+        biscuit::GPR masked = rec.scratch();
+        biscuit::Label ahead;
+        as.ANDI(masked, address, 0b1111);
+        as.BEQZ(masked, &ahead);
+        as.SD(x0, 0, x0);
+        as.SLTIU(x0, x0, FELIX86_HINT_GP);
+        as.C_UNDEF();
+        as.C_UNDEF();
+        as.Bind(&ahead);
+        rec.popScratch();
+    }
     if (Extensions::Zacas) {
         WARN_ONCE("cmpxchg16b with zacas, untested, please report results");
         // We are the luckiest emulator alive!
