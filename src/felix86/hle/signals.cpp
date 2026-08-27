@@ -412,7 +412,7 @@ static u32 get_reg_err(int sig, siginfo_t* info, ucontext_t* uctx) {
 // TODO: for synchronous signals like hlt/int3 etc. we need custom trapno/err
 static u32 get_reg_trapno(u64 host_pc, int sig, siginfo_t* info, ucontext_t* uctx) {
     // TODO: ugly hardcoding, make this better ...
-    if (info->si_code == TRAP_TRACE || info->si_code == TRAP_BRKPT) {
+    if (sig == SIGTRAP && (info->si_code == TRAP_TRACE || info->si_code == TRAP_BRKPT)) {
         return 1;
     }
 
@@ -483,7 +483,7 @@ static void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state
     rsp = rsp - sizeof(x64_rt_sigframe);
     static_assert(sizeof(x64_rt_sigframe) % 16 == 0);
 
-    rsp = rsp & ~63ull;
+    rsp = (rsp & ~15ull) - 8;
 
     x64_rt_sigframe* frame = (x64_rt_sigframe*)rsp;
 
@@ -541,8 +541,8 @@ static void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state
     frame->uc.uc_mcontext.gregs[REG_EFL] = state->GetFlags();
     frame->uc.uc_mcontext.gregs[REG_TRAPNO] = get_reg_trapno(get_pc(host_context), sig, guest_info, host_context);
     frame->uc.uc_mcontext.gregs[REG_ERR] = get_reg_err(sig, guest_info, host_context);
-    frame->uc.uc_mcontext.gregs[REG_OLDMASK] = 0;
-    frame->uc.uc_mcontext.gregs[REG_CR2] = 0;
+    frame->uc.uc_mcontext.gregs[REG_OLDMASK] = old_mask.__val[0];
+    frame->uc.uc_mcontext.gregs[REG_CR2] = sig == SIGSEGV ? (u64)guest_info->si_addr : 0;
 
     felix86_xsave(state->ctx, &frame->uc.uc_mcontext.fpregs->fxsave, true);
 
@@ -627,7 +627,6 @@ static void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* st
     rsp -= sizeof(x86_rt_sigframe);
 
     rsp = ((rsp + 4) & -16ul) - 4;
-    rsp = rsp & ~63ull;
 
     x86_rt_sigframe* frame = (x86_rt_sigframe*)rsp;
     ASSERT((u64)frame < UINT32_MAX);
@@ -662,6 +661,7 @@ static void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* st
     frame->uc.uc_mcontext.__dsh = 0;
     frame->uc.uc_mcontext.__ssh = 0;
     frame->uc.uc_mcontext.__esh = 0;
+    frame->uc.uc_mcontext.cr2 = sig == SIGSEGV ? (u32)(u64)guest_info->si_addr : 0;
     frame->uc.uc_mcontext.trapno = get_reg_trapno(get_pc(host_context), sig, guest_info, host_context);
     frame->uc.uc_mcontext.err = get_reg_err(sig, guest_info, host_context);
     if (use_altstack) {
@@ -682,6 +682,7 @@ static void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* st
     Signals::sigprocmask(state, SIG_SETMASK, nullptr, &old_mask);
     frame->uc.uc_sigmask = old_mask;
     frame->uc.uc_mcontext.fpstate = (u32)(u64)fpstate;
+    frame->uc.uc_mcontext.oldmask = (u32)old_mask.__val[0];
 
     // These are laid out in the frame in the argument order, we don't need to push any arguments
     frame->sig = sig;
@@ -746,7 +747,6 @@ static void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state
     x86_fpstate* fpstate = (x86_fpstate*)rsp;
     rsp = rsp - sizeof(x86_legacy_sigframe);
     rsp = ((rsp + 4) & -16ul) - 4;
-    rsp = rsp & ~63ull;
 
     x86_legacy_sigframe* frame = (x86_legacy_sigframe*)rsp;
     frame->sc.ax = state->GetGpr(X86_REF_RAX);
@@ -772,6 +772,7 @@ static void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state
     frame->sc.__dsh = 0;
     frame->sc.__ssh = 0;
     frame->sc.__esh = 0;
+    frame->sc.cr2 = sig == SIGSEGV ? (u32)(u64)guest_info->si_addr : 0;
     frame->sc.trapno = get_reg_trapno(get_pc(host_context), sig, guest_info, host_context);
     frame->sc.err = get_reg_err(sig, guest_info, host_context);
     sigset_t old_mask;

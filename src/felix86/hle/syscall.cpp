@@ -2739,6 +2739,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             if (old_act) {
                 old_act->handler = (decltype(old_act->handler))old.func;
                 old_act->sa_flags = old.flags;
+                old_act->restorer = old.restorer;
                 old_act->sa_mask[0] = old.mask;
                 old_act->sa_mask[1] = old.mask >> 32;
             }
