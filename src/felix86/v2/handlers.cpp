@@ -7014,10 +7014,6 @@ FAST_HANDLE(PSHUFHW) {
 FAST_HANDLE(PALIGNR) {
     int elements = operands[0].size / 8;
     u8 imm = rec.getImmediate(&operands[2]);
-    if (imm == elements) {
-        WARN("palingr is nop?");
-        return;
-    }
 
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
@@ -8397,6 +8393,9 @@ static void COMIS(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstructi
     biscuit::GPR zf = rec.flag(X86_REF_ZF);
     biscuit::GPR sf = rec.flag(X86_REF_SF);
     biscuit::GPR of = rec.flag(X86_REF_OF);
+    bool emit_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
+    bool emit_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
+    bool emit_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
 
     if (rec.shouldEmitFlag(rip, X86_REF_AF)) {
         as.SB(x0, offsetof(ThreadState, ctx.af), rec.threadStatePointer());
@@ -8435,32 +8434,38 @@ static void COMIS(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstructi
     biscuit::GPR temp = rec.scratch();
 
     if (sew == SEW::E32) {
-        as.FEQ_S(zf, lhs, rhs);
+        if (emit_zf)
+            as.FEQ_S(zf, lhs, rhs);
         as.FEQ_S(temp, lhs, lhs);
         as.FEQ_S(nan_bit, rhs, rhs);
     } else {
-        as.FEQ_D(zf, lhs, rhs);
+        if (emit_zf)
+            as.FEQ_D(zf, lhs, rhs);
         as.FEQ_D(temp, lhs, lhs);
         as.FEQ_D(nan_bit, rhs, rhs);
     }
 
-    if (sew == SEW::E32) {
-        as.FLT_S(cf, lhs, rhs);
-    } else {
-        as.FLT_D(cf, lhs, rhs);
+    if (emit_cf) {
+        if (sew == SEW::E32) {
+            as.FLT_S(cf, lhs, rhs);
+        } else {
+            as.FLT_D(cf, lhs, rhs);
+        }
     }
 
     // Combine the NaN-ness of both operands into the NaN bit
     as.AND(nan_bit, nan_bit, temp);
     as.XORI(nan_bit, nan_bit, 1);
 
-    if (rec.shouldEmitFlag(rip, X86_REF_PF)) {
+    if (emit_pf) {
         as.SB(nan_bit, offsetof(ThreadState, ctx.pf), rec.threadStatePointer());
     }
 
     // If the NaN bit is set we also overwrite the value of cf and zf with 1
-    as.OR(cf, cf, nan_bit);
-    as.OR(zf, zf, nan_bit);
+    if (emit_cf)
+        as.OR(cf, cf, nan_bit);
+    if (emit_zf)
+        as.OR(zf, zf, nan_bit);
 }
 
 FAST_HANDLE(COMISD) {

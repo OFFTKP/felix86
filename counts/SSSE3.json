@@ -591,8 +591,13 @@
         "disassembly": "palignr xmm2, xmm3, 0x0A"
     },
     "660f3a0fd310": {
-        "instruction_count": 0,
-        "expected_asm": [],
+        "instruction_count": 4,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VSLIDEDOWN.VI   v2, xmm3, 0x10(16), none",
+            "VSLIDEUP.VI     v2, xmm2, 0x0(0), none",
+            "VMV.V.V         xmm2, v2"
+        ],
         "disassembly": "palignr xmm2, xmm3, 0x10"
     },
     "0f381cdc": {
