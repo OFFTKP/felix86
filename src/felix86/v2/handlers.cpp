@@ -4060,13 +4060,15 @@ FAST_HANDLE(IMUL) {
         }
         }
     } else if (opcount == 2 || opcount == 3) {
+        bool emit_flags = rec.shouldEmitFlag(rip, X86_REF_CF) || rec.shouldEmitFlag(rip, X86_REF_OF);
+        bool dont_sext32 = !emit_flags;
         biscuit::GPR src1, src2;
         if (opcount == 2) {
-            src1 = rec.getGPRSigned(&operands[0], true /* dont_sext32 */);
-            src2 = rec.getGPRSigned(&operands[1], true);
+            src1 = rec.getGPRSigned(&operands[0], dont_sext32);
+            src2 = rec.getGPRSigned(&operands[1], dont_sext32);
         } else {
-            src1 = rec.getGPRSigned(&operands[1], true);
-            src2 = rec.getGPRSigned(&operands[2], true);
+            src1 = rec.getGPRSigned(&operands[1], dont_sext32);
+            src2 = rec.getGPRSigned(&operands[2], dont_sext32);
         }
         switch (size) {
         case X86_SIZE_WORD: {
@@ -4074,7 +4076,7 @@ FAST_HANDLE(IMUL) {
             as.MULW(result, src1, src2);
             rec.setGPR(&operands[0], result);
 
-            if (rec.shouldEmitFlag(rip, X86_REF_CF) || rec.shouldEmitFlag(rip, X86_REF_OF)) {
+            if (emit_flags) {
                 biscuit::GPR cf = rec.flag(X86_REF_CF);
                 biscuit::GPR of = rec.flag(X86_REF_OF);
                 rec.sexth(cf, result);
@@ -4086,10 +4088,14 @@ FAST_HANDLE(IMUL) {
         }
         case X86_SIZE_DWORD: {
             biscuit::GPR result = rec.scratch();
-            as.MULW(result, src1, src2);
+            if (emit_flags) {
+                as.MUL(result, src1, src2);
+            } else {
+                as.MULW(result, src1, src2);
+            }
             rec.setGPR(&operands[0], result);
 
-            if (rec.shouldEmitFlag(rip, X86_REF_CF) || rec.shouldEmitFlag(rip, X86_REF_OF)) {
+            if (emit_flags) {
                 biscuit::GPR cf = rec.flag(X86_REF_CF);
                 biscuit::GPR of = rec.flag(X86_REF_OF);
                 as.ADDIW(cf, result, 0);
@@ -4100,7 +4106,6 @@ FAST_HANDLE(IMUL) {
             break;
         }
         case X86_SIZE_QWORD: {
-            bool emit_flags = rec.shouldEmitFlag(rip, X86_REF_CF) || rec.shouldEmitFlag(rip, X86_REF_OF);
             biscuit::GPR result = rec.scratch();
             biscuit::GPR result_low = rec.getGPR(&operands[0]);
             if (emit_flags) {
