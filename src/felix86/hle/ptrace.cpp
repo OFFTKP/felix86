@@ -1318,8 +1318,8 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
         return set_regs(tracer_mode32, remote_state, data);
     }
     default: {
-        ERROR("Unimplemented operation: %x", op);
-        return -EINVAL;
+        WARN("Unimplemented operation: %x", op);
+        return -EIO;
     }
     }
 }

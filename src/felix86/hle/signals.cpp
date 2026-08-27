@@ -1093,7 +1093,7 @@ static void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uct
         ASSERT(syscall(SYS_rt_sigprocmask, SIG_UNBLOCK, &set, nullptr, sizeof(u64)) == 0);
         state->ptrace_data.constants.is_terminating = true;
         syscall(SYS_tgkill, getpid(), gettid(), sig);
-        UNREACHABLE();
+        ERROR("Our attempt to terminate with sig %d failed?", sig); // should not be skipped by tracer as is_terminating is set
         break;
     }
     case SignalBehavior::Ignore: {
@@ -1378,6 +1378,12 @@ static bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, uco
         ::sleep(40);
         return true;
     } else {
+        // TODO: we already have a path for default behavior terminating signals, but it only happens
+        // on signals that are in jit code. Fix and replace this entire branch with return false
+        if (in_jit_code) {
+            return false;
+        }
+
         // Check if signal handler is SIG_DFL or SIG_IGN
         RegisteredSignal* handler = SignalHandlerTable::getRegisteredSignal(current_state->signal_table, SIGSEGV);
         if (handler->func == (u64)SIG_DFL) {
@@ -1393,9 +1399,8 @@ static bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, uco
         } else if (handler->func == (u64)SIG_IGN) {
             // Uhh... warn and return true?
             WARN("SIGSEGV with ignore behavior");
-            return true;
         }
-        return false;
+        return true;
     }
 }
 

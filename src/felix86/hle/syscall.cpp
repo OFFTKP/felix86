@@ -1664,16 +1664,20 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
 
         if (arg2) {
             u8* guest_argv = (u8*)arg2;
-            guest_argv += mode32 ? 4 : 8;
-            while (true) {
-                u64 ptr = 0;
-                memcpy(&ptr, guest_argv, mode32 ? 4 : 8);
-                if (ptr == 0) {
-                    break;
-                }
-
-                argv.push_back((const char*)ptr);
+            u64 argv0 = 0;
+            memcpy(&argv0, guest_argv, mode32 ? 4 : 8);
+            if (argv0 != 0) {
                 guest_argv += mode32 ? 4 : 8;
+                while (true) {
+                    u64 ptr = 0;
+                    memcpy(&ptr, guest_argv, mode32 ? 4 : 8);
+                    if (ptr == 0) {
+                        break;
+                    }
+
+                    argv.push_back((const char*)ptr);
+                    guest_argv += mode32 ? 4 : 8;
+                }
             }
         } else {
             WARN("argv null during execve...?");
