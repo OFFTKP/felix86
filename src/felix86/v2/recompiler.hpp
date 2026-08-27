@@ -145,9 +145,9 @@ struct Recompiler {
 
     biscuit::GPR getGPR(ZydisRegister reg);
 
-    biscuit::GPR getGPRSigned(x86_ref_e ref, x86_size_e size);
+    biscuit::GPR getGPRSigned(x86_ref_e ref, x86_size_e size, bool dont_sext32 = false);
 
-    biscuit::GPR getGPRSigned(const ZydisDecodedOperand* operand);
+    biscuit::GPR getGPRSigned(const ZydisDecodedOperand* operand, bool dont_sext32 = false);
 
     biscuit::Vec getVec(const ZydisDecodedOperand* operand);
 

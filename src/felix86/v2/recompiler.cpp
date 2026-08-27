@@ -1397,7 +1397,7 @@ biscuit::GPR Recompiler::getGPR(const ZydisDecodedOperand* operand) {
     }
 }
 
-biscuit::GPR Recompiler::getGPRSigned(x86_ref_e ref, x86_size_e size) {
+biscuit::GPR Recompiler::getGPRSigned(x86_ref_e ref, x86_size_e size, bool dont_sext32) {
     biscuit::GPR gpr = allocatedGPR(ref);
 
     switch (size) {
@@ -1418,9 +1418,13 @@ biscuit::GPR Recompiler::getGPRSigned(x86_ref_e ref, x86_size_e size) {
         return gpr16;
     }
     case X86_SIZE_DWORD: {
-        biscuit::GPR gpr32 = scratch();
-        sext(gpr32, gpr, X86_SIZE_DWORD);
-        return gpr32;
+        if (!dont_sext32) {
+            biscuit::GPR gpr32 = scratch();
+            sext(gpr32, gpr, X86_SIZE_DWORD);
+            return gpr32;
+        } else {
+            return gpr;
+        }
     }
     case X86_SIZE_QWORD: {
         return gpr;
@@ -1432,13 +1436,13 @@ biscuit::GPR Recompiler::getGPRSigned(x86_ref_e ref, x86_size_e size) {
     }
 }
 
-biscuit::GPR Recompiler::getGPRSigned(const ZydisDecodedOperand* operand) {
+biscuit::GPR Recompiler::getGPRSigned(const ZydisDecodedOperand* operand, bool dont_sext32) {
     switch (operand->type) {
     case ZYDIS_OPERAND_TYPE_REGISTER: {
         ZydisRegister reg = operand->reg.value;
         x86_ref_e ref = zydisToRef(reg);
         x86_size_e size = zydisToSize(reg);
-        return getGPRSigned(ref, size);
+        return getGPRSigned(ref, size, dont_sext32);
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::GPR dest = scratch();
@@ -1456,6 +1460,12 @@ biscuit::GPR Recompiler::getGPRSigned(const ZydisDecodedOperand* operand) {
             readMemorySigned(dest, address, 0, zydisToSize(operand->size));
         }
         return dest;
+    }
+    case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
+        u64 value = operand->imm.value.s;
+        biscuit::GPR imm = scratch();
+        as.LI(imm, value);
+        return imm;
     }
     default: {
         UNREACHABLE();
