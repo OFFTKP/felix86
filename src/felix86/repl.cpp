@@ -13,6 +13,7 @@
 #include "felix86/v2/recompiler.hpp"
 
 extern std::string riscv_disassemble(u32 opcode, u64 addr);
+extern void riscv_set_felix86_allocations(bool enable);
 
 static FlagMode flag_mode = FlagMode::Default;
 
@@ -171,6 +172,8 @@ static void compile(const std::string& input) {
 }
 
 void __attribute__((noreturn)) enter_repl() {
+    riscv_set_felix86_allocations(true);
+
     if (system("which nasm > /dev/null 2>&1")) {
         printf("felix86 REPL needs nasm installed, please install the nasm assembler\n");
         exit(1);

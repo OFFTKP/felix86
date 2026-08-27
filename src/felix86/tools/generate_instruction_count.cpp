@@ -150,6 +150,7 @@ static void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbya
 }
 
 int main() {
+    riscv_set_felix86_allocations(true);
     g_config.inline_syscalls = false;
     g_config.scan_ahead_multi = false;
     Extensions::G = true;

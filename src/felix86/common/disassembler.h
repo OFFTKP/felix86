@@ -4,4 +4,5 @@
 #include <cstdint>
 #include <string>
 std::string riscv_disassemble(uint32_t data, uint64_t addr);
+void riscv_set_felix86_allocations(bool enable);
 #endif
