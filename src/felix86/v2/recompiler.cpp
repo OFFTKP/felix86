@@ -713,15 +713,6 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
             if (is_op0_mmx && operands[0].actions & ZYDIS_OPERAND_ACTION_WRITE) {
                 int index = operands[0].reg.value - ZYDIS_REGISTER_MM0;
                 mmx_reg_cache[index].dirty = true;
-
-                // Ugly special case... if PALIGNR is a NOP just don't mark it as dirty
-                if (instruction.mnemonic == ZYDIS_MNEMONIC_PALIGNR) {
-                    int elements = operands[0].size / 8;
-                    u8 imm = getImmediate(&operands[2]);
-                    if (imm == elements) {
-                        mmx_reg_cache[index].dirty = false;
-                    }
-                }
             }
         }
 
