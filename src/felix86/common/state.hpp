@@ -167,12 +167,8 @@ typedef enum : u8 {
     X(felix86_xrstor)                                                                                                                                \
     X(felix86_pcmpxstrx)                                                                                                                             \
     X(felix86_mpsadbw)                                                                                                                               \
-    X(felix86_vpsadbw)                                                                                                                               \
-    X(felix86_vpsadbw256)                                                                                                                            \
     X(felix86_tf_changed)                                                                                                                            \
     X(felix86_aeskeygenassist)                                                                                                                       \
-    X(felix86_vmpsadbw_128)                                                                                                                          \
-    X(felix86_vmpsadbw_256)                                                                                                                          \
     X(felix86_crash_and_burn)                                                                                                                        \
     X(felix86_raise_hardware_breakpoint)                                                                                                             \
     X(felix86_x87_FLD)                                                                                                                               \

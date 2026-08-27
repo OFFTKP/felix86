@@ -208,8 +208,6 @@ struct Recompiler {
 
     int getBitSize(x86_size_e size);
 
-    u64 getSignMask(x86_size_e size_e);
-
     void jumpAndLink(u64 rip);
 
     void jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false);
