@@ -4047,16 +4047,13 @@ FAST_HANDLE(IMUL) {
     x86_size_e size = rec.getSize(&operands[0]);
     u8 opcount = instruction.operand_count_visible;
     if (opcount == 1) {
-        biscuit::GPR src = rec.getGPR(&operands[0]);
+        biscuit::GPR src = rec.getGPRSigned(&operands[0]);
         switch (size) {
         case X86_SIZE_BYTE:
         case X86_SIZE_BYTE_HIGH: {
             biscuit::GPR result = rec.scratch();
-            biscuit::GPR sext = rec.scratch();
-            biscuit::GPR al = rec.getGPR(X86_REF_RAX, X86_SIZE_BYTE);
-            rec.sextb(sext, al);
-            rec.sextb(result, src);
-            as.MULW(result, sext, result);
+            biscuit::GPR al = rec.getGPRSigned(X86_REF_RAX, X86_SIZE_BYTE);
+            as.MULW(result, src, al);
             rec.setGPR(X86_REF_RAX, X86_SIZE_WORD, result);
 
             if (rec.shouldEmitFlag(rip, X86_REF_CF) || rec.shouldEmitFlag(rip, X86_REF_OF)) {
@@ -4071,11 +4068,8 @@ FAST_HANDLE(IMUL) {
         }
         case X86_SIZE_WORD: {
             biscuit::GPR result = rec.scratch();
-            biscuit::GPR sext = rec.scratch();
-            biscuit::GPR ax = rec.getGPR(X86_REF_RAX, X86_SIZE_WORD);
-            rec.sexth(sext, ax);
-            rec.sexth(result, src);
-            as.MULW(result, sext, result);
+            biscuit::GPR ax = rec.getGPRSigned(X86_REF_RAX, X86_SIZE_WORD);
+            as.MULW(result, ax, src);
             rec.setGPR(X86_REF_RAX, X86_SIZE_WORD, result);
 
             if (rec.shouldEmitFlag(rip, X86_REF_CF) || rec.shouldEmitFlag(rip, X86_REF_OF)) {
@@ -4094,11 +4088,8 @@ FAST_HANDLE(IMUL) {
         }
         case X86_SIZE_DWORD: {
             biscuit::GPR result = rec.scratch();
-            biscuit::GPR sext = rec.scratch();
-            biscuit::GPR eax = rec.getGPR(X86_REF_RAX, X86_SIZE_DWORD);
-            as.ADDIW(sext, eax, 0);
-            as.ADDIW(result, src, 0);
-            as.MUL(result, sext, result);
+            biscuit::GPR eax = rec.getGPRSigned(X86_REF_RAX, X86_SIZE_DWORD);
+            as.MUL(result, src, eax);
             rec.setGPR(X86_REF_RAX, X86_SIZE_DWORD, result);
 
             if (rec.shouldEmitFlag(rip, X86_REF_CF) || rec.shouldEmitFlag(rip, X86_REF_OF)) {
