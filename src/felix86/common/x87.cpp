@@ -723,6 +723,9 @@ void felix86_x87_FUCOMI(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs
     state->ctx.zf = zf;
     state->ctx.pf = pf;
     state->ctx.cf = cf;
+    state->ctx.of = 0;
+    state->ctx.sf = 0;
+    state->ctx.af = 0;
 }
 
 void felix86_x87_FUCOMIP(ThreadState* state, extFloat80_t* lhs, extFloat80_t* rhs, int) {
