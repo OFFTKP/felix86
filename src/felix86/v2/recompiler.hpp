@@ -145,6 +145,10 @@ struct Recompiler {
 
     biscuit::GPR getGPR(ZydisRegister reg);
 
+    biscuit::GPR getGPRSigned(x86_ref_e ref, x86_size_e size, bool dont_sext32 = false);
+
+    biscuit::GPR getGPRSigned(const ZydisDecodedOperand* operand, bool dont_sext32 = false);
+
     biscuit::Vec getVec(const ZydisDecodedOperand* operand);
 
     biscuit::Vec getVec(ZydisRegister reg);
@@ -435,6 +439,8 @@ struct Recompiler {
     std::pair<biscuit::GPR, bool> getCondNoInvert(int cond);
 
     bool needsTsoFence() const;
+
+    void readMemorySigned(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size);
 
     void readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size);
 

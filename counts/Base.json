@@ -11339,17 +11339,15 @@
         "disassembly": "dec [rdi]"
     },
     "f6ea": {
-        "instruction_count": 13,
+        "instruction_count": 11,
         "expected_asm": [
-            "ANDI            ra, a2, 0xff(255)",
-            "ANDI            t4, t0, 0xff(255)",
-            "SEXT.B          t3, t4",
-            "SEXT.B          t1, ra",
-            "MULW            t1, t3, t1",
-            "ZEXT.H          t2, t1",
+            "SEXT.B          ra, a2",
+            "SEXT.B          t3, t0",
+            "MULW            t1, ra, t3",
+            "ZEXT.H          t4, t1",
             "SRLI            t0, t0, 0x10(16)",
             "SLLI            t0, t0, 0x10(16)",
-            "OR              t0, t0, t2",
+            "OR              t0, t0, t4",
             "SEXT.B          s5, t1",
             "XOR             s9, s5, t1",
             "SLTU            s9, zero, s9",
@@ -11358,18 +11356,16 @@
         "disassembly": "imul dl"
     },
     "f6ee": {
-        "instruction_count": 14,
+        "instruction_count": 12,
         "expected_asm": [
             "SRLI            ra, a2, 0x8(8)",
-            "ANDI            ra, ra, 0xff(255)",
-            "ANDI            t4, t0, 0xff(255)",
-            "SEXT.B          t3, t4",
-            "SEXT.B          t1, ra",
-            "MULW            t1, t3, t1",
-            "ZEXT.H          t2, t1",
+            "SEXT.B          ra, ra",
+            "SEXT.B          t3, t0",
+            "MULW            t1, ra, t3",
+            "ZEXT.H          t4, t1",
             "SRLI            t0, t0, 0x10(16)",
             "SLLI            t0, t0, 0x10(16)",
-            "OR              t0, t0, t2",
+            "OR              t0, t0, t4",
             "SEXT.B          s5, t1",
             "XOR             s9, s5, t1",
             "SLTU            s9, zero, s9",
@@ -11378,37 +11374,33 @@
         "disassembly": "imul dh"
     },
     "66f7ea": {
-        "instruction_count": 18,
+        "instruction_count": 16,
         "expected_asm": [
-            "ZEXT.H          ra, a2",
-            "ZEXT.H          t4, t0",
-            "SEXT.H          t3, t4",
-            "SEXT.H          t1, ra",
-            "MULW            t1, t3, t1",
-            "ZEXT.H          t2, t1",
+            "SEXT.H          ra, a2",
+            "SEXT.H          t3, t0",
+            "MULW            t1, t3, ra",
+            "ZEXT.H          t4, t1",
             "SRLI            t0, t0, 0x10(16)",
             "SLLI            t0, t0, 0x10(16)",
-            "OR              t0, t0, t2",
+            "OR              t0, t0, t4",
             "SEXT.H          s5, t1",
             "XOR             s9, s5, t1",
             "SLTU            s9, zero, s9",
             "ADDI            s5, s9, 0x0(0)",
             "SRAIW           t1, t1, 0x10(16)",
-            "ZEXT.H          t2, t1",
+            "ZEXT.H          t4, t1",
             "SRLI            a2, a2, 0x10(16)",
             "SLLI            a2, a2, 0x10(16)",
-            "OR              a2, a2, t2"
+            "OR              a2, a2, t4"
         ],
         "disassembly": "imul dx"
     },
     "f7ea": {
-        "instruction_count": 12,
+        "instruction_count": 10,
         "expected_asm": [
-            "ADD.UW          ra, a2, zero",
-            "ADD.UW          t4, t0, zero",
-            "ADDIW           t3, t4, 0x0(0)",
-            "ADDIW           t1, ra, 0x0(0)",
-            "MUL             t1, t3, t1",
+            "ADDIW           ra, a2, 0x0(0)",
+            "ADDIW           t3, t0, 0x0(0)",
+            "MUL             t1, ra, t3",
             "ADD.UW          t0, t1, zero",
             "ADDIW           s5, t1, 0x0(0)",
             "XOR             s9, s5, t1",
@@ -11433,17 +11425,15 @@
         "disassembly": "imul rdx"
     },
     "f62f": {
-        "instruction_count": 13,
+        "instruction_count": 11,
         "expected_asm": [
-            "LBU             ra, a0, 0x0(0)",
-            "ANDI            t4, t0, 0xff(255)",
-            "SEXT.B          t3, t4",
-            "SEXT.B          t1, ra",
-            "MULW            t1, t3, t1",
-            "ZEXT.H          t2, t1",
+            "LB              ra, a0, 0x0(0)",
+            "SEXT.B          t3, t0",
+            "MULW            t1, ra, t3",
+            "ZEXT.H          t4, t1",
             "SRLI            t0, t0, 0x10(16)",
             "SLLI            t0, t0, 0x10(16)",
-            "OR              t0, t0, t2",
+            "OR              t0, t0, t4",
             "SEXT.B          s5, t1",
             "XOR             s9, s5, t1",
             "SLTU            s9, zero, s9",
@@ -11452,37 +11442,33 @@
         "disassembly": "imul [rdi]"
     },
     "66f72f": {
-        "instruction_count": 18,
+        "instruction_count": 16,
         "expected_asm": [
-            "LHU             ra, a0, 0x0(0)",
-            "ZEXT.H          t4, t0",
-            "SEXT.H          t3, t4",
-            "SEXT.H          t1, ra",
-            "MULW            t1, t3, t1",
-            "ZEXT.H          t2, t1",
+            "LH              ra, a0, 0x0(0)",
+            "SEXT.H          t3, t0",
+            "MULW            t1, t3, ra",
+            "ZEXT.H          t4, t1",
             "SRLI            t0, t0, 0x10(16)",
             "SLLI            t0, t0, 0x10(16)",
-            "OR              t0, t0, t2",
+            "OR              t0, t0, t4",
             "SEXT.H          s5, t1",
             "XOR             s9, s5, t1",
             "SLTU            s9, zero, s9",
             "ADDI            s5, s9, 0x0(0)",
             "SRAIW           t1, t1, 0x10(16)",
-            "ZEXT.H          t2, t1",
+            "ZEXT.H          t4, t1",
             "SRLI            a2, a2, 0x10(16)",
             "SLLI            a2, a2, 0x10(16)",
-            "OR              a2, a2, t2"
+            "OR              a2, a2, t4"
         ],
         "disassembly": "imul [rdi]"
     },
     "f72f": {
-        "instruction_count": 12,
+        "instruction_count": 10,
         "expected_asm": [
-            "LWU             ra, a0, 0x0(0)",
-            "ADD.UW          t4, t0, zero",
-            "ADDIW           t3, t4, 0x0(0)",
-            "ADDIW           t1, ra, 0x0(0)",
-            "MUL             t1, t3, t1",
+            "LW              ra, a0, 0x0(0)",
+            "ADDIW           t3, t0, 0x0(0)",
+            "MUL             t1, ra, t3",
             "ADD.UW          t0, t1, zero",
             "ADDIW           s5, t1, 0x0(0)",
             "XOR             s9, s5, t1",
@@ -11911,6 +11897,182 @@
             "SD              ra, a0, 0x0(0)"
         ],
         "disassembly": "neg [rdi]"
+    },
+    "660fafd3": {
+        "instruction_count": 11,
+        "expected_asm": [
+            "SEXT.H          ra, a2",
+            "SEXT.H          t1, s0",
+            "MULW            t3, ra, t1",
+            "ZEXT.H          t4, t3",
+            "SRLI            a2, a2, 0x10(16)",
+            "SLLI            a2, a2, 0x10(16)",
+            "OR              a2, a2, t4",
+            "SEXT.H          s5, t3",
+            "XOR             s9, s5, t3",
+            "SLTU            s9, zero, s9",
+            "ADDI            s5, s9, 0x0(0)"
+        ],
+        "disassembly": "imul dx, bx"
+    },
+    "0fafd3": {
+        "instruction_count": 8,
+        "expected_asm": [
+            "ADDIW           ra, a2, 0x0(0)",
+            "ADDIW           t1, s0, 0x0(0)",
+            "MUL             t3, ra, t1",
+            "ADD.UW          a2, t3, zero",
+            "ADDIW           s5, t3, 0x0(0)",
+            "XOR             s9, s5, t3",
+            "SLTU            s9, zero, s9",
+            "ADDI            s5, s9, 0x0(0)"
+        ],
+        "disassembly": "imul edx, ebx"
+    },
+    "480fafd3": {
+        "instruction_count": 6,
+        "expected_asm": [
+            "MULH            ra, a2, s0",
+            "MUL             a2, a2, s0",
+            "SRAI            s5, a2, 0x3f(63)",
+            "XOR             s9, s5, ra",
+            "SLTU            s9, zero, s9",
+            "ADDI            s5, s9, 0x0(0)"
+        ],
+        "disassembly": "imul rdx, rbx"
+    },
+    "660faf17": {
+        "instruction_count": 11,
+        "expected_asm": [
+            "SEXT.H          ra, a2",
+            "LH              t1, a0, 0x0(0)",
+            "MULW            t3, ra, t1",
+            "ZEXT.H          t4, t3",
+            "SRLI            a2, a2, 0x10(16)",
+            "SLLI            a2, a2, 0x10(16)",
+            "OR              a2, a2, t4",
+            "SEXT.H          s5, t3",
+            "XOR             s9, s5, t3",
+            "SLTU            s9, zero, s9",
+            "ADDI            s5, s9, 0x0(0)"
+        ],
+        "disassembly": "imul dx, [rdi]"
+    },
+    "0faf17": {
+        "instruction_count": 8,
+        "expected_asm": [
+            "ADDIW           ra, a2, 0x0(0)",
+            "LW              t1, a0, 0x0(0)",
+            "MUL             t3, ra, t1",
+            "ADD.UW          a2, t3, zero",
+            "ADDIW           s5, t3, 0x0(0)",
+            "XOR             s9, s5, t3",
+            "SLTU            s9, zero, s9",
+            "ADDI            s5, s9, 0x0(0)"
+        ],
+        "disassembly": "imul edx, [rdi]"
+    },
+    "480faf17": {
+        "instruction_count": 7,
+        "expected_asm": [
+            "LD              ra, a0, 0x0(0)",
+            "MULH            t1, a2, ra",
+            "MUL             a2, a2, ra",
+            "SRAI            s5, a2, 0x3f(63)",
+            "XOR             s9, s5, t1",
+            "SLTU            s9, zero, s9",
+            "ADDI            s5, s9, 0x0(0)"
+        ],
+        "disassembly": "imul rdx, [rdi]"
+    },
+    "666bd3ff": {
+        "instruction_count": 11,
+        "expected_asm": [
+            "SEXT.H          ra, s0",
+            "ADDIW           t1, zero, 0xffffffff(-1)",
+            "MULW            t3, ra, t1",
+            "ZEXT.H          t4, t3",
+            "SRLI            a2, a2, 0x10(16)",
+            "SLLI            a2, a2, 0x10(16)",
+            "OR              a2, a2, t4",
+            "SEXT.H          s5, t3",
+            "XOR             s9, s5, t3",
+            "SLTU            s9, zero, s9",
+            "ADDI            s5, s9, 0x0(0)"
+        ],
+        "disassembly": "imul dx, bx, 0xFFFF"
+    },
+    "6bd3ff": {
+        "instruction_count": 8,
+        "expected_asm": [
+            "ADDIW           ra, s0, 0x0(0)",
+            "ADDIW           t1, zero, 0xffffffff(-1)",
+            "MUL             t3, ra, t1",
+            "ADD.UW          a2, t3, zero",
+            "ADDIW           s5, t3, 0x0(0)",
+            "XOR             s9, s5, t3",
+            "SLTU            s9, zero, s9",
+            "ADDI            s5, s9, 0x0(0)"
+        ],
+        "disassembly": "imul edx, ebx, 0xFFFFFFFF"
+    },
+    "486bd3ff": {
+        "instruction_count": 7,
+        "expected_asm": [
+            "ADDIW           ra, zero, 0xffffffff(-1)",
+            "MULH            t1, s0, ra",
+            "MUL             a2, s0, ra",
+            "SRAI            s5, a2, 0x3f(63)",
+            "XOR             s9, s5, t1",
+            "SLTU            s9, zero, s9",
+            "ADDI            s5, s9, 0x0(0)"
+        ],
+        "disassembly": "imul rdx, rbx, 0xFFFFFFFFFFFFFFFF"
+    },
+    "666b17ff": {
+        "instruction_count": 11,
+        "expected_asm": [
+            "LH              ra, a0, 0x0(0)",
+            "ADDIW           t1, zero, 0xffffffff(-1)",
+            "MULW            t3, ra, t1",
+            "ZEXT.H          t4, t3",
+            "SRLI            a2, a2, 0x10(16)",
+            "SLLI            a2, a2, 0x10(16)",
+            "OR              a2, a2, t4",
+            "SEXT.H          s5, t3",
+            "XOR             s9, s5, t3",
+            "SLTU            s9, zero, s9",
+            "ADDI            s5, s9, 0x0(0)"
+        ],
+        "disassembly": "imul dx, [rdi], 0xFFFF"
+    },
+    "6b17ff": {
+        "instruction_count": 8,
+        "expected_asm": [
+            "LW              ra, a0, 0x0(0)",
+            "ADDIW           t1, zero, 0xffffffff(-1)",
+            "MUL             t3, ra, t1",
+            "ADD.UW          a2, t3, zero",
+            "ADDIW           s5, t3, 0x0(0)",
+            "XOR             s9, s5, t3",
+            "SLTU            s9, zero, s9",
+            "ADDI            s5, s9, 0x0(0)"
+        ],
+        "disassembly": "imul edx, [rdi], 0xFFFFFFFF"
+    },
+    "486b17ff": {
+        "instruction_count": 8,
+        "expected_asm": [
+            "LD              ra, a0, 0x0(0)",
+            "ADDIW           t1, zero, 0xffffffff(-1)",
+            "MULH            t3, ra, t1",
+            "MUL             a2, ra, t1",
+            "SRAI            s5, a2, 0x3f(63)",
+            "XOR             s9, s5, t3",
+            "SLTU            s9, zero, s9",
+            "ADDI            s5, s9, 0x0(0)"
+        ],
+        "disassembly": "imul rdx, [rdi], 0xFFFFFFFFFFFFFFFF"
     },
     "0fb01f": {
         "instruction_count": 48,
@@ -14485,206 +14647,6 @@
             "ADD.UW          a2, a2, zero"
         ],
         "disassembly": "idiv [rdi]"
-    },
-    "660fafd3": {
-        "instruction_count": 13,
-        "expected_asm": [
-            "ZEXT.H          ra, a2",
-            "ZEXT.H          t1, s0",
-            "SEXT.H          t4, ra",
-            "SEXT.H          t3, t1",
-            "MULW            t3, t3, t4",
-            "ZEXT.H          t2, t3",
-            "SRLI            a2, a2, 0x10(16)",
-            "SLLI            a2, a2, 0x10(16)",
-            "OR              a2, a2, t2",
-            "SEXT.H          s5, t3",
-            "XOR             s9, s5, t3",
-            "SLTU            s9, zero, s9",
-            "ADDI            s5, s9, 0x0(0)"
-        ],
-        "disassembly": "imul dx, bx"
-    },
-    "0fafd3": {
-        "instruction_count": 10,
-        "expected_asm": [
-            "ADD.UW          ra, a2, zero",
-            "ADD.UW          t1, s0, zero",
-            "ADDIW           t4, ra, 0x0(0)",
-            "ADDIW           t3, t1, 0x0(0)",
-            "MUL             t3, t3, t4",
-            "ADD.UW          a2, t3, zero",
-            "ADDIW           s5, t3, 0x0(0)",
-            "XOR             s9, s5, t3",
-            "SLTU            s9, zero, s9",
-            "ADDI            s5, s9, 0x0(0)"
-        ],
-        "disassembly": "imul edx, ebx"
-    },
-    "480fafd3": {
-        "instruction_count": 7,
-        "expected_asm": [
-            "MULH            ra, a2, s0",
-            "MUL             t1, a2, s0",
-            "ADDI            a2, t1, 0x0(0)",
-            "SRAI            s5, t1, 0x3f(63)",
-            "XOR             s9, s5, ra",
-            "SLTU            s9, zero, s9",
-            "ADDI            s5, s9, 0x0(0)"
-        ],
-        "disassembly": "imul rdx, rbx"
-    },
-    "660faf17": {
-        "instruction_count": 13,
-        "expected_asm": [
-            "ZEXT.H          ra, a2",
-            "LHU             t1, a0, 0x0(0)",
-            "SEXT.H          t4, ra",
-            "SEXT.H          t3, t1",
-            "MULW            t3, t3, t4",
-            "ZEXT.H          t2, t3",
-            "SRLI            a2, a2, 0x10(16)",
-            "SLLI            a2, a2, 0x10(16)",
-            "OR              a2, a2, t2",
-            "SEXT.H          s5, t3",
-            "XOR             s9, s5, t3",
-            "SLTU            s9, zero, s9",
-            "ADDI            s5, s9, 0x0(0)"
-        ],
-        "disassembly": "imul dx, [rdi]"
-    },
-    "0faf17": {
-        "instruction_count": 10,
-        "expected_asm": [
-            "ADD.UW          ra, a2, zero",
-            "LWU             t1, a0, 0x0(0)",
-            "ADDIW           t4, ra, 0x0(0)",
-            "ADDIW           t3, t1, 0x0(0)",
-            "MUL             t3, t3, t4",
-            "ADD.UW          a2, t3, zero",
-            "ADDIW           s5, t3, 0x0(0)",
-            "XOR             s9, s5, t3",
-            "SLTU            s9, zero, s9",
-            "ADDI            s5, s9, 0x0(0)"
-        ],
-        "disassembly": "imul edx, [rdi]"
-    },
-    "480faf17": {
-        "instruction_count": 8,
-        "expected_asm": [
-            "LD              ra, a0, 0x0(0)",
-            "MULH            t1, a2, ra",
-            "MUL             t3, a2, ra",
-            "ADDI            a2, t3, 0x0(0)",
-            "SRAI            s5, t3, 0x3f(63)",
-            "XOR             s9, s5, t1",
-            "SLTU            s9, zero, s9",
-            "ADDI            s5, s9, 0x0(0)"
-        ],
-        "disassembly": "imul rdx, [rdi]"
-    },
-    "666bd3ff": {
-        "instruction_count": 14,
-        "expected_asm": [
-            "ZEXT.H          ra, a2",
-            "ZEXT.H          t1, s0",
-            "ADDIW           t3, zero, 0xffffffff(-1)",
-            "SEXT.H          t2, t1",
-            "SEXT.H          t4, t3",
-            "MULW            t4, t4, t2",
-            "ZEXT.H          t5, t4",
-            "SRLI            a2, a2, 0x10(16)",
-            "SLLI            a2, a2, 0x10(16)",
-            "OR              a2, a2, t5",
-            "SEXT.H          s5, t4",
-            "XOR             s9, s5, t4",
-            "SLTU            s9, zero, s9",
-            "ADDI            s5, s9, 0x0(0)"
-        ],
-        "disassembly": "imul dx, bx, 0xFFFF"
-    },
-    "6bd3ff": {
-        "instruction_count": 11,
-        "expected_asm": [
-            "ADD.UW          ra, a2, zero",
-            "ADD.UW          t1, s0, zero",
-            "ADDIW           t3, zero, 0xffffffff(-1)",
-            "ADDIW           t2, t1, 0x0(0)",
-            "ADDIW           t4, t3, 0x0(0)",
-            "MUL             t4, t4, t2",
-            "ADD.UW          a2, t4, zero",
-            "ADDIW           s5, t4, 0x0(0)",
-            "XOR             s9, s5, t4",
-            "SLTU            s9, zero, s9",
-            "ADDI            s5, s9, 0x0(0)"
-        ],
-        "disassembly": "imul edx, ebx, 0xFFFFFFFF"
-    },
-    "486bd3ff": {
-        "instruction_count": 8,
-        "expected_asm": [
-            "ADDIW           ra, zero, 0xffffffff(-1)",
-            "MULH            t1, s0, ra",
-            "MUL             t3, s0, ra",
-            "ADDI            a2, t3, 0x0(0)",
-            "SRAI            s5, t3, 0x3f(63)",
-            "XOR             s9, s5, t1",
-            "SLTU            s9, zero, s9",
-            "ADDI            s5, s9, 0x0(0)"
-        ],
-        "disassembly": "imul rdx, rbx, 0xFFFFFFFFFFFFFFFF"
-    },
-    "666b17ff": {
-        "instruction_count": 14,
-        "expected_asm": [
-            "ZEXT.H          ra, a2",
-            "LHU             t1, a0, 0x0(0)",
-            "ADDIW           t3, zero, 0xffffffff(-1)",
-            "SEXT.H          t2, t1",
-            "SEXT.H          t4, t3",
-            "MULW            t4, t4, t2",
-            "ZEXT.H          t5, t4",
-            "SRLI            a2, a2, 0x10(16)",
-            "SLLI            a2, a2, 0x10(16)",
-            "OR              a2, a2, t5",
-            "SEXT.H          s5, t4",
-            "XOR             s9, s5, t4",
-            "SLTU            s9, zero, s9",
-            "ADDI            s5, s9, 0x0(0)"
-        ],
-        "disassembly": "imul dx, [rdi], 0xFFFF"
-    },
-    "6b17ff": {
-        "instruction_count": 11,
-        "expected_asm": [
-            "ADD.UW          ra, a2, zero",
-            "LWU             t1, a0, 0x0(0)",
-            "ADDIW           t3, zero, 0xffffffff(-1)",
-            "ADDIW           t2, t1, 0x0(0)",
-            "ADDIW           t4, t3, 0x0(0)",
-            "MUL             t4, t4, t2",
-            "ADD.UW          a2, t4, zero",
-            "ADDIW           s5, t4, 0x0(0)",
-            "XOR             s9, s5, t4",
-            "SLTU            s9, zero, s9",
-            "ADDI            s5, s9, 0x0(0)"
-        ],
-        "disassembly": "imul edx, [rdi], 0xFFFFFFFF"
-    },
-    "486b17ff": {
-        "instruction_count": 9,
-        "expected_asm": [
-            "LD              ra, a0, 0x0(0)",
-            "ADDIW           t1, zero, 0xffffffff(-1)",
-            "MULH            t3, ra, t1",
-            "MUL             t4, ra, t1",
-            "ADDI            a2, t4, 0x0(0)",
-            "SRAI            s5, t4, 0x3f(63)",
-            "XOR             s9, s5, t3",
-            "SLTU            s9, zero, s9",
-            "ADDI            s5, s9, 0x0(0)"
-        ],
-        "disassembly": "imul rdx, [rdi], 0xFFFFFFFFFFFFFFFF"
     },
     "64488d042501000000": {
         "instruction_count": 1,
