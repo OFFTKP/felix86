@@ -826,6 +826,9 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
 
     current_block_metadata = nullptr;
     local_x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
+    if (single_step == SingleStepMode::PtraceSinglestep) {
+        single_step = SingleStepMode::None;
+    }
 
     return rip;
 }
@@ -2199,9 +2202,6 @@ void Recompiler::backToDispatcher() {
         // Unreachable
         as.C_UNDEF();
         as.C_UNDEF();
-        if (single_step == SingleStepMode::PtraceSinglestep) {
-            single_step = SingleStepMode::None;
-        }
     } else if (!relocatable) {
         const u64 offset = compile_next_handler - (u64)as.GetCursorPointer();
         ASSERT(IsValid2GBImm(offset));

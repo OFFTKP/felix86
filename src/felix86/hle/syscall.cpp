@@ -1664,16 +1664,20 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
 
         if (arg2) {
             u8* guest_argv = (u8*)arg2;
-            guest_argv += mode32 ? 4 : 8;
-            while (true) {
-                u64 ptr = 0;
-                memcpy(&ptr, guest_argv, mode32 ? 4 : 8);
-                if (ptr == 0) {
-                    break;
-                }
-
-                argv.push_back((const char*)ptr);
+            u64 argv0 = 0;
+            memcpy(&argv0, guest_argv, mode32 ? 4 : 8);
+            if (argv0 != 0) {
                 guest_argv += mode32 ? 4 : 8;
+                while (true) {
+                    u64 ptr = 0;
+                    memcpy(&ptr, guest_argv, mode32 ? 4 : 8);
+                    if (ptr == 0) {
+                        break;
+                    }
+
+                    argv.push_back((const char*)ptr);
+                    guest_argv += mode32 ? 4 : 8;
+                }
             }
         } else {
             WARN("argv null during execve...?");
@@ -1968,24 +1972,26 @@ void felix86_syscall(felix86_frame* frame) {
             break;
         }
         case felix86_x86_64_pause: {
-            WARN("Entering pause");
+            SIGLOG("Entering pause");
             // Similar to sigsuspend, but in this case pause doesn't take a mask like sigsuspend.
             // Instead of pausing, block all signals and run a sigsuspend with the old mask. This will do effectively
             // the same suspension as pause, but gives us a safe window to check if there is any deferred signals.
             // Had we just checked without blocking, it could be possible a signal happens after our check but before the pause.
-            sigset_t filled, old;
-            sigfillset(&filled);
-            sigprocmask(SIG_BLOCK, &filled, &old);
-            if (state->deferred_signals) {
-                WARN("There are deferred signals before running pause");
-                // TODO: if we hit this, we need to service the deferred signals immediately
-                // by jumping from here to the signal handler (making sure to restore the stack)
-                // and when the signal returns it should *probably* return to before the syscall instruction
-                // NOTE: it is unlikely that pause is ever used in modern programs
+            u64 full = -1ull;
+            u64 old = 0;
+            ASSERT(syscall(SYS_rt_sigprocmask, SIG_BLOCK, &full, &old, sizeof(old)) == 0);
+            u64 effective = state->deferred_signals & ~state->signal_mask.__val[0];
+            if (effective) {
+                state->effective_deferred_signals = effective;
+                ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
+                ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old, nullptr, sizeof(old)) == 0);
+                SIGLOG("pause returning without waiting, a deferred signal is already deliverable");
+                result = -EINTR;
+                break;
             }
-            result = ::sigsuspend(&old);
-            sigprocmask(SIG_SETMASK, &old, nullptr);
-            WARN("pause returned with %d", result);
+            result = SYSCALL(rt_sigsuspend, &old, sizeof(old));
+            ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old, nullptr, sizeof(old)) == 0);
+            SIGLOG("pause returned with %d", (int)result);
             break;
         }
         case felix86_x86_64_inotify_init: {
@@ -2369,24 +2375,26 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_pause: {
-            WARN("Entering pause");
+            SIGLOG("Entering pause");
             // Similar to sigsuspend, but in this case pause doesn't take a mask like sigsuspend.
             // Instead of pausing, block all signals and run a sigsuspend with the old mask. This will do effectively
             // the same suspension as pause, but gives us a safe window to check if there is any deferred signals.
             // Had we just checked without blocking, it could be possible a signal happens after our check but before the pause.
-            sigset_t filled, old;
-            sigfillset(&filled);
-            sigprocmask(SIG_BLOCK, &filled, &old);
-            if (state->deferred_signals) {
-                WARN("There are deferred signals before running pause");
-                // TODO: if we hit this, we need to service the deferred signals immediately
-                // by jumping from here to the signal handler (making sure to restore the stack)
-                // and when the signal returns it should *probably* return to before the syscall instruction
-                // NOTE: it is unlikely that pause is ever used in modern programs
+            u64 full = -1ull;
+            u64 old = 0;
+            ASSERT(syscall(SYS_rt_sigprocmask, SIG_BLOCK, &full, &old, sizeof(old)) == 0);
+            u64 effective = state->deferred_signals & ~state->signal_mask.__val[0];
+            if (effective) {
+                state->effective_deferred_signals = effective;
+                ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
+                ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old, nullptr, sizeof(old)) == 0);
+                SIGLOG("pause returning without waiting, a deferred signal is already deliverable");
+                result = -EINTR;
+                break;
             }
-            result = ::sigsuspend(&old);
-            sigprocmask(SIG_SETMASK, &old, nullptr);
-            WARN("pause returned with %d", result);
+            result = SYSCALL(rt_sigsuspend, &old, sizeof(old));
+            ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old, nullptr, sizeof(old)) == 0);
+            SIGLOG("pause returned with %d", (int)result);
             break;
         }
         case felix86_x86_32_symlink: {

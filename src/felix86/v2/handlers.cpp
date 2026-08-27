@@ -11431,11 +11431,7 @@ FAST_HANDLE(POPFQ) {
     as.MV(a0, Recompiler::threadStatePointer());
     rec.callPointer(offsetof(ThreadState, felix86_tf_changed));
     rec.restoreState();
-    // Ugly disabling of a check in backToDispatcher so it emits the default path
-    SingleStepMode mode = rec.getSingleStepMode();
-    rec.setSingleStepMode(SingleStepMode::None);
     rec.backToDispatcher();
-    rec.setSingleStepMode(mode);
     as.Bind(&tf_not_changed);
 }
 
