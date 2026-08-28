@@ -164,8 +164,8 @@ void* Mapper::map(bool mode32, void* addr, u64 size, int prot, int flags, int fd
 
         // On success, add tracked allocation.
         if (result != (void*)-1) {
-            if ((u64)addr <= (u64)UINT32_MAX) {
-                u64 to_alloc_s = (u64)addr;
+            if ((u64)result <= (u64)UINT32_MAX) {
+                u64 to_alloc_s = (u64)result;
                 u64 to_alloc_e = std::min(to_alloc_s + size, (u64)UINT32_MAX + 1);
                 freelist.allocate(to_alloc_s, to_alloc_e - to_alloc_s);
             }
