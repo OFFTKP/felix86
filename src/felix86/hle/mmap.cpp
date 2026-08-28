@@ -436,6 +436,14 @@ void Mapper::move_tracked_region(u64 old_address, u64 old_len, u64 new_address, 
 
     for (auto it = allocated_regions.begin(); it != allocated_regions.end();) {
         auto& r = *it;
+        if (r.end <= old_address) {
+            it++;
+            continue;
+        }
+        if (r.start >= old_end) {
+            break;
+        }
+
         auto n = r;
         n.prot = new_prot == -1 ? n.prot : new_prot;
 
