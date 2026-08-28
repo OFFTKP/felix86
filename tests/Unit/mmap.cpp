@@ -1823,3 +1823,236 @@ CATCH_TEST_CASE("Map64DoesNotReserveLowMemory", "[mmap]") {
     munmap(low, 0x1000);
     SUCCESS_MESSAGE();
 }
+
+CATCH_TEST_CASE("Map64DoesNotConsumeFreelist", "[mmap]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = false;
+
+    verifyRegions(mapper, {{(u32)mmap_min_addr(), UINT32_MAX}});
+
+    void* address = nullptr;
+    MMAP_AT_R(address, 0x10000, PROT_NONE, 0);
+    CATCH_REQUIRE(address != MAP_FAILED);
+    CATCH_REQUIRE((u64)address > UINT32_MAX);
+
+    verifyRegions(mapper, {{(u32)mmap_min_addr(), UINT32_MAX}});
+
+    MUNMAP_ALL();
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("Remap64IntoLowDoesNotFreeUnrelated", "[mmap]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = false;
+
+    const u64 high = 0x200050000ull;
+    CATCH_REQUIRE(mapper.map(true, (void*)0x50000, 0x1000, PROT_NONE, FCOMMON_FIXED, -1, 0) == (void*)0x50000);
+    CATCH_REQUIRE(mapper.map(false, (void*)high, 0x1000, PROT_NONE, FCOMMON_FIXED, -1, 0) == (void*)high);
+    unmap_me.push_back({0x50000, 0x1000});
+
+    CATCH_REQUIRE(mapper.remap(false, (void*)high, 0x1000, 0x1000, MREMAP_MAYMOVE | MREMAP_FIXED, (void*)0x60000) == (void*)0x60000);
+    unmap_me.push_back({0x60000, 0x1000});
+
+    verifyRegions(mapper, {{(u32)mmap_min_addr(), 0x4ffff}, {0x51000, 0x5ffff}, {0x61000, UINT32_MAX}});
+
+    MUNMAP_ALL();
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("FreelistTopOfAddressSpace", "[mmap32]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = true;
+
+    MMAP_AT(0xffffe000, 0x1000, PROT_NONE, 0);
+    verifyRegions(mapper, {{(u32)mmap_min_addr(), 0xffffdfff}, {0xfffff000, UINT32_MAX}});
+
+    MMAP_AT(0xffffc000, 0x4000, PROT_NONE, 0);
+    verifyRegions(mapper, {{(u32)mmap_min_addr(), 0xffffbfff}});
+
+    UNMAP_AT(0xffffc000, 0x4000);
+    verifyRegions(mapper, {{(u32)mmap_min_addr(), UINT32_MAX}});
+
+    MUNMAP_ALL();
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("MremapGrowInPlaceExtendsRegion", "[mmap]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = false;
+
+    char path[] = "/tmp/felix86_mmap_testXXXXXX";
+    int fd = mkstemp(path);
+    CATCH_REQUIRE(fd != -1);
+    CATCH_REQUIRE(ftruncate(fd, 0x10000) == 0);
+    unlink(path);
+
+    int flags = MAP_PRIVATE | MAP_FIXED;
+    CATCH_REQUIRE(mapper.map(g_mode32, (void*)0x30000, 0x1000, PROT_READ, flags, fd, 0x1000) == (void*)0x30000);
+    CATCH_REQUIRE(mapper.remap(g_mode32, (void*)0x30000, 0x1000, 0x2000, 0, (void*)0x30000) == (void*)0x30000);
+    unmap_me.push_back({0x30000, 0x2000});
+
+    auto regions = mapper.get_guest_regions();
+    CATCH_REQUIRE(regions.size() == 1);
+    CATCH_REQUIRE(regions[0].start == 0x30000);
+    CATCH_REQUIRE(regions[0].end == 0x32000);
+    CATCH_REQUIRE(regions[0].offset == 0x1000);
+
+    close(fd);
+    MUNMAP_ALL();
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("MremapGrowKeepsOwnIdentity", "[mmap]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = false;
+
+    char path[] = "/tmp/felix86_mmap_testXXXXXX";
+    int fd = mkstemp(path);
+    CATCH_REQUIRE(fd != -1);
+    CATCH_REQUIRE(ftruncate(fd, 0x10000) == 0);
+    unlink(path);
+
+    CATCH_REQUIRE(mapper.map(g_mode32, (void*)0x30000, 0x1000, PROT_READ, MAP_PRIVATE | MAP_FIXED, fd, 0x1000) == (void*)0x30000);
+    unmap_me.push_back({0x30000, 0x1000});
+    MMAP_AT(0x50000, 0x1000, PROT_READ, 0);
+
+    CATCH_REQUIRE(mapper.remap(g_mode32, (void*)0x50000, 0x1000, 0x2000, 0, (void*)0x50000) == (void*)0x50000);
+    unmap_me.push_back({0x50000, 0x2000});
+
+    auto regions = mapper.get_guest_regions();
+    CATCH_REQUIRE(regions.size() == 2);
+    CATCH_REQUIRE(regions[1].start == 0x50000);
+    CATCH_REQUIRE(regions[1].end == 0x52000);
+    CATCH_REQUIRE(regions[1].ino == 0);
+    CATCH_REQUIRE(regions[1].offset == 0);
+
+    close(fd);
+    MUNMAP_ALL();
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("MProtectSplitKeepsFileOffset", "[mmap]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = false;
+
+    char path[] = "/tmp/felix86_mmap_testXXXXXX";
+    int fd = mkstemp(path);
+    CATCH_REQUIRE(fd != -1);
+    CATCH_REQUIRE(ftruncate(fd, 0x10000) == 0);
+    unlink(path);
+
+    CATCH_REQUIRE(mapper.map(g_mode32, (void*)0x30000, 0x2000, PROT_READ, MAP_PRIVATE | MAP_FIXED, fd, 0x1000) == (void*)0x30000);
+    unmap_me.push_back({0x30000, 0x2000});
+
+    CATCH_REQUIRE(mapper.protect((void*)0x30000, 0x1000, PROT_NONE) == 0);
+
+    auto regions = mapper.get_guest_regions();
+    CATCH_REQUIRE(regions.size() == 2);
+    CATCH_REQUIRE(regions[0].prot == PROT_NONE);
+    CATCH_REQUIRE(regions[0].offset == 0x1000);
+    CATCH_REQUIRE(regions[1].prot == PROT_READ);
+    CATCH_REQUIRE(regions[1].offset == 0x2000);
+
+    close(fd);
+    MUNMAP_ALL();
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("MProtectSameProtDoesNotSplit", "[mmap]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = true;
+
+    MMAP_AT(0x20000, 0x30000, PROT_NONE, 0);
+
+    CATCH_REQUIRE(mapper.protect((void*)0x30000, 0x10000, PROT_NONE) == 0);
+
+    verifyGuestRegions(mapper, {
+        {0x20000, 0x30000, PROT_NONE},
+    });
+
+    MUNMAP_ALL();
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("MremapSameSizeInPlaceDoesNotSplit", "[mmap]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = true;
+
+    MMAP_AT(0x20000, 0x30000, PROT_NONE, 0);
+
+    CATCH_REQUIRE(mapper.remap(g_mode32, (void*)0x30000, 0x10000, 0x10000, 0, (void*)0x30000) == (void*)0x30000);
+
+    verifyGuestRegions(mapper, {
+        {0x20000, 0x30000, PROT_NONE},
+    });
+
+    MUNMAP_ALL();
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("MProtectPastEndAppliesPrefix", "[mmap]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = true;
+
+    MMAP_AT(0x20000, 0x1000, PROT_NONE, 0);
+
+    CATCH_REQUIRE(mapper.protect((void*)0x20000, 0x2000, PROT_READ) != 0);
+
+    verifyGuestRegions(mapper, {
+        {0x20000, 0x1000, PROT_READ},
+    });
+
+    MUNMAP_ALL();
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("SharedAnonymousMappingsDoNotMerge", "[mmap]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = false;
+
+    int flags = MAP_ANONYMOUS | MAP_SHARED | MAP_FIXED;
+    CATCH_REQUIRE(mapper.map(g_mode32, (void*)0x30000, 0x1000, PROT_READ, flags, -1, 0) == (void*)0x30000);
+    CATCH_REQUIRE(mapper.map(g_mode32, (void*)0x31000, 0x1000, PROT_READ, flags, -1, 0) == (void*)0x31000);
+    unmap_me.push_back({0x30000, 0x2000});
+
+    auto regions = mapper.get_guest_regions();
+    CATCH_REQUIRE(regions.size() == 2);
+    CATCH_REQUIRE(regions[0].end == 0x31000);
+    CATCH_REQUIRE(regions[1].start == 0x31000);
+
+    MUNMAP_ALL();
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("SharedAnonymousMappingMergesWithItself", "[mmap]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = false;
+
+    int flags = MAP_ANONYMOUS | MAP_SHARED | MAP_FIXED;
+    CATCH_REQUIRE(mapper.map(g_mode32, (void*)0x30000, 0x2000, PROT_READ, flags, -1, 0) == (void*)0x30000);
+    unmap_me.push_back({0x30000, 0x2000});
+
+    CATCH_REQUIRE(mapper.protect((void*)0x30000, 0x1000, PROT_NONE) == 0);
+    CATCH_REQUIRE(mapper.get_guest_regions().size() == 2);
+
+    CATCH_REQUIRE(mapper.protect((void*)0x30000, 0x1000, PROT_READ) == 0);
+
+    auto regions = mapper.get_guest_regions();
+    CATCH_REQUIRE(regions.size() == 1);
+    CATCH_REQUIRE(regions[0].start == 0x30000);
+    CATCH_REQUIRE(regions[0].end == 0x32000);
+
+    MUNMAP_ALL();
+    SUCCESS_MESSAGE();
+}
