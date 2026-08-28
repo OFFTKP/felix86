@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <sys/auxv.h>
 #include <sys/mman.h>
+#include <sys/personality.h>
 #include <sys/prctl.h>
 #include <sys/random.h>
 #include <sys/ucontext.h>
@@ -126,6 +127,16 @@ static void setupMainStack(ThreadState* state) {
     // Initial process stack according to System V AMD64 ABI
     auto pair = Threads::AllocateStack(mode32);
     u64 rsp = (u64)pair.first;
+
+    // Happens on x86 kernel during arch_align_stack
+    int persona = personality(0xFFFFFFFF);
+    if (persona != -1 && !(persona & ADDR_NO_RANDOMIZE)) {
+        u32 random = 0;
+        if (getrandom(&random, sizeof(random), 0) == sizeof(random)) {
+            rsp -= random % 8192;
+        }
+        rsp &= ~0xF;
+    }
 
     // To hold the addresses of the arguments for later pushing
     u64* argv_addresses = (u64*)alloca(argc * sizeof(u64));
