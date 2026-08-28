@@ -1774,3 +1774,52 @@ CATCH_TEST_CASE("MremapGrowFromInsideRegion", "[mmap]") {
     MUNMAP_ALL();
     SUCCESS_MESSAGE();
 }
+
+CATCH_TEST_CASE("HintlessAllocWithBlockAtZero", "[mmap32]") {
+    Mapper mapper;
+    g_mode32 = true;
+
+    CATCH_REQUIRE(mapper.allocate(0x200000, (u64)UINT32_MAX + 1 - 0x200000) == (void*)0x200000);
+    CATCH_REQUIRE(mapper.unmap(true, (void*)0, 0x10000) == 0);
+
+    verifyRegions(mapper, {{(u32)mmap_min_addr(), 0x1fffff}});
+
+    void* address = mapper.allocate(0, 0x1000);
+    CATCH_REQUIRE((i64)address > 0);
+    CATCH_REQUIRE((u64)address >= mmap_min_addr());
+
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("FreelistFullThenUnmap", "[mmap32]") {
+    Mapper mapper;
+    g_mode32 = true;
+
+    u64 min = mmap_min_addr();
+    CATCH_REQUIRE(mapper.allocate(min, (u64)UINT32_MAX + 1 - min) == (void*)min);
+    verifyRegions(mapper, {});
+
+    CATCH_REQUIRE(mapper.unmap(true, (void*)0x100000, 0x1000) == 0);
+    verifyRegions(mapper, {{0x100000, 0x100fff}});
+
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("Map64DoesNotReserveLowMemory", "[mmap]") {
+    Mapper mapper;
+    g_mode32 = false;
+
+    void* high = mapper.map(false, nullptr, 0x5000, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+    CATCH_REQUIRE(high != MAP_FAILED);
+    CATCH_REQUIRE((u64)high > UINT32_MAX);
+
+    u64 min = mmap_min_addr();
+    void* low = mapper.map(true, (void*)min, 0x1000, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED_NOREPLACE, -1, 0);
+    CATCH_REQUIRE(low == (void*)min);
+
+    verifyRegions(mapper, {{(u32)min + 0x1000, UINT32_MAX}});
+
+    munmap(high, 0x5000);
+    munmap(low, 0x1000);
+    SUCCESS_MESSAGE();
+}
