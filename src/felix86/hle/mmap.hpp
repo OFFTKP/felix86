@@ -21,6 +21,9 @@ struct GuestRegion {
     u64 offset;
     /// If the allocated region is shared memory.
     bool shmem;
+    /// The id if shmat was used for the guest region.
+    // If the region is not allocated by shmat, this is -1.
+    int shmid;
 
     inline bool has_associated_file() {
         return ino != 0;
@@ -32,6 +35,7 @@ struct Mapper {
     [[nodiscard]] void* map(bool mode32, void* addr, u64 size, int prot, int flags, int fd, u64 offset);
     int unmap(bool mode32, void* addr, u64 size);
     [[nodiscard]] void* remap(bool mode32, void* old_address, u64 old_size, u64 new_size, int flags, void* new_address);
+    int protect(void* addr, u64 size, int prot);
 
     [[nodiscard]] void* map32(void* addr, u64 size, int prot, int flags, int fd, u64 offset);
     int unmap32(void* addr, u64 size);
@@ -65,7 +69,7 @@ private:
 
     friend void verifyRegions(Mapper& mapper, const std::vector<std::pair<u32, u32>>& regions);
 
-    void add_tracked_region(u64 address, u64 len, int prot, dev_t dev, ino_t ino, u64 offset, bool shmem);
-    void move_tracked_region(u64 old_address, u64 old_len, u64 new_address, u64 new_len, bool remove_source);
+    void add_tracked_region(u64 address, u64 len, int prot, dev_t dev, ino_t ino, u64 offset, bool shmem, int shmid);
+    void move_tracked_region(u64 old_address, u64 old_len, u64 new_address, u64 new_len, bool remove_source, int new_prot = -1);
     void remove_tracked_region(u64 address, u64 len);
 };

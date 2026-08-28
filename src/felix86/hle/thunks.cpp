@@ -1,3 +1,5 @@
+#include "felix86/common/global.hpp"
+#include "felix86/hle/mmap.hpp"
 #include "felix86/hle/thunks.hpp"
 
 // TODO: this file is messy. Split it up to separate files per library once our thunking implementation is more concrete
@@ -408,7 +410,7 @@ static void* generate_guest_pointer(const char* name, u64 host_ptr) {
     // We can't put this code in code cache, because it needs to outlive potential code cache clears
     u8* memory = state->x86_trampoline_storage;
     // Our recompiler marks guest code as PROT_READ, we need to undo this as it may have marked previous trampolines
-    mprotect((u8*)((u64)memory & ~0xFFFull), 4096, PROT_READ | PROT_WRITE);
+    g_mapper->protect((u8*)((u64)memory & ~0xFFFull), 4096, PROT_READ | PROT_WRITE);
 
     // 0f 01 39 ; invlpg [rcx] ; see handlers.cpp -- invlpg (magic instruction that generates jump to host code)
     // 00 00 00 00 00 00 00 00 ; pointer we jump to
@@ -1308,7 +1310,7 @@ void Thunks::runConstructor(const char* lib, GuestPointers* pointers) {
             ASSERT_MSG(host_ptr != 0, "Could not find host libwayland-client pointer for %s", host_ptr);
             // Interfaces are placed in RO memory but we need to change their values to match our host library
             // So hack away the protection
-            mprotect((void*)((u64)ptr & ~0xFFFull), 4096, PROT_READ | PROT_WRITE);
+            g_mapper->protect((void*)((u64)ptr & ~0xFFFull), 4096, PROT_READ | PROT_WRITE);
             memcpy((void*)ptr, (void*)host_ptr, sizeof(wl_interface));
             VERBOSE("libwayland-client thunk: %s set to %p (guest ptr: %p)", name, host_ptr, ptr);
 
