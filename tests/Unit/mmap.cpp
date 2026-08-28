@@ -1752,3 +1752,25 @@ CATCH_TEST_CASE("MProtectMiddle", "[mmap]") {
     MUNMAP_ALL();
     SUCCESS_MESSAGE();
 }
+
+CATCH_TEST_CASE("MremapGrowFromInsideRegion", "[mmap]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = true;
+
+    MMAP_AT(0x20000, 0x10000, PROT_NONE, 0);
+    MMAP_AT(0x50000, 0x1000, PROT_NONE, 0);
+
+    CATCH_REQUIRE(mapper.remap(g_mode32, (void*)0x21000, 0x1000, 0x2000, MREMAP_MAYMOVE | MREMAP_FIXED, (void*)0x60000) == (void*)0x60000);
+    unmap_me.push_back({0x60000, 0x2000});
+
+    verifyGuestRegions(mapper, {
+        {0x20000, 0x1000, PROT_NONE},
+        {0x22000, 0xe000, PROT_NONE},
+        {0x50000, 0x1000, PROT_NONE},
+        {0x60000, 0x2000, PROT_NONE},
+    });
+
+    MUNMAP_ALL();
+    SUCCESS_MESSAGE();
+}
