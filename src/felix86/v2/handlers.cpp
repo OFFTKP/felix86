@@ -10148,26 +10148,12 @@ FAST_HANDLE(XRSTOR64) {
 
 FAST_HANDLE(WRFSBASE) {
     biscuit::GPR reg = rec.getGPR(&operands[0]);
-
-    if (instruction.operand_width == 32) {
-        as.SW(reg, offsetof(ThreadState, ctx.fsbase), rec.threadStatePointer());
-    } else if (instruction.operand_width == 64) {
-        as.SD(reg, offsetof(ThreadState, ctx.fsbase), rec.threadStatePointer());
-    } else {
-        UNREACHABLE();
-    }
+    as.SD(reg, offsetof(ThreadState, ctx.fsbase), rec.threadStatePointer());
 }
 
 FAST_HANDLE(WRGSBASE) {
     biscuit::GPR reg = rec.getGPR(&operands[0]);
-
-    if (instruction.operand_width == 32) {
-        as.SW(reg, offsetof(ThreadState, ctx.gsbase), rec.threadStatePointer());
-    } else if (instruction.operand_width == 64) {
-        as.SD(reg, offsetof(ThreadState, ctx.gsbase), rec.threadStatePointer());
-    } else {
-        UNREACHABLE();
-    }
+    as.SD(reg, offsetof(ThreadState, ctx.gsbase), rec.threadStatePointer());
 }
 
 FAST_HANDLE(XADD_lock_8) {
