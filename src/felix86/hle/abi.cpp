@@ -439,7 +439,7 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, const void* guest
     u8* const x86_code = state->x86_trampoline_storage;
     u8* curr = x86_code;
     // Our recompiler marks guest code as PROT_READ, we need to undo this as it may have marked previous trampolines
-    g_mapper->protect((u8*)((u64)x86_code & ~0xFFFull), 4096, PROT_READ | PROT_WRITE);
+    ::mprotect((u8*)((u64)x86_code & ~0xFFFull), 4096, PROT_READ | PROT_WRITE);
     // mov rax, u64
     curr[0] = 0x48;
     curr[1] = 0xb8;

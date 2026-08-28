@@ -1843,7 +1843,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         state->signal_mask.__val[0] = new_mask.__val[0];
         state->effective_deferred_signals |= state->deferred_signals & ~new_mask.__val[0];
         if (state->effective_deferred_signals) {
-            ASSERT(g_mapper->protect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
+            ASSERT(::mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
             state->signal_mask.__val[0] = old_mask.__val[0];
             ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old_host_mask, nullptr, sizeof(old_host_mask)) == 0);
             SIGLOG("rt_sigsuspend returning without waiting, a deferred signal is already deliverable");

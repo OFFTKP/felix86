@@ -1185,7 +1185,7 @@ static void defer_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx
     // Make our safepoints fault
     u64 effective_deferred_signals = state->deferred_signals & ~state->signal_mask.__val[0];
     if (effective_deferred_signals != 0) {
-        ASSERT(g_mapper->protect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
+        ASSERT(::mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
     }
     state->effective_deferred_signals = effective_deferred_signals;
     SIGLOG("Deferring signal %s (%d) during RIP=%lx", sigdescr_np(sig), sig, state->GetRip());
