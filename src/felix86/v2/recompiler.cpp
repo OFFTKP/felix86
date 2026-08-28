@@ -14,6 +14,7 @@
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/emulator.hpp"
+#include "felix86/hle/mmap.hpp"
 #include "felix86/hle/ptrace.hpp"
 #include "felix86/hle/syscall.hpp"
 #include "felix86/v2/handlers.hpp"
@@ -557,7 +558,7 @@ void Recompiler::markPagesAsReadOnly(u64 start, u64 end) {
     u64 start_page = start & ~0xFFFull;
     u64 end_page = (end + 0xFFF) & ~0xFFFull;
     u64 size = end_page - start_page;
-    int result = mprotect((void*)start_page, size, PROT_READ);
+    int result = g_mapper->protect((void*)start_page, size, PROT_READ);
     if (result != 0) {
         ERROR("Failed to protect pages %016lx-%016lx -- Error: %s", start_page, end_page, strerror(errno));
     }

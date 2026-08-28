@@ -171,3 +171,29 @@ CATCH_TEST_CASE("DistinctSegments", "[shmat]") {
     CATCH_REQUIRE(shmctl(second_shmid, IPC_RMID, nullptr) == 0);
     SUCCESS_MESSAGE();
 }
+
+CATCH_TEST_CASE("AdjacentDistinctSegments", "[shmat]") {
+    Mapper mapper;
+
+    int first_shmid = shmget(IPC_PRIVATE, 0x1000, 0644 | IPC_CREAT);
+    int second_shmid = shmget(IPC_PRIVATE, 0x1000, 0644 | IPC_CREAT);
+    CATCH_REQUIRE(first_shmid != -1);
+    CATCH_REQUIRE(second_shmid != -1);
+
+    u64 first = 0;
+    u64 second = 0;
+    CATCH_REQUIRE(mapper.shmat(false, first_shmid, (void*)0x100005000ull, 0, &first) == 0);
+    CATCH_REQUIRE(mapper.shmat(false, second_shmid, (void*)0x100006000ull, 0, &second) == 0);
+
+    verifyGuestRegions(mapper, {
+        {first, 0x1000, PROT_READ | PROT_WRITE},
+        {second, 0x1000, PROT_READ | PROT_WRITE},
+    });
+
+    CATCH_REQUIRE(mapper.shmdt(false, (void*)first) == 0);
+    CATCH_REQUIRE(mapper.shmdt(false, (void*)second) == 0);
+
+    CATCH_REQUIRE(shmctl(first_shmid, IPC_RMID, nullptr) == 0);
+    CATCH_REQUIRE(shmctl(second_shmid, IPC_RMID, nullptr) == 0);
+    SUCCESS_MESSAGE();
+}
