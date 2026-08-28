@@ -771,6 +771,25 @@ struct Recompiler {
 
     std::optional<std::pair<ZydisDecodedInstruction*, ZydisDecodedOperand*>> getNextInstruction();
 
+    i16 getCurrentPushpopOffset() {
+        return current_pushpop_offset;
+    }
+
+    void setCurrentPushpopOffset(i16 value) {
+        current_pushpop_offset = value;
+    }
+
+    void flushPushpop() {
+        i16 pushpop_offset = getCurrentPushpopOffset();
+        if (pushpop_offset != 0) {
+            ASSERT(IsValidSigned12BitImm(pushpop_offset));
+            setCurrentPushpopOffset(0);
+            biscuit::GPR rsp = getGPR(X86_REF_RSP, stackWidth());
+            as.ADDI(rsp, rsp, pushpop_offset);
+            setGPR(X86_REF_RSP, stackWidth(), rsp);
+        }
+    }
+
 private:
     void emitNecessaryStuff();
 
@@ -835,6 +854,7 @@ private:
     u64 current_rip;
     u64 current_ripreg_value;
     u64 current_instruction_index = 0;
+    i16 current_pushpop_offset = 0;
     bool current_instruction_on_stack = false;
     bool current_block_big = false;
     FlagAccessData current_flag_access{};

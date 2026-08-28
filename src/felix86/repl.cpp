@@ -135,18 +135,23 @@ static void compile(const std::string& input) {
         end += instr.riscv_instructions_size;
     }
 
-    // Remove compiled UNDEF instructions off the end, if any
-    u16* fin = (u16*)(end - 2);
-    while (*fin == 0) {
-        end -= 2;
-        fin = (u16*)(end - 2);
+    u64 spans_end = end + 4;
+    u64 code_end = (u64)rec->getEndOfCodeCache();
+    if (spans_end == code_end) {
+        // Remove compiled UNDEF instructions off the end, if any
+        u16* fin = (u16*)(end - 2);
+        while (*fin == 0) {
+            end -= 2;
+            fin = (u16*)(end - 2);
+        }
+
+        // Also remove a store to zero and a hint used to emulate ud2
+        end -= 8;
     }
 
     // TODO: can we make this less hacky
     // Skip the safepoint at the start of the sequence
     start += 4;
-    // Also remove a store to zero and a hint used to emulate ud2
-    end -= 8;
 
     size_t span_index = 0;
     u64 address = start;

@@ -2071,7 +2071,37 @@ FAST_HANDLE(IRETQ) {
     rec.stopCompiling();
 }
 
+static bool pushpop_should_chain(Recompiler& rec) {
+    auto next = rec.getNextInstruction();
+    return next && (next->first->mnemonic == ZYDIS_MNEMONIC_PUSH || next->first->mnemonic == ZYDIS_MNEMONIC_POP);
+}
+
+static bool pushpop_fast_path(Recompiler& rec, ZydisDecodedOperand* operands) {
+    return operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].size >= 32 && !is_segment(operands[0]) &&
+           rec.zydisToRef(operands[0].reg.value) != X86_REF_RSP;
+}
+
 FAST_HANDLE(PUSH) {
+    if (g_config.no_tso_stack) {
+        if (pushpop_fast_path(rec, operands)) {
+            bool pushpop_chain = pushpop_should_chain(rec);
+            int size = size_to_bytes(instruction.operand_width);
+            if (!IsValidSigned12BitImm(rec.getCurrentPushpopOffset() - size)) {
+                rec.flushPushpop();
+            }
+            int imm = rec.getCurrentPushpopOffset() - size;
+            biscuit::GPR src = rec.getGPR(&operands[0]);
+            biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
+            rec.writeMemory(src, rsp, imm, rec.zydisToSize(instruction.operand_width));
+            rec.setCurrentPushpopOffset(imm);
+            if (!pushpop_chain) {
+                rec.flushPushpop();
+            }
+            return;
+        }
+        rec.flushPushpop();
+    }
+
     biscuit::GPR src;
     if (is_segment(operands[0])) {
         biscuit::GPR seg = rec.scratch();
@@ -2121,6 +2151,27 @@ FAST_HANDLE(PUSH) {
 }
 
 FAST_HANDLE(POP) {
+    if (g_config.no_tso_stack) {
+        if (pushpop_fast_path(rec, operands)) {
+            bool pushpop_chain = pushpop_should_chain(rec);
+            int size = size_to_bytes(instruction.operand_width);
+            if (!IsValidSigned12BitImm(rec.getCurrentPushpopOffset() + size)) {
+                rec.flushPushpop();
+            }
+            int imm = rec.getCurrentPushpopOffset();
+            biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
+            biscuit::GPR reg = rec.getGPR(&operands[0], X86_SIZE_QWORD);
+            rec.readMemory(reg, rsp, imm, rec.zydisToSize(instruction.operand_width));
+            rec.setGPR(operands[0].reg.value, X86_SIZE_QWORD, reg);
+            rec.setCurrentPushpopOffset(imm + size);
+            if (!pushpop_chain) {
+                rec.flushPushpop();
+            }
+            return;
+        }
+        rec.flushPushpop();
+    }
+
     if (is_segment(operands[0])) {
         ASSERT_MSG(MODE32, "Popping segment not in 32-bit mode?");
         ASSERT(operands[0].reg.value != ZYDIS_REGISTER_CS);
