@@ -1178,7 +1178,7 @@ static void defer_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx
                 node = node->next;
                 count++;
             }
-            ASSERT_MSG(count <= 32, "Too many realtime signals of SIGRT%d", sig);
+            ASSERT_MSG(count <= 128, "Too many realtime signals of SIGRT%d", sig);
             node->next = new_node;
         }
     }
