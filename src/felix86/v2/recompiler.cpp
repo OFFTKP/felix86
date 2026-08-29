@@ -725,7 +725,7 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
             ZydisMnemonic mnemonic = instruction.mnemonic;
             bool is_save_restore = mnemonic == ZYDIS_MNEMONIC_FNSAVE || mnemonic == ZYDIS_MNEMONIC_FRSTOR || mnemonic == ZYDIS_MNEMONIC_FXSAVE ||
                                    mnemonic == ZYDIS_MNEMONIC_FXSAVE64 || mnemonic == ZYDIS_MNEMONIC_FXRSTOR || mnemonic == ZYDIS_MNEMONIC_FXRSTOR64;
-            if (!is_save_restore) {
+            if (!is_save_restore && local_x87_state != x87State::x87) {
                 switchToX87();
             }
         }
