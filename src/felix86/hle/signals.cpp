@@ -701,6 +701,8 @@ static void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* st
         felix86_tf_changed(state, false);
     }
     state->SetFlag(X86_REF_RF, 0);
+    state->ctx.ds = 0x2b;
+    state->ctx.es = 0x2b;
 
     // Also update the allocatable state in the registers
     u64* regs = get_regs(host_context);
@@ -810,6 +812,8 @@ static void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state
         felix86_tf_changed(state, false);
     }
     state->SetFlag(X86_REF_RF, 0);
+    state->ctx.ds = 0x2b;
+    state->ctx.es = 0x2b;
 
     // Also update the allocatable state in the registers
     u64* regs = get_regs(host_context);

@@ -31,7 +31,7 @@ ThreadState* ThreadState::Create(ThreadState* copy_state) {
     state->recompiler = new Recompiler;
     state->deferred_fault_page = state_memory;
     u32 tid = gettid();
-    VERBOSE("ThreadState* for %d is %lx", tid, state);
+    VERBOSE("ThreadState* for %d is %lx", tid, (u64)state);
     memset(&state->ptrace_data, 0, sizeof(state->ptrace_data));
     state->ptrace_data.constants.my_tid = tid;
     state->ptrace_data.constants.my_tgid = getpid();
