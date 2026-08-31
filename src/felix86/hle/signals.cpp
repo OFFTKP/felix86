@@ -787,7 +787,8 @@ static void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state
     frame->sig = sig;
     frame->extramask = old_mask.__val[1];
     felix86_fsave_32(state->ctx, &fpstate->fsave);
-    frame->fpstate_unused.magic = 0; // extended state
+    fpstate->magic = 0; // extended state
+    fpstate->status = state->ctx.fpu_sw;
     felix86_xsave(state->ctx, &fpstate->fxsave, true);
     frame->sc.fpstate = (u32)(u64)fpstate;
 
