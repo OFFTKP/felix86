@@ -2885,8 +2885,8 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                 ASSERT((u64)host_old_ss.ss_sp <= UINT32_MAX);
                 ASSERT((u64)host_old_ss.ss_size <= UINT32_MAX);
                 old_ss->ss_sp = (u64)host_old_ss.ss_sp;
-                host_old_ss.ss_size = old_ss->ss_size;
-                host_old_ss.ss_flags = old_ss->ss_flags;
+                old_ss->ss_size = host_old_ss.ss_size;
+                old_ss->ss_flags = host_old_ss.ss_flags;
             }
             break;
         }
