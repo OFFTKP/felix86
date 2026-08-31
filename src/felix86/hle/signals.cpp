@@ -619,9 +619,11 @@ static void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* st
     ASSERT((u64)fpstate < UINT32_MAX);
 
     felix86_fsave_32(state->ctx, &fpstate->fsave);
-
+    fpstate->fsave.cw_hi = 0xFFFF;
+    fpstate->fsave.sw_hi = 0xFFFF;
+    fpstate->fsave.tw_hi = 0xFFFF;
     fpstate->magic = 0; // extended state
-
+    fpstate->status = state->ctx.fpu_sw;
     felix86_xsave(state->ctx, &fpstate->fxsave, true);
 
     rsp -= sizeof(x86_rt_sigframe);
@@ -789,6 +791,10 @@ static void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state
     felix86_fsave_32(state->ctx, &fpstate->fsave);
     fpstate->magic = 0; // extended state
     fpstate->status = state->ctx.fpu_sw;
+    // Doesn't happen on FSAVE, only on signal
+    fpstate->fsave.cw_hi = 0xFFFF;
+    fpstate->fsave.sw_hi = 0xFFFF;
+    fpstate->fsave.tw_hi = 0xFFFF;
     felix86_xsave(state->ctx, &fpstate->fxsave, true);
     frame->sc.fpstate = (u32)(u64)fpstate;
 
@@ -886,7 +892,9 @@ void Signals::sigreturn(ThreadState* state, bool rt) {
             ctx = &legacy_frame->sc;
         }
         restore_sigcontext_32(state, ctx);
-        felix86_xrstor(state->ctx, &((x86_fpstate*)(u64)ctx->fpstate)->fxsave, true);
+        x86_fpstate* fps = (x86_fpstate*)(u64)ctx->fpstate;
+        felix86_xrstor(state->ctx, &fps->fxsave, true);
+        felix86_frstor_32(state->ctx, &fps->fsave); // x87 state comes from fsave block
 
         // Restore signal mask to what it was supposed to be outside of signal handler
         sigset_t new_set;

@@ -44,8 +44,11 @@ static_assert(sizeof(fsave_frame_16) == 94);
 
 struct fsave_frame_32 {
     u16 cw = 0;
-    alignas(u32) u16 sw = 0;
-    alignas(u32) u16 tw = 0;
+    u16 cw_hi = 0;
+    u16 sw = 0;
+    u16 sw_hi = 0;
+    u16 tw = 0;
+    u16 tw_hi = 0;
     u32 fip = 0;
     u32 unused = 0;
     u32 fdp = 0;
