@@ -84,59 +84,6 @@ private:
 
 #define SYSCALL(name, ...) (syscall(x64_to_riscv(felix86_x86_64_##name), ##__VA_ARGS__))
 
-static int do_sigaltstack(ThreadState* state, stack_t* new_ss, stack_t* old_ss, int flags) {
-    VERBOSE("----- sigaltstack was called -----");
-    u64 current_rsp = state->ctx.gprs[X86_REF_RSP];
-
-    bool on_stack = state->alt_stack.ss_size && current_rsp > (u64)state->alt_stack.ss_sp &&
-                    current_rsp - (u64)state->alt_stack.ss_sp <= state->alt_stack.ss_size;
-    if (!(state->alt_stack.ss_flags & SS_DISABLE) && current_rsp >= (u64)state->alt_stack.ss_sp &&
-        current_rsp < (u64)state->alt_stack.ss_sp + state->alt_stack.ss_size) {
-        on_stack = true;
-    }
-
-    if (old_ss) {
-        old_ss->ss_sp = state->alt_stack.ss_sp;
-        old_ss->ss_size = state->alt_stack.ss_size;
-
-        if (!state->alt_stack.ss_size) {
-            old_ss->ss_flags = SS_DISABLE;
-        } else {
-            old_ss->ss_flags = on_stack ? SS_ONSTACK : 0;
-        }
-        old_ss->ss_flags |= state->alt_stack.ss_flags & SS_AUTODISARM;
-    }
-
-    if (new_ss) {
-        if (on_stack) {
-            WARN("Tried to set sigaltstack while using it");
-            errno = EPERM; // TODO: remove when result rewrite
-            return -EPERM;
-        }
-
-        int flags = new_ss->ss_flags & ~SS_AUTODISARM;
-        if (flags != SS_DISABLE && flags != SS_ONSTACK && flags != 0) {
-            return -EINVAL;
-        }
-
-        void* new_stack = new_ss->ss_sp;
-        u64 new_size = new_ss->ss_size;
-        if (flags == SS_DISABLE) {
-            new_stack = nullptr;
-            new_size = 0;
-        } else if (new_size < 2048 /* MINSIGSTKSZ */) {
-            return -ENOMEM;
-        }
-
-        state->alt_stack.ss_sp = new_stack;
-        state->alt_stack.ss_size = new_size;
-        state->alt_stack.ss_flags = new_ss->ss_flags & SS_AUTODISARM;
-        VERBOSE("New altstack: %lx", (u64)new_ss->ss_sp);
-    }
-
-    return 0;
-}
-
 // TODO: move me elsewhere
 static bool try_strace_ioctl(int rdi, u64 rsi, u64 rdx, u64 result) {
     if (!g_config.strace) {
@@ -1360,7 +1307,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_sigaltstack: {
-        result = do_sigaltstack(state, (stack_t*)arg1, (stack_t*)arg2, arg3);
+        result = Signals::sigaltstack(state, (stack_t*)arg1, (stack_t*)arg2, arg3);
         break;
     }
     case felix86_riscv64_prctl: {
@@ -2869,24 +2816,16 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             stack_t* host_new_ss_ptr = nullptr;
             stack_t* host_old_ss_ptr = nullptr;
             if (new_ss) {
-                host_new_ss.ss_sp = (void*)(u64)new_ss->ss_sp;
-                host_new_ss.ss_size = new_ss->ss_size;
-                host_new_ss.ss_flags = new_ss->ss_flags;
+                host_new_ss = *new_ss;
                 host_new_ss_ptr = &host_new_ss;
             }
             if (old_ss) {
-                host_old_ss.ss_sp = (void*)(u64)old_ss->ss_sp;
-                host_old_ss.ss_size = old_ss->ss_size;
-                host_old_ss.ss_flags = old_ss->ss_flags;
+                host_old_ss = *old_ss;
                 host_old_ss_ptr = &host_old_ss;
             }
-            result = do_sigaltstack(state, host_new_ss_ptr, host_old_ss_ptr, arg3);
+            result = Signals::sigaltstack(state, host_new_ss_ptr, host_old_ss_ptr, arg3);
             if (old_ss) {
-                ASSERT((u64)host_old_ss.ss_sp <= UINT32_MAX);
-                ASSERT((u64)host_old_ss.ss_size <= UINT32_MAX);
-                old_ss->ss_sp = (u64)host_old_ss.ss_sp;
-                old_ss->ss_size = host_old_ss.ss_size;
-                old_ss->ss_flags = host_old_ss.ss_flags;
+                *old_ss = host_old_ss;
             }
             break;
         }

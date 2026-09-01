@@ -496,17 +496,9 @@ static void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state
     frame->uc.uc_link = 0;
     frame->info = *guest_info;
 
-    // After some testing, this is set to the altstack if it exists and is valid (which we don't check here, but on sigaltstack)
-    // Otherwise it is zero, it's not set to the actual stack
-    if (use_altstack) {
-        frame->uc.uc_stack.ss_sp = state->alt_stack.ss_sp;
-        frame->uc.uc_stack.ss_size = state->alt_stack.ss_size;
-        frame->uc.uc_stack.ss_flags = state->alt_stack.ss_flags;
-    } else {
-        frame->uc.uc_stack.ss_sp = 0;
-        frame->uc.uc_stack.ss_size = 0;
-        frame->uc.uc_stack.ss_flags = 0;
-    }
+    frame->uc.uc_stack.ss_sp = state->alt_stack.ss_sp;
+    frame->uc.uc_stack.ss_size = state->alt_stack.ss_size;
+    frame->uc.uc_stack.ss_flags = sa_ss_flags(state);
 
     if (state->alt_stack.ss_flags & SS_AUTODISARM) {
         state->alt_stack.ss_sp = 0;
@@ -910,6 +902,10 @@ void Signals::sigreturn(ThreadState* state, bool rt) {
             new_set.__val[1] = legacy_frame->extramask;
         }
         Signals::sigprocmask(state, SIG_SETMASK, &new_set, nullptr);
+        if (rt) {
+            stack_t host_stack = rt_frame->uc.uc_stack;
+            Signals::sigaltstack(state, &host_stack, nullptr, 0);
+        }
     } else {
         // When the signal handler returned, it popped the return address, which is the 8 bytes "pretcode" field in the sigframe
         // We need to adjust the rsp back before reading the entire struct.
@@ -968,6 +964,7 @@ void Signals::sigreturn(ThreadState* state, bool rt) {
 
         // Restore signal mask to what it was supposed to be outside of signal handler
         Signals::sigprocmask(state, SIG_SETMASK, &frame->uc.uc_sigmask, nullptr);
+        Signals::sigaltstack(state, &frame->uc.uc_stack, nullptr, 0);
     }
 }
 
@@ -1728,7 +1725,7 @@ int Signals::sigprocmask(ThreadState* state, int how, sigset_t* set, sigset_t* o
     int result = 0;
     if (set) {
         if (!felix86_address_check(set)) {
-            WARN("Bad address for set during sigprocmask: %lx", set);
+            WARN("Bad address for set during sigprocmask: %lx", (u64)set);
             return -EFAULT;
         }
 
@@ -1778,7 +1775,7 @@ int Signals::sigprocmask(ThreadState* state, int how, sigset_t* set, sigset_t* o
 
     if (oldset) {
         if (!felix86_address_check(oldset)) {
-            WARN("Bad address for oldset during sigprocmask: %lx", oldset);
+            WARN("Bad address for oldset during sigprocmask: %lx", (u64)oldset);
             return -EFAULT;
         }
 
@@ -1786,4 +1783,57 @@ int Signals::sigprocmask(ThreadState* state, int how, sigset_t* set, sigset_t* o
     }
 
     return result;
+}
+
+int Signals::sigaltstack(ThreadState* state, stack_t* new_ss, stack_t* old_ss, int flags) {
+    VERBOSE("----- sigaltstack was called -----");
+    u64 current_rsp = state->ctx.gprs[X86_REF_RSP];
+
+    bool on_stack = state->alt_stack.ss_size && current_rsp > (u64)state->alt_stack.ss_sp &&
+                    current_rsp - (u64)state->alt_stack.ss_sp <= state->alt_stack.ss_size;
+    if (!(state->alt_stack.ss_flags & SS_DISABLE) && current_rsp >= (u64)state->alt_stack.ss_sp &&
+        current_rsp < (u64)state->alt_stack.ss_sp + state->alt_stack.ss_size) {
+        on_stack = true;
+    }
+
+    if (old_ss) {
+        old_ss->ss_sp = state->alt_stack.ss_sp;
+        old_ss->ss_size = state->alt_stack.ss_size;
+
+        if (!state->alt_stack.ss_size) {
+            old_ss->ss_flags = SS_DISABLE;
+        } else {
+            old_ss->ss_flags = on_stack ? SS_ONSTACK : 0;
+        }
+        old_ss->ss_flags |= state->alt_stack.ss_flags & SS_AUTODISARM;
+    }
+
+    if (new_ss) {
+        if (on_stack) {
+            WARN("Tried to set sigaltstack while using it");
+            errno = EPERM; // TODO: remove when result rewrite
+            return -EPERM;
+        }
+
+        int flags = new_ss->ss_flags & ~SS_AUTODISARM;
+        if (flags != SS_DISABLE && flags != SS_ONSTACK && flags != 0) {
+            return -EINVAL;
+        }
+
+        void* new_stack = new_ss->ss_sp;
+        u64 new_size = new_ss->ss_size;
+        if (flags == SS_DISABLE) {
+            new_stack = nullptr;
+            new_size = 0;
+        } else if (new_size < 2048 /* MINSIGSTKSZ */) {
+            return -ENOMEM;
+        }
+
+        state->alt_stack.ss_sp = new_stack;
+        state->alt_stack.ss_size = new_size;
+        state->alt_stack.ss_flags = new_ss->ss_flags & SS_AUTODISARM;
+        VERBOSE("New altstack: %lx", (u64)new_ss->ss_sp);
+    }
+
+    return 0;
 }
