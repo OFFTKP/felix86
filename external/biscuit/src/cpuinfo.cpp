@@ -621,7 +621,7 @@ bool CheckExtensionSignal(biscuit::RISCVExtension extension) {
     sa.sa_flags = SA_SIGINFO;
     sigemptyset(&sa.sa_mask);
 
-    int result = sigaction(SIGILL, &sa, &old_sa);
+    int result = sigaction(SIGILL, &sa, &old_ill);
     BISCUIT_ASSERT(result == 0);
 
     result = sigaction(SIGSEGV, &sa, &old_segv);
