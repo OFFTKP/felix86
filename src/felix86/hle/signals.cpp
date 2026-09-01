@@ -1178,8 +1178,11 @@ static void defer_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx
                 node = node->next;
                 count++;
             }
-            ASSERT_MSG(count <= 32, "Too many realtime signals of SIGRT%d", sig);
-            node->next = new_node;
+            if (count <= 32) {
+                node->next = new_node;
+            } else {
+                IMPORTANT("Too many realtime signals of SIGRT%d, dropping signal", sig);
+            }
         }
     }
     // Make our safepoints fault
