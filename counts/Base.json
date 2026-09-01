@@ -19162,7 +19162,7 @@
         "instruction_count": 2,
         "expected_asm": [
             "ADD.UW          ra, rax, zero",
-            "SW              ra, state, 0x320(800)"
+            "SD              ra, state, 0x320(800)"
         ],
         "disassembly": "wrfsbase eax"
     },
@@ -19177,7 +19177,7 @@
         "instruction_count": 2,
         "expected_asm": [
             "ADD.UW          ra, rax, zero",
-            "SW              ra, state, 0x318(792)"
+            "SD              ra, state, 0x318(792)"
         ],
         "disassembly": "wrgsbase eax"
     },
