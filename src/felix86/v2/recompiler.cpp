@@ -2710,11 +2710,6 @@ int Recompiler::getBitSize(x86_size_e size) {
     }
 }
 
-u64 Recompiler::getSignMask(x86_size_e size_e) {
-    u16 size = getBitSize(size_e);
-    return 1ull << (size - 1);
-}
-
 void Recompiler::updateParity(biscuit::GPR result) {
     biscuit::GPR pf = scratch();
     as.ANDI(pf, result, 0xFF);

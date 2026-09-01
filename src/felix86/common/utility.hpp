@@ -57,8 +57,6 @@ void felix86_fstenv_32(struct ThreadState* state, u64 address);
 void felix86_fldenv_16(struct ThreadState* state, u64 address);
 void felix86_fldenv_32(struct ThreadState* state, u64 address);
 
-void felix86_pmaddwd(i16* dst, i16* src);
-
 void push_calltrace(ThreadState* state, u64 address);
 
 void pop_calltrace(ThreadState* state);
@@ -91,13 +89,7 @@ void f64_to_80_mem(double value, u64 address);
 bool felix86_bts(u64 address, i64 offset);
 bool felix86_btr(u64 address, i64 offset);
 bool felix86_btc(u64 address, i64 offset);
-bool felix86_bt(u64 address, i64 offset);
-void felix86_psadbw(u8* dst, u8* src);
-void felix86_vpsadbw(u8* dst, u8* src1, u8* src2);
-void felix86_vpsadbw256(u8* dst, u8* src1, u8* src2);
 void felix86_mpsadbw(u8* dst, u8* src, u8 imm);
-void felix86_vmpsadbw_128(u8* dst, u8* src1, u8* src2, u8 imm);
-void felix86_vmpsadbw_256(u8* dst, u8* src1, u8* src2, u8 imm);
 
 void felix86_fsin(ThreadState* state);
 void felix86_fcos(ThreadState* state);
