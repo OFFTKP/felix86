@@ -22,7 +22,7 @@ struct RemoteState {
     RemoteState() : remote_state(nullptr), pid(0) {}
 
     explicit RemoteState(void* remote_state, pid_t pid) : remote_state(remote_state), pid(pid) {
-        HOSTPTRACELOG("Getting remote state (%lx) from %d", remote_state, pid);
+        HOSTPTRACELOG("Getting remote state (%lx) from %d", (u64)remote_state, pid);
         ASSERT(remote_state);
         iovec local, remote;
         local.iov_base = &data;
@@ -70,7 +70,7 @@ struct RemoteState {
     void commit() {
         if (!remote_state)
             return;
-        HOSTPTRACELOG("Commiting remote state (%lx) to %d", remote_state, pid);
+        HOSTPTRACELOG("Commiting remote state (%lx) to %d", (u64)remote_state, pid);
         iovec local, remote;
         local.iov_base = &data;
         local.iov_len = sizeof(ThreadState);
@@ -339,7 +339,7 @@ static const char* op_to_string(__ptrace_request op) {
 #endif
 #pragma GCC poison ptrace
 static int __ptrace(__ptrace_request op, pid_t pid, void* addr, void* data) {
-    HOSTPTRACELOG("Running ptrace command %s on %d with addr=%lx and data=%lx", op_to_string(op), pid, addr, data);
+    HOSTPTRACELOG("Running ptrace command %s on %d with addr=%lx and data=%lx", op_to_string(op), pid, (u64)addr, (u64)data);
     return ::syscall(SYS_ptrace, op, pid, addr, data);
 }
 
@@ -365,7 +365,7 @@ static RemoteState get_remote_state(pid_t pid) {
     return RemoteState(remote_state_ptr, pid);
 }
 
-static int get_regs(bool tracer_mode32, const RemoteState& remote_state, void* data) {
+static void get_regs(bool tracer_mode32, const RemoteState& remote_state, void* data) {
     const UserContext& remote_ctx = remote_state->ctx;
     if (tracer_mode32) {
         x86_user_regs_struct* user = (x86_user_regs_struct*)data;
@@ -386,7 +386,6 @@ static int get_regs(bool tracer_mode32, const RemoteState& remote_state, void* d
         user->xgs = remote_ctx.gs;
         user->eflags = remote_ctx.GetFlags();
         user->orig_eax = remote_ctx.orig_rax;
-        return 0;
     } else {
         x64_user_regs_struct* user = (x64_user_regs_struct*)data;
         user->rax = remote_ctx.gprs[X86_REF_RAX];
@@ -416,7 +415,6 @@ static int get_regs(bool tracer_mode32, const RemoteState& remote_state, void* d
         user->gs_base = remote_ctx.gsbase;
         user->eflags = remote_ctx.GetFlags();
         user->orig_rax = remote_ctx.orig_rax;
-        return 0;
     }
 }
 
@@ -531,7 +529,7 @@ int wait4(pid_t pid, int* status, int flags, struct rusage* ru) {
                 }
 
                 if (!remote_state) {
-                    WARN("remote_state is null, this is unexpected. Status: %lx", host_status);
+                    WARN("remote_state is null, this is unexpected. Status: %lx", (u64)host_status);
                     break;
                 }
 
@@ -705,7 +703,7 @@ int wait4(pid_t pid, int* status, int flags, struct rusage* ru) {
 
 i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
     bool tracer_mode32 = ThreadState::Get()->ctx.Mode32();
-    GUESTPTRACELOG("Operation %s on %d with addr=%lx and data=%lx", guest_op_to_string(op), pid, addr, data);
+    GUESTPTRACELOG("Operation %s on %d with addr=%lx and data=%lx", guest_op_to_string(op), pid, (u64)addr, (u64)data);
     RemoteState remote_state;
     switch (op) {
     // These are the only operations that don't need a stopped tracee
@@ -1222,7 +1220,7 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
     case felix86_ptrace_request::felix86_PTRACE_SINGLESTEP: {
         i64 sig = (i64)data;
         if (sig < 0) {
-            WARN("PTRACE_SINGLESTEP with negative signal: %d", sig);
+            WARN("PTRACE_SINGLESTEP with negative signal: %ld", sig);
             return -EIO;
         }
 
@@ -1278,6 +1276,7 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
             dest = (u64)io->iov_base;
             size = io->iov_len;
         }
+        u64 new_size = 0;
 #define NT_PRSTATUS 1
 #define NT_386_TLS 0x200
 #define NT_386_IOPERM 0x201
@@ -1286,33 +1285,60 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
 #define NT_X86_XSAVE_LAYOUT 0x205
         switch ((u64)addr) {
         case NT_PRSTATUS: {
-            return get_regs(tracer_mode32, remote_state, (void*)dest);
+            if (size % (tracer_mode32 ? sizeof(u32) : sizeof(u64)) != 0) {
+                return -EINVAL;
+            }
+
+            constexpr size_t total_size = std::max(sizeof(x86_user_regs_struct), sizeof(x64_user_regs_struct));
+            size_t struct_size = tracer_mode32 ? sizeof(x86_user_regs_struct) : sizeof(x64_user_regs_struct);
+            if (size < struct_size) {
+                WARN("Partial NT_PRSTATUS requested: %lx", size);
+            }
+            u8 buffer[total_size] = {};
+            get_regs(tracer_mode32, remote_state, buffer);
+            new_size = std::min(size, struct_size);
+            memcpy((void*)dest, buffer, new_size);
+            break;
         }
         case NT_X86_XSTATE: {
+            if (size % sizeof(u64) != 0) {
+                return -EINVAL;
+            }
+
             if (!is_feature_enabled(x86_feature::OSXSAVE)) {
                 return -ENODEV;
             }
 
             if (size < felix86_xsave_size()) {
-                WARN("Partial NT_X86_XSTATE requested: %d", size);
+                WARN("Partial NT_X86_XSTATE requested: %lx", size);
             }
 
             constexpr size_t total_size = felix86_xsave_size();
-            u8 buffer[total_size];
+            alignas(64) u8 buffer[total_size] = {};
             felix86_xsave(remote_state->ctx, buffer, true);
             // See update_regset_xstate_info
             *(u64*)(buffer + 464) = get_xfeature_enabled_mask();
-            memcpy((void*)dest, buffer, size);
-            return 0;
+            new_size = std::min(size, total_size);
+            memcpy((void*)dest, buffer, new_size);
+            break;
         }
         default: {
-            WARN("PTRACE_GETREGSET with unknown addr: %lx", addr);
+            WARN("PTRACE_GETREGSET with unknown addr: %lx", (u64)addr);
             return -EINVAL;
         }
         }
+        if (tracer_mode32) {
+            x86_iovec* io = (x86_iovec*)data;
+            io->iov_len = new_size;
+        } else {
+            iovec* io = (iovec*)data;
+            io->iov_len = new_size;
+        }
+        return 0;
     }
     case felix86_ptrace_request::felix86_PTRACE_GETREGS: {
-        return get_regs(tracer_mode32, remote_state, data);
+        get_regs(tracer_mode32, remote_state, data);
+        return 0;
     }
     case felix86_ptrace_request::felix86_PTRACE_SETREGS: {
         return set_regs(tracer_mode32, remote_state, data);
