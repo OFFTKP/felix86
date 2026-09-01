@@ -123,6 +123,7 @@ static void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbya
     rec.compileInstruction(zinstruction, zoperands, rip);
     rec.resetScratch();
     rec.flushX87();
+    rec.flushPushpop();
     auto after = rec.getAssembler().GetCursorPointer();
     int count = 0;
     Instruction inst;

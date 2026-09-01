@@ -640,6 +640,7 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
 
     current_ripreg_value = rip; // may change in a syscall to check for safepoints, or after a set amount of instructions in the future
     current_instruction_index = 0;
+    current_pushpop_offset = 0;
 
     bool ran_mmx_once = false;
 
@@ -665,13 +666,15 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
                       (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].reg.value >= ZYDIS_REGISTER_YMM0 &&
                        operands[1].reg.value <= ZYDIS_REGISTER_YMM15);
 
+        bool push_pop_reg = (instruction.mnemonic == ZYDIS_MNEMONIC_PUSH || instruction.mnemonic == ZYDIS_MNEMONIC_POP) &&
+                            operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
         bool op1_on_stack = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[0].mem.base != ZYDIS_REGISTER_NONE &&
                             zydisToRef(operands[0].mem.base) == X86_REF_RSP;
         bool op2_on_stack = operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[1].mem.base != ZYDIS_REGISTER_NONE &&
                             zydisToRef(operands[1].mem.base) == X86_REF_RSP;
         bool op3_on_stack = operands[2].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[2].mem.base != ZYDIS_REGISTER_NONE &&
                             zydisToRef(operands[2].mem.base) == X86_REF_RSP;
-        current_instruction_on_stack = op1_on_stack || op2_on_stack || op3_on_stack;
+        current_instruction_on_stack = push_pop_reg || op1_on_stack || op2_on_stack || op3_on_stack;
 
         if (instruction.mnemonic == ZYDIS_MNEMONIC_EMMS) {
             ran_mmx_once = false; // if we run another mmx instruction, set tag to valid again
@@ -762,6 +765,7 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
 
         if (is_single_step && compiling) {
             resetScratch();
+            flushPushpop();
             flushX87();
             biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
             u64 offset = rip - getCurrentRipregValue();
@@ -806,6 +810,7 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
     if (current_block_big) {
         VERBOSE("Block at %lx exceeded max instruction count", start_rip);
         resetScratch();
+        flushPushpop(); // should be redundant here but w/e
         flushX87();
         biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
         u64 offset = rip - getCurrentRipregValue();
@@ -834,7 +839,6 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
 }
 
 std::optional<std::pair<ZydisDecodedInstruction*, ZydisDecodedOperand*>> Recompiler::getNextInstruction() {
-    ASSERT(instructions.size() > current_instruction_index + 1);
     if (current_instruction_index + 1 < instructions.size()) {
         auto& [instruction, operands] = instructions[current_instruction_index + 1];
         return std::make_pair(&instruction, operands);
@@ -2075,6 +2079,7 @@ void Recompiler::writebackState() {
     v0Modified();
     resetVectorState();
 
+    flushPushpop();
     flushX87();
 
     biscuit::GPR rip = allocatedGPR(X86_REF_RIP);
