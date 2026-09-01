@@ -12003,18 +12003,59 @@ FAST_HANDLE(PAUSE) {
 }
 
 FAST_HANDLE(FLD) {
-    if (operands[0].size == 80 && operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        biscuit::GPR address = rec.lea(&operands[0]);
-        rec.writebackState();
-        as.MV(a0, address);
-        rec.callPointer(offsetof(ThreadState, f80_to_64));
-        rec.restoreState();
-        biscuit::FPR new_reg = rec.pushX87();
-        as.FMV_D(new_reg, fa0);
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        switch (operands[0].size) {
+        case 80: {
+            biscuit::GPR address = rec.lea(&operands[0]);
+            rec.writebackState();
+            as.MV(a0, address);
+            rec.callPointer(offsetof(ThreadState, f80_to_64));
+            rec.restoreState();
+            biscuit::FPR new_reg = rec.pushX87();
+            as.FMV_D(new_reg, fa0);
+            break;
+        }
+        case 32:
+        case 64: {
+            bool single = operands[0].size == 32;
+            Precision prec = single ? Precision::S : Precision::D;
+            biscuit::FPR st = rec.pushX87();
+            biscuit::GPR address;
+            u64 immediate = operands[0].mem.disp.value;
+            if (IsValidSigned12BitImm(immediate) && !(instruction.attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
+                g_config.no_address_overflow) { // can't do this with seg+a32
+                ZydisDecodedOperand op = operands[0];
+                op.mem.disp.value = 0;
+                address = rec.lea(&op, false);
+                as.FL(st, immediate, address, prec);
+            } else {
+                address = rec.lea(&operands[0], false);
+                as.FL(st, 0, address, prec);
+            }
+
+            if (g_config.reduced_precision < 2) {
+                if (single) {
+                    as.FCVT_D_S(st, st);
+                }
+            } else if (single) {
+                // Defer conversion to when and if it's actually used in a 64-bit operation
+                rec.markX87RegAs32Bit(st);
+            }
+            break;
+        }
+        default: {
+            UNREACHABLE();
+            break;
+        }
+        }
     } else {
-        biscuit::FPR st = rec.getST(&operands[0]);
+        biscuit::FPR st = rec.getST(&operands[0], true, false);
+        bool is32bit = g_config.reduced_precision >= 2 && rec.isX87Reg32Bit(st);
         biscuit::FPR new_reg = rec.pushX87();
         as.FMV_D(new_reg, st); // move to temp because getST could return allocated FPR
+        if (is32bit) {
+            rec.markX87RegAs32Bit(new_reg);
+        }
     }
 }
 
@@ -12041,10 +12082,43 @@ FAST_HANDLE(FILD) {
     }
 }
 
-static void OP(void (Assembler::*func)(FPR, FPR, FPR, RMode), Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction,
+static void OP(void (Assembler::*func)(FPR, FPR, FPR, Precision, RMode), Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction,
                ZydisDecodedOperand* operands, bool pop, bool reverse = false) {
-    biscuit::FPR lhs = rec.getST(&operands[0]);
-    biscuit::FPR rhs = rec.getST(&operands[1]);
+    bool bit32opts = g_config.reduced_precision >= 2;
+    biscuit::FPR lhs = rec.getST(&operands[0], true, !bit32opts /* convert_to_64_bit */);
+    biscuit::FPR rhs = rec.getST(&operands[1], true, !bit32opts /* convert_to_64_bit */);
+    Precision prec = Precision::D;
+    if (bit32opts) {
+        bool lhs32 = false;
+        bool rhs32 = false;
+        if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+            lhs32 = rec.isX87Reg32Bit(lhs);
+        } else {
+            ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
+            lhs32 = operands[0].size == 32;
+        }
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+            rhs32 = rec.isX87Reg32Bit(rhs);
+        } else {
+            ASSERT(operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY);
+            rhs32 = operands[1].size == 32;
+        }
+        if (lhs32 && rhs32) {
+            prec = Precision::S;
+        } else if (lhs32) {
+            if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+                rec.markX87RegAs64Bit(lhs);
+            } else {
+                as.FCVT_D_S(lhs, lhs);
+            }
+        } else if (rhs32) {
+            if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+                rec.markX87RegAs64Bit(rhs);
+            } else {
+                as.FCVT_D_S(rhs, rhs);
+            }
+        }
+    }
 
     ZydisDecodedOperand* result_operand = &operands[0];
 
@@ -12057,13 +12131,13 @@ static void OP(void (Assembler::*func)(FPR, FPR, FPR, RMode), Recompiler& rec, A
     // TODO: don't use a separate FPR here
     biscuit::FPR result;
     if (!reverse) {
-        (as.*func)(lhs, lhs, rhs, RMode::DYN);
+        (as.*func)(lhs, lhs, rhs, prec, RMode::DYN);
         result = lhs;
     } else {
-        (as.*func)(lhs, rhs, lhs, RMode::DYN);
+        (as.*func)(lhs, rhs, lhs, prec, RMode::DYN);
         result = lhs;
     }
-    rec.setST(result_operand, result);
+    rec.setST(result_operand, result, prec == Precision::S);
 
     if (pop) {
         rec.popX87();
@@ -12071,11 +12145,11 @@ static void OP(void (Assembler::*func)(FPR, FPR, FPR, RMode), Recompiler& rec, A
 }
 
 FAST_HANDLE(FDIV) {
-    OP(&Assembler::FDIV_D, rec, as, instruction, operands, false);
+    OP(&Assembler::FDIV, rec, as, instruction, operands, false);
 }
 
 FAST_HANDLE(FDIVP) {
-    OP(&Assembler::FDIV_D, rec, as, instruction, operands, true);
+    OP(&Assembler::FDIV, rec, as, instruction, operands, true);
 }
 
 FAST_HANDLE(FIDIV) {
@@ -12096,11 +12170,11 @@ FAST_HANDLE(FIDIV) {
 }
 
 FAST_HANDLE(FDIVR) {
-    OP(&Assembler::FDIV_D, rec, as, instruction, operands, false, true);
+    OP(&Assembler::FDIV, rec, as, instruction, operands, false, true);
 }
 
 FAST_HANDLE(FDIVRP) {
-    OP(&Assembler::FDIV_D, rec, as, instruction, operands, true, true);
+    OP(&Assembler::FDIV, rec, as, instruction, operands, true, true);
 }
 
 FAST_HANDLE(FIDIVR) {
@@ -12121,11 +12195,11 @@ FAST_HANDLE(FIDIVR) {
 }
 
 FAST_HANDLE(FMUL) {
-    OP(&Assembler::FMUL_D, rec, as, instruction, operands, false);
+    OP(&Assembler::FMUL, rec, as, instruction, operands, false);
 }
 
 FAST_HANDLE(FMULP) {
-    OP(&Assembler::FMUL_D, rec, as, instruction, operands, true);
+    OP(&Assembler::FMUL, rec, as, instruction, operands, true);
 }
 
 FAST_HANDLE(FIMUL) {
@@ -12145,25 +12219,32 @@ FAST_HANDLE(FIMUL) {
     rec.setST(0, result);
 }
 
+static void FST_impl(Recompiler& rec, ZydisDecodedOperand* operands) {
+    bool dst32 = g_config.reduced_precision >= 2 &&
+                 (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER || operands[0].size == 32);
+    biscuit::FPR st0 = rec.getST(0, true, !dst32);
+    rec.setST(&operands[0], st0, dst32 && rec.isX87Reg32Bit(st0));
+}
+
 FAST_HANDLE(FST) {
-    biscuit::FPR st0 = rec.getST(0);
-    rec.setST(&operands[0], st0);
+    FST_impl(rec, operands);
 }
 
 FAST_HANDLE(FXCH) {
     u8 index = operands[0].reg.value - ZYDIS_REGISTER_ST0;
     ASSERT(index >= 1 && index <= 7);
-    biscuit::FPR st0 = rec.getST(0);
-    biscuit::FPR sti = rec.getST(index);
+    biscuit::FPR st0 = rec.getST(0, true, false);
+    biscuit::FPR sti = rec.getST(index, true, false);
+    bool st0_32bit = g_config.reduced_precision >= 2 && rec.isX87Reg32Bit(st0);
+    bool sti_32bit = g_config.reduced_precision >= 2 && rec.isX87Reg32Bit(sti);
     biscuit::FPR temp = rec.scratchFPR();
     as.FMV_D(temp, st0);
-    rec.setST(0, sti);
-    rec.setST(index, temp);
+    rec.setST(0, sti, sti_32bit);
+    rec.setST(index, temp, st0_32bit);
 }
 
 FAST_HANDLE(FSTP) {
-    biscuit::FPR st0 = rec.getST(0);
-    rec.setST(&operands[0], st0);
+    FST_impl(rec, operands);
     rec.popX87();
 }
 
@@ -12176,11 +12257,11 @@ FAST_HANDLE(FBSTP) {
 }
 
 FAST_HANDLE(FADD) {
-    OP(&Assembler::FADD_D, rec, as, instruction, operands, false);
+    OP(&Assembler::FADD, rec, as, instruction, operands, false);
 }
 
 FAST_HANDLE(FADDP) {
-    OP(&Assembler::FADD_D, rec, as, instruction, operands, true);
+    OP(&Assembler::FADD, rec, as, instruction, operands, true);
 }
 
 FAST_HANDLE(FIADD) {
@@ -12201,11 +12282,11 @@ FAST_HANDLE(FIADD) {
 }
 
 FAST_HANDLE(FSUB) {
-    OP(&Assembler::FSUB_D, rec, as, instruction, operands, false);
+    OP(&Assembler::FSUB, rec, as, instruction, operands, false);
 }
 
 FAST_HANDLE(FSUBP) {
-    OP(&Assembler::FSUB_D, rec, as, instruction, operands, true);
+    OP(&Assembler::FSUB, rec, as, instruction, operands, true);
 }
 
 FAST_HANDLE(FISUB) {
@@ -12226,11 +12307,11 @@ FAST_HANDLE(FISUB) {
 }
 
 FAST_HANDLE(FSUBR) {
-    OP(&Assembler::FSUB_D, rec, as, instruction, operands, false, true);
+    OP(&Assembler::FSUB, rec, as, instruction, operands, false, true);
 }
 
 FAST_HANDLE(FSUBRP) {
-    OP(&Assembler::FSUB_D, rec, as, instruction, operands, true, true);
+    OP(&Assembler::FSUB, rec, as, instruction, operands, true, true);
 }
 
 FAST_HANDLE(FISUBR) {

@@ -446,14 +446,14 @@ TEST_CASE("LI literal", "[rv64i]") {
     as.NOP();
     as.NOP();
     as.Place(&value);
-
+    
     // Should emit AUIPC+ADDI with offset == 24
     uint32_t expected_instructions[2];
     {
         auto as = MakeAssembler64(expected_instructions);
         as.AUIPC(x7, 0);
         as.ADDI(x7, x7, 24);
-    }
+    } 
 
     REQUIRE(instructions[0] == expected_instructions[0]);
     REQUIRE(instructions[1] == expected_instructions[1]);
@@ -470,14 +470,14 @@ TEST_CASE("LI literal backward", "[rv64i]") {
     as.NOP();
     as.NOP();
     as.LILiteral(x7, &value);
-
+    
     // Should emit AUIPC+ADDI with offset == -28
     uint32_t expected_instructions[2];
     {
         auto as = MakeAssembler64(expected_instructions);
         as.AUIPC(x7, 0);
         as.ADDI(x7, x7, -28);
-    }
+    } 
 
     REQUIRE(instructions[7] == expected_instructions[0]);
     REQUIRE(instructions[8] == expected_instructions[1]);
@@ -499,14 +499,14 @@ TEST_CASE("LI literal backward big type", "[rv64i]") {
     as.NOP();
     as.NOP();
     as.LILiteral(x7, &value);
-
+    
     // Should emit AUIPC+ADDI with offset == -52
     uint32_t expected_instructions[2];
     {
         auto as = MakeAssembler64(expected_instructions);
         as.AUIPC(x7, 0);
         as.ADDI(x7, x7, -52);
-    }
+    } 
 
     REQUIRE(instructions[13] == expected_instructions[0]);
     REQUIRE(instructions[14] == expected_instructions[1]);

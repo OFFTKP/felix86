@@ -46,4 +46,11 @@ enum class RMode : uint32_t {
     DYN = 0b111, // Dynamic Rounding Mode
 };
 
+enum class Precision : uint32_t {
+    S = 0b0000000,
+    D = 0b0000001,
+    H = 0b0000010,
+    Q = 0b0000011,
+};
+
 } // namespace biscuit

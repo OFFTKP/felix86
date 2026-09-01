@@ -32,7 +32,7 @@ void Assembler::Bind(Label* label) {
 
 void Assembler::ADD(GPR rd, GPR lhs, GPR rhs) noexcept {
     if (IsOptimizationEnabled(Optimization::AutoCompress)) {
-        if (IsValid3BitCompressedReg(rd) && IsValid3BitCompressedReg(lhs) && IsValid3BitCompressedReg(rhs)) {
+        if (rd != x0 && lhs != x0 && rhs != x0) {
             if (rd == lhs) {
                 C_ADD(rd, rhs);
                 return;
@@ -1543,7 +1543,7 @@ void Assembler::SLLIUW(GPR rd, GPR rs, uint32_t shift_amount) noexcept {
 
 void Assembler::UNZIP(GPR rd, GPR rs) noexcept {
     BISCUIT_ASSERT(IsRV32(m_features));
-    EmitIType(m_buffer, 0b000010011111, rs, 0b101, rd, 0b0010011);
+    EmitIType(m_buffer, 0b000010001111, rs, 0b101, rd, 0b0010011);
 }
 
 void Assembler::XNOR(GPR rd, GPR rs1, GPR rs2) noexcept {
@@ -1572,7 +1572,7 @@ void Assembler::ZEXTW(GPR rd, GPR rs) noexcept {
 
 void Assembler::ZIP(GPR rd, GPR rs) noexcept {
     BISCUIT_ASSERT(IsRV32(m_features));
-    EmitIType(m_buffer, 0b000010011110, rs, 0b001, rd, 0b0010011);
+    EmitIType(m_buffer, 0b000010001111, rs, 0b001, rd, 0b0010011);
 }
 
 // Cache Management Operation Extension Instructions
