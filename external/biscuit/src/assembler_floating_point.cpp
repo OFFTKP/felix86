@@ -11,14 +11,35 @@
 // Various floating-point-based extension instructions.
 
 namespace biscuit {
+namespace {
+[[nodiscard]] uint32_t PrecisionFunct7(uint32_t base, Precision precision) noexcept {
+    return base | static_cast<uint32_t>(precision);
+}
+
+[[nodiscard]] uint32_t PrecisionWidth(Precision precision) noexcept {
+    switch (precision) {
+    case Precision::H:
+        return 0b001;
+    case Precision::S:
+        return 0b010;
+    case Precision::D:
+        return 0b011;
+    case Precision::Q:
+        return 0b100;
+    }
+
+    BISCUIT_ASSERT(false);
+    return 0;
+}
+} // namespace
 
 // RV32F Extension Instructions
 
 void Assembler::FADD_S(FPR rd, FPR rs1, FPR rs2, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0000000, rs2, rs1, rmode, rd, 0b1010011);
+    FADD(rd, rs1, rs2, Precision::S, rmode);
 }
 void Assembler::FCLASS_S(GPR rd, FPR rs1) noexcept {
-    EmitRType(m_buffer, 0b1110000, f0, rs1, 0b001, rd, 0b1010011);
+    FCLASS(rd, rs1, Precision::S);
 }
 void Assembler::FCVT_S_W(FPR rd, GPR rs1, RMode rmode) noexcept {
     EmitRType(m_buffer, 0b1101000, f0, rs1, static_cast<uint32_t>(rmode), rd, 0b1010011);
@@ -33,46 +54,34 @@ void Assembler::FCVT_WU_S(GPR rd, FPR rs1, RMode rmode) noexcept {
     EmitRType(m_buffer, 0b1100000, f1, rs1, static_cast<uint32_t>(rmode), rd, 0b1010011);
 }
 void Assembler::FDIV_S(FPR rd, FPR rs1, FPR rs2, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0001100, rs2, rs1, rmode, rd, 0b1010011);
+    FDIV(rd, rs1, rs2, Precision::S, rmode);
 }
 void Assembler::FEQ_S(GPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b1010000, rs2, rs1, 0b010, rd, 0b1010011);
+    FEQ(rd, rs1, rs2, Precision::S);
 }
 void Assembler::FLE_S(GPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b1010000, rs2, rs1, 0b000, rd, 0b1010011);
+    FLE(rd, rs1, rs2, Precision::S);
 }
 void Assembler::FLT_S(GPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b1010000, rs2, rs1, 0b001, rd, 0b1010011);
+    FLT(rd, rs1, rs2, Precision::S);
 }
 void Assembler::FLW(FPR rd, int32_t offset, GPR rs) noexcept {
-    BISCUIT_ASSERT(IsValidSigned12BitImm(offset));
-
-    if (IsOptimizationEnabled(Optimization::AutoCompress) && IsRV32(m_features)) {
-        if (rs == sp && offset >= 0 && offset <= 252 && (offset & 0b11) == 0) {
-            C_FLWSP(rd, static_cast<uint32_t>(offset));
-            return;
-        } else if (offset >= 0 && offset <= 124 && (offset & 0b11) == 0 && IsValid3BitCompressedReg(rd) && IsValid3BitCompressedReg(rs)) {
-            C_FLW(rd, static_cast<uint32_t>(offset), rs);
-            return;
-        }
-    }
-
-    EmitIType(m_buffer, static_cast<uint32_t>(offset), rs, 0b010, rd, 0b0000111);
+    FL(rd, offset, rs, Precision::S);
 }
 void Assembler::FMADD_S(FPR rd, FPR rs1, FPR rs2, FPR rs3, RMode rmode) noexcept {
-    EmitR4Type(m_buffer, rs3, 0b00, rs2, rs1, rmode, rd, 0b1000011);
+    FMADD(rd, rs1, rs2, rs3, Precision::S, rmode);
 }
 void Assembler::FMAX_S(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010100, rs2, rs1, 0b001, rd, 0b1010011);
+    FMAX(rd, rs1, rs2, Precision::S);
 }
 void Assembler::FMIN_S(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010100, rs2, rs1, 0b000, rd, 0b1010011);
+    FMIN(rd, rs1, rs2, Precision::S);
 }
 void Assembler::FMSUB_S(FPR rd, FPR rs1, FPR rs2, FPR rs3, RMode rmode) noexcept {
-    EmitR4Type(m_buffer, rs3, 0b00, rs2, rs1, rmode, rd, 0b1000111);
+    FMSUB(rd, rs1, rs2, rs3, Precision::S, rmode);
 }
 void Assembler::FMUL_S(FPR rd, FPR rs1, FPR rs2, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0001000, rs2, rs1, rmode, rd, 0b1010011);
+    FMUL(rd, rs1, rs2, Precision::S, rmode);
 }
 void Assembler::FMV_W_X(FPR rd, GPR rs1) noexcept {
     EmitRType(m_buffer, 0b1111000, f0, rs1, 0b000, rd, 0b1010011);
@@ -81,50 +90,38 @@ void Assembler::FMV_X_W(GPR rd, FPR rs1) noexcept {
     EmitRType(m_buffer, 0b1110000, f0, rs1, 0b000, rd, 0b1010011);
 }
 void Assembler::FNMADD_S(FPR rd, FPR rs1, FPR rs2, FPR rs3, RMode rmode) noexcept {
-    EmitR4Type(m_buffer, rs3, 0b00, rs2, rs1, rmode, rd, 0b1001111);
+    FNMADD(rd, rs1, rs2, rs3, Precision::S, rmode);
 }
 void Assembler::FNMSUB_S(FPR rd, FPR rs1, FPR rs2, FPR rs3, RMode rmode) noexcept {
-    EmitR4Type(m_buffer, rs3, 0b00, rs2, rs1, rmode, rd, 0b1001011);
+    FNMSUB(rd, rs1, rs2, rs3, Precision::S, rmode);
 }
 void Assembler::FSGNJ_S(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010000, rs2, rs1, 0b000, rd, 0b1010011);
+    FSGNJ(rd, rs1, rs2, Precision::S);
 }
 void Assembler::FSGNJN_S(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010000, rs2, rs1, 0b001, rd, 0b1010011);
+    FSGNJN(rd, rs1, rs2, Precision::S);
 }
 void Assembler::FSGNJX_S(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010000, rs2, rs1, 0b010, rd, 0b1010011);
+    FSGNJX(rd, rs1, rs2, Precision::S);
 }
 void Assembler::FSQRT_S(FPR rd, FPR rs1, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0101100, f0, rs1, rmode, rd, 0b1010011);
+    FSQRT(rd, rs1, Precision::S, rmode);
 }
 void Assembler::FSUB_S(FPR rd, FPR rs1, FPR rs2, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0000100, rs2, rs1, rmode, rd, 0b1010011);
+    FSUB(rd, rs1, rs2, Precision::S, rmode);
 }
 void Assembler::FSW(FPR rs2, int32_t offset, GPR rs1) noexcept {
-    BISCUIT_ASSERT(IsValidSigned12BitImm(offset));
-
-    if (IsOptimizationEnabled(Optimization::AutoCompress) && IsRV32(m_features)) {
-        if (rs1 == sp && offset >= 0 && offset <= 252 && (offset & 0b11) == 0) {
-            C_FSWSP(rs2, static_cast<uint32_t>(offset));
-            return;
-        } else if (offset >= 0 && offset <= 124 && (offset & 0b11) == 0 && IsValid3BitCompressedReg(rs2) && IsValid3BitCompressedReg(rs1)) {
-            C_FSW(rs2, static_cast<uint32_t>(offset), rs1);
-            return;
-        }
-    }
-
-    EmitSType(m_buffer, static_cast<uint32_t>(offset), rs2, rs1, 0b010, 0b0100111);
+    FS(rs2, offset, rs1, Precision::S);
 }
 
 void Assembler::FABS_S(FPR rd, FPR rs) noexcept {
-    FSGNJX_S(rd, rs, rs);
+    FABS(rd, rs, Precision::S);
 }
 void Assembler::FMV_S(FPR rd, FPR rs) noexcept {
-    FSGNJ_S(rd, rs, rs);
+    FMV(rd, rs, Precision::S);
 }
 void Assembler::FNEG_S(FPR rd, FPR rs) noexcept {
-    FSGNJN_S(rd, rs, rs);
+    FNEG(rd, rs, Precision::S);
 }
 
 // RV64F Extension Instructions
@@ -149,10 +146,10 @@ void Assembler::FCVT_S_LU(FPR rd, GPR rs1, RMode rmode) noexcept {
 // RV32D Extension Instructions
 
 void Assembler::FADD_D(FPR rd, FPR rs1, FPR rs2, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0000001, rs2, rs1, rmode, rd, 0b1010011);
+    FADD(rd, rs1, rs2, Precision::D, rmode);
 }
 void Assembler::FCLASS_D(GPR rd, FPR rs1) noexcept {
-    EmitRType(m_buffer, 0b1110001, f0, rs1, 0b001, rd, 0b1010011);
+    FCLASS(rd, rs1, Precision::D);
 }
 void Assembler::FCVT_D_W(FPR rd, GPR rs1, RMode rmode) noexcept {
     EmitRType(m_buffer, 0b1101001, f0, rs1, static_cast<uint32_t>(rmode), rd, 0b1010011);
@@ -173,92 +170,68 @@ void Assembler::FCVT_S_D(FPR rd, FPR rs1, RMode rmode) noexcept {
     EmitRType(m_buffer, 0b0100000, f1, rs1, static_cast<uint32_t>(rmode), rd, 0b1010011);
 }
 void Assembler::FDIV_D(FPR rd, FPR rs1, FPR rs2, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0001101, rs2, rs1, rmode, rd, 0b1010011);
+    FDIV(rd, rs1, rs2, Precision::D, rmode);
 }
 void Assembler::FEQ_D(GPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b1010001, rs2, rs1, 0b010, rd, 0b1010011);
+    FEQ(rd, rs1, rs2, Precision::D);
 }
 void Assembler::FLE_D(GPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b1010001, rs2, rs1, 0b000, rd, 0b1010011);
+    FLE(rd, rs1, rs2, Precision::D);
 }
 void Assembler::FLT_D(GPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b1010001, rs2, rs1, 0b001, rd, 0b1010011);
+    FLT(rd, rs1, rs2, Precision::D);
 }
 void Assembler::FLD(FPR rd, int32_t offset, GPR rs) noexcept {
-    BISCUIT_ASSERT(IsValidSigned12BitImm(offset));
-
-    if (IsOptimizationEnabled(Optimization::AutoCompress) && IsRV64(m_features)) {
-        if (rs == sp && offset >= 0 && offset <= 504 && (offset & 0b111) == 0) {
-            C_FLDSP(rd, static_cast<uint32_t>(offset));
-            return;
-        } else if (offset >= 0 && offset <= 248 && (offset & 0b111) == 0 && IsValid3BitCompressedReg(rd) && IsValid3BitCompressedReg(rs)) {
-            C_FLD(rd, static_cast<uint32_t>(offset), rs);
-            return;
-        }
-    }
-
-    EmitIType(m_buffer, static_cast<uint32_t>(offset), rs, 0b011, rd, 0b0000111);
+    FL(rd, offset, rs, Precision::D);
 }
 void Assembler::FMADD_D(FPR rd, FPR rs1, FPR rs2, FPR rs3, RMode rmode) noexcept {
-    EmitR4Type(m_buffer, rs3, 0b01, rs2, rs1, rmode, rd, 0b1000011);
+    FMADD(rd, rs1, rs2, rs3, Precision::D, rmode);
 }
 void Assembler::FMAX_D(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010101, rs2, rs1, 0b001, rd, 0b1010011);
+    FMAX(rd, rs1, rs2, Precision::D);
 }
 void Assembler::FMIN_D(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010101, rs2, rs1, 0b000, rd, 0b1010011);
+    FMIN(rd, rs1, rs2, Precision::D);
 }
 void Assembler::FMSUB_D(FPR rd, FPR rs1, FPR rs2, FPR rs3, RMode rmode) noexcept {
-    EmitR4Type(m_buffer, rs3, 0b01, rs2, rs1, rmode, rd, 0b1000111);
+    FMSUB(rd, rs1, rs2, rs3, Precision::D, rmode);
 }
 void Assembler::FMUL_D(FPR rd, FPR rs1, FPR rs2, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0001001, rs2, rs1, rmode, rd, 0b1010011);
+    FMUL(rd, rs1, rs2, Precision::D, rmode);
 }
 void Assembler::FNMADD_D(FPR rd, FPR rs1, FPR rs2, FPR rs3, RMode rmode) noexcept {
-    EmitR4Type(m_buffer, rs3, 0b01, rs2, rs1, rmode, rd, 0b1001111);
+    FNMADD(rd, rs1, rs2, rs3, Precision::D, rmode);
 }
 void Assembler::FNMSUB_D(FPR rd, FPR rs1, FPR rs2, FPR rs3, RMode rmode) noexcept {
-    EmitR4Type(m_buffer, rs3, 0b01, rs2, rs1, rmode, rd, 0b1001011);
+    FNMSUB(rd, rs1, rs2, rs3, Precision::D, rmode);
 }
 void Assembler::FSGNJ_D(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010001, rs2, rs1, 0b000, rd, 0b1010011);
+    FSGNJ(rd, rs1, rs2, Precision::D);
 }
 void Assembler::FSGNJN_D(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010001, rs2, rs1, 0b001, rd, 0b1010011);
+    FSGNJN(rd, rs1, rs2, Precision::D);
 }
 void Assembler::FSGNJX_D(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010001, rs2, rs1, 0b010, rd, 0b1010011);
+    FSGNJX(rd, rs1, rs2, Precision::D);
 }
 void Assembler::FSQRT_D(FPR rd, FPR rs1, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0101101, f0, rs1, rmode, rd, 0b1010011);
+    FSQRT(rd, rs1, Precision::D, rmode);
 }
 void Assembler::FSUB_D(FPR rd, FPR rs1, FPR rs2, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0000101, rs2, rs1, rmode, rd, 0b1010011);
+    FSUB(rd, rs1, rs2, Precision::D, rmode);
 }
 void Assembler::FSD(FPR rs2, int32_t offset, GPR rs1) noexcept {
-    BISCUIT_ASSERT(IsValidSigned12BitImm(offset));
-
-    if (IsOptimizationEnabled(Optimization::AutoCompress) && IsRV64(m_features)) {
-        if (rs1 == sp && offset >= 0 && offset <= 504 && (offset & 0b111) == 0) {
-            C_FSDSP(rs2, static_cast<uint32_t>(offset));
-            return;
-        } else if (offset >= 0 && offset <= 248 && (offset & 0b111) == 0 && IsValid3BitCompressedReg(rs2) && IsValid3BitCompressedReg(rs1)) {
-            C_FSD(rs2, static_cast<uint32_t>(offset), rs1);
-            return;
-        }
-    }
-
-    EmitSType(m_buffer, static_cast<uint32_t>(offset), rs2, rs1, 0b011, 0b0100111);
+    FS(rs2, offset, rs1, Precision::D);
 }
 
 void Assembler::FABS_D(FPR rd, FPR rs) noexcept {
-    FSGNJX_D(rd, rs, rs);
+    FABS(rd, rs, Precision::D);
 }
 void Assembler::FMV_D(FPR rd, FPR rs) noexcept {
-    FSGNJ_D(rd, rs, rs);
+    FMV(rd, rs, Precision::D);
 }
 void Assembler::FNEG_D(FPR rd, FPR rs) noexcept {
-    FSGNJN_D(rd, rs, rs);
+    FNEG(rd, rs, Precision::D);
 }
 
 // RV64D Extension Instructions
@@ -291,10 +264,10 @@ void Assembler::FMV_X_D(GPR rd, FPR rs1) noexcept {
 // RV32Q Extension Instructions
 
 void Assembler::FADD_Q(FPR rd, FPR rs1, FPR rs2, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0000011, rs2, rs1, rmode, rd, 0b1010011);
+    FADD(rd, rs1, rs2, Precision::Q, rmode);
 }
 void Assembler::FCLASS_Q(GPR rd, FPR rs1) noexcept {
-    EmitRType(m_buffer, 0b1110011, f0, rs1, 0b001, rd, 0b1010011);
+    FCLASS(rd, rs1, Precision::Q);
 }
 void Assembler::FCVT_Q_W(FPR rd, GPR rs1, RMode rmode) noexcept {
     EmitRType(m_buffer, 0b1101011, f0, rs1, static_cast<uint32_t>(rmode), rd, 0b1010011);
@@ -321,70 +294,68 @@ void Assembler::FCVT_S_Q(FPR rd, FPR rs1, RMode rmode) noexcept {
     EmitRType(m_buffer, 0b0100000, f3, rs1, static_cast<uint32_t>(rmode), rd, 0b1010011);
 }
 void Assembler::FDIV_Q(FPR rd, FPR rs1, FPR rs2, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0001111, rs2, rs1, rmode, rd, 0b1010011);
+    FDIV(rd, rs1, rs2, Precision::Q, rmode);
 }
 void Assembler::FEQ_Q(GPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b1010011, rs2, rs1, 0b010, rd, 0b1010011);
+    FEQ(rd, rs1, rs2, Precision::Q);
 }
 void Assembler::FLE_Q(GPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b1010011, rs2, rs1, 0b000, rd, 0b1010011);
+    FLE(rd, rs1, rs2, Precision::Q);
 }
 void Assembler::FLT_Q(GPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b1010011, rs2, rs1, 0b001, rd, 0b1010011);
+    FLT(rd, rs1, rs2, Precision::Q);
 }
 void Assembler::FLQ(FPR rd, int32_t offset, GPR rs) noexcept {
-    BISCUIT_ASSERT(IsValidSigned12BitImm(offset));
-    EmitIType(m_buffer, static_cast<uint32_t>(offset), rs, 0b100, rd, 0b0000111);
+    FL(rd, offset, rs, Precision::Q);
 }
 void Assembler::FMADD_Q(FPR rd, FPR rs1, FPR rs2, FPR rs3, RMode rmode) noexcept {
-    EmitR4Type(m_buffer, rs3, 0b11, rs2, rs1, rmode, rd, 0b1000011);
+    FMADD(rd, rs1, rs2, rs3, Precision::Q, rmode);
 }
 void Assembler::FMAX_Q(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010111, rs2, rs1, 0b001, rd, 0b1010011);
+    FMAX(rd, rs1, rs2, Precision::Q);
 }
 void Assembler::FMIN_Q(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010111, rs2, rs1, 0b000, rd, 0b1010011);
+    FMIN(rd, rs1, rs2, Precision::Q);
 }
 void Assembler::FMSUB_Q(FPR rd, FPR rs1, FPR rs2, FPR rs3, RMode rmode) noexcept {
-    EmitR4Type(m_buffer, rs3, 0b11, rs2, rs1, rmode, rd, 0b1000111);
+    FMSUB(rd, rs1, rs2, rs3, Precision::Q, rmode);
 }
 void Assembler::FMUL_Q(FPR rd, FPR rs1, FPR rs2, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0001011, rs2, rs1, rmode, rd, 0b1010011);
+    FMUL(rd, rs1, rs2, Precision::Q, rmode);
 }
 void Assembler::FNMADD_Q(FPR rd, FPR rs1, FPR rs2, FPR rs3, RMode rmode) noexcept {
-    EmitR4Type(m_buffer, rs3, 0b11, rs2, rs1, rmode, rd, 0b1001111);
+    FNMADD(rd, rs1, rs2, rs3, Precision::Q, rmode);
 }
 void Assembler::FNMSUB_Q(FPR rd, FPR rs1, FPR rs2, FPR rs3, RMode rmode) noexcept {
-    EmitR4Type(m_buffer, rs3, 0b11, rs2, rs1, rmode, rd, 0b1001011);
+    FNMSUB(rd, rs1, rs2, rs3, Precision::Q, rmode);
 }
 void Assembler::FSGNJ_Q(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010011, rs2, rs1, 0b000, rd, 0b1010011);
+    FSGNJ(rd, rs1, rs2, Precision::Q);
 }
 void Assembler::FSGNJN_Q(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010011, rs2, rs1, 0b001, rd, 0b1010011);
+    FSGNJN(rd, rs1, rs2, Precision::Q);
 }
 void Assembler::FSGNJX_Q(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010011, rs2, rs1, 0b010, rd, 0b1010011);
+    FSGNJX(rd, rs1, rs2, Precision::Q);
 }
 void Assembler::FSQRT_Q(FPR rd, FPR rs1, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0101111, f0, rs1, rmode, rd, 0b1010011);
+    FSQRT(rd, rs1, Precision::Q, rmode);
 }
 void Assembler::FSUB_Q(FPR rd, FPR rs1, FPR rs2, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0000111, rs2, rs1, rmode, rd, 0b1010011);
+    FSUB(rd, rs1, rs2, Precision::Q, rmode);
 }
 void Assembler::FSQ(FPR rs2, int32_t offset, GPR rs1) noexcept {
-    BISCUIT_ASSERT(IsValidSigned12BitImm(offset));
-    EmitSType(m_buffer, static_cast<uint32_t>(offset), rs2, rs1, 0b100, 0b0100111);
+    FS(rs2, offset, rs1, Precision::Q);
 }
 
 void Assembler::FABS_Q(FPR rd, FPR rs) noexcept {
-    FSGNJX_Q(rd, rs, rs);
+    FABS(rd, rs, Precision::Q);
 }
 void Assembler::FMV_Q(FPR rd, FPR rs) noexcept {
-    FSGNJ_Q(rd, rs, rs);
+    FMV(rd, rs, Precision::Q);
 }
 void Assembler::FNEG_Q(FPR rd, FPR rs) noexcept {
-    FSGNJN_Q(rd, rs, rs);
+    FNEG(rd, rs, Precision::Q);
 }
 
 // RV64Q Extension Instructions
@@ -409,10 +380,10 @@ void Assembler::FCVT_Q_LU(FPR rd, GPR rs1, RMode rmode) noexcept {
 // RV32Zfh Extension Instructions
 
 void Assembler::FADD_H(FPR rd, FPR rs1, FPR rs2, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0000010, rs2, rs1, rmode, rd, 0b1010011);
+    FADD(rd, rs1, rs2, Precision::H, rmode);
 }
 void Assembler::FCLASS_H(GPR rd, FPR rs1) noexcept {
-    EmitRType(m_buffer, 0b1110010, f0, rs1, 0b001, rd, 0b1010011);
+    FCLASS(rd, rs1, Precision::H);
 }
 void Assembler::FCVT_D_H(FPR rd, FPR rs1, RMode rmode) noexcept {
     EmitRType(m_buffer, 0b0100001, f2, rs1, static_cast<uint32_t>(rmode), rd, 0b1010011);
@@ -445,35 +416,34 @@ void Assembler::FCVT_WU_H(GPR rd, FPR rs1, RMode rmode) noexcept {
     EmitRType(m_buffer, 0b1100010, f1, rs1, static_cast<uint32_t>(rmode), rd, 0b1010011);
 }
 void Assembler::FDIV_H(FPR rd, FPR rs1, FPR rs2, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0001110, rs2, rs1, rmode, rd, 0b1010011);
+    FDIV(rd, rs1, rs2, Precision::H, rmode);
 }
 void Assembler::FEQ_H(GPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b1010010, rs2, rs1, 0b010, rd, 0b1010011);
+    FEQ(rd, rs1, rs2, Precision::H);
 }
 void Assembler::FLE_H(GPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b1010010, rs2, rs1, 0b000, rd, 0b1010011);
+    FLE(rd, rs1, rs2, Precision::H);
 }
 void Assembler::FLH(FPR rd, int32_t offset, GPR rs) noexcept {
-    BISCUIT_ASSERT(IsValidSigned12BitImm(offset));
-    EmitIType(m_buffer, static_cast<uint32_t>(offset), rs, 0b001, rd, 0b0000111);
+    FL(rd, offset, rs, Precision::H);
 }
 void Assembler::FLT_H(GPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b1010010, rs2, rs1, 0b001, rd, 0b1010011);
+    FLT(rd, rs1, rs2, Precision::H);
 }
 void Assembler::FMADD_H(FPR rd, FPR rs1, FPR rs2, FPR rs3, RMode rmode) noexcept {
-    EmitR4Type(m_buffer, rs3, 0b10, rs2, rs1, rmode, rd, 0b1000011);
+    FMADD(rd, rs1, rs2, rs3, Precision::H, rmode);
 }
 void Assembler::FMAX_H(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010110, rs2, rs1, 0b001, rd, 0b1010011);
+    FMAX(rd, rs1, rs2, Precision::H);
 }
 void Assembler::FMIN_H(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010110, rs2, rs1, 0b000, rd, 0b1010011);
+    FMIN(rd, rs1, rs2, Precision::H);
 }
 void Assembler::FMSUB_H(FPR rd, FPR rs1, FPR rs2, FPR rs3, RMode rmode) noexcept {
-    EmitR4Type(m_buffer, rs3, 0b10, rs2, rs1, rmode, rd, 0b1000111);
+    FMSUB(rd, rs1, rs2, rs3, Precision::H, rmode);
 }
 void Assembler::FMUL_H(FPR rd, FPR rs1, FPR rs2, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0001010, rs2, rs1, rmode, rd, 0b1010011);
+    FMUL(rd, rs1, rs2, Precision::H, rmode);
 }
 void Assembler::FMV_H_X(FPR rd, GPR rs1) noexcept {
     EmitRType(m_buffer, 0b1111010, f0, rs1, 0b000, rd, 0b1010011);
@@ -482,29 +452,28 @@ void Assembler::FMV_X_H(GPR rd, FPR rs1) noexcept {
     EmitRType(m_buffer, 0b1110010, f0, rs1, 0b000, rd, 0b1010011);
 }
 void Assembler::FNMADD_H(FPR rd, FPR rs1, FPR rs2, FPR rs3, RMode rmode) noexcept {
-    EmitR4Type(m_buffer, rs3, 0b10, rs2, rs1, rmode, rd, 0b1001111);
+    FNMADD(rd, rs1, rs2, rs3, Precision::H, rmode);
 }
 void Assembler::FNMSUB_H(FPR rd, FPR rs1, FPR rs2, FPR rs3, RMode rmode) noexcept {
-    EmitR4Type(m_buffer, rs3, 0b10, rs2, rs1, rmode, rd, 0b1001011);
+    FNMSUB(rd, rs1, rs2, rs3, Precision::H, rmode);
 }
 void Assembler::FSGNJ_H(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010010, rs2, rs1, 0b000, rd, 0b1010011);
+    FSGNJ(rd, rs1, rs2, Precision::H);
 }
 void Assembler::FSGNJN_H(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010010, rs2, rs1, 0b001, rd, 0b1010011);
+    FSGNJN(rd, rs1, rs2, Precision::H);
 }
 void Assembler::FSGNJX_H(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010010, rs2, rs1, 0b010, rd, 0b1010011);
+    FSGNJX(rd, rs1, rs2, Precision::H);
 }
 void Assembler::FSH(FPR rs2, int32_t offset, GPR rs1) noexcept {
-    BISCUIT_ASSERT(IsValidSigned12BitImm(offset));
-    EmitSType(m_buffer, static_cast<uint32_t>(offset), rs2, rs1, 0b001, 0b0100111);
+    FS(rs2, offset, rs1, Precision::H);
 }
 void Assembler::FSQRT_H(FPR rd, FPR rs1, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0101110, f0, rs1, rmode, rd, 0b1010011);
+    FSQRT(rd, rs1, Precision::H, rmode);
 }
 void Assembler::FSUB_H(FPR rd, FPR rs1, FPR rs2, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0000110, rs2, rs1, rmode, rd, 0b1010011);
+    FSUB(rd, rs1, rs2, Precision::H, rmode);
 }
 
 // RV64Zfh Extension Instructions
@@ -573,65 +542,65 @@ static void FLIImpl(CodeBuffer& buffer, uint32_t funct7, FPR rd, double value) n
 }
 
 void Assembler::FLI_D(FPR rd, double value) noexcept {
-    FLIImpl(m_buffer, 0b1111001, rd, value);
+    FLI(rd, value, Precision::D);
 }
 void Assembler::FLI_H(FPR rd, double value) noexcept {
-    FLIImpl(m_buffer, 0b1111010, rd, value);
+    FLI(rd, value, Precision::H);
 }
 void Assembler::FLI_S(FPR rd, double value) noexcept {
-    FLIImpl(m_buffer, 0b1111000, rd, value);
+    FLI(rd, value, Precision::S);
 }
 
 void Assembler::FMINM_D(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010101, rs2, rs1, 0b010, rd, 0b1010011);
+    FMINM(rd, rs1, rs2, Precision::D);
 }
 void Assembler::FMINM_H(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010110, rs2, rs1, 0b010, rd, 0b1010011);
+    FMINM(rd, rs1, rs2, Precision::H);
 }
 void Assembler::FMINM_Q(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010111, rs2, rs1, 0b010, rd, 0b1010011);
+    FMINM(rd, rs1, rs2, Precision::Q);
 }
 void Assembler::FMINM_S(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010100, rs2, rs1, 0b010, rd, 0b1010011);
+    FMINM(rd, rs1, rs2, Precision::S);
 }
 
 void Assembler::FMAXM_D(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010101, rs2, rs1, 0b011, rd, 0b1010011);
+    FMAXM(rd, rs1, rs2, Precision::D);
 }
 void Assembler::FMAXM_H(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010110, rs2, rs1, 0b011, rd, 0b1010011);
+    FMAXM(rd, rs1, rs2, Precision::H);
 }
 void Assembler::FMAXM_Q(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010111, rs2, rs1, 0b011, rd, 0b1010011);
+    FMAXM(rd, rs1, rs2, Precision::Q);
 }
 void Assembler::FMAXM_S(FPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b0010100, rs2, rs1, 0b011, rd, 0b1010011);
+    FMAXM(rd, rs1, rs2, Precision::S);
 }
 
 void Assembler::FROUND_D(FPR rd, FPR rs1, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0100001, f4, rs1, static_cast<uint32_t>(rmode), rd, 0b1010011);
+    FROUND(rd, rs1, Precision::D, rmode);
 }
 void Assembler::FROUND_H(FPR rd, FPR rs1, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0100010, f4, rs1, static_cast<uint32_t>(rmode), rd, 0b1010011);
+    FROUND(rd, rs1, Precision::H, rmode);
 }
 void Assembler::FROUND_Q(FPR rd, FPR rs1, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0100011, f4, rs1, static_cast<uint32_t>(rmode), rd, 0b1010011);
+    FROUND(rd, rs1, Precision::Q, rmode);
 }
 void Assembler::FROUND_S(FPR rd, FPR rs1, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0100000, f4, rs1, static_cast<uint32_t>(rmode), rd, 0b1010011);
+    FROUND(rd, rs1, Precision::S, rmode);
 }
 
 void Assembler::FROUNDNX_D(FPR rd, FPR rs1, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0100001, f5, rs1, static_cast<uint32_t>(rmode), rd, 0b1010011);
+    FROUNDNX(rd, rs1, Precision::D, rmode);
 }
 void Assembler::FROUNDNX_H(FPR rd, FPR rs1, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0100010, f5, rs1, static_cast<uint32_t>(rmode), rd, 0b1010011);
+    FROUNDNX(rd, rs1, Precision::H, rmode);
 }
 void Assembler::FROUNDNX_Q(FPR rd, FPR rs1, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0100011, f5, rs1, static_cast<uint32_t>(rmode), rd, 0b1010011);
+    FROUNDNX(rd, rs1, Precision::Q, rmode);
 }
 void Assembler::FROUNDNX_S(FPR rd, FPR rs1, RMode rmode) noexcept {
-    EmitRType(m_buffer, 0b0100000, f5, rs1, static_cast<uint32_t>(rmode), rd, 0b1010011);
+    FROUNDNX(rd, rs1, Precision::S, rmode);
 }
 
 void Assembler::FCVTMOD_W_D(GPR rd, FPR rs1) noexcept {
@@ -652,31 +621,31 @@ void Assembler::FMVP_Q_X(FPR rd, GPR rs1, GPR rs2) noexcept {
 }
 
 void Assembler::FLEQ_D(GPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b1010001, rs2, rs1, 0b100, rd, 0b1010011);
+    FLEQ(rd, rs1, rs2, Precision::D);
 }
 void Assembler::FLTQ_D(GPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b1010001, rs2, rs1, 0b101, rd, 0b1010011);
+    FLTQ(rd, rs1, rs2, Precision::D);
 }
 
 void Assembler::FLEQ_H(GPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b1010010, rs2, rs1, 0b100, rd, 0b1010011);
+    FLEQ(rd, rs1, rs2, Precision::H);
 }
 void Assembler::FLTQ_H(GPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b1010010, rs2, rs1, 0b101, rd, 0b1010011);
+    FLTQ(rd, rs1, rs2, Precision::H);
 }
 
 void Assembler::FLEQ_Q(GPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b1010011, rs2, rs1, 0b100, rd, 0b1010011);
+    FLEQ(rd, rs1, rs2, Precision::Q);
 }
 void Assembler::FLTQ_Q(GPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b1010011, rs2, rs1, 0b101, rd, 0b1010011);
+    FLTQ(rd, rs1, rs2, Precision::Q);
 }
 
 void Assembler::FLEQ_S(GPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b1010000, rs2, rs1, 0b100, rd, 0b1010011);
+    FLEQ(rd, rs1, rs2, Precision::S);
 }
 void Assembler::FLTQ_S(GPR rd, FPR rs1, FPR rs2) noexcept {
-    EmitRType(m_buffer, 0b1010000, rs2, rs1, 0b101, rd, 0b1010011);
+    FLTQ(rd, rs1, rs2, Precision::S);
 }
 
 // Zfbfmin, Zvfbfmin, Zvfbfwma Extension Instructions
@@ -687,6 +656,154 @@ void Assembler::FCVT_BF16_S(FPR rd, FPR rs, RMode rmode) noexcept {
 
 void Assembler::FCVT_S_BF16(FPR rd, FPR rs, RMode rmode) noexcept {
     EmitRType(m_buffer, 0b0100000, f6, rs, static_cast<uint32_t>(rmode), rd, 0b1010011);
+}
+
+// Generic form of floating-point instructions
+
+void Assembler::FADD(FPR rd, FPR rs1, FPR rs2, Precision prec, RMode rmode) noexcept {
+    EmitRType(m_buffer, PrecisionFunct7(0b0000000, prec), rs2, rs1, rmode, rd, 0b1010011);
+}
+void Assembler::FSUB(FPR rd, FPR rs1, FPR rs2, Precision prec, RMode rmode) noexcept {
+    EmitRType(m_buffer, PrecisionFunct7(0b0000100, prec), rs2, rs1, rmode, rd, 0b1010011);
+}
+void Assembler::FMUL(FPR rd, FPR rs1, FPR rs2, Precision prec, RMode rmode) noexcept {
+    EmitRType(m_buffer, PrecisionFunct7(0b0001000, prec), rs2, rs1, rmode, rd, 0b1010011);
+}
+void Assembler::FDIV(FPR rd, FPR rs1, FPR rs2, Precision prec, RMode rmode) noexcept {
+    EmitRType(m_buffer, PrecisionFunct7(0b0001100, prec), rs2, rs1, rmode, rd, 0b1010011);
+}
+void Assembler::FSQRT(FPR rd, FPR rs1, Precision prec, RMode rmode) noexcept {
+    EmitRType(m_buffer, PrecisionFunct7(0b0101100, prec), f0, rs1, rmode, rd, 0b1010011);
+}
+
+void Assembler::FMADD(FPR rd, FPR rs1, FPR rs2, FPR rs3, Precision prec, RMode rmode) noexcept {
+    EmitR4Type(m_buffer, rs3, static_cast<uint32_t>(prec), rs2, rs1, rmode, rd, 0b1000011);
+}
+void Assembler::FMSUB(FPR rd, FPR rs1, FPR rs2, FPR rs3, Precision prec, RMode rmode) noexcept {
+    EmitR4Type(m_buffer, rs3, static_cast<uint32_t>(prec), rs2, rs1, rmode, rd, 0b1000111);
+}
+void Assembler::FNMADD(FPR rd, FPR rs1, FPR rs2, FPR rs3, Precision prec, RMode rmode) noexcept {
+    EmitR4Type(m_buffer, rs3, static_cast<uint32_t>(prec), rs2, rs1, rmode, rd, 0b1001111);
+}
+void Assembler::FNMSUB(FPR rd, FPR rs1, FPR rs2, FPR rs3, Precision prec, RMode rmode) noexcept {
+    EmitR4Type(m_buffer, rs3, static_cast<uint32_t>(prec), rs2, rs1, rmode, rd, 0b1001011);
+}
+
+void Assembler::FSGNJ(FPR rd, FPR rs1, FPR rs2, Precision prec) noexcept {
+    EmitRType(m_buffer, PrecisionFunct7(0b0010000, prec), rs2, rs1, 0b000, rd, 0b1010011);
+}
+void Assembler::FSGNJN(FPR rd, FPR rs1, FPR rs2, Precision prec) noexcept {
+    EmitRType(m_buffer, PrecisionFunct7(0b0010000, prec), rs2, rs1, 0b001, rd, 0b1010011);
+}
+void Assembler::FSGNJX(FPR rd, FPR rs1, FPR rs2, Precision prec) noexcept {
+    EmitRType(m_buffer, PrecisionFunct7(0b0010000, prec), rs2, rs1, 0b010, rd, 0b1010011);
+}
+
+void Assembler::FMIN(FPR rd, FPR rs1, FPR rs2, Precision prec) noexcept {
+    EmitRType(m_buffer, PrecisionFunct7(0b0010100, prec), rs2, rs1, 0b000, rd, 0b1010011);
+}
+void Assembler::FMAX(FPR rd, FPR rs1, FPR rs2, Precision prec) noexcept {
+    EmitRType(m_buffer, PrecisionFunct7(0b0010100, prec), rs2, rs1, 0b001, rd, 0b1010011);
+}
+void Assembler::FMINM(FPR rd, FPR rs1, FPR rs2, Precision prec) noexcept {
+    EmitRType(m_buffer, PrecisionFunct7(0b0010100, prec), rs2, rs1, 0b010, rd, 0b1010011);
+}
+void Assembler::FMAXM(FPR rd, FPR rs1, FPR rs2, Precision prec) noexcept {
+    EmitRType(m_buffer, PrecisionFunct7(0b0010100, prec), rs2, rs1, 0b011, rd, 0b1010011);
+}
+
+void Assembler::FLE(GPR rd, FPR rs1, FPR rs2, Precision prec) noexcept {
+    EmitRType(m_buffer, PrecisionFunct7(0b1010000, prec), rs2, rs1, 0b000, rd, 0b1010011);
+}
+void Assembler::FLT(GPR rd, FPR rs1, FPR rs2, Precision prec) noexcept {
+    EmitRType(m_buffer, PrecisionFunct7(0b1010000, prec), rs2, rs1, 0b001, rd, 0b1010011);
+}
+void Assembler::FEQ(GPR rd, FPR rs1, FPR rs2, Precision prec) noexcept {
+    EmitRType(m_buffer, PrecisionFunct7(0b1010000, prec), rs2, rs1, 0b010, rd, 0b1010011);
+}
+void Assembler::FLEQ(GPR rd, FPR rs1, FPR rs2, Precision prec) noexcept {
+    EmitRType(m_buffer, PrecisionFunct7(0b1010000, prec), rs2, rs1, 0b100, rd, 0b1010011);
+}
+void Assembler::FLTQ(GPR rd, FPR rs1, FPR rs2, Precision prec) noexcept {
+    EmitRType(m_buffer, PrecisionFunct7(0b1010000, prec), rs2, rs1, 0b101, rd, 0b1010011);
+}
+
+void Assembler::FCLASS(GPR rd, FPR rs1, Precision prec) noexcept {
+    EmitRType(m_buffer, PrecisionFunct7(0b1110000, prec), f0, rs1, 0b001, rd, 0b1010011);
+}
+
+void Assembler::FROUND(FPR rd, FPR rs1, Precision prec, RMode rmode) noexcept {
+    EmitRType(m_buffer, PrecisionFunct7(0b0100000, prec), f4, rs1, static_cast<uint32_t>(rmode), rd, 0b1010011);
+}
+void Assembler::FROUNDNX(FPR rd, FPR rs1, Precision prec, RMode rmode) noexcept {
+    EmitRType(m_buffer, PrecisionFunct7(0b0100000, prec), f5, rs1, static_cast<uint32_t>(rmode), rd, 0b1010011);
+}
+
+void Assembler::FLI(FPR rd, double value, Precision prec) noexcept {
+    BISCUIT_ASSERT(prec != Precision::Q);
+    FLIImpl(m_buffer, PrecisionFunct7(0b1111000, prec), rd, value);
+}
+
+
+void Assembler::FL(FPR rd, int32_t offset, GPR rs, Precision prec) noexcept {
+    BISCUIT_ASSERT(IsValidSigned12BitImm(offset));
+
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (prec == Precision::S && IsRV32(m_features)) {
+            if (rs == sp && offset >= 0 && offset <= 252 && (offset & 0b11) == 0) {
+                C_FLWSP(rd, static_cast<uint32_t>(offset));
+                return;
+            } else if (offset >= 0 && offset <= 124 && (offset & 0b11) == 0 && IsValid3BitCompressedReg(rd) && IsValid3BitCompressedReg(rs)) {
+                C_FLW(rd, static_cast<uint32_t>(offset), rs);
+                return;
+            }
+        } else if (prec == Precision::D && IsRV64(m_features)) {
+            if (rs == sp && offset >= 0 && offset <= 504 && (offset & 0b111) == 0) {
+                C_FLDSP(rd, static_cast<uint32_t>(offset));
+                return;
+            } else if (offset >= 0 && offset <= 248 && (offset & 0b111) == 0 && IsValid3BitCompressedReg(rd) && IsValid3BitCompressedReg(rs)) {
+                C_FLD(rd, static_cast<uint32_t>(offset), rs);
+                return;
+            }
+        }
+    }
+
+    EmitIType(m_buffer, static_cast<uint32_t>(offset), rs, PrecisionWidth(prec), rd, 0b0000111);
+}
+void Assembler::FS(FPR rs2, int32_t offset, GPR rs1, Precision prec) noexcept {
+    BISCUIT_ASSERT(IsValidSigned12BitImm(offset));
+
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (prec == Precision::S && IsRV32(m_features)) {
+            if (rs1 == sp && offset >= 0 && offset <= 252 && (offset & 0b11) == 0) {
+                C_FSWSP(rs2, static_cast<uint32_t>(offset));
+                return;
+            } else if (offset >= 0 && offset <= 124 && (offset & 0b11) == 0 && IsValid3BitCompressedReg(rs2) && IsValid3BitCompressedReg(rs1)) {
+                C_FSW(rs2, static_cast<uint32_t>(offset), rs1);
+                return;
+            }
+        } else if (prec == Precision::D && IsRV64(m_features)) {
+            if (rs1 == sp && offset >= 0 && offset <= 504 && (offset & 0b111) == 0) {
+                C_FSDSP(rs2, static_cast<uint32_t>(offset));
+                return;
+            } else if (offset >= 0 && offset <= 248 && (offset & 0b111) == 0 && IsValid3BitCompressedReg(rs2) && IsValid3BitCompressedReg(rs1)) {
+                C_FSD(rs2, static_cast<uint32_t>(offset), rs1);
+                return;
+            }
+        }
+    }
+
+    EmitSType(m_buffer, static_cast<uint32_t>(offset), rs2, rs1, PrecisionWidth(prec), 0b0100111);
+}
+
+void Assembler::FABS(FPR rd, FPR rs, Precision prec) noexcept {
+    FSGNJX(rd, rs, rs, prec);
+}
+void Assembler::FMV(FPR rd, FPR rs, Precision prec) noexcept {
+    FSGNJ(rd, rs, rs, prec);
+}
+void Assembler::FNEG(FPR rd, FPR rs, Precision prec) noexcept {
+    FSGNJN(rd, rs, rs, prec);
 }
 
 } // namespace biscuit

@@ -601,7 +601,6 @@ void EmitInstruction(biscuit::Assembler& as, biscuit::RISCVExtension extension) 
     }
     case RISCVExtension::Zicclsm: {
         // Unaligned scalar and vector memory accesses
-        as.LW(t1, 1, t0);
         as.SW(x0, 1, t0);
         as.VSETIVLI(x0, 1, SEW::E32);
         as.ADDI(t1, t0, 1);
@@ -622,7 +621,7 @@ bool CheckExtensionSignal(biscuit::RISCVExtension extension) {
     sa.sa_flags = SA_SIGINFO;
     sigemptyset(&sa.sa_mask);
 
-    int result = sigaction(SIGILL, &sa, &old_ill);
+    int result = sigaction(SIGILL, &sa, &old_sa);
     BISCUIT_ASSERT(result == 0);
 
     result = sigaction(SIGSEGV, &sa, &old_segv);
@@ -806,8 +805,6 @@ bool CheckExtensionSyscall(biscuit::RISCVExtension extension) {
         return (features0 & RISCV_HWPROBE_EXT_ZAAMO) != 0;
     case RISCVExtension::Zalrsc:
         return (features0 & RISCV_HWPROBE_EXT_ZALRSC) != 0;
-    case RISCVExtension::Zicclsm:
-        BISCUIT_ASSERT(false);
     }
 
     return false;
