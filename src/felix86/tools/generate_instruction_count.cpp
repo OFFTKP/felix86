@@ -1976,10 +1976,12 @@ int main() {
     }
 
     Extensions::Zicclsm = true;
+    g_config.reduced_precision = true;
     rec.setFlagMode(FlagMode::Default);
     gen_sequence(rec, json, "crysis1", false);
     gen_sequence(rec, json, "crysis2", false);
     gen_sequence(rec, json, "crysis3", false);
+    gen_sequence(rec, json, "tombraider1", false);
     gen_sequence(rec, json, "7z1", false);
 
     std::ofstream many("counts/HotBlocks.json");
