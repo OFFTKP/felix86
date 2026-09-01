@@ -12043,11 +12043,19 @@ FAST_HANDLE(FLD) {
             }
             break;
         }
+        default: {
+            UNREACHABLE();
+            break;
+        }
         }
     } else {
-        biscuit::FPR st = rec.getST(&operands[0]);
+        biscuit::FPR st = rec.getST(&operands[0], true, false);
+        bool is32bit = g_config.reduced_precision >= 2 && rec.isX87Reg32Bit(st);
         biscuit::FPR new_reg = rec.pushX87();
         as.FMV_D(new_reg, st); // move to temp because getST could return allocated FPR
+        if (is32bit) {
+            rec.markX87RegAs32Bit(new_reg);
+        }
     }
 }
 
@@ -12225,12 +12233,14 @@ FAST_HANDLE(FST) {
 FAST_HANDLE(FXCH) {
     u8 index = operands[0].reg.value - ZYDIS_REGISTER_ST0;
     ASSERT(index >= 1 && index <= 7);
-    biscuit::FPR st0 = rec.getST(0);
-    biscuit::FPR sti = rec.getST(index);
+    biscuit::FPR st0 = rec.getST(0, true, false);
+    biscuit::FPR sti = rec.getST(index, true, false);
+    bool st0_32bit = g_config.reduced_precision >= 2 && rec.isX87Reg32Bit(st0);
+    bool sti_32bit = g_config.reduced_precision >= 2 && rec.isX87Reg32Bit(sti);
     biscuit::FPR temp = rec.scratchFPR();
     as.FMV_D(temp, st0);
-    rec.setST(0, sti);
-    rec.setST(index, temp);
+    rec.setST(0, sti, sti_32bit);
+    rec.setST(index, temp, st0_32bit);
 }
 
 FAST_HANDLE(FSTP) {

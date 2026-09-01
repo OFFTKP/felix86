@@ -122,7 +122,7 @@ bool Config::initialize(bool ignore_envs) {
                     extreme_config.auto_compress = false;
                     extreme_config.scan_ahead_multi = true;
                     extreme_config.no_address_overflow = true;
-                    extreme_config.reduced_precision = true;
+                    extreme_config.reduced_precision = 2;
                     Config::save(profiles_path / "extreme.toml", extreme_config, true);
                 }
 
