@@ -273,8 +273,13 @@ static void setupMainStack(ThreadState* state) {
         map.arg_end = arg_end;
         map.env_start = env_start;
         map.env_end = env_end;
-        map.auxv = (__u64*)g_guest_auxv;
-        map.auxv_size = g_guest_auxv_size;
+        if (g_config.proc_self_auxv) {
+            // Breaks gdb, so we make this configurable
+            // TODO: if we ever emulate proc self exe to outside felix86 processes correctly, we could
+            // reuse that code to emulate proc self auxv and leave the host visible /proc/self/auxv untouched
+            map.auxv = (__u64*)g_guest_auxv;
+            map.auxv_size = g_guest_auxv_size;
+        }
         int result = prctl(PR_SET_MM, PR_SET_MM_MAP, &map, sizeof(prctl_mm_map), 0L);
         if (result != 0) {
             WARN("Failed to run PR_SET_MM_MAP");
