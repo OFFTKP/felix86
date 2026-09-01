@@ -859,6 +859,7 @@ void Recompiler::flushX87() {
     bool top_got = false;
     bool x87_dirty = false;
     bool tag_dirty = false;
+    biscuit::FPR temp_fpr = scratchFPR();
     if (g_config.reduced_precision) {
         for (int i = 0; i < 8; i++) {
             if (x87_reg_cache[i].dirty) {
@@ -880,7 +881,12 @@ void Recompiler::flushX87() {
                 as.SLLI(address, address, 1);
                 static_assert(sizeof(ThreadState::ctx.st[0]) == sizeof(Float80) && sizeof(Float80) == 10);
                 as.ADD(address, address, threadStatePointer());
-                as.FSD(x87_reg_cache[i].reg, offsetof(ThreadState, ctx.st), address);
+                biscuit::FPR value = x87_reg_cache[i].reg;
+                if (x87_reg_cache[i].is32bit) {
+                    as.FCVT_D_S(temp_fpr, value);
+                    value = temp_fpr;
+                }
+                as.FSD(value, offsetof(ThreadState, ctx.st), address);
 
                 if (x87_reg_cache[i].modify_tag) {
                     ASSERT(pushed_this_block > 0);
@@ -922,7 +928,7 @@ void Recompiler::flushX87() {
 
     popScratch();
     popScratch();
-
+    popScratchFPR();
     resetX87();
 }
 
@@ -3325,9 +3331,13 @@ biscuit::GPR Recompiler::getTOP() {
     return top;
 }
 
-biscuit::FPR Recompiler::getST(int index, bool dirty) {
+biscuit::FPR Recompiler::getST(int index, bool dirty, bool convert_to_64_bit) {
     if (x87_reg_cache[index].loaded) {
-        return x87_reg_cache[index].reg;
+        biscuit::FPR reg = x87_reg_cache[index].reg;
+        if (g_config.reduced_precision >= 2 && convert_to_64_bit) {
+            markX87RegAs64Bit(reg);
+        }
+        return reg;
     }
 
     // The ST in memory needs to adjust for the regs we have pushed but not yet
@@ -3356,10 +3366,10 @@ biscuit::FPR Recompiler::getST(int index, bool dirty) {
     return x87_reg_cache[index].reg;
 }
 
-biscuit::FPR Recompiler::getST(ZydisDecodedOperand* operand, bool dirty) {
+biscuit::FPR Recompiler::getST(ZydisDecodedOperand* operand, bool dirty, bool convert_to_64_bit) {
     if (operand->type == ZYDIS_OPERAND_TYPE_REGISTER) {
         ASSERT(operand->reg.value >= ZYDIS_REGISTER_ST0 && operand->reg.value <= ZYDIS_REGISTER_ST7);
-        return getST(operand->reg.value - ZYDIS_REGISTER_ST0, dirty);
+        return getST(operand->reg.value - ZYDIS_REGISTER_ST0, dirty, convert_to_64_bit);
     } else if (operand->type == ZYDIS_OPERAND_TYPE_MEMORY) {
         switch (operand->size) {
         case 32: {
@@ -3376,7 +3386,9 @@ biscuit::FPR Recompiler::getST(ZydisDecodedOperand* operand, bool dirty) {
                 address = lea(operand, false);
                 as.FLW(st, 0, address);
             }
-            as.FCVT_D_S(st, st);
+            if (convert_to_64_bit) {
+                as.FCVT_D_S(st, st);
+            }
             return st;
         }
         case 64: {
@@ -3410,23 +3422,31 @@ biscuit::FPR Recompiler::getST(ZydisDecodedOperand* operand, bool dirty) {
     }
 }
 
-void Recompiler::setST(int index, biscuit::FPR st) {
-    biscuit::FPR stN = getST(index);
+void Recompiler::setST(int index, biscuit::FPR st, bool is32bit) {
+    biscuit::FPR stN = getST(index, true, false);
     if (stN != st) {
         as.FMV_D(stN, st);
+        setX87RegPrecision(stN, is32bit);
+    } else if (is32bit) {
+        markX87RegAs32Bit(stN);
+    } else {
+        markX87RegAs64Bit(stN);
     }
 }
 
-void Recompiler::setST(ZydisDecodedOperand* operand, biscuit::FPR value) {
+void Recompiler::setST(ZydisDecodedOperand* operand, biscuit::FPR value, bool is32bit) {
     if (operand->type == ZYDIS_OPERAND_TYPE_REGISTER) {
         ASSERT(operand->reg.value >= ZYDIS_REGISTER_ST0 && operand->reg.value <= ZYDIS_REGISTER_ST7);
-        return setST(operand->reg.value - ZYDIS_REGISTER_ST0, value);
+        return setST(operand->reg.value - ZYDIS_REGISTER_ST0, value, is32bit);
     } else if (operand->type == ZYDIS_OPERAND_TYPE_MEMORY) {
         switch (operand->size) {
         case 32: {
-            biscuit::FPR temp = scratchFPR();
+            biscuit::FPR temp = value;
             biscuit::GPR address;
-            as.FCVT_S_D(temp, value);
+            if (!is32bit) {
+                temp = scratchFPR();
+                as.FCVT_S_D(temp, value);
+            }
             u64 immediate = operand->mem.disp.value;
             if (IsValidSigned12BitImm(immediate) && !(current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
                 g_config.no_address_overflow) { // can't do this with seg+a32
@@ -3442,6 +3462,11 @@ void Recompiler::setST(ZydisDecodedOperand* operand, biscuit::FPR value) {
         }
         case 64: {
             biscuit::GPR address;
+            if (is32bit) {
+                biscuit::FPR temp = scratchFPR();
+                as.FCVT_D_S(temp, value);
+                value = temp;
+            }
             u64 immediate = operand->mem.disp.value;
             if (IsValidSigned12BitImm(immediate) && !(current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
                 g_config.no_address_overflow) { // can't do this with seg+a32
@@ -3459,7 +3484,11 @@ void Recompiler::setST(ZydisDecodedOperand* operand, biscuit::FPR value) {
             biscuit::GPR address = lea(operand, false);
             writebackState();
             as.MV(a0, address);
-            as.FMV_D(fa0, value);
+            if (is32bit) {
+                as.FCVT_D_S(fa0, value);
+            } else {
+                as.FMV_D(fa0, value);
+            }
             call((u64)f64_to_80_mem);
             restoreState();
             break;
@@ -3745,6 +3774,7 @@ biscuit::FPR Recompiler::pushX87() {
     x87_reg_cache[0].loaded = true;
     x87_reg_cache[0].dirty = true;
     x87_reg_cache[0].modify_tag = true;
+    x87_reg_cache[0].is32bit = false;
     return x87_reg_cache[0].reg;
 }
 
@@ -3771,6 +3801,7 @@ void Recompiler::popX87() {
     x87_reg_cache[0].loaded = false;
     x87_reg_cache[0].dirty = false;
     x87_reg_cache[0].modify_tag = false;
+    x87_reg_cache[0].is32bit = false;
 
     AllocatedX87Reg temp = x87_reg_cache[0];
     x87_reg_cache[0] = x87_reg_cache[1];

@@ -31,6 +31,7 @@ struct AllocatedX87Reg {
     bool loaded = false;
     bool dirty = false;
     bool modify_tag = false;
+    bool is32bit = false;
 };
 
 struct AllocatedMMXReg {
@@ -127,13 +128,13 @@ struct Recompiler {
 
     void setTOP(biscuit::GPR top);
 
-    biscuit::FPR getST(int index, bool dirty = true);
+    biscuit::FPR getST(int index, bool dirty = true, bool convert_to_64_bit = true);
 
-    biscuit::FPR getST(ZydisDecodedOperand* operand, bool dirty = true);
+    biscuit::FPR getST(ZydisDecodedOperand* operand, bool dirty = true, bool convert_to_64_bit = true);
 
-    void setST(int index, biscuit::FPR value);
+    void setST(int index, biscuit::FPR value, bool is32bit = false);
 
-    void setST(ZydisDecodedOperand* operand, biscuit::FPR value);
+    void setST(ZydisDecodedOperand* operand, biscuit::FPR value, bool is32bit = false);
 
     x86_size_e getSize(const ZydisDecodedOperand* operand);
 
@@ -736,10 +737,54 @@ struct Recompiler {
             x87_reg_cache[i].loaded = false;
             x87_reg_cache[i].dirty = false;
             x87_reg_cache[i].modify_tag = false;
+            x87_reg_cache[i].is32bit = false;
             mmx_reg_cache[i].loaded = false;
             mmx_reg_cache[i].dirty = false;
         }
         pushed_this_block = 0;
+    }
+
+    void markX87RegAs32Bit(biscuit::FPR reg) {
+        for (auto& entry : x87_reg_cache) {
+            if (entry.loaded && entry.reg == reg) {
+                entry.is32bit = true;
+                return;
+            }
+        }
+        UNREACHABLE();
+    }
+
+    void markX87RegAs64Bit(biscuit::FPR reg) {
+        for (auto& entry : x87_reg_cache) {
+            if (entry.loaded && entry.reg == reg) {
+                if (entry.is32bit) {
+                    as.FCVT_D_S(reg, reg);
+                }
+                entry.is32bit = false;
+                return;
+            }
+        }
+        UNREACHABLE();
+    }
+
+    void setX87RegPrecision(biscuit::FPR reg, bool is32bit) {
+        for (auto& entry : x87_reg_cache) {
+            if (entry.loaded && entry.reg == reg) {
+                entry.is32bit = is32bit;
+                return;
+            }
+        }
+        UNREACHABLE();
+    }
+
+    bool isX87Reg32Bit(biscuit::FPR reg) {
+        for (auto& entry : x87_reg_cache) {
+            if (entry.loaded && entry.reg == reg) {
+                return entry.is32bit;
+            }
+        }
+        UNREACHABLE();
+        return false;
     }
 
     void switchToMMX();
