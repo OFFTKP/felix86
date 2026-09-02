@@ -75,11 +75,6 @@ struct BlockMetadata {
     std::vector<u8*> pending_links{};
 };
 
-struct PageMetadata {
-    std::vector<BlockMetadata*> blocks{};
-    bool read_only{};
-};
-
 // WARN: don't allocate this struct on the stack as it's quite big due to address_cache and can lead to stack overflow
 struct Recompiler {
     // Relocatable means only emit position independent code
@@ -872,7 +867,7 @@ private:
     std::unordered_map<u64, BlockMetadata> block_metadata{};
 
     Semaphore page_map_lock;
-    std::map<u64, PageMetadata> page_map{};
+    std::map<u64, std::vector<BlockMetadata*>> page_map{};
 
     // For fast host pc -> block metadata lookup (binary search vs looking up one by one)
     // on signal handlers
