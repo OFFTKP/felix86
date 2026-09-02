@@ -169,6 +169,7 @@ typedef enum : u8 {
     X(felix86_mpsadbw)                                                                                                                               \
     X(felix86_tf_changed)                                                                                                                            \
     X(felix86_aeskeygenassist)                                                                                                                       \
+    X(felix86_warn_unaligned_atomic)                                                                                                                 \
     X(felix86_crash_and_burn)                                                                                                                        \
     X(felix86_raise_hardware_breakpoint)                                                                                                             \
     X(felix86_x87_FLD)                                                                                                                               \

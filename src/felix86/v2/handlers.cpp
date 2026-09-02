@@ -994,9 +994,27 @@ FAST_HANDLE(SUB) {
             as.ANDI(masked_address, address, 0b111);
             as.BEQZ(masked_address, &best_alignment);
             as.BLE(masked_address, mask, &good_alignment);
-            rec.callPointer(offsetof(ThreadState, felix86_crash_and_burn));
-            as.C_UNDEF();
-            as.C_UNDEF();
+            as.ADDI(sp, sp, -16);
+            as.SD(address, 0, sp);
+            as.SD(src, 8, sp);
+            rec.writebackState();
+            as.MV(a0, rec.threadStatePointer());
+            rec.callPointer(offsetof(ThreadState, felix86_warn_unaligned_atomic));
+            rec.restoreState();
+            as.LD(address, 0, sp);
+            as.LD(src, 8, sp);
+            as.ADDI(sp, sp, 16);
+
+            biscuit::Label loop_unaligned;
+            as.ANDI(masked_address, address, -8);
+            as.Bind(&loop_unaligned);
+            as.LR_D(Ordering::AQRL, mask, masked_address);
+            as.LWU(dst, 0, address);
+            as.SUBW(s_a1, dst, src);
+            as.SC_D(Ordering::AQRL, mask, mask, masked_address);
+            as.BNEZ(mask, &loop_unaligned);
+            as.SW(s_a1, 0, address);
+            as.J(&end);
             as.Bind(&good_alignment);
 
             as.ANDI(masked_address, address, -8);
