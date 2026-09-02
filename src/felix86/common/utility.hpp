@@ -165,6 +165,8 @@ std::string disassemble_one(bool mode32, u64 address);
 
 void felix86_crash_and_burn();
 
+void felix86_warn_unaligned_atomic(ThreadState* state);
+
 [[noreturn]] void felix86_exit_dispatcher(struct felix86_frame* frame);
 
 std::string felix86_mountinfo();

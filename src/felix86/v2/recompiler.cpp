@@ -854,8 +854,7 @@ void Recompiler::skipNext() {
 void Recompiler::flushX87() {
     biscuit::GPR top;
     biscuit::GPR tag_word = x0;
-    biscuit::GPR st = scratch();
-    biscuit::GPR address = scratch();
+    biscuit::GPR temp = x0;
     bool top_got = false;
     bool x87_dirty = false;
     bool tag_dirty = false;
@@ -864,6 +863,7 @@ void Recompiler::flushX87() {
         for (int i = 0; i < 8; i++) {
             if (x87_reg_cache[i].dirty) {
                 if (!top_got) {
+                    temp = scratch();
                     top = getTOP();
                     tag_word = scratch();
                     if (x87_reg_cache[i].modify_tag) {
@@ -874,25 +874,26 @@ void Recompiler::flushX87() {
                 }
                 ASSERT(x87_reg_cache[i].loaded);
                 int index = i - pushed_this_block;
-                as.ADDI(st, top, index);
-                as.ANDI(st, st, 0b111);
+                as.ADDI(temp, top, index);
+                as.ANDI(temp, temp, 0b111);
+
+                if (x87_reg_cache[i].modify_tag) {
+                    ASSERT(pushed_this_block > 0);
+                    ASSERT(tag_word != x0);
+                    as.BSET(tag_word, tag_word, temp);
+                }
+
                 // Quick multiply by sizeof(Float80)
-                as.SH2ADD(address, st, st);
-                as.SLLI(address, address, 1);
+                as.SH2ADD(temp, temp, temp);
+                as.SLLI(temp, temp, 1);
                 static_assert(sizeof(ThreadState::ctx.st[0]) == sizeof(Float80) && sizeof(Float80) == 10);
-                as.ADD(address, address, threadStatePointer());
+                as.ADD(temp, temp, threadStatePointer());
                 biscuit::FPR value = x87_reg_cache[i].reg;
                 if (x87_reg_cache[i].is32bit) {
                     as.FCVT_D_S(temp_fpr, value);
                     value = temp_fpr;
                 }
-                as.FSD(value, offsetof(ThreadState, ctx.st), address);
-
-                if (x87_reg_cache[i].modify_tag) {
-                    ASSERT(pushed_this_block > 0);
-                    ASSERT(tag_word != x0);
-                    as.BSET(tag_word, tag_word, st);
-                }
+                as.FSD(value, offsetof(ThreadState, ctx.st), temp);
                 x87_dirty = true;
             }
         }
@@ -909,12 +910,15 @@ void Recompiler::flushX87() {
         if (mmx_reg_cache[i].dirty) {
             ASSERT(!x87_dirty);
             ASSERT(mmx_reg_cache[i].loaded);
+            if (temp == x0) {
+                temp = scratch();
+            }
             setVectorState(SEW::E64, 1);
             biscuit::Vec vec = mmx_reg_cache[i].reg;
-            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, ctx.st) + i * sizeof(Float80));
-            as.VSE64(vec, address);
-            as.LI(address, -1);
-            as.SH(address, offsetof(ThreadState, ctx.st) + i * sizeof(Float80) + sizeof(u64), Recompiler::threadStatePointer());
+            as.ADDI(temp, threadStatePointer(), offsetof(ThreadState, ctx.st) + i * sizeof(Float80));
+            as.VSE64(vec, temp);
+            as.LI(temp, -1);
+            as.SH(temp, offsetof(ThreadState, ctx.st) + i * sizeof(Float80) + sizeof(u64), Recompiler::threadStatePointer());
         }
     }
 
@@ -926,8 +930,9 @@ void Recompiler::flushX87() {
         popScratch();
     }
 
-    popScratch();
-    popScratch();
+    if (temp != x0) {
+        popScratch();
+    }
     popScratchFPR();
     resetX87();
 }
@@ -2082,6 +2087,7 @@ void Recompiler::stopCompiling() {
 }
 
 void Recompiler::writebackState() {
+    int saved_scratch_index = scratch_index;
     v0Modified();
     resetVectorState();
 
@@ -2134,9 +2140,11 @@ void Recompiler::writebackState() {
 
     resetVectorState();
     cached_lea_operand = nullptr;
+    scratch_index = saved_scratch_index;
 }
 
 void Recompiler::restoreState() {
+    int saved_scratch_index = scratch_index;
     resetVectorState();
 
     biscuit::GPR rip = allocatedGPR(X86_REF_RIP);
@@ -2202,6 +2210,7 @@ void Recompiler::restoreState() {
     resetVectorState();
     cached_lea_operand = nullptr;
     v0Modified();
+    scratch_index = saved_scratch_index;
 }
 
 void Recompiler::backToDispatcher() {

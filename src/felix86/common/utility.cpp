@@ -1424,6 +1424,10 @@ void felix86_crash_and_burn() {
     exit(1);
 }
 
+void felix86_warn_unaligned_atomic(ThreadState* state) {
+    IMPORTANT("Unaligned atomic that we can't properly emulate at %lx", state->GetRip());
+}
+
 void replaceOne(std::string& s, const std::string& search, const std::string& replace) {
     for (size_t pos = 0;; pos += replace.length()) {
         // Locate the substring to replace
