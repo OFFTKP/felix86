@@ -950,31 +950,12 @@ FAST_HANDLE(SUB) {
             break;
         }
         case 16: {
-            /*
-            aadd(unsigned short*, unsigned short)
-                andi    a6, a0, -4
-                slli    a0, a0, 3
-                lui     a3, 16
-                addi    a3, a3, -1
-                sllw    a4, a3, a0
-                sllw    a1, a1, a0
-            .LBB0_3:
-                lr.w.aqrl       a5, (a6)
-                sub     a2, a5, a1
-                xor     a2, a2, a5
-                and     a2, a2, a4
-                xor     a2, a2, a5
-                sc.w.rl a2, a2, (a6)
-                bnez    a2, .LBB0_3
-                srlw    a0, a5, a0
-                and     a0, a0, a3
-            */
             biscuit::Label loop, good_alignment;
             biscuit::GPR masked_address = rec.scratch();
             biscuit::GPR mask = rec.scratch();
             biscuit::GPR src_shifted = rec.scratch();
-            as.LI(mask, 0b11);
-            as.ANDI(masked_address, address, 0b11);
+            as.LI(mask, 0b111);
+            as.ANDI(masked_address, address, 0b111);
             as.BNE(masked_address, mask, &good_alignment);
             rec.callPointer(offsetof(ThreadState, felix86_crash_and_burn));
             as.C_UNDEF();
@@ -982,20 +963,20 @@ FAST_HANDLE(SUB) {
 
             as.Bind(&good_alignment);
 
-            as.ANDI(masked_address, address, -4);
+            as.ANDI(masked_address, address, -8);
             as.SLLI(address, address, 3);
             as.LI(mask, 0xFFFF);
-            as.SLLW(mask, mask, address);
-            as.SLLW(src_shifted, src, address);
+            as.SLL(mask, mask, address);
+            as.SLL(src_shifted, src, address);
             as.Bind(&loop);
-            as.LR_W(Ordering::AQRL, dst, masked_address);
+            as.LR_D(Ordering::AQRL, dst, masked_address);
             as.SUB(result, dst, src_shifted);
             as.XOR(result, result, dst);
             as.AND(result, result, mask);
             as.XOR(result, result, dst);
-            as.SC_W(Ordering::AQRL, result, result, masked_address);
+            as.SC_D(Ordering::AQRL, result, result, masked_address);
             as.BNEZ(result, &loop);
-            as.SRLW(dst, dst, address);
+            as.SRL(dst, dst, address);
             rec.zext(dst, dst, X86_SIZE_WORD);
 
             rec.popScratch();
