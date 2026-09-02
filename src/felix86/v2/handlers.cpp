@@ -987,13 +987,10 @@ FAST_HANDLE(SUB) {
         }
         case 32: {
             biscuit::Label loop, good_alignment, best_alignment, end;
-            biscuit::GPR masked_address = rec.scratch();
-            biscuit::GPR mask = rec.scratch();
-            biscuit::GPR s_a1 = rec.scratch();
-            as.LI(mask, 4);
-            as.ANDI(masked_address, address, 0b111);
-            as.BEQZ(masked_address, &best_alignment);
-            as.BLE(masked_address, mask, &good_alignment);
+            as.LI(dst, 4);
+            as.ANDI(result, address, 0b111);
+            as.BEQZ(result, &best_alignment);
+            as.BLE(result, dst, &good_alignment);
             as.ADDI(sp, sp, -16);
             as.SD(address, 0, sp);
             as.SD(src, 8, sp);
@@ -1005,6 +1002,9 @@ FAST_HANDLE(SUB) {
             as.LD(src, 8, sp);
             as.ADDI(sp, sp, 16);
 
+            biscuit::GPR masked_address = rec.scratch();
+            biscuit::GPR mask = rec.scratch();
+            biscuit::GPR s_a1 = rec.scratch();
             biscuit::Label loop_unaligned;
             as.ANDI(masked_address, address, -8);
             as.Bind(&loop_unaligned);
