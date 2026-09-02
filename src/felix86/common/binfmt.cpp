@@ -1,9 +1,13 @@
+#include <cerrno>
 #include <filesystem>
+#include <string_view>
 #include <vector>
 #include <fcntl.h>
 #include <fmt/format.h>
 #include <spawn.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
+#include <unistd.h>
 #include "felix86/common/binfmt.hpp"
 #include "felix86/common/config.hpp"
 #include "felix86/common/global.hpp"
@@ -116,7 +120,6 @@ void binfmt_misc(bool is_register, bool is_credentials) {
         printf("I need root permissions to register felix86 in binfmt_misc, please re-run with root permissions as `sudo -E felix86 -b`\n");
         exit(1);
     }
-
 
     Config::initialize(true /* ignore envs, because we save the config later */);
 
@@ -238,4 +241,70 @@ void binfmt_misc(bool is_register, bool is_credentials) {
 
         printf("felix86 successfully registered to binfmt_misc\n");
     }
+}
+
+void validate_binfmt_misc() {
+    char buffer[4096];
+    ssize_t size = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
+    if (size <= 0) {
+        WARN("Failed to validate binfmt_misc");
+        return;
+    }
+    buffer[size] = 0;
+
+    std::string exe_path = buffer;
+
+    auto validate = [&exe_path](const char* path) {
+        int fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
+        if (fd < 0) {
+            return;
+        }
+
+        struct stat st;
+        if (fstat(fd, &st) != 0 || !S_ISREG(st.st_mode)) {
+            close(fd);
+            return;
+        }
+
+        char buffer[4096];
+        size_t total = 0;
+        while (total < sizeof(buffer) - 1) {
+            ssize_t n = read(fd, buffer + total, sizeof(buffer) - 1 - total);
+            if (n < 0 && errno == EINTR) {
+                continue;
+            }
+            if (n <= 0) {
+                break;
+            }
+            total += n;
+        }
+        close(fd);
+        buffer[total] = 0;
+
+        std::string_view sbuffer(buffer, total);
+        size_t newline = sbuffer.find('\n');
+        if (newline == std::string_view::npos) {
+            WARN("Bad binfmt_misc entry at %s", path);
+            return;
+        }
+
+        std::string_view state = sbuffer.substr(0, newline);
+        std::string_view interp = sbuffer.substr(newline + 1);
+        interp = interp.substr(0, interp.find('\n'));
+        if (state != "enabled" || !interp.starts_with("interpreter ")) {
+            return;
+        }
+
+        interp.remove_prefix(strlen("interpreter "));
+        if (interp != exe_path) {
+            std::string interp_str(interp);
+            IMPORTANT("Installed felix86 binary at %s differs from this one at %s.\nAny execve'd binaries will run with %s\nIf this "
+                      "is not intended, which it likely isn't:\n  Install current binary to binfmt_misc instead: sudo %s -b\n\n    "
+                      "OR\n\n  Rerun with FELIX86_BINFMT_MISC_INSTALLED=0 to not use the one installed in binfmt_misc",
+                      interp_str.c_str(), exe_path.c_str(), interp_str.c_str(), exe_path.c_str());
+        }
+    };
+
+    validate("/proc/sys/fs/binfmt_misc/felix86-x86_64");
+    validate("/proc/sys/fs/binfmt_misc/felix86-i386");
 }

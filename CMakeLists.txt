@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 option(FELIX86_BUILD_THUNKING "Build with thunking support" ON)
 option(FELIX86_MONTHLY_RELEASE "Build as a monthly release" OFF)
+option(FELIX86_VALIDATE_BINFMT_MISC "Warn if felix86 binary is not the one installed in binfmt_misc" ON)
 set(FELIX86_CONFIG_PATH "/etc/opt/felix86/config.toml" CACHE STRING "Path to the system-wide configuration file")
 
 project(felix86)
@@ -192,6 +193,10 @@ target_compile_definitions(felix86_core PUBLIC FELIX86_CONFIG_PATH="${FELIX86_CO
 
 if (FELIX86_BUILD_THUNKING)
     target_compile_definitions(felix86_core PUBLIC FELIX86_BUILD_THUNKING)
+endif()
+
+if (FELIX86_VALIDATE_BINFMT_MISC)
+    target_compile_definitions(felix86_core PUBLIC FELIX86_VALIDATE_BINFMT_MISC)
 endif()
 
 add_executable(felix86)
