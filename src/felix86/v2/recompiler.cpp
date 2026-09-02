@@ -2858,6 +2858,10 @@ void Recompiler::expirePendingLinks(u64 rip) {
     u64 min = -1ull;
     u64 max = 0;
     auto& links = getBlockMetadata(rip).pending_links;
+    if (links.empty()) {
+        return;
+    }
+
     for (u8* link : links) {
         u8* cursor = as.GetCursorPointer();
         as.SetCursorPointer(link);
