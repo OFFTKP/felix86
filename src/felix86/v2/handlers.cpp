@@ -790,7 +790,7 @@ FAST_HANDLE(ADD) {
                 as.LI(mask, 0b11);
                 as.ANDI(masked_address, address, 0b11);
                 as.BNE(masked_address, mask, &good_alignment);
-                as.EBREAK();
+                rec.callPointer(offsetof(ThreadState, felix86_crash_and_burn));
                 as.C_UNDEF();
                 as.C_UNDEF();
 
@@ -976,7 +976,7 @@ FAST_HANDLE(SUB) {
             as.LI(mask, 0b11);
             as.ANDI(masked_address, address, 0b11);
             as.BNE(masked_address, mask, &good_alignment);
-            as.EBREAK();
+            rec.callPointer(offsetof(ThreadState, felix86_crash_and_burn));
             as.C_UNDEF();
             as.C_UNDEF();
 
@@ -1013,7 +1013,7 @@ FAST_HANDLE(SUB) {
             as.ANDI(masked_address, address, 0b111);
             as.BEQZ(masked_address, &best_alignment);
             as.BLE(masked_address, mask, &good_alignment);
-            as.EBREAK();
+            rec.callPointer(offsetof(ThreadState, felix86_crash_and_burn));
             as.C_UNDEF();
             as.C_UNDEF();
             as.Bind(&good_alignment);
@@ -8722,36 +8722,15 @@ FAST_HANDLE(CMPXCHG_lock) {
             biscuit::GPR masked = rec.scratch();
             biscuit::GPR temp = rec.scratch();
             biscuit::GPR mask = rec.scratch();
-            // If it's at end of dword we can't handle it
-            as.ANDI(masked, address, 0b11);
-            as.LI(temp, 0b11);
+            // If it's at end of qword we can't handle it
+            as.ANDI(masked, address, 0b111);
+            as.LI(temp, 0b111);
             as.BNE(masked, temp, &aligned);
 
-            // Just crash
-            as.EBREAK();
+            rec.callPointer(offsetof(ThreadState, felix86_crash_and_burn));
+            as.C_UNDEF();
+            as.C_UNDEF();
 
-            /*
-                andi    a6, a0, -4
-                slli    a0, a0, 3
-                lui     a4, 16
-                addi    a4, a4, -1
-                sllw    a7, a1, a0
-                sllw    a5, a4, a0
-                sllw    a2, a2, a0
-        .LBB0_1:
-                lr.w.aqrl       a3, (a6)
-                and     a1, a3, a5
-                bne     a1, a7, .LBB0_3
-                xor     a1, a3, a2
-                and     a1, a1, a5
-                xor     a1, a1, a3
-                sc.w.rl a1, a1, (a6)
-                bnez    a1, .LBB0_1
-        .LBB0_3:
-                srlw    a0, a3, a0
-                and     a0, a0, a4
-                ret
-            */
             as.Bind(&aligned);
             biscuit::Label loop;
 
@@ -8759,24 +8738,24 @@ FAST_HANDLE(CMPXCHG_lock) {
             biscuit::GPR rax_shifted = rec.flag(X86_REF_CF);
             biscuit::GPR src_shifted = rec.flag(X86_REF_ZF);
 
-            as.ANDI(masked, address, -4);
+            as.ANDI(masked, address, -8);
             as.SLLI(address, address, 3);
             as.LI(mask, 0xFFFF);
-            as.SLLW(rax_shifted, rax, address);
-            as.SLLW(mask_shifted, mask, address);
-            as.SLLW(src_shifted, src, address);
+            as.SLL(rax_shifted, rax, address);
+            as.SLL(mask_shifted, mask, address);
+            as.SLL(src_shifted, src, address);
 
             as.Bind(&loop);
-            as.LR_W(Ordering::AQRL, dst, masked);
+            as.LR_D(Ordering::AQRL, dst, masked);
             as.AND(temp, dst, mask_shifted);
             as.BNE(temp, rax_shifted, &not_equal);
             as.XOR(temp, dst, src_shifted);
             as.AND(temp, temp, mask_shifted);
             as.XOR(temp, temp, dst);
-            as.SC_W(Ordering::AQRL, temp, temp, masked);
+            as.SC_D(Ordering::AQRL, temp, temp, masked);
             as.BNEZ(temp, &loop);
             as.Bind(&not_equal);
-            as.SRLW(dst, dst, address);
+            as.SRL(dst, dst, address);
             as.AND(dst, dst, mask);
 
             as.MV(mask_shifted, x0);
@@ -12220,8 +12199,7 @@ FAST_HANDLE(FIMUL) {
 }
 
 static void FST_impl(Recompiler& rec, ZydisDecodedOperand* operands) {
-    bool dst32 = g_config.reduced_precision >= 2 &&
-                 (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER || operands[0].size == 32);
+    bool dst32 = g_config.reduced_precision >= 2 && (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER || operands[0].size == 32);
     biscuit::FPR st0 = rec.getST(0, true, !dst32);
     rec.setST(&operands[0], st0, dst32 && rec.isX87Reg32Bit(st0));
 }
