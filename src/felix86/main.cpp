@@ -593,6 +593,13 @@ int main(int argc, char* argv[]) {
     }
     Logger::openLogFile();
 
+#ifdef FELIX86_VALIDATE_BINFMT_MISC
+    bool is_secure = getauxval(AT_SECURE) != 0;
+    if (g_config.binfmt_misc_installed && !g_execve_process && !is_secure) {
+        validate_binfmt_misc();
+    }
+#endif
+
     if (!g_config.no_rootfs && g_config.rootfs_path.empty()) {
         rootfs_not_set_error();
     }
