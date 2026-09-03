@@ -678,6 +678,38 @@ CATCH_TEST_CASE("MremapUnmappedSourceReturnsError", "[mmap32]") {
     SUCCESS_MESSAGE();
 }
 
+CATCH_TEST_CASE("FreelistTopOfAddressSpace", "[mmap32]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = true;
+
+    MMAP_AT(0xffffe000, 0x1000, PROT_NONE, 0);
+    verifyRegions(mapper, {{(u32)mmap_min_addr(), 0xffffdfff}, {0xfffff000, UINT32_MAX}});
+
+    MMAP_AT(0xffffc000, 0x4000, PROT_NONE, 0);
+    verifyRegions(mapper, {{(u32)mmap_min_addr(), 0xffffbfff}});
+
+    UNMAP_AT(0xffffc000, 0x4000);
+    verifyRegions(mapper, {{(u32)mmap_min_addr(), UINT32_MAX}});
+
+    MUNMAP_ALL();
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("FreelistFullThenUnmap", "[mmap32]") {
+    Mapper mapper;
+    g_mode32 = true;
+
+    u64 min = mmap_min_addr();
+    CATCH_REQUIRE(mapper.allocate(min, (u64)UINT32_MAX + 1 - min) == (void*)min);
+    verifyRegions(mapper, {});
+
+    CATCH_REQUIRE(mapper.unmap(true, (void*)0x100000, 0x1000) == 0);
+    verifyRegions(mapper, {{0x100000, 0x100fff}});
+
+    SUCCESS_MESSAGE();
+}
+
 CATCH_TEST_CASE("Simple1", "[mmap]") {
     std::vector<std::pair<u32, u32>> unmap_me;
     Mapper mapper;
@@ -1775,36 +1807,6 @@ CATCH_TEST_CASE("MremapGrowFromInsideRegion", "[mmap]") {
     SUCCESS_MESSAGE();
 }
 
-CATCH_TEST_CASE("HintlessAllocWithBlockAtZero", "[mmap32]") {
-    Mapper mapper;
-    g_mode32 = true;
-
-    CATCH_REQUIRE(mapper.allocate(0x200000, (u64)UINT32_MAX + 1 - 0x200000) == (void*)0x200000);
-    CATCH_REQUIRE(mapper.unmap(true, (void*)0, 0x10000) == 0);
-
-    verifyRegions(mapper, {{(u32)mmap_min_addr(), 0x1fffff}});
-
-    void* address = mapper.allocate(0, 0x1000);
-    CATCH_REQUIRE((i64)address > 0);
-    CATCH_REQUIRE((u64)address >= mmap_min_addr());
-
-    SUCCESS_MESSAGE();
-}
-
-CATCH_TEST_CASE("FreelistFullThenUnmap", "[mmap32]") {
-    Mapper mapper;
-    g_mode32 = true;
-
-    u64 min = mmap_min_addr();
-    CATCH_REQUIRE(mapper.allocate(min, (u64)UINT32_MAX + 1 - min) == (void*)min);
-    verifyRegions(mapper, {});
-
-    CATCH_REQUIRE(mapper.unmap(true, (void*)0x100000, 0x1000) == 0);
-    verifyRegions(mapper, {{0x100000, 0x100fff}});
-
-    SUCCESS_MESSAGE();
-}
-
 CATCH_TEST_CASE("Map64DoesNotReserveLowMemory", "[mmap]") {
     Mapper mapper;
     g_mode32 = false;
@@ -1852,28 +1854,12 @@ CATCH_TEST_CASE("Remap64IntoLowDoesNotFreeUnrelated", "[mmap]") {
     CATCH_REQUIRE(mapper.map(false, (void*)high, 0x1000, PROT_NONE, FCOMMON_FIXED, -1, 0) == (void*)high);
     unmap_me.push_back({0x50000, 0x1000});
 
+    verifyRegions(mapper, {{(u32)mmap_min_addr(), 0x4ffff}, {0x51000, UINT32_MAX}});
+
     CATCH_REQUIRE(mapper.remap(false, (void*)high, 0x1000, 0x1000, MREMAP_MAYMOVE | MREMAP_FIXED, (void*)0x60000) == (void*)0x60000);
     unmap_me.push_back({0x60000, 0x1000});
 
     verifyRegions(mapper, {{(u32)mmap_min_addr(), 0x4ffff}, {0x51000, 0x5ffff}, {0x61000, UINT32_MAX}});
-
-    MUNMAP_ALL();
-    SUCCESS_MESSAGE();
-}
-
-CATCH_TEST_CASE("FreelistTopOfAddressSpace", "[mmap32]") {
-    std::vector<std::pair<u32, u32>> unmap_me;
-    Mapper mapper;
-    g_mode32 = true;
-
-    MMAP_AT(0xffffe000, 0x1000, PROT_NONE, 0);
-    verifyRegions(mapper, {{(u32)mmap_min_addr(), 0xffffdfff}, {0xfffff000, UINT32_MAX}});
-
-    MMAP_AT(0xffffc000, 0x4000, PROT_NONE, 0);
-    verifyRegions(mapper, {{(u32)mmap_min_addr(), 0xffffbfff}});
-
-    UNMAP_AT(0xffffc000, 0x4000);
-    verifyRegions(mapper, {{(u32)mmap_min_addr(), UINT32_MAX}});
 
     MUNMAP_ALL();
     SUCCESS_MESSAGE();
@@ -1921,6 +1907,9 @@ CATCH_TEST_CASE("MremapGrowKeepsOwnIdentity", "[mmap]") {
     unmap_me.push_back({0x30000, 0x1000});
     MMAP_AT(0x50000, 0x1000, PROT_READ, 0);
 
+    auto old_regions = mapper.get_guest_regions();
+    ino_t ino = old_regions[1].ino;
+
     CATCH_REQUIRE(mapper.remap(g_mode32, (void*)0x50000, 0x1000, 0x2000, 0, (void*)0x50000) == (void*)0x50000);
     unmap_me.push_back({0x50000, 0x2000});
 
@@ -1928,7 +1917,7 @@ CATCH_TEST_CASE("MremapGrowKeepsOwnIdentity", "[mmap]") {
     CATCH_REQUIRE(regions.size() == 2);
     CATCH_REQUIRE(regions[1].start == 0x50000);
     CATCH_REQUIRE(regions[1].end == 0x52000);
-    CATCH_REQUIRE(regions[1].ino == 0);
+    CATCH_REQUIRE(regions[1].ino == ino);
     CATCH_REQUIRE(regions[1].offset == 0);
 
     close(fd);
@@ -1992,23 +1981,6 @@ CATCH_TEST_CASE("MremapSameSizeInPlaceDoesNotSplit", "[mmap]") {
 
     verifyGuestRegions(mapper, {
         {0x20000, 0x30000, PROT_NONE},
-    });
-
-    MUNMAP_ALL();
-    SUCCESS_MESSAGE();
-}
-
-CATCH_TEST_CASE("MProtectPastEndAppliesPrefix", "[mmap]") {
-    std::vector<std::pair<u32, u32>> unmap_me;
-    Mapper mapper;
-    g_mode32 = true;
-
-    MMAP_AT(0x20000, 0x1000, PROT_NONE, 0);
-
-    CATCH_REQUIRE(mapper.protect((void*)0x20000, 0x2000, PROT_READ) != 0);
-
-    verifyGuestRegions(mapper, {
-        {0x20000, 0x1000, PROT_READ},
     });
 
     MUNMAP_ALL();

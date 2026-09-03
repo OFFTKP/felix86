@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include "felix86/common/freelist.hpp"
 #include "felix86/common/types.hpp"
+#include "felix86/common/utility.hpp"
 
 struct GuestRegion {
     /// Inclusive end address.
@@ -15,19 +16,17 @@ struct GuestRegion {
     int prot;
     /// The device containing the file.
     dev_t dev;
-    /// The associated inode.
+    /// The associated inode. This is an incrementing value in case of anonmyous mapping.
     ino_t ino;
     /// Offset into the associated file.
     u64 offset;
-    /// If the allocated region is shared memory.
-    bool shmem;
     /// The id if shmat was used for the guest region.
     // If the region is not allocated by shmat, this is -1.
     int shmid;
-
-    inline bool has_associated_file() {
-        return ino != 0;
-    }
+    /// If the allocated region is shared memory.
+    bool shmem;
+    /// Determines if the mapping is anonymous.
+    bool anonymous;
 };
 
 // TODO: add verifications using /proc/self/maps and optional debugging mode that always verifies
@@ -64,12 +63,13 @@ private:
     /// Tracks the amount of currently mapped regions in memory.
     /// This will merge multiple mappings together.
     std::list<GuestRegion> allocated_regions;
+    ino_t ino_anon_ctr{0};
 
     std::vector<std::pair<u32, u32>> getRegions();
 
     friend void verifyRegions(Mapper& mapper, const std::vector<std::pair<u32, u32>>& regions);
 
-    void add_tracked_region(u64 address, u64 len, int prot, dev_t dev, ino_t ino, u64 offset, bool shmem, int shmid);
-    void move_tracked_region(u64 old_address, u64 old_len, u64 new_address, u64 new_len, bool remove_source, int new_prot = -1);
+    void add_tracked_region(u64 address, u64 len, int prot, dev_t dev, ino_t ino, u64 offset, bool shmem, int shmid, bool anon);
+    void move_tracked_region(u64 old_address, u64 old_len, u64 new_address, u64 new_len, bool remove_source, int new_prot = -1, bool can_grow = true);
     void remove_tracked_region(u64 address, u64 len);
 };
