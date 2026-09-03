@@ -2028,3 +2028,49 @@ CATCH_TEST_CASE("SharedAnonymousMappingMergesWithItself", "[mmap]") {
     MUNMAP_ALL();
     SUCCESS_MESSAGE();
 }
+
+CATCH_TEST_CASE("Remap64OntoUsedLowMemory", "[mmap]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = false;
+
+    const u64 high = 0x200060000ull;
+    CATCH_REQUIRE(mapper.map(true, (void*)0x50000, 0x2000, PROT_NONE, FCOMMON_FIXED, -1, 0) == (void*)0x50000);
+    CATCH_REQUIRE(mapper.map(false, (void*)high, 0x1000, PROT_NONE, FCOMMON_FIXED, -1, 0) == (void*)high);
+    unmap_me.push_back({0x50000, 0x2000});
+
+    CATCH_REQUIRE(mapper.remap(false, (void*)high, 0x1000, 0x3000, MREMAP_MAYMOVE | MREMAP_FIXED, (void*)0x51000) == (void*)0x51000);
+    unmap_me.push_back({0x51000, 0x3000});
+
+    verifyRegions(mapper, {{(u32)mmap_min_addr(), 0x4ffff}, {0x54000, UINT32_MAX}});
+
+    MUNMAP_ALL();
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("MProtectAcrossRegionsKeepsFileOffsets", "[mmap]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = false;
+
+    char path[] = "/tmp/felix86_mmap_testXXXXXX";
+    int fd = mkstemp(path);
+    CATCH_REQUIRE(fd != -1);
+    CATCH_REQUIRE(ftruncate(fd, 0x10000) == 0);
+    unlink(path);
+    int flags = MAP_PRIVATE | MAP_FIXED;
+    CATCH_REQUIRE(mapper.map(g_mode32, (void*)0x30000, 0x1000, PROT_READ, flags, fd, 0x1000) == (void*)0x30000);
+    CATCH_REQUIRE(mapper.map(g_mode32, (void*)0x31000, 0x1000, PROT_NONE, flags, fd, 0x5000) == (void*)0x31000);
+    unmap_me.push_back({0x30000, 0x2000});
+    CATCH_REQUIRE(mapper.get_guest_regions().size() == 2);
+    CATCH_REQUIRE(mapper.protect((void*)0x30000, 0x2000, PROT_READ) == 0);
+
+    auto regions = mapper.get_guest_regions();
+    CATCH_REQUIRE(regions.size() == 2);
+    CATCH_REQUIRE(regions[0].offset == 0x1000);
+    CATCH_REQUIRE(regions[1].offset == 0x5000);
+
+    close(fd);
+    MUNMAP_ALL();
+    SUCCESS_MESSAGE();
+}
