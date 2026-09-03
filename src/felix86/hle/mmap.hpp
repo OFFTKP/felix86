@@ -71,5 +71,5 @@ private:
 
     void add_tracked_region(u64 address, u64 len, int prot, dev_t dev, ino_t ino, u64 offset, bool shmem, int shmid, bool anon);
     void move_tracked_region(u64 old_address, u64 old_len, u64 new_address, u64 new_len, bool remove_source, int new_prot = -1, bool can_grow = true);
-    void remove_tracked_region(u64 address, u64 len);
+    void remove_tracked_region(u64 address, u64 len, bool only_shmat);
 };

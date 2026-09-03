@@ -49,7 +49,7 @@ void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offse
             // and dirty solution of unallocating it in freelist so we can reallocate it
             ASSERT((u64)result < UINT32_MAX);
             freelist.deallocate((u64)result, size);
-            remove_tracked_region((u64)result, size);
+            remove_tracked_region((u64)result, size, false);
         }
 
         void* mapping = freelist.allocate((u64)result, size);
@@ -86,7 +86,7 @@ int Mapper::unmap32(void* addr, u64 size) {
         auto guard = freelist.lock();
         freelist.deallocate((u64)addr, size);
         // also unmap it from the allocation tracker.
-        remove_tracked_region((u64)addr, size);
+        remove_tracked_region((u64)addr, size, false);
 
         return result;
     } else {
@@ -197,7 +197,7 @@ int Mapper::unmap(bool mode32, void* addr, u64 size) {
 
         // On success, remove tracked allocation.
         if (result != -1) {
-            remove_tracked_region((u64)addr, size);
+            remove_tracked_region((u64)addr, size, false);
             if ((u64)addr <= (u64)UINT32_MAX) {
                 u64 to_free_s = std::max((u64)addr, mmap_min_addr());
                 u64 to_free_e = std::min((u64)addr + size, (u64)UINT32_MAX + 1);
@@ -299,7 +299,9 @@ int Mapper::shmat(bool mode32, int shmid, void* address, int flags, u64* result_
         // almost always choose a 64-bit address which can't be used in 32-bit mode
         shm_mem = ::shmat(shmid, our_mem, flags);
     } else {
-        ASSERT_MSG(!mode32 || (u64)address + size <= UINT32_MAX, "shmat segment would end up outside of address space");
+        if (mode32 && (u64)address + size > (u64)UINT32_MAX + 1) {
+            return (i64)-1;
+        }
 
         // Since an address is provided by the application, we are going to assume it's
         // inside 32-bit address space and just check after the shmat
@@ -322,7 +324,9 @@ int Mapper::shmat(bool mode32, int shmid, void* address, int flags, u64* result_
     }
 
     if (mode32 && shm_mem != our_mem) {
-        ERROR("While our freelistAllocate returned %lx, shmat failed to place the segment there and returned %lx", our_mem, shm_mem);
+        if ((u64)our_mem > 0) {
+            freelist.deallocate((u64)our_mem, size);
+        }
         return (i64)-errno;
     }
 
@@ -369,9 +373,33 @@ int Mapper::shmdt(bool mode32, void* address) {
 
     if (result == 0) {
         if (size_known) {
-            remove_tracked_region((u64)address, size);
-            if (mode32)
-                freelist.deallocate((u64)address, size);
+            if ((u64)address <= UINT32_MAX) {
+                // We need to check what guest regions are actually allocated by shmat
+                // and add those regions to the freelist explicitly.
+                for (auto region : allocated_regions) {
+                    // Region is not allocated by shmat.
+                    if (region.shmid == -1) {
+                        continue;
+                    }
+
+                    u64 start = (u64)address;
+                    u64 end = start + size;
+
+                    if (region.start >= end) {
+                        break;
+                    }
+
+                    if (region.end < start) {
+                        continue;
+                    }
+
+                    if (region.start >= start) {
+                        u64 size = end - region.start;
+                        freelist.deallocate((u64)region.start, size);
+                    }
+                }
+            }
+            remove_tracked_region((u64)address, size, true);
         }
         page_to_shmid.erase(it);
     }
@@ -402,7 +430,7 @@ void Mapper::add_tracked_region(u64 address, u64 len, int prot, dev_t dev, ino_t
 
     GuestRegion v = GuestRegion{address, end, prot, dev, ino, offset, shmid, shmem, anon};
 
-    remove_tracked_region(address, len);
+    remove_tracked_region(address, len, false);
     for (auto it = allocated_regions.begin(); it != allocated_regions.end(); it++) {
         auto& r = *it;
 
@@ -481,15 +509,15 @@ void Mapper::move_tracked_region(u64 old_address, u64 old_len, u64 new_address, 
     ASSERT(!is_increase || to_add.size() <= 1);
 
     if (remove_src)
-        remove_tracked_region(old_address, old_len);
+        remove_tracked_region(old_address, old_len, false);
 
-    remove_tracked_region(new_address, new_len);
+    remove_tracked_region(new_address, new_len, false);
     for (auto add : std::move(to_add)) {
         add_tracked_region(add.start, add.end - add.start, add.prot, add.dev, add.ino, add.offset, add.shmem, add.shmid, add.anonymous);
     }
 }
 
-void Mapper::remove_tracked_region(u64 address, u64 len) {
+void Mapper::remove_tracked_region(u64 address, u64 len, bool only_shmat) {
     if (len == 0)
         return;
 
@@ -499,6 +527,24 @@ void Mapper::remove_tracked_region(u64 address, u64 len) {
 
     for (auto it = allocated_regions.begin(); it != allocated_regions.end();) {
         auto& r = *it;
+
+        // If shmid is -1, the memory was not allocated by a call to shmat.
+        if (r.shmid == -1 && only_shmat) {
+            it++;
+            continue;
+        }
+
+        // When removing only shmat, base address must align and entire regions must be removed.
+        if (only_shmat) {
+            if (r.start == address) {
+                allocated_regions.erase(it);
+                return;
+            }
+
+            it++;
+            continue;
+        }
+
         // Because the linked list is ordered, we know if the start address is greater than end,
         // then there is no more regions to remove with this unmap.
         if (end <= r.start || address == end) {
