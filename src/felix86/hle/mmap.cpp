@@ -214,37 +214,31 @@ void* Mapper::remap(bool mode32, void* old_address, u64 old_size, u64 new_size, 
     if (mode32) {
         return remap32(old_address, old_size, new_size, flags, new_address);
     } else {
-        if (!(flags & MREMAP_MAYMOVE) && (u64)old_address < UINT32_MAX) {
-            // Expands the old mapping, since the old mapping is in 32-bit area we need to pass it to remap32
-            ASSERT(!(flags & MREMAP_FIXED));
-            return remap32(old_address, old_size, new_size, flags, old_address);
-        } else {
-            // Lock access to 'allocated_regions'.
-            auto guard = freelist.lock();
+        // Lock access to 'allocated_regions'.
+        auto guard = freelist.lock();
 
-            old_size = (old_size + 0xFFFull) & ~0xFFFull;
-            new_size = (new_size + 0xFFFull) & ~0xFFFull;
+        old_size = (old_size + 0xFFFull) & ~0xFFFull;
+        new_size = (new_size + 0xFFFull) & ~0xFFFull;
 
-            void* result = ::mremap(old_address, old_size, new_size, flags, new_address);
+        void* result = ::mremap(old_address, old_size, new_size, flags, new_address);
 
-            // On success, remap the tracked allocation
-            if (result != (void*)-1) {
-                if ((u64)old_address <= (u64)UINT32_MAX && !(flags & MREMAP_DONTUNMAP)) {
-                    u64 to_free_s = std::max((u64)old_address, mmap_min_addr());
-                    u64 to_free_e = std::min((u64)old_address + old_size, (u64)UINT32_MAX + 1);
-                    if (to_free_e > to_free_s)
-                        freelist.deallocate(to_free_s, to_free_e - to_free_s);
-                }
-                if ((u64)result <= (u64)UINT32_MAX) {
-                    u64 to_alloc_s = (u64)result;
-                    u64 to_alloc_e = std::min(to_alloc_s + new_size, (u64)UINT32_MAX + 1);
-                    freelist.allocate(to_alloc_s, to_alloc_e - to_alloc_s);
-                }
-                move_tracked_region((u64)old_address, old_size, (u64)result, new_size, !(flags & MREMAP_DONTUNMAP));
+        // On success, remap the tracked allocation
+        if (result != (void*)-1) {
+            if ((u64)old_address <= (u64)UINT32_MAX && !(flags & MREMAP_DONTUNMAP)) {
+                u64 to_free_s = std::max((u64)old_address, mmap_min_addr());
+                u64 to_free_e = std::min((u64)old_address + old_size, (u64)UINT32_MAX + 1);
+                if (to_free_e > to_free_s)
+                    freelist.deallocate(to_free_s, to_free_e - to_free_s);
             }
-
-            return result;
+            if ((u64)result <= (u64)UINT32_MAX) {
+                u64 to_alloc_s = (u64)result;
+                u64 to_alloc_e = std::min(to_alloc_s + new_size, (u64)UINT32_MAX + 1);
+                freelist.allocate(to_alloc_s, to_alloc_e - to_alloc_s);
+            }
+            move_tracked_region((u64)old_address, old_size, (u64)result, new_size, !(flags & MREMAP_DONTUNMAP));
         }
+
+        return result;
     }
 }
 
