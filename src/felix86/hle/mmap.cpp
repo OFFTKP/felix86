@@ -233,6 +233,7 @@ void* Mapper::remap(bool mode32, void* old_address, u64 old_size, u64 new_size, 
             if ((u64)result <= (u64)UINT32_MAX) {
                 u64 to_alloc_s = (u64)result;
                 u64 to_alloc_e = std::min(to_alloc_s + new_size, (u64)UINT32_MAX + 1);
+                freelist.deallocate(to_alloc_s, to_alloc_e - to_alloc_s);
                 freelist.allocate(to_alloc_s, to_alloc_e - to_alloc_s);
             }
             move_tracked_region((u64)old_address, old_size, (u64)result, new_size, !(flags & MREMAP_DONTUNMAP));

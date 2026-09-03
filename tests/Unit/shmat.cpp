@@ -342,3 +342,47 @@ CATCH_TEST_CASE("ShmdtKeepsNeighbouringMapping", "[shmat]") {
     CATCH_REQUIRE(shmctl(shmid, IPC_RMID, nullptr) == 0);
     SUCCESS_MESSAGE();
 }
+
+CATCH_TEST_CASE("ShmdtRemovesEveryAttachmentPiece", "[shmat]") {
+    Mapper mapper;
+
+    int shmid = shmget(IPC_PRIVATE, 0x3000, 0644 | IPC_CREAT);
+    CATCH_REQUIRE(shmid != -1);
+
+    const u64 base = 0x100040000ull;
+    u64 address = 0;
+    CATCH_REQUIRE(mapper.shmat(false, shmid, (void*)base, 0, &address) == 0);
+
+    CATCH_REQUIRE(mapper.unmap(false, (void*)(base + 0x1000), 0x1000) == 0);
+    CATCH_REQUIRE(mapper.get_guest_regions().size() == 2);
+
+    CATCH_REQUIRE(mapper.shmdt(false, (void*)base) == 0);
+    CATCH_REQUIRE(mapper.get_guest_regions().empty());
+
+    CATCH_REQUIRE(shmctl(shmid, IPC_RMID, nullptr) == 0);
+    munmap((void*)base, 0x8000);
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("ShmdtRemovesAttachmentAfterFirstPageMoved", "[shmat]") {
+    Mapper mapper;
+
+    int shmid = shmget(IPC_PRIVATE, 0x2000, 0644 | IPC_CREAT);
+    CATCH_REQUIRE(shmid != -1);
+
+    const u64 base = 0x100050000ull;
+    const u64 moved = base + 0x4000;
+    u64 address = 0;
+    CATCH_REQUIRE(mapper.shmat(false, shmid, (void*)base, 0, &address) == 0);
+    CATCH_REQUIRE(mapper.remap(false, (void*)base, 0x1000, 0x1000, MREMAP_MAYMOVE | MREMAP_FIXED, (void*)moved) == (void*)moved);
+    CATCH_REQUIRE(mapper.shmdt(false, (void*)base) == 0);
+
+    auto regions = mapper.get_guest_regions();
+    CATCH_REQUIRE(regions.size() == 1);
+    CATCH_REQUIRE(regions[0].start == moved);
+
+    munmap((void*)moved, 0x1000);
+    CATCH_REQUIRE(shmctl(shmid, IPC_RMID, nullptr) == 0);
+    munmap((void*)base, 0x8000);
+    SUCCESS_MESSAGE();
+}
