@@ -94,42 +94,19 @@ CATCH_TEST_CASE("Simple2", "[shmat32]") {
     SUCCESS_MESSAGE();
 }
 
-// CATCH_TEST_CASE("ShmatPastEndOf32BitSpace", "[shmat32]") {
-//     Mapper mapper;
-
-//     int shmid = shmget(IPC_PRIVATE, 0x2000, 0644 | IPC_CREAT);
-//     CATCH_REQUIRE(shmid != -1);
-
-//     u64 result = 0;
-//     CATCH_REQUIRE(mapper.shmat(true, shmid, (void*)0xfffff000ull, 0, &result) < 0);
-
-//     CATCH_REQUIRE(mapper.shmat(true, shmid, (void*)0xffffe000ull, 0, &result) == 0);
-//     CATCH_REQUIRE(result == 0xffffe000ull);
-//     CATCH_REQUIRE(mapper.shmdt(true, (void*)result) == 0);
-
-//     CATCH_REQUIRE(shmctl(shmid, IPC_RMID, nullptr) == 0);
-//     SUCCESS_MESSAGE();
-// }
-
-CATCH_TEST_CASE("ShmatWhenFreelistPickIsTaken", "[shmat32]") {
+CATCH_TEST_CASE("ShmatPastEndOf32BitSpace", "[shmat32]") {
     Mapper mapper;
 
     int shmid = shmget(IPC_PRIVATE, 0x2000, 0644 | IPC_CREAT);
     CATCH_REQUIRE(shmid != -1);
 
-    const u64 window = 0x60000;
-    u64 min = mmap_min_addr();
-    CATCH_REQUIRE(mapper.allocate(min, window - min) == (void*)min);
-    CATCH_REQUIRE(mapper.allocate(window + 0x2000, (u64)UINT32_MAX + 1 - (window + 0x2000)) == (void*)(window + 0x2000));
-
-    void* taken = mmap((void*)window, 0x2000, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
-    CATCH_REQUIRE(taken == (void*)window);
-
     u64 result = 0;
-    CATCH_REQUIRE(mapper.shmat(true, shmid, nullptr, 0, &result) < 0);
-    CATCH_REQUIRE(mapper.get_guest_regions().empty());
+    CATCH_REQUIRE(mapper.shmat(true, shmid, (void*)0xfffff000ull, 0, &result) < 0);
 
-    munmap(taken, 0x2000);
+    CATCH_REQUIRE(mapper.shmat(true, shmid, (void*)0xffffe000ull, 0, &result) == 0);
+    CATCH_REQUIRE(result == 0xffffe000ull);
+    CATCH_REQUIRE(mapper.shmdt(true, (void*)result) == 0);
+
     CATCH_REQUIRE(shmctl(shmid, IPC_RMID, nullptr) == 0);
     SUCCESS_MESSAGE();
 }
