@@ -1982,9 +1982,10 @@ int main() {
     gen_sequence(rec, json, "crysis1", false);
     gen_sequence(rec, json, "crysis2", false);
     gen_sequence(rec, json, "crysis3", false);
+    gen_sequence(rec, json, "tekken1", false);
+    gen_sequence(rec, json, "7z1", false);
     g_config.reduced_precision = 2;
     gen_sequence(rec, json, "tombraider1", false);
-    gen_sequence(rec, json, "7z1", false);
 
     std::ofstream many("counts/HotBlocks.json");
     many << json.dump(4);
