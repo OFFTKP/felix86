@@ -2332,10 +2332,11 @@ void Recompiler::scanAhead(u64 rip) {
                         u32 changed_this_block = 0;
                         u32 used_this_block = 0;
                         u32 flags_we_care_about = ALL_CPUFLAGS;
-                        // 10 is heuristically picked with no real reason
+                        // 64 is heuristically picked, some games have a big slide of SSE instructions that follow a cmp/jcc
+                        // and usually this big of a number is good enough
                         // If we go too high we risk messing our performance
                         // TODO: some benchmarking may be in order
-                        for (size_t i = 0; i < 10; i++) {
+                        for (size_t i = 0; i < 64; i++) {
                             ZydisMnemonic mnemonic;
                             if (jump_to_self) {
                                 // Jump to self, we already decoded the instructions
