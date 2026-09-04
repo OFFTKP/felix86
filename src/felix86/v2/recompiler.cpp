@@ -3551,12 +3551,13 @@ void Recompiler::invalidateRangeGlobal(u64 start, u64 end, const char* reason) {
         }
     }
 
-    if (g_config.print_invalidations && blocks > 0) {
-        WARN("Invalidated %lu blocks for reason: %s", blocks, reason);
+    if (blocks > 0) {
+        if (g_config.print_invalidations) {
+            WARN("Invalidated %lu blocks for reason: %s", blocks, reason);
+        }
+        // Flush the entire affected range in one syscall
+        flush_icache_global(min, max);
     }
-
-    // Flush the entire affected range in one syscall
-    flush_icache_global(min, max);
 }
 
 bool Recompiler::tryInlineSyscall() {
