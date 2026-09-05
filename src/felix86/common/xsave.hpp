@@ -114,6 +114,8 @@ void felix86_fxrstor(UserContext& ctx, void* address, bool restore_x87 = true, b
 
 void felix86_xrstor(UserContext& ctx, void* address, bool restore_all);
 
+void felix86_x87_init(UserContext& ctx);
+
 constexpr u64 felix86_xsave_size() {
     return sizeof(fxsave_frame) + sizeof(xsave_header) + sizeof(ymm_hi);
 }

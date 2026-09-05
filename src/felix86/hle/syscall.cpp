@@ -1835,6 +1835,10 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
     case felix86_riscv64_rt_sigpending: {
         SIGLOG("Entering rt_sigpending");
         result = SYSCALL(rt_sigpending, arg1, arg2);
+        if (result == 0) {
+            sigset_t* set = (sigset_t*)arg1;
+            set->__val[0] |= state->deferred_signals;
+        }
         SIGLOG("rt_sigpending returned with %d", (int)result);
         break;
     }

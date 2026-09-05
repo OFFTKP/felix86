@@ -22,12 +22,19 @@
 
 #define FP_XSTATE_MAGIC1 0x46505853U
 #define FP_XSTATE_MAGIC2 0x46505845U
+#ifndef FP_XSTATE_MAGIC2_SIZE
+#define FP_XSTATE_MAGIC2_SIZE sizeof(FP_XSTATE_MAGIC2)
+#endif
 #define SA_IA32_ABI 0x02000000u
 #define SA_X32_ABI 0x01000000u
 
 #ifndef SS_AUTODISARM
 #define SS_AUTODISARM (1U << 31)
 #endif
+
+#define UC_FP_XSTATE 0x1
+#define UC_SIGCONTEXT_SS 0x2
+#define UC_STRICT_RESTORE_SS 0x4
 
 enum class SignalBehavior {
     Handler,
@@ -196,6 +203,117 @@ struct x86_fpstate {
     fxsave_frame fxsave;
 };
 static_assert(sizeof(x86_fpstate) == sizeof(fsave_frame_32) + sizeof(fxsave_frame) + 4 /* status and magic */);
+
+static bool sigframe_has_xstate() {
+    return is_feature_enabled(x86_feature::OSXSAVE);
+}
+
+static u32 sigframe_xstate_size() {
+    u32 size = sizeof(fxsave_frame);
+    if (sigframe_has_xstate()) {
+        size += sizeof(xsave_header);
+        if (felix86_xsave_contains_ymms()) {
+            size += sizeof(ymm_hi);
+        }
+    }
+    return size;
+}
+
+static u32 sigframe_fpstate_size() {
+    u32 size = sigframe_xstate_size();
+    if (sigframe_has_xstate()) {
+        size += FP_XSTATE_MAGIC2_SIZE;
+    }
+    return size;
+}
+
+static u32 sigframe_uc_flags(bool ia32_frame) {
+    u32 flags = 0;
+    if (sigframe_has_xstate()) {
+        flags |= UC_FP_XSTATE;
+    }
+    if (!ia32_frame) {
+        flags |= UC_SIGCONTEXT_SS | UC_STRICT_RESTORE_SS;
+    }
+    return flags;
+}
+
+static void save_sigframe_xstate(ThreadState* state, fxsave_frame* fx, bool ia32_frame) {
+    bool has_xstate = sigframe_has_xstate();
+    u32 xstate_size = sigframe_xstate_size();
+    xsave_header* header = (xsave_header*)((u8*)fx + sizeof(fxsave_frame));
+
+    if (has_xstate) {
+        memset(header, 0, sizeof(*header));
+        felix86_xsave(state->ctx, fx, true);
+    } else {
+        felix86_fxsave(state->ctx, fx);
+    }
+
+    x64_fpx_sw_bytes& sw = fx->sw_reserved;
+    sw.magic1 = FP_XSTATE_MAGIC1;
+    sw.extended_size = xstate_size + FP_XSTATE_MAGIC2_SIZE;
+    if (ia32_frame) {
+        sw.extended_size += offsetof(x86_fpstate, fxsave);
+    }
+    sw.xfeatures = get_xfeature_enabled_mask();
+    sw.xstate_size = xstate_size;
+    memset(sw.padding, 0, sizeof(sw.padding));
+
+    if (!has_xstate) {
+        return;
+    }
+
+    u32 magic2 = FP_XSTATE_MAGIC2;
+    memcpy((u8*)fx + xstate_size, &magic2, FP_XSTATE_MAGIC2_SIZE);
+    header->xstate_bv |= 0b11;
+}
+
+static void restore_sigframe_xstate(ThreadState* state, fxsave_frame* fx, fsave_frame_32* fsave) {
+    felix86_fxrstor(state->ctx, fx);
+    if (fsave) {
+        felix86_frstor_32(state->ctx, fsave); // x87 state comes from fsave block in legacy frames
+    }
+    if (!sigframe_has_xstate()) {
+        return;
+    }
+
+    const x64_fpx_sw_bytes& sw = fx->sw_reserved;
+    bool valid = sw.magic1 == FP_XSTATE_MAGIC1 && sw.xstate_size >= sizeof(fxsave_frame) + sizeof(xsave_header) &&
+                 sw.xstate_size <= sigframe_xstate_size() && sw.xstate_size <= sw.extended_size;
+    if (valid) {
+        u32 magic2;
+        memcpy(&magic2, (u8*)fx + sw.xstate_size, FP_XSTATE_MAGIC2_SIZE);
+        valid = magic2 == FP_XSTATE_MAGIC2;
+    }
+
+    xsave_header* header = (xsave_header*)((u8*)fx + sizeof(fxsave_frame));
+    u64 xfeatures = valid ? (sw.xfeatures & header->xstate_bv) : 0b11;
+    xfeatures &= get_xfeature_enabled_mask();
+
+    if (!(xfeatures & 0b001)) {
+        felix86_x87_init(state->ctx);
+    }
+    if (!(xfeatures & 0b010)) {
+        for (int i = 0; i < 16; i++) {
+            state->ctx.xmm[i].data[0] = 0;
+            state->ctx.xmm[i].data[1] = 0;
+        }
+    }
+    if (!felix86_xsave_contains_ymms()) {
+        return;
+    }
+
+    ymm_hi* ymm_storage = (ymm_hi*)((u8*)header + sizeof(xsave_header));
+    for (int i = 0; i < 16; i++) {
+        if (xfeatures & 0b100) {
+            memcpy(&state->ctx.xmm[i].data[2], (u8*)ymm_storage->data + 16 * i, sizeof(u64) * 2);
+        } else {
+            state->ctx.xmm[i].data[2] = 0;
+            state->ctx.xmm[i].data[3] = 0;
+        }
+    }
+}
 
 #ifndef __x86_64__
 enum {
@@ -464,19 +582,7 @@ static void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state
     } else if (use_altstack) {
         VERBOSE("Altstack was established");
     }
-    rsp = rsp - (rsp % 16);
-
-    if (felix86_xsave_contains_ymms()) {
-        // Make room for extra xsave data
-        rsp = rsp - sizeof(ymm_hi) - sizeof(xsave_header);
-        static_assert(sizeof(ymm_hi) % 16 == 0);
-        static_assert(sizeof(xsave_header) % 16 == 0);
-    }
-
-    rsp = rsp - sizeof(x64_fpstate);
-    static_assert(sizeof(x64_fpstate) % 16 == 0);
-
-    rsp = rsp & ~63ull;
+    rsp = (rsp - sigframe_fpstate_size()) & ~63ull;
 
     x64_fpstate* fpstate = (x64_fpstate*)rsp;
 
@@ -492,7 +598,7 @@ static void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state
 
     frame->uc.uc_mcontext.fpregs = fpstate;
 
-    frame->uc.uc_flags = 0;
+    frame->uc.uc_flags = sigframe_uc_flags(false);
     frame->uc.uc_link = 0;
     frame->info = *guest_info;
 
@@ -536,7 +642,7 @@ static void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state
     frame->uc.uc_mcontext.gregs[REG_OLDMASK] = old_mask.__val[0];
     frame->uc.uc_mcontext.gregs[REG_CR2] = sig == SIGSEGV ? (u64)guest_info->si_addr : 0;
 
-    felix86_xsave(state->ctx, &frame->uc.uc_mcontext.fpregs->fxsave, true);
+    save_sigframe_xstate(state, &frame->uc.uc_mcontext.fpregs->fxsave, false);
 
     state->SetGpr(X86_REF_RSP, (u64)frame);        // set the new stack pointer
     state->SetGpr(X86_REF_RDI, sig);               // set the signal
@@ -597,15 +703,8 @@ static void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* st
         VERBOSE("Altstack was established");
     }
 
-    rsp = rsp - (rsp % 8);
-
-    if (felix86_xsave_contains_ymms()) {
-        rsp = rsp - sizeof(ymm_hi) - sizeof(xsave_header);
-    }
-
-    rsp -= sizeof(x86_fpstate);
-
-    rsp = rsp & ~63ull;
+    rsp = (rsp - sigframe_fpstate_size()) & ~63ull;
+    rsp -= offsetof(x86_fpstate, fxsave);
 
     x86_fpstate* fpstate = (x86_fpstate*)rsp;
     ASSERT((u64)fpstate < UINT32_MAX);
@@ -616,7 +715,7 @@ static void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* st
     fpstate->fsave.tw_hi = 0xFFFF;
     fpstate->magic = 0; // extended state
     fpstate->status = state->ctx.fpu_sw;
-    felix86_xsave(state->ctx, &fpstate->fxsave, true);
+    save_sigframe_xstate(state, &fpstate->fxsave, true);
 
     rsp -= sizeof(x86_rt_sigframe);
 
@@ -658,6 +757,7 @@ static void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* st
     frame->uc.uc_mcontext.cr2 = sig == SIGSEGV ? (u32)(u64)guest_info->si_addr : 0;
     frame->uc.uc_mcontext.trapno = get_reg_trapno(get_pc(host_context), sig, guest_info, host_context);
     frame->uc.uc_mcontext.err = get_reg_err(sig, guest_info, host_context);
+    frame->uc.uc_flags = sigframe_uc_flags(true);
     if (use_altstack) {
         frame->uc.uc_stack.ss_sp = (u32)(u64)state->alt_stack.ss_sp;
         frame->uc.uc_stack.ss_size = state->alt_stack.ss_size;
@@ -732,13 +832,8 @@ static void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state
         VERBOSE("Altstack was established");
     }
 
-    rsp = rsp - (rsp % 8);
-    if (felix86_xsave_contains_ymms()) {
-        rsp = rsp - sizeof(ymm_hi) - sizeof(xsave_header);
-    }
-    rsp -= sizeof(x86_fpstate);
-
-    rsp = rsp & ~63ull;
+    rsp = (rsp - sigframe_fpstate_size()) & ~63ull;
+    rsp -= offsetof(x86_fpstate, fxsave);
 
     x86_fpstate* fpstate = (x86_fpstate*)rsp;
     rsp = rsp - sizeof(x86_legacy_sigframe);
@@ -789,7 +884,7 @@ static void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state
     fpstate->fsave.cw_hi = 0xFFFF;
     fpstate->fsave.sw_hi = 0xFFFF;
     fpstate->fsave.tw_hi = 0xFFFF;
-    felix86_xsave(state->ctx, &fpstate->fxsave, true);
+    save_sigframe_xstate(state, &fpstate->fxsave, true);
     frame->sc.fpstate = (u32)(u64)fpstate;
 
     state->SetGpr(X86_REF_RSP, (u64)frame); // set the new stack pointer
@@ -889,8 +984,7 @@ void Signals::sigreturn(ThreadState* state, bool rt) {
         }
         restore_sigcontext_32(state, ctx);
         x86_fpstate* fps = (x86_fpstate*)(u64)ctx->fpstate;
-        felix86_xrstor(state->ctx, &fps->fxsave, true);
-        felix86_frstor_32(state->ctx, &fps->fsave); // x87 state comes from fsave block
+        restore_sigframe_xstate(state, &fps->fxsave, &fps->fsave);
 
         // Restore signal mask to what it was supposed to be outside of signal handler
         sigset_t new_set;
@@ -960,7 +1054,7 @@ void Signals::sigreturn(ThreadState* state, bool rt) {
             felix86_tf_changed(state, tf);
         }
 
-        felix86_xrstor(state->ctx, &frame->uc.uc_mcontext.fpregs->fxsave, true);
+        restore_sigframe_xstate(state, &frame->uc.uc_mcontext.fpregs->fxsave, nullptr);
 
         // Restore signal mask to what it was supposed to be outside of signal handler
         Signals::sigprocmask(state, SIG_SETMASK, &frame->uc.uc_sigmask, nullptr);

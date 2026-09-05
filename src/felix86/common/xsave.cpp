@@ -285,6 +285,18 @@ void felix86_xsave(const UserContext& ctx, void* address, bool save_all) {
     }
 }
 
+void felix86_x87_init(UserContext& ctx) {
+    ctx.fpu_cw = 0x37F;
+    ctx.fpu_sw = 0;
+    ctx.fpu_tw = 0xFF;
+    ctx.fpu_top = 0;
+    for (int i = 0; i < 8; i++) {
+        ctx.st[i] = Float80{};
+    }
+    ctx.x87_state = x87State::x87;
+    ctx.rmode_x87 = rounding_mode(x86RoundingMode((ctx.fpu_cw >> 10) & 0b11));
+}
+
 void felix86_xrstor(UserContext& ctx, void* address, bool restore_all) {
     u64 rfbm = (u64)(u32)ctx.gprs[X86_REF_RDX] << 32 | (u32)ctx.gprs[X86_REF_RAX];
     u64 xcr0 = get_xfeature_enabled_mask();
@@ -309,15 +321,7 @@ void felix86_xrstor(UserContext& ctx, void* address, bool restore_all) {
     }
 
     if (!restore_x87 && req_x87) {
-        ctx.fpu_cw = 0x37F;
-        ctx.fpu_sw = 0;
-        ctx.fpu_tw = 0xFF;
-        ctx.fpu_top = 0;
-        for (int i = 0; i < 8; i++) {
-            ctx.st[i] = Float80{};
-        }
-        ctx.x87_state = x87State::x87;
-        ctx.rmode_x87 = rounding_mode(x86RoundingMode((ctx.fpu_cw >> 10) & 0b11));
+        felix86_x87_init(ctx);
     }
     if (!restore_xmm) {
         for (int i = 0; i < 16; i++) {
