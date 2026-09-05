@@ -469,7 +469,7 @@ static u64 get_actual_rip(BlockMetadata& metadata, u64 fault_pc) {
 #define REG_PC 0 // risc-v stores it in gpr 0
 #endif
 
-static bool sa_ss_flags(ThreadState* state) {
+static int sa_ss_flags(ThreadState* state) {
     u64 rsp = state->GetGpr(X86_REF_RSP);
     if (!state->alt_stack.ss_size) {
         return SS_DISABLE;
@@ -604,7 +604,7 @@ static void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state
 
     frame->uc.uc_stack.ss_sp = state->alt_stack.ss_sp;
     frame->uc.uc_stack.ss_size = state->alt_stack.ss_size;
-    frame->uc.uc_stack.ss_flags = sa_ss_flags(state);
+    frame->uc.uc_stack.ss_flags = state->alt_stack.ss_flags;
 
     if (state->alt_stack.ss_flags & SS_AUTODISARM) {
         state->alt_stack.ss_sp = 0;
@@ -758,15 +758,9 @@ static void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* st
     frame->uc.uc_mcontext.trapno = get_reg_trapno(get_pc(host_context), sig, guest_info, host_context);
     frame->uc.uc_mcontext.err = get_reg_err(sig, guest_info, host_context);
     frame->uc.uc_flags = sigframe_uc_flags(true);
-    if (use_altstack) {
-        frame->uc.uc_stack.ss_sp = (u32)(u64)state->alt_stack.ss_sp;
-        frame->uc.uc_stack.ss_size = state->alt_stack.ss_size;
-        frame->uc.uc_stack.ss_flags = state->alt_stack.ss_flags;
-    } else {
-        frame->uc.uc_stack.ss_sp = 0;
-        frame->uc.uc_stack.ss_size = 0;
-        frame->uc.uc_stack.ss_flags = 0;
-    }
+    frame->uc.uc_stack.ss_sp = (u32)(u64)state->alt_stack.ss_sp;
+    frame->uc.uc_stack.ss_size = state->alt_stack.ss_size;
+    frame->uc.uc_stack.ss_flags = state->alt_stack.ss_flags;
     if (state->alt_stack.ss_flags & SS_AUTODISARM) {
         state->alt_stack.ss_sp = 0;
         state->alt_stack.ss_size = 0;
@@ -1925,7 +1919,7 @@ int Signals::sigaltstack(ThreadState* state, stack_t* new_ss, stack_t* old_ss, i
 
         state->alt_stack.ss_sp = new_stack;
         state->alt_stack.ss_size = new_size;
-        state->alt_stack.ss_flags = new_ss->ss_flags & SS_AUTODISARM;
+        state->alt_stack.ss_flags = new_ss->ss_flags;
         VERBOSE("New altstack: %lx", (u64)new_ss->ss_sp);
     }
 
