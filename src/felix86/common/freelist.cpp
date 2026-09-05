@@ -139,11 +139,34 @@ void Freelist::deallocate(u32 addr, size_t size) {
                 list = new_node;
             }
             placed = true;
+            previous = new_node;
             break;
         }
 
         previous = current;
         current = current->next;
+    }
+
+    // Remove any other overlapping regions.
+    while (current) {
+        // No more region will be overlapping.
+        if (new_end < current->start) {
+            break;
+        }
+
+        if (current->end <= new_end) {
+            Node* to_remove = current;
+            if (previous) {
+                previous->next = current->next;
+                current = previous->next;
+            }
+            delete to_remove;
+        } else if (current->start > new_start) {
+            current->start = new_end;
+            current = current->next;
+        } else {
+            current = current->next;
+        }
     }
 
     if (!placed) {
@@ -152,9 +175,13 @@ void Freelist::deallocate(u32 addr, size_t size) {
         new_node->start = new_start;
         new_node->end = new_end;
         new_node->next = nullptr;
-        ASSERT(previous->next == nullptr);
         ASSERT(current == nullptr);
-        previous->next = new_node;
+        if (previous) {
+            ASSERT(previous->next == nullptr);
+            previous->next = new_node;
+        } else {
+            list = new_node;
+        }
     }
 
     consolidate();

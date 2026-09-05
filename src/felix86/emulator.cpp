@@ -20,6 +20,7 @@
 #include "felix86/common/utility.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/brk.hpp"
+#include "felix86/hle/mmap.hpp"
 #include "felix86/hle/signals.hpp"
 #include "felix86/hle/thread.hpp"
 #include "felix86/hle/thunks.hpp"
@@ -210,7 +211,7 @@ static void setupMainStack(ThreadState* state) {
         void* mem = mmap(nullptr, vdso_object.size(), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
         ASSERT(mem != MAP_FAILED);
         memcpy(mem, vdso_object.data(), vdso_object.size());
-        mprotect(mem, vdso_object.size(), PROT_READ | PROT_EXEC);
+        g_mapper->protect(mem, vdso_object.size(), PROT_READ | PROT_EXEC);
         auxv_entries.push_back({AT_SYSINFO_EHDR, {(u64)mem}});
     }
 

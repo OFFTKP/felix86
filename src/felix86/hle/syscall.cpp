@@ -1,3 +1,4 @@
+#include <cassert>
 #include <csignal>
 #include <memory>
 #include <new>
@@ -304,7 +305,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_mprotect: {
-        result = SYSCALL(mprotect, arg1, arg2, arg3, arg4, arg5, arg6);
+        result = g_mapper->protect((void*)arg1, arg2, arg3);
         u64 start = arg1;
         u64 size = arg2;
         int prot = arg3;
@@ -342,8 +343,13 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             g_is_single_thread = false;
             Recompiler::invalidateRangeGlobal(0, UINT64_MAX & ~0xFFFull, "shmat happened");
         }
-        result = SYSCALL(shmat, arg1, arg2, arg3);
-        if (result >= 0 && ((u64)result) > mmap_min_addr() && result < UINT32_MAX) {
+        u64 result_address = 0;
+        result = g_mapper->shmat(false, (int)arg1, (void*)arg2, (int)arg3, &result_address);
+        if (result == 0) {
+            ASSERT(result_address != 0);
+            result = result_address;
+        }
+        if (result >= 0 && ((u64)result) > mmap_min_addr() && result <= UINT32_MAX) {
             WARN("shmat in 32-bit address space, this could cause problems with MAP_32BIT");
         }
         break;
@@ -353,10 +359,10 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_shmdt: {
-        if (arg1 > mmap_min_addr() && arg1 < UINT32_MAX) {
+        if (arg1 > mmap_min_addr() && arg1 <= UINT32_MAX) {
             WARN("shmdt in 32-bit address space, this could cause problems with MAP_32BIT");
         }
-        result = SYSCALL(shmdt, arg1);
+        result = g_mapper->shmdt(false, (void*)arg1);
         break;
     }
     case felix86_riscv64_getsid: {
@@ -874,18 +880,13 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             g_is_single_thread = false;
             Recompiler::invalidateRangeGlobal(0, UINT64_MAX & ~0xFFFull, "MAP_SHARED happened");
         }
-
-        bool is_fixed = (flags & MAP_FIXED) || (flags & MAP_FIXED_NOREPLACE);
-        if ((flags & MAP_32BIT) || (is_fixed && arg1 < UINT32_MAX) || mode32) {
-            // The MAP_32BIT flag is x86 only so we need to emulate it
-            // For example, Mono tries to use it to allocate code cache pages near the executable so that it can use
-            // +-2GiB jumps. If it doesn't get them near enough it will eventually crash and die.
-            // We need to also track fixed mappings in the 32-bit address space
-            result = (ssize_t)g_mapper->map32((void*)arg1, arg2, arg3, (int)arg4, (int)arg5, arg6);
-        } else {
-            // No need to use mapper
-            result = SYSCALL(mmap, arg1, arg2, arg3, (int)arg4, (int)arg5, arg6);
-        }
+        // The MAP_32BIT flag is x86 only so we need to emulate it
+        // For example, Mono tries to use it to allocate code cache pages near the executable so that it can use
+        // +-2GiB jumps. If it doesn't get them near enough it will eventually crash and die.
+        // We need to also track fixed mappings in the 32-bit address space
+        bool is_fixed = ((flags & MAP_FIXED) || (flags & MAP_FIXED_NOREPLACE)) && arg1 <= UINT32_MAX;
+        bool is_mmap32 = is_fixed || (flags & MAP_32BIT) || mode32;
+        result = (ssize_t)g_mapper->map(is_mmap32, (void*)arg1, arg2, arg3, (int)arg4, (int)arg5, arg6);
 
         // If there's any blocks in any threads that match this mmapped range they need to be invalidated
         if (result > 0) {
@@ -900,12 +901,9 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_munmap: {
-        if (arg1 < UINT32_MAX || mode32) {
-            // Track unmaps in the 32-bit address space for MAP_32BIT in 64-bit mode
-            result = g_mapper->unmap32((void*)arg1, arg2);
-        } else {
-            result = SYSCALL(munmap, arg1, arg2, arg3, arg4, arg5, arg6);
-        }
+        // Track unmaps in the 32-bit address space for MAP_32BIT in 64-bit mode
+        bool is_munmap32 = arg1 <= UINT32_MAX || mode32;
+        result = g_mapper->unmap(is_munmap32, (void*)arg1, arg2);
 
         if (result == 0) {
             Recompiler::invalidateRangeGlobal(arg1, arg1 + arg2, "munmap");
@@ -1817,7 +1815,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         state->signal_mask.__val[0] = new_mask.__val[0];
         state->effective_deferred_signals |= state->deferred_signals & ~new_mask.__val[0];
         if (state->effective_deferred_signals) {
-            ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
+            ASSERT(::mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
             state->signal_mask.__val[0] = old_mask.__val[0];
             ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old_host_mask, nullptr, sizeof(old_host_mask)) == 0);
             SIGLOG("rt_sigsuspend returning without waiting, a deferred signal is already deliverable");
@@ -2759,16 +2757,17 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                 g_is_single_thread = false;
                 Recompiler::invalidateRangeGlobal(0, UINT64_MAX & ~0xFFFull, "shmat happened");
             }
-            u32 result_address = 0;
-            result = g_mapper->shmat32((int)arg1, (void*)arg2, (int)arg3, &result_address);
+            u64 result_address = 0;
+            result = g_mapper->shmat(true, (int)arg1, (void*)arg2, (int)arg3, &result_address);
             if (result == 0) {
                 ASSERT(result_address != 0);
+                ASSERT(result_address >> 32 == 0 || result_address >> 32 == 0xFFFF'FFFF);
                 result = result_address;
             }
             break;
         }
         case felix86_x86_32_shmdt: {
-            result = g_mapper->shmdt32((void*)arg1);
+            result = g_mapper->shmdt(true, (void*)arg1);
             break;
         }
         case felix86_x86_32_waitid: {

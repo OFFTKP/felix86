@@ -1,9 +1,11 @@
 #include <sys/mman.h>
+#include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/hle/abi.hpp"
+#include "felix86/hle/mmap.hpp"
 #include "felix86/hle/signals.hpp"
 #include "felix86/v2/recompiler.hpp"
 
@@ -437,7 +439,7 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, const void* guest
     u8* const x86_code = state->x86_trampoline_storage;
     u8* curr = x86_code;
     // Our recompiler marks guest code as PROT_READ, we need to undo this as it may have marked previous trampolines
-    mprotect((u8*)((u64)x86_code & ~0xFFFull), 4096, PROT_READ | PROT_WRITE);
+    ::mprotect((u8*)((u64)x86_code & ~0xFFFull), 4096, PROT_READ | PROT_WRITE);
     // mov rax, u64
     curr[0] = 0x48;
     curr[1] = 0xb8;

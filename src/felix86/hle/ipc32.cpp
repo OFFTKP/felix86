@@ -181,12 +181,17 @@ int ipc32(u32 call, u32 first, u64 second, u64 third, void* ptr, u64 fifth) {
         int shmid = first;
         void* address = ptr;
         int flags = second;
-        u32* result_address = (u32*)third;
-        return g_mapper->shmat32(shmid, address, flags, result_address);
+        u32* result_address_u32 = (u32*)third;
+        u64 result_address = 0;
+        auto ret = g_mapper->shmat(true, shmid, address, flags, &result_address);
+        if (ret == 0) {
+            *result_address_u32 = (u32)result_address;
+        }
+        return ret;
     }
     case felix86_SHMDT: {
         void* address = ptr;
-        return g_mapper->shmdt32(address);
+        return g_mapper->shmdt(true, address);
     }
     case felix86_MSGGET: {
         return ::syscall(SYS_msgget, first, second);
