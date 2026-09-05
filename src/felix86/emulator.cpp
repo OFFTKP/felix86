@@ -347,6 +347,7 @@ void Emulator::Start() {
 
     ThreadState* main_state = ThreadState::Create();
     main_state->ctx.cs = mode32 ? 0x23 : 0x33;
+    main_state->ctx.ds = main_state->ctx.es = mode32 ? 0x2b : 0x00;
 
     if (!mode32 && !g_config.thunks_path.empty()) {
         Thunks::initialize();

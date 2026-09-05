@@ -44,8 +44,11 @@ static_assert(sizeof(fsave_frame_16) == 94);
 
 struct fsave_frame_32 {
     u16 cw = 0;
-    alignas(u32) u16 sw = 0;
-    alignas(u32) u16 tw = 0;
+    u16 cw_hi = 0;
+    u16 sw = 0;
+    u16 sw_hi = 0;
+    u16 tw = 0;
+    u16 tw_hi = 0;
     u32 fip = 0;
     u32 unused = 0;
     u32 fdp = 0;
@@ -110,6 +113,8 @@ void felix86_frstor_32(UserContext& ctx, void* address);
 void felix86_fxrstor(UserContext& ctx, void* address, bool restore_x87 = true, bool restore_xmm = true, bool restore_mxcsr = true);
 
 void felix86_xrstor(UserContext& ctx, void* address, bool restore_all);
+
+void felix86_x87_init(UserContext& ctx);
 
 constexpr u64 felix86_xsave_size() {
     return sizeof(fxsave_frame) + sizeof(xsave_header) + sizeof(ymm_hi);

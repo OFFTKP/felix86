@@ -78,6 +78,10 @@ private:
 #define felix86_x86_64_ARCH_GET_FS 0x1003
 #define felix86_x86_64_ARCH_GET_GS 0x1004
 
+#ifndef SS_AUTODISARM
+#define SS_AUTODISARM (1U << 31)
+#endif
+
 #define SYSCALL(name, ...) (syscall(x64_to_riscv(felix86_x86_64_##name), ##__VA_ARGS__))
 
 // TODO: move me elsewhere
@@ -1303,43 +1307,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_sigaltstack: {
-        VERBOSE("----- sigaltstack was called -----");
-        stack_t* new_ss = (stack_t*)arg1;
-        stack_t* old_ss = (stack_t*)arg2;
-        u64 current_rsp = state->ctx.gprs[X86_REF_RSP];
-
-        bool on_stack = false;
-        if (!(state->alt_stack.ss_flags & SS_DISABLE) && current_rsp >= (u64)state->alt_stack.ss_sp &&
-            current_rsp < (u64)state->alt_stack.ss_sp + state->alt_stack.ss_size) {
-            on_stack = true;
-        }
-
-        if (old_ss) {
-            old_ss->ss_sp = state->alt_stack.ss_sp;
-            old_ss->ss_flags = 0;
-            old_ss->ss_size = state->alt_stack.ss_size;
-
-            if (on_stack) {
-                old_ss->ss_flags = SS_ONSTACK;
-            } else {
-                old_ss->ss_flags = SS_DISABLE;
-            }
-        }
-
-        if (new_ss) {
-            if (on_stack) {
-                WARN("Tried to set sigaltstack while using it");
-                result = -EPERM;
-                break;
-            }
-
-            state->alt_stack.ss_sp = new_ss->ss_sp;
-            state->alt_stack.ss_flags = new_ss->ss_flags;
-            state->alt_stack.ss_size = new_ss->ss_size;
-            VERBOSE("New altstack: %lx", new_ss->ss_sp);
-        }
-
-        result = 0;
+        result = Signals::sigaltstack(state, (stack_t*)arg1, (stack_t*)arg2, arg3);
         break;
     }
     case felix86_riscv64_prctl: {
@@ -1867,6 +1835,10 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
     case felix86_riscv64_rt_sigpending: {
         SIGLOG("Entering rt_sigpending");
         result = SYSCALL(rt_sigpending, arg1, arg2);
+        if (result == 0) {
+            sigset_t* set = (sigset_t*)arg1;
+            set->__val[0] |= state->deferred_signals;
+        }
         SIGLOG("rt_sigpending returned with %d", (int)result);
         break;
     }
@@ -2469,6 +2441,28 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             result = SYSCALL(rt_tgsigqueueinfo, arg1, arg2, arg3, host_info);
             break;
         }
+        case felix86_x86_32_rt_sigtimedwait_time32: {
+            siginfo_t host_info;
+            timespec host_timeout;
+            timespec* timeout = nullptr;
+            if (arg3) {
+                host_timeout = *(x86_timespec*)arg3;
+                timeout = &host_timeout;
+            }
+            result = SYSCALL(rt_sigtimedwait, arg1, arg2 ? &host_info : nullptr, timeout, arg4);
+            if (result >= 0 && arg2) {
+                *(x86_siginfo_t*)arg2 = host_info;
+            }
+            break;
+        }
+        case felix86_x86_32_rt_sigtimedwait: {
+            siginfo_t host_info;
+            result = SYSCALL(rt_sigtimedwait, arg1, arg2 ? &host_info : nullptr, arg3, arg4);
+            if (result >= 0 && arg2) {
+                *(x86_siginfo_t*)arg2 = host_info;
+            }
+            break;
+        }
         case felix86_x86_32_llseek: {
             int fd = arg1;
             u64 offset_high = arg2;
@@ -2841,49 +2835,24 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_sigaltstack: {
-            VERBOSE("----- sigaltstack was called -----");
             x86_stack_t* new_ss = (x86_stack_t*)arg1;
             x86_stack_t* old_ss = (x86_stack_t*)arg2;
-
-#define SS_AUTODISARM (1U << 31)
-            if (arg3 & SS_AUTODISARM) {
-                WARN("SS_AUTODISARM when establishing alt stack");
-            }
-
-            u64 current_rsp = state->ctx.gprs[X86_REF_RSP];
-
-            bool on_stack = false;
-            if (!(state->alt_stack.ss_flags & SS_DISABLE) && current_rsp >= (u64)state->alt_stack.ss_sp &&
-                current_rsp < (u64)state->alt_stack.ss_sp + state->alt_stack.ss_size) {
-                on_stack = true;
-            }
-
-            if (old_ss) {
-                old_ss->ss_sp = (u32)(u64)state->alt_stack.ss_sp;
-                old_ss->ss_flags = 0;
-                old_ss->ss_size = state->alt_stack.ss_size;
-
-                if (on_stack) {
-                    old_ss->ss_flags = SS_ONSTACK;
-                } else {
-                    old_ss->ss_flags = SS_DISABLE;
-                }
-            }
-
+            stack_t host_new_ss = {};
+            stack_t host_old_ss = {};
+            stack_t* host_new_ss_ptr = nullptr;
+            stack_t* host_old_ss_ptr = nullptr;
             if (new_ss) {
-                if (on_stack) {
-                    WARN("Tried to set sigaltstack while using it");
-                    result = -EPERM;
-                    break;
-                }
-
-                state->alt_stack.ss_sp = (void*)(u64)new_ss->ss_sp;
-                state->alt_stack.ss_flags = new_ss->ss_flags;
-                state->alt_stack.ss_size = new_ss->ss_size;
-                VERBOSE("New altstack: %lx", new_ss->ss_sp);
+                host_new_ss = *new_ss;
+                host_new_ss_ptr = &host_new_ss;
             }
-
-            result = 0;
+            if (old_ss) {
+                host_old_ss = *old_ss;
+                host_old_ss_ptr = &host_old_ss;
+            }
+            result = Signals::sigaltstack(state, host_new_ss_ptr, host_old_ss_ptr, arg3);
+            if (old_ss) {
+                *old_ss = host_old_ss;
+            }
             break;
         }
         case felix86_x86_32_access: {
