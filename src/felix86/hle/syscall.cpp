@@ -2441,6 +2441,28 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             result = SYSCALL(rt_tgsigqueueinfo, arg1, arg2, arg3, host_info);
             break;
         }
+        case felix86_x86_32_rt_sigtimedwait_time32: {
+            siginfo_t host_info;
+            timespec host_timeout;
+            timespec* timeout = nullptr;
+            if (arg3) {
+                host_timeout = *(x86_timespec*)arg3;
+                timeout = &host_timeout;
+            }
+            result = SYSCALL(rt_sigtimedwait, arg1, arg2 ? &host_info : nullptr, timeout, arg4);
+            if (result >= 0 && arg2) {
+                *(x86_siginfo_t*)arg2 = host_info;
+            }
+            break;
+        }
+        case felix86_x86_32_rt_sigtimedwait: {
+            siginfo_t host_info;
+            result = SYSCALL(rt_sigtimedwait, arg1, arg2 ? &host_info : nullptr, arg3, arg4);
+            if (result >= 0 && arg2) {
+                *(x86_siginfo_t*)arg2 = host_info;
+            }
+            break;
+        }
         case felix86_x86_32_llseek: {
             int fd = arg1;
             u64 offset_high = arg2;
