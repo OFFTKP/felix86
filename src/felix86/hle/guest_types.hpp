@@ -82,7 +82,7 @@ struct x86_old_sigaction {
     u32 restorer;
 };
 
-struct x86_stack_t {
+struct __attribute__((packed)) x86_stack_t {
     u32 ss_sp;
     u32 ss_flags;
     u32 ss_size;

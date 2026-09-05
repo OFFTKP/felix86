@@ -288,7 +288,7 @@ void felix86_xsave(const UserContext& ctx, void* address, bool save_all) {
 void felix86_x87_init(UserContext& ctx) {
     ctx.fpu_cw = 0x37F;
     ctx.fpu_sw = 0;
-    ctx.fpu_tw = 0xFF;
+    ctx.fpu_tw = 0;
     ctx.fpu_top = 0;
     for (int i = 0; i < 8; i++) {
         ctx.st[i] = Float80{};
