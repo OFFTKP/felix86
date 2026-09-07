@@ -1643,6 +1643,28 @@ CATCH_TEST_CASE("MProtect1", "[mmap]") {
     SUCCESS_MESSAGE();
 }
 
+CATCH_TEST_CASE("MProtect2", "[mmap]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = true;
+
+    MMAP_AT(0x20000, 0x20000, PROT_NONE, 0);
+
+    verifyGuestRegions(mapper, { 
+        {0x20000, 0x20000, PROT_NONE},
+    });
+
+    mapper.protect((void*)0x30000, 0x10000, PROT_WRITE);
+
+    verifyGuestRegions(mapper, { 
+        {0x20000, 0x10000, PROT_NONE},
+        {0x30000, 0x10000, PROT_WRITE},
+    });
+
+    MUNMAP_ALL();
+    SUCCESS_MESSAGE();
+}
+
 CATCH_TEST_CASE("MProtectLeft", "[mmap]") {
     std::vector<std::pair<u32, u32>> unmap_me;
     Mapper mapper;

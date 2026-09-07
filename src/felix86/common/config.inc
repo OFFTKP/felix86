@@ -65,6 +65,7 @@ X(Debugging, bool, seccomp_always_allow, false, FELIX86_SECCOMP_ALWAYS_ALLOW, "D
 X(Debugging, bool, ptrace_enabled, true, FELIX86_PTRACE_ENABLED, "Enable ptrace(), allowing programs to debug other programs")
 X(Debugging, bool, stats_enabled, false, FELIX86_STATS_ENABLED, "Enable JIT stats")
 X(Debugging, bool, proc_self_auxv, true, FELIX86_PROC_SELF_AUXV, "Enable /proc/self/auxv emulation, breaks host gdb attaching to felix86, disable if you need to attach")
+X(Debugging, bool, guest_memory_tracking_enabled, false, FELIX86_GUEST_MEMORY_TRACKING_ENABLED, "Enable guest memory tracking")
 
 X(Performance, bool, link, true, FELIX86_LINK, "Enable basic block linking, important for performance")
 X(Performance, u64, max_block_size, 300, FELIX86_MAX_BLOCK_SIZE, "Maximum x86 instructions per block")

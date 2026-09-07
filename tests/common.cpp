@@ -18,6 +18,7 @@ public:
         Config new_config{};
         new_config.rootfs_path = g_config.rootfs_path;
         new_config.protect_pages = false;
+        new_config.guest_memory_tracking_enabled = true;
         g_config = new_config;
     }
 };

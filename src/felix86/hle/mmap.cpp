@@ -9,6 +9,7 @@
 #include <sys/shm.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include "felix86/common/config.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
@@ -369,29 +370,38 @@ int Mapper::shmdt(bool mode32, void* address) {
     if (result == 0) {
         if (size_known) {
             if ((u64)address <= UINT32_MAX) {
-                // We need to check what guest regions are actually allocated by shmat
-                // and add those regions to the freelist explicitly.
-                for (auto region : allocated_regions) {
-                    // Region is not allocated by shmat.
-                    if (region.shmid == -1) {
-                        continue;
-                    }
+                if (g_config.guest_memory_tracking_enabled) {
+                    // We need to check what guest regions are actually allocated by shmat
+                    // and add those regions to the freelist explicitly.
+                    for (auto region : allocated_regions) {
+                        // Region is not allocated by shmat.
+                        if (region.shmid == -1) {
+                            continue;
+                        }
 
-                    u64 start = (u64)address;
-                    u64 end = start + size;
+                        u64 start = (u64)address;
+                        u64 end = start + size;
 
-                    if (region.start >= end) {
-                        break;
-                    }
+                        if (region.start >= end) {
+                            break;
+                        }
 
-                    if (region.end < start) {
-                        continue;
-                    }
+                        if (region.end < start) {
+                            continue;
+                        }
 
-                    if (region.start >= start) {
-                        u64 size = end - region.start;
-                        freelist.deallocate((u64)region.start, size);
+                        if (region.start >= start) {
+                            u64 size = end - region.start;
+                            freelist.deallocate((u64)region.start, size);
+                        }
                     }
+                } else {
+                    // In case guest memory trackiong is disabled, then use an incorrect
+                    // but unlikely to cause bug solution of just assuming the entire
+                    // region may be deallocated by shmdt. This could cause a bug where memory
+                    // which is not freed is marked freed in the freelist, but solving this
+                    // without guest memory tracking is an issue in of itself.
+                    freelist.deallocate((u64)address, size);
                 }
             }
             remove_tracked_region((u64)address, size, true);
@@ -415,6 +425,10 @@ static bool can_guest_regions_merge(GuestRegion& l, GuestRegion& h) {
 }
 
 void Mapper::add_tracked_region(u64 address, u64 len, int prot, dev_t dev, ino_t ino, u64 offset, bool shmem, int shmid, bool anon) {
+    if (!g_config.guest_memory_tracking_enabled) {
+        return;
+    }
+
     if (len == 0)
         return;
 
@@ -459,6 +473,10 @@ void Mapper::add_tracked_region(u64 address, u64 len, int prot, dev_t dev, ino_t
 }
 
 void Mapper::move_tracked_region(u64 old_address, u64 old_len, u64 new_address, u64 new_len, bool remove_src, int new_prot, bool can_grow) {
+    if (!g_config.guest_memory_tracking_enabled) {
+        return;
+    }
+
     old_address &= ~0xfff;
     old_len = (old_len + 0xfff) & ~0xfff;
     new_address &= ~0xfff;
@@ -515,6 +533,10 @@ void Mapper::move_tracked_region(u64 old_address, u64 old_len, u64 new_address, 
 }
 
 void Mapper::remove_tracked_region(u64 address, u64 len, bool only_shmat) {
+    if (!g_config.guest_memory_tracking_enabled) {
+        return;
+    }
+
     if (len == 0)
         return;
 
