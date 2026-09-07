@@ -35,6 +35,10 @@ static void* pthread_handler(void* args) {
 
     ThreadState* state = ThreadState::Create(clone_args.parent_state);
     bool trace_clone = state->ptrace_data.constants.flags & PTRACE_O_TRACECLONE;
+    if (!trace_clone) {
+        state->ptrace_data.constants.tracer_pid = 0;
+        state->ptrace_data.constants.flags = 0;
+    }
 
     if (clone_args.guest_flags & CLONE_SIGHAND) {
         // If CLONE_SIGHAND is set, the child and the parent share the same signal handler table
@@ -334,6 +338,10 @@ static long ForkMe(CloneArgs& host_clone_args) {
         int pid = getpid();
         state->ptrace_data.constants.my_tgid = pid;
         state->ptrace_data.constants.my_tid = gettid();
+        if (!trace_fork) {
+            state->ptrace_data.constants.tracer_pid = 0;
+            state->ptrace_data.constants.flags = 0;
+        }
 
         if (host_clone_args.guest_flags & CLONE_SETTLS) {
             state->SetTLS(host_clone_args.new_tls);
@@ -402,6 +410,10 @@ static long VForkMe(CloneArgs& args) {
         SIGLOG("%d vforked to %d", parent_pid, pid);
         ThreadState* state = ThreadState::Get();
         g_process_globals.vfork_rootfs = shared_rootfs;
+        if (!trace_vfork) {
+            state->ptrace_data.constants.tracer_pid = 0;
+            state->ptrace_data.constants.flags = 0;
+        }
 
         // TODO: probably clean up states here, but it doesn't matter cus it gets execve'd anyway
         if (args.new_rsp) {
