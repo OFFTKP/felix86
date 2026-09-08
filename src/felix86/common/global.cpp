@@ -92,6 +92,7 @@ void ProcessGlobals::initialize() {
     // Re-initialize these
     states_lock = Semaphore();
     symbols_lock = Semaphore();
+    g_mapper->reinitialize_lock();
 
     // Reset the states stored here
     states = {};

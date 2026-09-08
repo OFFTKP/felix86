@@ -57,6 +57,8 @@ void SHMManager::initialize() {
         strncpy(stat_header->fex_version, version.data(), std::min(sizeof(stat_header->fex_version) - 1, version.size()));
         stat_header->Size = current_size;
     }
+
+    lock = {};
 }
 
 FEXCore::SHMStats::ThreadStats* SHMManager::findSlot(u32 tid, u64 scan_size) {
