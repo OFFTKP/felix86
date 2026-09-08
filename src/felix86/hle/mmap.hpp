@@ -57,6 +57,10 @@ struct Mapper {
     /// Return the tracked allocated regions.
     std::vector<GuestRegion> get_guest_regions();
 
+    void reinitialize_lock() {
+        freelist.reinitialize_lock();
+    }
+
 private:
     Freelist freelist;
     std::unordered_map<u64, int> page_to_shmid{};

@@ -29,6 +29,10 @@ struct Freelist {
         return ret;
     }
 
+    void reinitialize_lock() {
+        sem = {};
+    }
+
 private:
     struct Node {
         u32 start;
