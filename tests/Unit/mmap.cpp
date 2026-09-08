@@ -710,6 +710,30 @@ CATCH_TEST_CASE("FreelistFullThenUnmap", "[mmap32]") {
     SUCCESS_MESSAGE();
 }
 
+CATCH_TEST_CASE("FreelistUnmapAtZero", "[mmap32]") {
+    Mapper mapper;
+    g_mode32 = true;
+
+    u64 min = mmap_min_addr();
+    verifyRegions(mapper, {{(u32)min, UINT32_MAX}});
+
+    CATCH_REQUIRE(mapper.unmap(true, (void*)0, 0x1000) == 0);
+    verifyRegions(mapper, {{(u32)min, UINT32_MAX}});
+
+    CATCH_REQUIRE(mapper.unmap(true, (void*)0, min + 0x10000) == 0);
+    verifyRegions(mapper, {{(u32)min, UINT32_MAX}});
+
+    void* address = mapper.map(true, nullptr, 0x1000, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    CATCH_REQUIRE((u64)address >= min);
+    CATCH_REQUIRE((u64)address <= UINT32_MAX);
+    verifyRegions(mapper, {{(u32)min + 0x1000, UINT32_MAX}});
+
+    CATCH_REQUIRE(mapper.unmap(true, address, 0x1000) == 0);
+    verifyRegions(mapper, {{(u32)min, UINT32_MAX}});
+
+    SUCCESS_MESSAGE();
+}
+
 CATCH_TEST_CASE("Simple1", "[mmap]") {
     std::vector<std::pair<u32, u32>> unmap_me;
     Mapper mapper;

@@ -80,15 +80,14 @@ void* Freelist::allocate(u32 addr, size_t size) {
         // We need to choose the first available mapping
         Node* current = list;
         Node* best = nullptr;
-        u32 best_size = UINT32_MAX;
         while (current) {
-            u32 start = current->start;
-            u32 end = current->end + 1;
-            u32 cur_size = end - start;
+            u64 start = current->start;
+            u64 end = (u64)current->end + 1;
+            u64 cur_size = end - start;
 
-            if (cur_size >= size && (!best || best_size < cur_size)) {
+            if (cur_size >= size) {
                 best = current;
-                best_size = cur_size;
+                break;
             }
 
             current = current->next;
@@ -113,6 +112,17 @@ void Freelist::deallocate(u32 addr, size_t size) {
         // There can be a munmap or similar that starts in 32-bit address space and ends outside it
         // For the freelist, we only care to track the 32-bit address space
         size = ((u64)UINT32_MAX + 1) - addr;
+    }
+
+    u64 min_addr = mmap_min_addr();
+    if ((u64)addr < min_addr) {
+        u64 end = (u64)addr + size;
+        if (end <= min_addr) {
+            WARN("Deallocate called entirely before min addr: %x %lx", addr, size);
+            return;
+        }
+        size = end - min_addr;
+        addr = min_addr;
     }
 
     u32 new_start = addr;
@@ -197,7 +207,7 @@ void Freelist::consolidate() {
         while (current) {
             Node* next = current->next;
             if (next) {
-                if (current->end + 1 >= next->start) {
+                if ((u64)current->end + 1 >= next->start) {
                     current->end = std::max(current->end, next->end);
                     current->next = next->next;
                     delete next;

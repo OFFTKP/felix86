@@ -9,3 +9,17 @@ Semaphore::Semaphore() {
         ERROR("Failed to initialize semaphore. Error: %s", strerror(errno));
     }
 }
+
+SemaphoreGuard::SemaphoreGuard(sem_t* sem) : sem(sem) {
+    while (true) {
+        int result = sem_wait(sem);
+        if (result == 0) {
+            return;
+        } else if (errno == EINTR) {
+            continue;
+        } else {
+            IMPORTANT("Failed to lock semaphore with error %d", errno);
+            break;
+        }
+    }
+}
