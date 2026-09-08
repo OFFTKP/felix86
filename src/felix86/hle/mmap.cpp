@@ -65,9 +65,9 @@ void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offse
         }
 
         void* result = mmap(address, size, prot, flags | MAP_FIXED_NOREPLACE, fd, offset);
+        i64 error = -errno;
         if (result == MAP_FAILED) {
             freelist.deallocate((u64)address, size);
-            i64 error = -errno;
             WARN("Even though our freelist says we have memory at %lx-%lx, mmap failed with: %ld", (u64)address, (u64)address + size, error);
             return (void*)error;
         }
@@ -278,10 +278,8 @@ int Mapper::shmat(bool mode32, int shmid, void* address, int flags, u64* result_
         size = new_size;
     }
 
-    ASSERT(size < 0xFFFF'FFFF);
-
+    int error = 0;
     void *our_mem, *shm_mem;
-
     if (mode32 && address == nullptr) {
         // Use our freelist allocator to find a region in memory, but don't mmap it
         our_mem = freelist.allocate(0, size);
@@ -294,14 +292,16 @@ int Mapper::shmat(bool mode32, int shmid, void* address, int flags, u64* result_
         // We can't let the shmat decide for itself what address it wants to go in, because it will
         // almost always choose a 64-bit address which can't be used in 32-bit mode
         shm_mem = ::shmat(shmid, our_mem, flags);
+        error = errno;
     } else {
         if (mode32 && (u64)address + size > (u64)UINT32_MAX + 1) {
-            return (i64)-1;
+            return -EINVAL;
         }
 
         // Since an address is provided by the application, we are going to assume it's
         // inside 32-bit address space and just check after the shmat
         shm_mem = ::shmat(shmid, address, flags);
+        error = errno;
         if ((i64)shm_mem != -1) {
             u64 top_bits = (u64)shm_mem >> 32;
             ASSERT_MSG(!mode32 || top_bits == 0 || top_bits == 0xFFFF'FFFF, "shmat returned address in 64-bit address space?");
@@ -315,7 +315,7 @@ int Mapper::shmat(bool mode32, int shmid, void* address, int flags, u64* result_
                 }
             }
         } else {
-            return (i64)-1ull;
+            return (i64)-error;
         }
     }
 
@@ -323,7 +323,7 @@ int Mapper::shmat(bool mode32, int shmid, void* address, int flags, u64* result_
         if ((u64)our_mem > 0) {
             freelist.deallocate((u64)our_mem, size);
         }
-        return (i64)-errno;
+        return (i64)-error;
     }
 
     u64 top_bits = (u64)shm_mem >> 32;

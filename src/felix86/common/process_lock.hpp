@@ -4,9 +4,7 @@
 #include <semaphore.h>
 
 struct SemaphoreGuard {
-    explicit SemaphoreGuard(sem_t* sem) : sem(sem) {
-        sem_wait(sem);
-    }
+    explicit SemaphoreGuard(sem_t* sem);
 
     ~SemaphoreGuard() {
         sem_post(sem);
