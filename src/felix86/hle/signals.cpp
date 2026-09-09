@@ -1303,7 +1303,7 @@ static bool handle_scan_ahead_fault(ThreadState* current_state, siginfo_t* info,
     }
 
     u64 fault_addr = (u64)info->si_addr;
-    if (fault_addr < current_state->scan_ahead_address || fault_addr > current_state->scan_ahead_address + ZYDIS_MAX_INSTRUCTION_LENGTH) {
+    if (fault_addr < current_state->scan_ahead_address || fault_addr >= current_state->scan_ahead_address + ZYDIS_MAX_INSTRUCTION_LENGTH) {
         // Unrelated fault?
         return false;
     }
