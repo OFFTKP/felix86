@@ -104,17 +104,18 @@ static void alignment_check_failed(void* rip) {
 
 Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
     // Placing address cache near code cache allows us to access address cache with AUIPC+ADDI combo
-    size_t address_cache_size = (1 << address_cache_bits) * sizeof(AddressCacheEntry);
-    size_t size = max_code_cache_size + address_cache_size;
+    constexpr size_t address_cache_size = (1 << address_cache_bits) * sizeof(AddressCacheEntry);
+    constexpr size_t total_size = max_code_cache_size + address_cache_size;
     // Try allocating code cache near program so that rip-relative immediates can be made in fewer instructions
     u64 min = std::min(g_executable_start, g_interpreter_start);
     void* address = MAP_FAILED;
     // If the program is allocated in 32-bit address space then it's not worth performing this optimization
     // as to not interfere with MAP_32BIT and because immediates can be made in 2 instructions
     if (min > 5 * GB) {
-        for (int i = 0; i < 4; i++) {
-            min -= 256 * MB;
-            address = ::mmap((void*)min, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE | MAP_FIXED_NOREPLACE, -1, 0);
+        for (int i = 0; i < 56; i++) {
+            min -= total_size;
+            min &= ~(2 * MB - 1);
+            address = ::mmap((void*)min, total_size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE | MAP_FIXED_NOREPLACE, -1, 0);
             if (address != MAP_FAILED) {
                 break;
             }
@@ -125,7 +126,12 @@ Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
         }
     }
     if (address == MAP_FAILED) {
-        address = ::mmap(nullptr, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+        // Allocate an extra 2MB of virtual address space and skip it so that the mapping is aligned
+        // to 2MB for the MADV_HUGEPAGE to work
+        address = ::mmap(nullptr, total_size + 2 * MB, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+        if (address != MAP_FAILED) {
+            address = (void*)(((u64)address + 2 * MB - 1) & ~(2 * MB - 1));
+        }
     }
     ASSERT_MSG(address != MAP_FAILED, "Failed to reserve code cache for thread %d?", gettid());
     u8* first_chunk = (u8*)::mmap((u8*)address + address_cache_size, code_cache_sizes[0], PROT_READ | PROT_WRITE | PROT_EXEC,
@@ -135,6 +141,11 @@ Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
 
     address_cache = (AddressCacheEntry*)::mmap(address, address_cache_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
     ASSERT(address_cache == address);
+
+    int result = madvise(address, total_size, MADV_HUGEPAGE);
+    if (result != 0) {
+        WARN("Failed to set MADV_HUGEPAGE for code cache and address cache");
+    }
 
     if (g_config.auto_compress) {
         as.EnableOptimization(Optimization::AutoCompress);
@@ -248,11 +259,10 @@ void Recompiler::emitDispatcher() {
         // Multiply by 16, which is size of each address cache entry
         as.SRLI(temp2, temp2, 64 - address_cache_bits - 4);
         as.ADD(temp, temp, temp2);
-        as.LD(temp2, offset_guest, temp); // read the AddressCacheEntry::guest field
-        as.BNE(temp2, ripreg, &not_equal);
-
-        // Address cache was correct, jump to host address
+        // Load even if branch fails is slightly better for fusion
         as.LD(rip, offset_host, temp);
+        as.LD(temp2, offset_guest, temp);
+        as.BNE(temp2, ripreg, &not_equal);
         as.MV(t5, x0); // zero out t5, see invalidate_caller_thunk
         as.JR(rip);
 
@@ -420,6 +430,8 @@ void Recompiler::resizeOrClearCodeCache(ThreadState* state) {
 
             // Undo the size increment
             code_cache_size_index--;
+        } else {
+            madvise(address, size_difference, MADV_HUGEPAGE);
         }
     } else {
         clearCodeCache(state);
