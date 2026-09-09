@@ -1292,6 +1292,29 @@ static void defer_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx
     state->effective_deferred_signals = effective_deferred_signals;
     SIGLOG("Deferring signal %s (%d) during RIP=%lx", sigdescr_np(sig), sig, state->GetRip());
 }
+static bool handle_scan_ahead_fault(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
+    if (!current_state->in_scan_ahead) {
+        return false;
+    }
+
+    if (info->si_code <= 0) {
+        // Asynchronous sigsegv?
+        return false;
+    }
+
+    u64 fault_addr = (u64)info->si_addr;
+    if (fault_addr < current_state->scan_ahead_address || fault_addr >= current_state->scan_ahead_address + ZYDIS_MAX_INSTRUCTION_LENGTH) {
+        // Unrelated fault?
+        return false;
+    }
+
+    // If a SIGSEGV happens during scan ahead, that means the address we are scanning is not valid. While there
+    // are other ways of checking (e.g. via /proc/self/maps or our mapper) they are slower than just assuming
+    // we won't segfault and long jumping out in the extraordinarily rare chance it happens
+    IMPORTANT("Scan ahead faulted at RIP=%lx with target=%lx", current_state->ctx.rip, fault_addr);
+    siglongjmp(current_state->scan_ahead_buffer, SIGSEGV);
+    UNREACHABLE();
+}
 
 static bool handle_safepoint(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
     // First we need to check if we are a safepoint
@@ -1690,7 +1713,8 @@ static bool handle_sigptrace(ThreadState* current_state, siginfo_t* info, uconte
     }
 }
 
-constexpr static std::array<RegisteredHostSignal, 7> host_signals = {{
+constexpr static std::array<RegisteredHostSignal, 8> host_signals = {{
+    {SIGSEGV, 0, handle_scan_ahead_fault},
     {SIGSEGV, SEGV_ACCERR, handle_safepoint},
     {SIGSEGV, SEGV_ACCERR, handle_smc},
     {SIGSEGV, SEGV_MAPERR, handle_synchronous},

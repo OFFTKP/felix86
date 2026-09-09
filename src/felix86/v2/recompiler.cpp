@@ -2320,11 +2320,18 @@ void Recompiler::scanAhead(u64 rip) {
         }
 
         if (is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3) {
-            if (g_config.scan_ahead_multi && !g_config.paranoid) {
-                // We need to see where the jump will land, and scan some of its instructions
-                // If all the landing places overwrite the flags (1 landing spot for jmp, 2 for jcc)
-                // then we can skip those flag calculations
-                if (is_jump && operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+            if (g_config.scan_ahead_multi && !g_config.paranoid && !is_ret && !is_call && !is_illegal && !is_hlt && !is_int3 &&
+                operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+                // In some cases, the program may deliberately jump to a bad location
+                // This was seen in a Ubisoft installer, for example. Now, we could use Mapper::is_guest_address,
+                // but these cases are so exceptionally rare that it is not worth the locked semaphore
+                // So instead, set a jump buffer so that if our scan ahead faults we skip it.
+                ThreadState* state = ThreadState::Get();
+                int ret = sigsetjmp(state->scan_ahead_buffer, 0);
+                if (ret == 0) {
+                    // We need to see where the jump will land, and scan some of its instructions
+                    // If all the landing places overwrite the flags (1 landing spot for jmp, 2 for jcc)
+                    // then we can skip those flag calculations
                     auto scan_landing_block = [&](u64 rip_ahead) {
                         bool jump_to_self = rip_ahead == initial_rip;
                         ZydisDecodedInstruction instruction_ahead;
@@ -2337,8 +2344,9 @@ void Recompiler::scanAhead(u64 rip) {
                         // and usually this big of a number is good enough
                         // If we go too high we risk messing our performance
                         // TODO: some benchmarking may be in order
-                        for (size_t i = 0; i < 64; i++) {
+                        for (size_t i = 0; i < scan_ahead_count; i++) {
                             ZydisMnemonic mnemonic;
+                            state->scan_ahead_address = rip_ahead;
                             if (jump_to_self) {
                                 // Jump to self, we already decoded the instructions
                                 ASSERT(i < instructions.size());
@@ -2417,7 +2425,10 @@ void Recompiler::scanAhead(u64 rip) {
                     if (mnemonic == ZYDIS_MNEMONIC_JMP) {
                         u64 immediate = sextImmediate(getImmediate(&operands[0]), operands[0].imm.size);
                         u64 rip_ahead = rip + instruction.length + immediate;
+                        state->in_scan_ahead = true;
                         thrashed_ahead = scan_landing_block(rip_ahead);
+                        state->scan_ahead_address = 0;
+                        state->in_scan_ahead = false;
                     } else if (instruction.mnemonic >= ZYDIS_MNEMONIC_JB && instruction.mnemonic <= ZYDIS_MNEMONIC_JZ) {
                         ASSERT(instruction.mnemonic != ZYDIS_MNEMONIC_JKZD);
                         ASSERT(instruction.mnemonic != ZYDIS_MNEMONIC_JKNZD);
@@ -2425,7 +2436,10 @@ void Recompiler::scanAhead(u64 rip) {
                         u64 rip_ahead_false = rip + instruction.length;
                         u64 rip_ahead_true = rip_ahead_false + immediate;
                         // For the flags to not be calculated they need to be overwritten in both paths
+                        state->in_scan_ahead = true;
                         thrashed_ahead = scan_landing_block(rip_ahead_false) & scan_landing_block(rip_ahead_true);
+                        state->scan_ahead_address = 0;
+                        state->in_scan_ahead = false;
                     } else {
                         break;
                     }
@@ -2435,6 +2449,14 @@ void Recompiler::scanAhead(u64 rip) {
                     // If the JCC actually uses the flag, that's fine because the flag access will be after the usage
                     // so the instruction handler will emit that flag
                     scan_entries.push_back({.rip = rip, .flags_used = 0, .flags_changed = (thrashed_ahead & ALL_CPUFLAGS)});
+                } else {
+                    // The scan ahead faulted
+                    state->in_scan_ahead = false;
+                    state->scan_ahead_address = 0;
+                    u64 sigsegv = 1 << (SIGSEGV - 1);
+                    // We don't save signal mask in sigsetjmp as it would cost a syscall per block, we just
+                    // unblock the SIGSEGV signal that the signal handler blocked on fault
+                    ASSERT(syscall(SYS_rt_sigprocmask, SIG_UNBLOCK, &sigsegv, nullptr, sizeof(u64)) == 0);
                 }
             }
 

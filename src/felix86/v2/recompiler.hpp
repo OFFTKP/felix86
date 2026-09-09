@@ -20,6 +20,7 @@
 #define FELIX86_HINT_UD2 0xd2
 #define FELIX86_HINT_TF 0x7f
 
+constexpr int scan_ahead_count = 64;
 constexpr int address_cache_bits = 16;
 
 struct AddressCacheEntry {
