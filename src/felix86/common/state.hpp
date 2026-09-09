@@ -378,6 +378,8 @@ struct ThreadState {
 
     bool force_defer_synchronous = false;
     sigjmp_buf force_defer_buffer{};
+    bool in_scan_ahead = false;
+    sigjmp_buf scan_ahead_buffer{};
 
     // For storing generated risc-v or x86 code that needs to outlive code cache clears
     u8* riscv_trampoline_storage_start = nullptr;
