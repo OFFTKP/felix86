@@ -1418,6 +1418,49 @@ static bool handle_smc(ThreadState* current_state, siginfo_t* info, ucontext_t* 
         return false;
     }
 
+    bool is_store = false;
+    u8* bytes = (u8*)pc;
+    u8 first_byte = bytes[0];
+    if ((first_byte & 0x3) != 0x3) {
+        u16 instr = first_byte | (bytes[1] << 8);
+        u8 quadrant = instr & 0x3;
+        u8 funct3 = (instr >> 13) & 0x7;
+        if (quadrant == 0) {
+            if (funct3 >= 5) {
+                is_store = true;
+            } else if (funct3 == 4) {
+                u8 sub = (instr >> 10) & 0x7;
+                is_store = sub == 2 || sub == 3;
+            }
+        }
+    } else {
+        switch (first_byte & 0x7f) {
+        case 0x23: // STORE
+        case 0x27: // STORE-FP
+        case 0x2f: // AMO
+            is_store = true;
+            break;
+        default:
+            break;
+        }
+    }
+
+    if (!is_store) {
+        WARN("We hit a SIGSEGV ACCERR but instruction is not store");
+        return false;
+    }
+
+    if (g_config.guest_memory_tracking_enabled) {
+        int prot = g_mapper->get_region_protections(info->si_addr);
+        if (prot & PROT_WRITE) {
+            // If a fault happens on store but the guest protections allow writing it must mean that it is SMC
+            // as we modified the host protections to read-only when we recompiled the block
+        } else {
+            // If the guest protections don't allow writing then this fault should be passed to the guest
+            return false;
+        }
+    }
+
 #ifdef __riscv
     u64 rip = context->uc_mcontext.__gregs[Recompiler::allocatedGPR(X86_REF_RIP).Index()];
     SMCLOG("Handling SMC on %lx during PC: %lx and RIP of block: %lx", (u64)info->si_addr, pc, rip);
