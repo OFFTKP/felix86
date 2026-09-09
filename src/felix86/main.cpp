@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstddef>
 #include <cstdio>
 #include <filesystem>
@@ -544,42 +545,48 @@ int main(int argc, char* argv[]) {
                 envp++;
             }
         }
+    }
 
-        if (!g_config.environment.empty()) {
-            std::vector<std::string> envs = split_string(g_config.environment, ';');
-            for (const auto& env : envs) {
-                if (!env.empty()) {
-                    auto pos = env.find("=");
-                    if (pos == std::string::npos) {
-                        WARN("Environment variable %s in FELIX86_ENVIRONMENT has no '=' character", env.c_str());
+    Config::initialize();
+
+    if (!g_config.environment.empty()) {
+        std::vector<std::string> envs = split_string(g_config.environment, ';');
+        for (const auto& env : envs) {
+            if (!env.empty()) {
+                auto pos = env.find("=");
+                if (pos == std::string::npos) {
+                    WARN("Environment variable %s in FELIX86_ENVIRONMENT has no '=' character", env.c_str());
+                } else {
+                    auto existing = std::find_if(g_params.envp.begin(), g_params.envp.end(),
+                                                 [&](const std::string& e) { return e.compare(0, pos + 1, env, 0, pos + 1) == 0; });
+                    if (existing != g_params.envp.end()) {
+                        *existing = env;
                     } else {
                         g_params.envp.push_back(env);
                     }
                 }
             }
         }
+    }
 
-        if (!g_config.host_environment.empty()) {
-            std::vector<std::string> envs = split_string(g_config.host_environment, ';');
-            for (const auto& env : envs) {
-                if (!env.empty()) {
-                    auto pos = env.find("=");
-                    if (pos == std::string::npos) {
-                        WARN("Environment variable %s in FELIX86_HOST_ENVIRONMENT has no '=' character", env.c_str());
-                    } else {
-                        std::string name = env.substr(0, pos);
-                        std::string value = env.substr(pos + 1);
-                        int result = setenv(name.c_str(), value.c_str(), true);
-                        if (result != 0) {
-                            WARN("Failed to set %s from FELIX86_HOST_ENVIRONMENT", name.c_str());
-                        }
+    if (!g_config.host_environment.empty()) {
+        std::vector<std::string> envs = split_string(g_config.host_environment, ';');
+        for (const auto& env : envs) {
+            if (!env.empty()) {
+                auto pos = env.find("=");
+                if (pos == std::string::npos) {
+                    WARN("Environment variable %s in FELIX86_HOST_ENVIRONMENT has no '=' character", env.c_str());
+                } else {
+                    std::string name = env.substr(0, pos);
+                    std::string value = env.substr(pos + 1);
+                    int result = setenv(name.c_str(), value.c_str(), true);
+                    if (result != 0) {
+                        WARN("Failed to set %s from FELIX86_HOST_ENVIRONMENT", name.c_str());
                     }
                 }
             }
         }
     }
-
-    Config::initialize();
 
     if (getenv("__FELIX86_QUIET")) {
         g_config.quiet = true;
