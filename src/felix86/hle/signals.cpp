@@ -1297,14 +1297,13 @@ static bool handle_scan_ahead_fault(ThreadState* current_state, siginfo_t* info,
         return false;
     }
 
-    if (info->si_code < 0) {
+    if (info->si_code <= 0) {
         // Asynchronous sigsegv?
         return false;
     }
 
     u64 fault_addr = (u64)info->si_addr;
-    if (fault_addr < current_state->scan_ahead_address ||
-        fault_addr > current_state->scan_ahead_address + ZYDIS_MAX_INSTRUCTION_LENGTH * scan_ahead_count) {
+    if (fault_addr < current_state->scan_ahead_address || fault_addr > current_state->scan_ahead_address + ZYDIS_MAX_INSTRUCTION_LENGTH) {
         // Unrelated fault?
         return false;
     }
