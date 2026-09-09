@@ -21,7 +21,7 @@
 #define FELIX86_HINT_TF 0x7f
 
 constexpr int scan_ahead_count = 64;
-constexpr int address_cache_bits = 16;
+constexpr int address_cache_bits = 17;
 
 struct AddressCacheEntry {
     u64 host{}, guest{};
