@@ -257,13 +257,13 @@ void validate_binfmt_misc() {
     auto validate = [&exe_path](const char* path) {
         int fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
         if (fd < 0) {
-            return;
+            return false;
         }
 
         struct stat st;
         if (fstat(fd, &st) != 0 || !S_ISREG(st.st_mode)) {
             close(fd);
-            return;
+            return false;
         }
 
         char buffer[4096];
@@ -285,14 +285,14 @@ void validate_binfmt_misc() {
         size_t newline = sbuffer.find('\n');
         if (newline == std::string_view::npos) {
             WARN("Bad binfmt_misc entry at %s", path);
-            return;
+            return false;
         }
 
         std::string_view state = sbuffer.substr(0, newline);
         std::string_view interp = sbuffer.substr(newline + 1);
         interp = interp.substr(0, interp.find('\n'));
         if (state != "enabled" || !interp.starts_with("interpreter ")) {
-            return;
+            return false;
         }
 
         interp.remove_prefix(strlen("interpreter "));
@@ -302,9 +302,14 @@ void validate_binfmt_misc() {
                       "is not intended, which it likely isn't:\n  Install current binary to binfmt_misc instead: sudo %s -b\n\n    "
                       "OR\n\n  Rerun with FELIX86_BINFMT_MISC_INSTALLED=0 to not use the one installed in binfmt_misc",
                       interp_str.c_str(), exe_path.c_str(), interp_str.c_str(), exe_path.c_str());
+            return true;
         }
+
+        return false;
     };
 
-    validate("/proc/sys/fs/binfmt_misc/felix86-x86_64");
-    validate("/proc/sys/fs/binfmt_misc/felix86-i386");
+    bool warned = validate("/proc/sys/fs/binfmt_misc/felix86-x86_64");
+    if (!warned) {
+        validate("/proc/sys/fs/binfmt_misc/felix86-i386");
+    }
 }
