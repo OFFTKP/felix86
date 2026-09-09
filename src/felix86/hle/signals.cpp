@@ -1297,10 +1297,22 @@ static bool handle_scan_ahead_fault(ThreadState* current_state, siginfo_t* info,
         return false;
     }
 
+    if (info->si_code < 0) {
+        // Asynchronous sigsegv?
+        return false;
+    }
+
+    u64 fault_addr = (u64)info->si_addr;
+    if (fault_addr < current_state->scan_ahead_address ||
+        fault_addr > current_state->scan_ahead_address + ZYDIS_MAX_INSTRUCTION_LENGTH * scan_ahead_count) {
+        // Unrelated fault?
+        return false;
+    }
+
     // If a SIGSEGV happens during scan ahead, that means the address we are scanning is not valid. While there
     // are other ways of checking (e.g. via /proc/self/maps or our mapper) they are slower than just assuming
     // we won't segfault and long jumping out in the extraordinarily rare chance it happens
-    IMPORTANT("Scan ahead faulted at RIP=%lx with target=%lx", current_state->ctx.rip, (u64)info->si_addr);
+    IMPORTANT("Scan ahead faulted at RIP=%lx with target=%lx", current_state->ctx.rip, fault_addr);
     siglongjmp(current_state->scan_ahead_buffer, SIGSEGV);
     UNREACHABLE();
 }

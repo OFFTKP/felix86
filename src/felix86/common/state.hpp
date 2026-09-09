@@ -379,6 +379,7 @@ struct ThreadState {
     bool force_defer_synchronous = false;
     sigjmp_buf force_defer_buffer{};
     bool in_scan_ahead = false;
+    u64 scan_ahead_address = 0;
     sigjmp_buf scan_ahead_buffer{};
 
     // For storing generated risc-v or x86 code that needs to outlive code cache clears

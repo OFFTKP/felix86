@@ -2320,7 +2320,7 @@ void Recompiler::scanAhead(u64 rip) {
         }
 
         if (is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3) {
-            if (g_config.scan_ahead_multi && !g_config.paranoid) {
+            if (g_config.scan_ahead_multi && !g_config.paranoid && !is_ret && !is_call && !is_illegal && !is_hlt && !is_int3) {
                 // In some cases, the program may deliberately jump to a bad location
                 // This was seen in a Ubisoft installer, for example. Now, we could use Mapper::is_guest_address,
                 // but these cases are so exceptionally rare that it is not worth the locked semaphore
@@ -2344,7 +2344,7 @@ void Recompiler::scanAhead(u64 rip) {
                             // and usually this big of a number is good enough
                             // If we go too high we risk messing our performance
                             // TODO: some benchmarking may be in order
-                            for (size_t i = 0; i < 64; i++) {
+                            for (size_t i = 0; i < scan_ahead_count; i++) {
                                 ZydisMnemonic mnemonic;
                                 if (jump_to_self) {
                                     // Jump to self, we already decoded the instructions
@@ -2426,7 +2426,9 @@ void Recompiler::scanAhead(u64 rip) {
                             u64 immediate = sextImmediate(getImmediate(&operands[0]), operands[0].imm.size);
                             u64 rip_ahead = rip + instruction.length + immediate;
                             state->in_scan_ahead = true;
+                            state->scan_ahead_address = rip_ahead;
                             thrashed_ahead = scan_landing_block(rip_ahead);
+                            state->scan_ahead_address = 0;
                             state->in_scan_ahead = false;
                         } else if (instruction.mnemonic >= ZYDIS_MNEMONIC_JB && instruction.mnemonic <= ZYDIS_MNEMONIC_JZ) {
                             ASSERT(instruction.mnemonic != ZYDIS_MNEMONIC_JKZD);
@@ -2436,8 +2438,13 @@ void Recompiler::scanAhead(u64 rip) {
                             u64 rip_ahead_true = rip_ahead_false + immediate;
                             // For the flags to not be calculated they need to be overwritten in both paths
                             state->in_scan_ahead = true;
-                            thrashed_ahead = scan_landing_block(rip_ahead_false) & scan_landing_block(rip_ahead_true);
+                            state->scan_ahead_address = rip_ahead_false;
+                            u32 false_flags = scan_landing_block(rip_ahead_false);
+                            state->scan_ahead_address = rip_ahead_true;
+                            u32 true_flags = scan_landing_block(rip_ahead_true);
+                            state->scan_ahead_address = 0;
                             state->in_scan_ahead = false;
+                            thrashed_ahead = false_flags & true_flags;
                         } else {
                             break;
                         }
