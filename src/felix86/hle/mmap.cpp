@@ -650,3 +650,16 @@ std::vector<GuestRegion> Mapper::get_guest_regions() {
     }
     return regions;
 }
+
+int Mapper::get_region_protections(void* address) {
+    auto guard = freelist.lock();
+
+    u64 a = (u64)address;
+    for (auto r : allocated_regions) {
+        if (r.start <= a && a < r.end) {
+            return r.prot;
+        }
+    }
+
+    return 0;
+}

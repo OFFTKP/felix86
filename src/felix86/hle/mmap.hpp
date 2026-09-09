@@ -57,6 +57,8 @@ struct Mapper {
     /// Return the tracked allocated regions.
     std::vector<GuestRegion> get_guest_regions();
 
+    int get_region_protections(void* address);
+
     void reinitialize_lock() {
         freelist.reinitialize_lock();
     }
