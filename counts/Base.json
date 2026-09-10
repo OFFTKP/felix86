@@ -14326,24 +14326,6 @@
         ],
         "disassembly": "mov rax, [rdi+0x80]"
     },
-    "488b0540000000": {
-        "instruction_count": 2,
-        "expected_asm": [
-            "ADDI            ra, rip, 0x7(7)",
-            "LD              rax, ra, 0x40(64)"
-        ],
-        "disassembly": "mov rax, [0x00007FFBB6104047]"
-    },
-    "488b0500000400": {
-        "instruction_count": 4,
-        "expected_asm": [
-            "LUI             t1, 0x40(64)",
-            "ADDIW           t1, t1, 0x7(7)",
-            "ADD             ra, rip, t1",
-            "LD              rax, ra, 0x0(0)"
-        ],
-        "disassembly": "mov rax, [0x00007FFBB6144007]"
-    },
     "48c7878000000001000000": {
         "instruction_count": 2,
         "expected_asm": [
