@@ -657,20 +657,10 @@ FAST_HANDLE(MOV) {
             }
             case 32:
             case 64: {
-                u64 immediate = operands[1].mem.disp.value;
                 biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
-                if (IsValidSigned12BitImm(immediate) && !(instruction.attributes & ZYDIS_ATTRIB_HAS_SEGMENT) &&
-                    !g_config.paranoid) { // can't do this with seg+a32
-                    // Remove the immediate from the operand and use it in the write memory instruction
-                    // This can turn an ADDI+load into just a load if the LEA is just a register
-                    ZydisDecodedOperand op = operands[1];
-                    op.mem.disp.value = 0;
-                    biscuit::GPR address = rec.lea(&op, false);
-                    rec.readMemory(dst, address, immediate, rec.zydisToSize(operands[0].size));
-                } else {
-                    biscuit::GPR address = rec.lea(&operands[1], false);
-                    rec.readMemory(dst, address, 0, rec.zydisToSize(operands[0].size));
-                }
+                i64 offset;
+                biscuit::GPR address = rec.leaOffset(&operands[1], offset);
+                rec.readMemory(dst, address, offset, rec.zydisToSize(operands[0].size));
                 break;
             }
             default: {
@@ -3989,13 +3979,8 @@ FAST_HANDLE(CMOVNLE) {
 FAST_HANDLE(MOVSXD) {
     biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
     if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        i64 imm = 0;
-        if (IsValidSigned12BitImm(operands[1].mem.disp.value) && !(instruction.attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
-            g_config.no_address_overflow) {
-            imm = operands[1].mem.disp.value;
-            operands[1].mem.disp.value = 0;
-        }
-        biscuit::GPR address = rec.lea(&operands[1], false);
+        i64 imm;
+        biscuit::GPR address = rec.leaOffset(&operands[1], imm);
         switch (operands[1].size) {
         case 32: {
             as.LW(dst, imm, address);
@@ -4704,13 +4689,8 @@ FAST_HANDLE(MOVZX) {
             rec.setGPR(rec.zydisToRef(operands[0].reg.value), X86_SIZE_QWORD, dst);
         }
     } else {
-        i64 imm = 0;
-        if (IsValidSigned12BitImm(operands[1].mem.disp.value) && !(instruction.attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
-            g_config.no_address_overflow) {
-            imm = operands[1].mem.disp.value;
-            operands[1].mem.disp.value = 0;
-        }
-        biscuit::GPR address = rec.lea(&operands[1], false);
+        i64 imm;
+        biscuit::GPR address = rec.leaOffset(&operands[1], imm);
         if (size_dst == X86_SIZE_WORD) {
             biscuit::GPR result = rec.scratch();
             rec.readMemory(result, address, imm, size_src);
@@ -8383,14 +8363,9 @@ FAST_HANDLE(MFENCE) {
 
 FAST_HANDLE(MOVSX) {
     if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        i64 imm = 0;
-        if (IsValidSigned12BitImm(operands[1].mem.disp.value) && !(instruction.attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
-            g_config.no_address_overflow) {
-            imm = operands[1].mem.disp.value;
-            operands[1].mem.disp.value = 0;
-        }
+        i64 imm;
         biscuit::GPR dst = operands[0].size == 16 ? rec.scratch() : rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
-        biscuit::GPR address = rec.lea(&operands[1], false);
+        biscuit::GPR address = rec.leaOffset(&operands[1], imm);
         switch (operands[1].size) {
         case 8: {
             as.LB(dst, imm, address);
@@ -11996,17 +11971,9 @@ FAST_HANDLE(FLD) {
             Precision prec = single ? Precision::S : Precision::D;
             biscuit::FPR st = rec.pushX87();
             biscuit::GPR address;
-            u64 immediate = operands[0].mem.disp.value;
-            if (IsValidSigned12BitImm(immediate) && !(instruction.attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
-                g_config.no_address_overflow) { // can't do this with seg+a32
-                ZydisDecodedOperand op = operands[0];
-                op.mem.disp.value = 0;
-                address = rec.lea(&op, false);
-                as.FL(st, immediate, address, prec);
-            } else {
-                address = rec.lea(&operands[0], false);
-                as.FL(st, 0, address, prec);
-            }
+            i64 offset;
+            address = rec.leaOffset(&operands[0], offset);
+            as.FL(st, offset, address, prec);
 
             if (g_config.reduced_precision < 2) {
                 if (single) {
