@@ -936,7 +936,7 @@ private:
     SingleStepMode single_step = SingleStepMode::None;
 
     constexpr static std::array scratch_gprs = {
-        x1, x6, x28, x29, x7, x30, x31,
+        x1, x6, x7, x28, x29, x30, x31,
     };
 
     // TODO: is the below comment still true? make it not true
