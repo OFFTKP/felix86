@@ -165,7 +165,11 @@ struct Recompiler {
 
     void setVec(x86_ref_e ref, biscuit::Vec vec);
 
-    biscuit::GPR lea(const ZydisDecodedOperand* operand, bool use_temp = true, biscuit::GPR forced_dst = x0);
+    biscuit::GPR lea(const ZydisDecodedOperand* operand, bool use_temp = true, biscuit::GPR forced_dst = x0, i64* offset = nullptr);
+
+    biscuit::GPR leaOffset(const ZydisDecodedOperand* operand, i64& offset);
+
+    void shadd(biscuit::GPR dst, biscuit::GPR base, biscuit::GPR index, u8 scale);
 
     void stopCompiling();
 

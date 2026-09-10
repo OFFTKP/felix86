@@ -1368,19 +1368,9 @@ biscuit::GPR Recompiler::getGPR(const ZydisDecodedOperand* operand) {
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::GPR dest = scratch();
-        u64 immediate = operand->mem.disp.value;
-        if (IsValidSigned12BitImm(immediate) && !(current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
-            g_config.no_address_overflow) { // can't do this with seg+a32
-            // Remove the immediate from the operand and use it in the write memory instruction
-            // This can turn an ADDI+load into just a load if the LEA is just a register
-            ZydisDecodedOperand op = *operand;
-            op.mem.disp.value = 0;
-            biscuit::GPR address = lea(&op, false);
-            readMemory(dest, address, immediate, zydisToSize(operand->size));
-        } else {
-            biscuit::GPR address = lea(operand, false);
-            readMemory(dest, address, 0, zydisToSize(operand->size));
-        }
+        i64 offset;
+        biscuit::GPR address = leaOffset(operand, offset);
+        readMemory(dest, address, offset, zydisToSize(operand->size));
         return dest;
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
@@ -1445,19 +1435,9 @@ biscuit::GPR Recompiler::getGPRSigned(const ZydisDecodedOperand* operand, bool d
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::GPR dest = scratch();
-        u64 immediate = operand->mem.disp.value;
-        if (IsValidSigned12BitImm(immediate) && !(current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
-            g_config.no_address_overflow) { // can't do this with seg+a32
-            // Remove the immediate from the operand and use it in the write memory instruction
-            // This can turn an ADDI+load into just a load if the LEA is just a register
-            ZydisDecodedOperand op = *operand;
-            op.mem.disp.value = 0;
-            biscuit::GPR address = lea(&op, false);
-            readMemorySigned(dest, address, immediate, zydisToSize(operand->size));
-        } else {
-            biscuit::GPR address = lea(operand, false);
-            readMemorySigned(dest, address, 0, zydisToSize(operand->size));
-        }
+        i64 offset;
+        biscuit::GPR address = leaOffset(operand, offset);
+        readMemorySigned(dest, address, offset, zydisToSize(operand->size));
         return dest;
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
@@ -1752,19 +1732,9 @@ void Recompiler::setGPR(const ZydisDecodedOperand* operand, biscuit::GPR reg) {
         break;
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
-        u64 immediate = operand->mem.disp.value;
-        if (IsValidSigned12BitImm(immediate) && !(current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT) &&
-            !g_config.paranoid) { // can't do this with seg+a32
-            // Remove the immediate from the operand and use it in the write memory instruction
-            // This can turn an ADDI+store into just a store if the LEA is just a register
-            ZydisDecodedOperand op = *operand;
-            op.mem.disp.value = 0;
-            biscuit::GPR address = lea(&op, false);
-            writeMemory(reg, address, immediate, zydisToSize(operand->size));
-        } else {
-            biscuit::GPR address = lea(operand, false);
-            writeMemory(reg, address, 0, zydisToSize(operand->size));
-        }
+        i64 offset;
+        biscuit::GPR address = leaOffset(operand, offset);
+        writeMemory(reg, address, offset, zydisToSize(operand->size));
         break;
     }
     default: {
@@ -1853,7 +1823,62 @@ bool Recompiler::setVectorState(SEW sew, int vlen, LMUL grouping) {
     return true;
 }
 
-biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp, biscuit::GPR forced_dst) {
+void Recompiler::shadd(biscuit::GPR dst, biscuit::GPR base, biscuit::GPR index, u8 scale) {
+    switch (scale) {
+    case 1:
+        as.ADD(dst, base, index);
+        break;
+    case 2:
+        as.SH1ADD(dst, index, base);
+        break;
+    case 4:
+        as.SH2ADD(dst, index, base);
+        break;
+    case 8:
+        as.SH3ADD(dst, index, base);
+        break;
+    default:
+        UNREACHABLE();
+        break;
+    }
+}
+
+static int segmentBaseOffset(ZydisRegister segment) {
+    switch (segment) {
+    case ZYDIS_REGISTER_FS: {
+        return offsetof(ThreadState, ctx.fsbase);
+    }
+    case ZYDIS_REGISTER_GS: {
+        return offsetof(ThreadState, ctx.gsbase);
+    }
+    case ZYDIS_REGISTER_SS: {
+        return offsetof(ThreadState, ctx.ssbase);
+    }
+    case ZYDIS_REGISTER_ES: {
+        return offsetof(ThreadState, ctx.esbase);
+    }
+    case ZYDIS_REGISTER_DS: {
+        return offsetof(ThreadState, ctx.dsbase);
+    }
+    case ZYDIS_REGISTER_CS: {
+        return offsetof(ThreadState, ctx.csbase);
+    }
+    default: {
+        UNREACHABLE();
+        return 0;
+    }
+    }
+}
+
+biscuit::GPR Recompiler::leaOffset(const ZydisDecodedOperand* operand, i64& offset) {
+    return lea(operand, false, x0, &offset);
+}
+
+biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp, biscuit::GPR forced_dst, i64* offset) {
+    if (offset) {
+        *offset = 0;
+    }
+
     if (cached_lea_operand == operand) {
         ASSERT(cached_lea_operand->mem.base == operand->mem.base);
         ASSERT(cached_lea_operand->mem.index == operand->mem.index);
@@ -1868,7 +1893,16 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp, 
     bool has_base = operand->mem.base != ZYDIS_REGISTER_NONE;
     bool has_index = operand->mem.index != ZYDIS_REGISTER_NONE;
     bool has_segment = current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT;
-    bool has_disp = operand->mem.disp.value != 0;
+    ASSERT(!has_segment || current_mode32 || operand->mem.segment == ZYDIS_REGISTER_FS || operand->mem.segment == ZYDIS_REGISTER_GS);
+    i64 disp = operand->mem.disp.value;
+    bool addressing32 = current_mode32 || (current_instruction->attributes & ZYDIS_ATTRIB_HAS_ADDRESSSIZE);
+    bool fold_disp = offset && disp != 0 && IsValidSigned12BitImm(disp) && !has_segment && !g_config.paranoid &&
+                     (g_config.no_address_overflow || !addressing32);
+    if (fold_disp) {
+        *offset = disp;
+        disp = 0;
+    }
+    bool has_disp = disp != 0;
 
     if (!use_temp && forced_dst == x0 && !has_segment && !has_disp && operand->mem.base != ZYDIS_REGISTER_RIP) {
         if (has_base && !has_index) {
@@ -1881,15 +1915,17 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp, 
     }
 
     biscuit::GPR address = forced_dst == x0 ? scratch() : forced_dst;
-    cached_lea = address;
-    cached_lea_operand = operand;
+    if (!fold_disp) {
+        cached_lea = address;
+        cached_lea_operand = operand;
+    }
 
     biscuit::GPR base, index;
 
     if (operand->mem.base == ZYDIS_REGISTER_RIP) {
         ASSERT(!current_mode32);
-        u64 offset_from_start = (current_rip - getCurrentRipregValue()) + current_instruction->length + (u64)operand->mem.disp.value;
-        u64 offset_from_cursor = (current_rip + current_instruction->length + operand->mem.disp.value) - (u64)as.GetCursorPointer();
+        u64 offset_from_start = (current_rip - getCurrentRipregValue()) + current_instruction->length + (u64)disp;
+        u64 offset_from_cursor = (current_rip + current_instruction->length + disp) - (u64)as.GetCursorPointer();
         if (IsValid2GBImm(offset_from_cursor) && !IsValidSigned12BitImm(offset_from_start) && !relocatable) {
             u32 hi20 = static_cast<i32>(((static_cast<u32>(offset_from_cursor) + 0x800) >> 12) & 0xFFFFF);
             u32 lo12 = static_cast<i32>(offset_from_cursor << 20) >> 20;
@@ -1902,112 +1938,51 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp, 
         return address;
     }
 
-    // Cover the case of just a segment register
-    if (has_segment && !has_base && !has_index && !has_disp) {
-        if (operand->mem.segment == ZYDIS_REGISTER_FS) {
-            as.LD(address, offsetof(ThreadState, ctx.fsbase), threadStatePointer());
-        } else if (operand->mem.segment == ZYDIS_REGISTER_GS) {
-            as.LD(address, offsetof(ThreadState, ctx.gsbase), threadStatePointer());
-        } else {
-            UNREACHABLE();
-        }
-        return address;
-    }
-
-    if (has_disp) {
-        // Load the displacement first
-        if (has_base && IsValidSigned12BitImm(operand->mem.disp.value)) {
-            base = allocatedGPR(zydisToRef(operand->mem.base));
-            as.ADDI(address, base, operand->mem.disp.value);
-        } else {
-            as.LI(address, operand->mem.disp.value);
-            if (has_base) {
-                base = allocatedGPR(zydisToRef(operand->mem.base));
-                as.ADD(address, address, base);
-            }
-        }
-
-        if (has_index) {
-            index = allocatedGPR(zydisToRef(operand->mem.index));
-            u8 scale = operand->mem.scale;
-            if (scale != 1) {
-                switch (scale) {
-                case 2:
-                    as.SH1ADD(address, index, address);
-                    break;
-                case 4:
-                    as.SH2ADD(address, index, address);
-                    break;
-                case 8: {
-                    as.SH3ADD(address, index, address);
-                    break;
-                }
-                default: {
-                    UNREACHABLE();
-                    break;
-                }
-                }
-            } else {
-                as.ADD(address, address, index);
-            }
-        }
-    } else {
-        if (has_index) {
-            index = allocatedGPR(zydisToRef(operand->mem.index));
-            u8 scale = operand->mem.scale;
-            if (!has_base) {
-                // No base, shift directly into address
-                if (scale == 1) {
-                    as.MV(address, index);
-                } else {
-                    switch (scale) {
-                    case 2:
-                        scale = 1;
-                        break;
-                    case 4:
-                        scale = 2;
-                        break;
-                    case 8:
-                        scale = 3;
-                        break;
-                    default:
-                        UNREACHABLE();
-                        break;
-                    }
-                    as.SLLI(address, index, scale);
-                }
-            } else {
-                // Add index to the base
-                base = allocatedGPR(zydisToRef(operand->mem.base));
-                if (scale != 1) {
-                    switch (scale) {
-                    case 2:
-                        as.SH1ADD(address, index, base);
-                        break;
-                    case 4:
-                        as.SH2ADD(address, index, base);
-                        break;
-                    case 8: {
-                        as.SH3ADD(address, index, base);
-                        break;
-                    }
-                    default: {
-                        UNREACHABLE();
-                        break;
-                    }
-                    }
-                } else {
-                    as.ADD(address, base, index);
-                }
-            }
-        } else if (has_base) {
-            base = allocatedGPR(zydisToRef(operand->mem.base));
-            as.MV(address, base);
+    if (!has_base && !has_index) {
+        if (has_disp) {
+            as.LI(address, disp);
+        } else if (has_segment) {
+            // Cover the case of just a segment register
+            as.LD(address, segmentBaseOffset(operand->mem.segment), threadStatePointer());
+            return address;
         } else {
             // We only get here if there's no base or index or segment and immediate == 0
-            ASSERT(operand->mem.disp.value == 0);
             WARN("Compiling null memory access");
             return x0;
+        }
+    } else if (has_disp && !IsValidSigned12BitImm(disp)) {
+        // Load the displacement first
+        as.LI(address, disp);
+        if (has_base) {
+            base = allocatedGPR(zydisToRef(operand->mem.base));
+            as.ADD(address, address, base);
+        }
+        if (has_index) {
+            index = allocatedGPR(zydisToRef(operand->mem.index));
+            shadd(address, address, index, operand->mem.scale);
+        }
+    } else {
+        biscuit::GPR sum = address;
+        if (has_index) {
+            index = allocatedGPR(zydisToRef(operand->mem.index));
+            u8 scale = operand->mem.scale;
+            if (has_base) {
+                base = allocatedGPR(zydisToRef(operand->mem.base));
+                shadd(address, base, index, scale);
+            } else if (scale == 1) {
+                sum = index;
+            } else {
+                ASSERT(scale == 2 || scale == 4 || scale == 8);
+                as.SLLI(address, index, std::countr_zero(scale));
+            }
+        } else {
+            sum = allocatedGPR(zydisToRef(operand->mem.base));
+        }
+
+        if (has_disp) {
+            as.ADDI(address, sum, disp);
+        } else if (sum != address) {
+            as.MV(address, sum);
         }
     }
 
@@ -2020,44 +1995,9 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp, 
     }
 
     if (has_segment) {
-        int offset;
-        switch (operand->mem.segment) {
-        case ZYDIS_REGISTER_FS: {
-            offset = offsetof(ThreadState, ctx.fsbase);
-            break;
-        }
-        case ZYDIS_REGISTER_GS: {
-            offset = offsetof(ThreadState, ctx.gsbase);
-            break;
-        }
-        case ZYDIS_REGISTER_SS: {
-            ASSERT(current_mode32);
-            offset = offsetof(ThreadState, ctx.ssbase);
-            break;
-        }
-        case ZYDIS_REGISTER_ES: {
-            ASSERT(current_mode32);
-            offset = offsetof(ThreadState, ctx.esbase);
-            break;
-        }
-        case ZYDIS_REGISTER_DS: {
-            ASSERT(current_mode32);
-            offset = offsetof(ThreadState, ctx.dsbase);
-            break;
-        }
-        case ZYDIS_REGISTER_CS: {
-            ASSERT(current_mode32);
-            offset = offsetof(ThreadState, ctx.csbase);
-            break;
-        }
-        default: {
-            UNREACHABLE();
-        }
-        }
-
         // Whether or not there's a displacement, at this point it's guaranteed that there's something in `address`
         biscuit::GPR seg = scratch();
-        as.LD(seg, offset, threadStatePointer());
+        as.LD(seg, segmentBaseOffset(operand->mem.segment), threadStatePointer());
         as.ADD(address, address, seg);
         popScratch();
     }
@@ -3392,17 +3332,9 @@ biscuit::FPR Recompiler::getST(ZydisDecodedOperand* operand, bool dirty, bool co
         case 32: {
             biscuit::FPR st = scratchFPR();
             biscuit::GPR address;
-            u64 immediate = operand->mem.disp.value;
-            if (IsValidSigned12BitImm(immediate) && !(current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
-                g_config.no_address_overflow) { // can't do this with seg+a32
-                ZydisDecodedOperand op = *operand;
-                op.mem.disp.value = 0;
-                address = lea(&op, false);
-                as.FLW(st, immediate, address);
-            } else {
-                address = lea(operand, false);
-                as.FLW(st, 0, address);
-            }
+            i64 offset;
+            address = leaOffset(operand, offset);
+            as.FLW(st, offset, address);
             if (convert_to_64_bit) {
                 as.FCVT_D_S(st, st);
             }
@@ -3411,17 +3343,9 @@ biscuit::FPR Recompiler::getST(ZydisDecodedOperand* operand, bool dirty, bool co
         case 64: {
             biscuit::FPR st = scratchFPR();
             biscuit::GPR address;
-            u64 immediate = operand->mem.disp.value;
-            if (IsValidSigned12BitImm(immediate) && !(current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
-                g_config.no_address_overflow) { // can't do this with seg+a32
-                ZydisDecodedOperand op = *operand;
-                op.mem.disp.value = 0;
-                address = lea(&op, false);
-                as.FLD(st, immediate, address);
-            } else {
-                address = lea(operand, false);
-                as.FLD(st, 0, address);
-            }
+            i64 offset;
+            address = leaOffset(operand, offset);
+            as.FLD(st, offset, address);
             return st;
         }
         case 80: {
@@ -3464,17 +3388,9 @@ void Recompiler::setST(ZydisDecodedOperand* operand, biscuit::FPR value, bool is
                 temp = scratchFPR();
                 as.FCVT_S_D(temp, value);
             }
-            u64 immediate = operand->mem.disp.value;
-            if (IsValidSigned12BitImm(immediate) && !(current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
-                g_config.no_address_overflow) { // can't do this with seg+a32
-                ZydisDecodedOperand op = *operand;
-                op.mem.disp.value = 0;
-                address = lea(&op, false);
-                as.FSW(temp, immediate, address);
-            } else {
-                address = lea(operand, false);
-                as.FSW(temp, 0, address);
-            }
+            i64 offset;
+            address = leaOffset(operand, offset);
+            as.FSW(temp, offset, address);
             break;
         }
         case 64: {
@@ -3484,17 +3400,9 @@ void Recompiler::setST(ZydisDecodedOperand* operand, biscuit::FPR value, bool is
                 as.FCVT_D_S(temp, value);
                 value = temp;
             }
-            u64 immediate = operand->mem.disp.value;
-            if (IsValidSigned12BitImm(immediate) && !(current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
-                g_config.no_address_overflow) { // can't do this with seg+a32
-                ZydisDecodedOperand op = *operand;
-                op.mem.disp.value = 0;
-                address = lea(&op, false);
-                as.FSD(value, immediate, address);
-            } else {
-                address = lea(operand, false);
-                as.FSD(value, 0, address);
-            }
+            i64 offset;
+            address = leaOffset(operand, offset);
+            as.FSD(value, offset, address);
             break;
         }
         case 80: {

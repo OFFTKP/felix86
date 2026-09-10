@@ -14702,8 +14702,8 @@
     "64488d44f740": {
         "instruction_count": 2,
         "expected_asm": [
-            "ADDI            rax, rdi, 0x40(64)",
-            "SH3ADD          rax, rsi, rax"
+            "SH3ADD          rax, rsi, rdi",
+            "ADDI            rax, rax, 0x40(64)"
         ],
         "disassembly": "lea rax, [rdi+rsi*8+0x40]"
     },
@@ -14768,8 +14768,8 @@
     "488d44b740": {
         "instruction_count": 2,
         "expected_asm": [
-            "ADDI            rax, rdi, 0x40(64)",
-            "SH2ADD          rax, rsi, rax"
+            "SH2ADD          rax, rsi, rdi",
+            "ADDI            rax, rax, 0x40(64)"
         ],
         "disassembly": "lea rax, [rdi+rsi*4+0x40]"
     },
