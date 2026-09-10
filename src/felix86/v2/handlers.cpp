@@ -11812,15 +11812,12 @@ FAST_HANDLE(CMPXCHG16B) {
         biscuit::GPR rdx = rec.getGPR(X86_REF_RDX, X86_SIZE_QWORD);
         biscuit::GPR rbx = rec.getGPR(X86_REF_RBX, X86_SIZE_QWORD);
         biscuit::GPR rcx = rec.getGPR(X86_REF_RCX, X86_SIZE_QWORD);
-        biscuit::GPR rax_t = x28;
-        biscuit::GPR rdx_t = x29;
-        biscuit::GPR rbx_t = x30;
-        biscuit::GPR rcx_t = x31;
-        static_assert(Recompiler::isScratch(x28));
-        static_assert(Recompiler::isScratch(x29));
-        static_assert(Recompiler::isScratch(x30));
-        static_assert(Recompiler::isScratch(x31));
-        ASSERT(rax_t == x28 && rdx_t == x29 && rbx_t == x30 && rcx_t == x31); // in case we change the order
+        biscuit::GPR rax_t = rec.scratch();
+        biscuit::GPR rdx_t = rec.scratch();
+        biscuit::GPR rbx_t = rec.scratch();
+        biscuit::GPR rcx_t = rec.scratch();
+        ASSERT(rax_t.Index() % 2 == 0 && rdx_t.Index() == rax_t.Index() + 1);
+        ASSERT(rbx_t.Index() % 2 == 0 && rcx_t.Index() == rbx_t.Index() + 1);
         as.MV(rax_t, rax);
         as.MV(rdx_t, rdx);
         as.MV(rbx_t, rbx);
