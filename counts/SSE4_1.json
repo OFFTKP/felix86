@@ -207,8 +207,8 @@
     "660f3a0ad303": {
         "instruction_count": 14,
         "expected_asm": [
-            "LUI             t3, 0x4b000(307200)",
-            "FMV.W.X         ft8, t3",
+            "LUI             t2, 0x4b000(307200)",
+            "FMV.W.X         ft8, t2",
             "FSGNJN.S        ft9, ft8, ft8",
             "VSETIVLI        zero, 1, e32, m1, tu, mu",
             "ADDIW           t1, zero, 0x1(1)",
@@ -227,9 +227,9 @@
     "660f3a0bd303": {
         "instruction_count": 15,
         "expected_asm": [
-            "ADDIW           t3, zero, 0x433(1075)",
-            "SLLI            t3, t3, 0x34(52)",
-            "FMV.D.X         ft8, t3",
+            "ADDIW           t2, zero, 0x433(1075)",
+            "SLLI            t2, t2, 0x34(52)",
+            "FMV.D.X         ft8, t2",
             "FSGNJN.D        ft9, ft8, ft8",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "ADDIW           t1, zero, 0x1(1)",
@@ -861,8 +861,8 @@
             "ADDIW           ra, zero, 0x80(128)",
             "AUIPC           t1, 0x0(0)",
             "ADDI            t1, t1, 0x54(84)",
-            "ADDIW           t3, zero, 0x20(32)",
-            "VSETVLI         zero, t3, e8, m1, tu, mu",
+            "ADDIW           t2, zero, 0x20(32)",
+            "VSETVLI         zero, t2, e8, m1, tu, mu",
             "VMV.V.X         v6, ra",
             "VIOTA.M         v4, v6, none",
             "VADD.VI         v4, v4, 0xc(12), none",
@@ -924,8 +924,8 @@
     "660f3a08d303": {
         "instruction_count": 14,
         "expected_asm": [
-            "LUI             t3, 0x4b000(307200)",
-            "FMV.W.X         ft8, t3",
+            "LUI             t2, 0x4b000(307200)",
+            "FMV.W.X         ft8, t2",
             "FSGNJN.S        ft9, ft8, ft8",
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
             "ADDIW           t1, zero, 0x1(1)",
@@ -946,8 +946,8 @@
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VLE8.V          v2, rdi, none, 1",
-            "LUI             t3, 0x4b000(307200)",
-            "FMV.W.X         ft8, t3",
+            "LUI             t2, 0x4b000(307200)",
+            "FMV.W.X         ft8, t2",
             "FSGNJN.S        ft9, ft8, ft8",
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
             "ADDIW           t1, zero, 0x1(1)",
@@ -966,9 +966,9 @@
     "660f3a09d303": {
         "instruction_count": 15,
         "expected_asm": [
-            "ADDIW           t3, zero, 0x433(1075)",
-            "SLLI            t3, t3, 0x34(52)",
-            "FMV.D.X         ft8, t3",
+            "ADDIW           t2, zero, 0x433(1075)",
+            "SLLI            t2, t2, 0x34(52)",
+            "FMV.D.X         ft8, t2",
             "FSGNJN.D        ft9, ft8, ft8",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "ADDIW           t1, zero, 0x1(1)",
@@ -989,9 +989,9 @@
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VLE8.V          v2, rdi, none, 1",
-            "ADDIW           t3, zero, 0x433(1075)",
-            "SLLI            t3, t3, 0x34(52)",
-            "FMV.D.X         ft8, t3",
+            "ADDIW           t2, zero, 0x433(1075)",
+            "SLLI            t2, t2, 0x34(52)",
+            "FMV.D.X         ft8, t2",
             "FSGNJN.D        ft9, ft8, ft8",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "ADDIW           t1, zero, 0x1(1)",
