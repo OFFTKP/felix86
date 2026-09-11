@@ -1687,6 +1687,8 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
 
         std::string flags;
         std::string former_tracee;
+        std::string parent_tid_env = std::string("__FELIX86_PARENT_TID=") + std::to_string(state->ptrace_data.constants.parent_tid);
+        envp.push_back(parent_tid_env.c_str());
         if (Ptrace::is_traced(state)) {
             flags = std::string("__FELIX86_PTRACE_FLAGS=") + std::to_string(state->ptrace_data.constants.flags);
             former_tracee = std::string("__FELIX86_PTRACE_FORMER_TRACEE=") + std::to_string(gettid());

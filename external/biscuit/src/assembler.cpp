@@ -1839,7 +1839,7 @@ void Assembler::ResolveLabelOffsets(Label* label) {
                 BISCUIT_ASSERT(IsValidJTypeImm(encoded_offset));
                 instruction |= TransformToJTypeImm(static_cast<uint32_t>(encoded_offset));
             } else if (is_auipc_type(instruction)) {
-                const auto high20 = static_cast<uint32_t>(encoded_offset & 0xFFFFF000);
+                const auto high20 = static_cast<uint32_t>((encoded_offset + 0x800) & 0xFFFFF000);
                 const auto low12 = static_cast<uint32_t>(encoded_offset & 0xFFF);
                 instruction |= high20;
                 uint32_t next_instruction = 0;
@@ -1900,7 +1900,7 @@ void Assembler::ResolveLiteralOffsetsRaw(ptrdiff_t location, const std::set<ptrd
         BISCUIT_ASSERT((static_cast<int64_t>(encoded_offset << 32) >> 32) == encoded_offset);
 
         if (is_gpr_load_type(instructions[1]) || is_addi_type(instructions[1])) {
-            const auto high20 = static_cast<uint32_t>(encoded_offset & 0xFFFFF000);
+            const auto high20 = static_cast<uint32_t>((encoded_offset + 0x800) & 0xFFFFF000);
             const auto low12 = static_cast<uint32_t>(encoded_offset & 0xFFF);
             instructions[0] |= high20;
             instructions[1] |= low12 << 20;

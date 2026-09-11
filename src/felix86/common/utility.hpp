@@ -20,7 +20,7 @@
 }
 
 [[nodiscard]] constexpr bool IsValid2GBImm(i64 value) {
-    return (i64)value >= (i64)INT_MIN && (i64)value <= (i64)INT_MAX;
+    return (i64)value >= (i64)INT_MIN - 2048 && (i64)value <= (i64)INT_MAX - 2048;
 }
 
 [[nodiscard]] constexpr bool IsValidSigned12BitImm(ptrdiff_t value) {
