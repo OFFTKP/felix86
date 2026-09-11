@@ -234,17 +234,28 @@ if (BUILD_THUNKGEN)
     target_include_directories(felix86_thunkgen PRIVATE src/felix86/hle)
 endif()
 
-if (BUILD_INSTRUCTION_COUNTER)
+if (BUILD_INSTRUCTION_COUNTER OR BUILD_LATENCY_MEASURER)
     # Generated x86 code may slightly change between xbyak versions
     # One example is order of operands in xchg reg, reg has changed in the past
     # which causes slightly different generated code, so we pin it to a vendored version
     add_library(vendored_xbyak INTERFACE)
     target_include_directories(vendored_xbyak INTERFACE external/xbyak)
+endif()
+
+if (BUILD_INSTRUCTION_COUNTER)
     add_executable(felix86_instruction_counter src/felix86/tools/generate_instruction_count.cpp ${FELIX86_DISASSEMBLER_SOURCES})
     target_include_directories(felix86_instruction_counter PRIVATE src)
     target_link_libraries(felix86_instruction_counter PRIVATE vendored_xbyak felix86_core)
 endif()
 
+if (BUILD_LATENCY_MEASURER)
+    if (NOT CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
+        message(FATAL_ERROR "Latency measurer is only buildable for RISC-V")
+    endif()
+    add_executable(felix86_latency_measurer src/felix86/tools/latency_measurer.cpp)
+    target_include_directories(felix86_latency_measurer PRIVATE src)
+    target_link_libraries(felix86_latency_measurer PRIVATE vendored_xbyak felix86_core)
+endif()
 
 if (BUILD_TESTS)
     add_subdirectory(external/Catch2)
