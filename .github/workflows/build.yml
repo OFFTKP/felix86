@@ -34,7 +34,7 @@ jobs:
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             EXTRA_FLAGS="-DFELIX86_MONTHLY_RELEASE=1"
           fi
-          cmake -B ${{ github.workspace }}/build -DBUILD_TESTS=1 -DCMAKE_TOOLCHAIN_FILE=riscv.cmake -DFELIX86_BUILD_THUNKING=1 -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Release $EXTRA_FLAGS
+          cmake -B ${{ github.workspace }}/build -DBUILD_TESTS=1 -DBUILD_LATENCY_MEASURER=1 -DCMAKE_TOOLCHAIN_FILE=riscv.cmake -DFELIX86_BUILD_THUNKING=1 -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Release $EXTRA_FLAGS
       - name: Build
         run: |
           cmake --build ${{ github.workspace }}/build -j$(nproc)
@@ -56,6 +56,7 @@ jobs:
           mv ${{ github.workspace }}/src/felix86/hle/guest_libs/build/x86_64-linux-gnu ${{ github.workspace }}/artifact/lib
           mkdir -p ${{ github.workspace }}/test
           cp ${{ github.workspace }}/build/felix86_test ${{ github.workspace }}/test/
+          cp ${{ github.workspace }}/build/felix86_latency_measurer ${{ github.workspace }}/test/
           cp ${{ github.workspace }}/build/felix86 ${{ github.workspace }}/test/
           cp -r ${{ github.workspace }}/build/ASM ${{ github.workspace }}/test/
           cp -r ${{ github.workspace }}/build/32Bit_ASM ${{ github.workspace }}/test/
@@ -121,3 +122,42 @@ jobs:
           bash ./install-tests.sh $HOME/felix86_test_binaries
           bash ./run-tests.sh $FELIX86PATH $HOME/felix86_test_binaries
 
+  latency:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: [build]
+    runs-on: bpi-f3
+    steps:
+      - name: Create bot token
+        id: app
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
+        with:
+          app-id: ${{ secrets.LATENCY_APP_ID }}
+          private-key: ${{ secrets.LATENCY_APP_KEY }}
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app.outputs.token }}
+      - name: Download test artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: test_artifact
+          path: ${{ github.workspace }}/test
+      - name: Measure difference
+        run: |
+          chmod +x ${{ github.workspace }}/test/felix86_latency_measurer
+          ${{ github.workspace }}/test/felix86_latency_measurer | tee $RUNNER_TEMP/latency_report.txt
+      - name: Commit latencies
+        run: |
+          git add latencies
+          git diff --cached --quiet && exit 0
+          git config user.name "Pebbles"
+          git config user.email "327665220+felix86-latency[bot]@users.noreply.github.com"
+          {
+            echo "Update latencies for ${{ github.sha }}"
+            echo
+            cat $RUNNER_TEMP/latency_report.txt
+            echo
+            echo "[skip ci]"
+          } > $RUNNER_TEMP/commit_message.txt
+          git commit -F $RUNNER_TEMP/commit_message.txt
+          git push

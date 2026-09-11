@@ -3074,29 +3074,34 @@ FAST_HANDLE(DIV) {
     case X86_SIZE_BYTE:
     case X86_SIZE_BYTE_HIGH: {
         biscuit::GPR mod = rec.scratch();
+        biscuit::GPR quotient = rec.scratch();
         biscuit::GPR ax = rec.getGPR(X86_REF_RAX, X86_SIZE_WORD);
 
-        as.REMUW(mod, ax, src);
-        as.DIVUW(ax, ax, src);
+        as.DIVUW(quotient, ax, src);
+        as.MULW(mod, quotient, src);
+        as.SUBW(mod, ax, mod);
 
-        rec.setGPR(X86_REF_RAX, X86_SIZE_BYTE, ax); // TODO: word write
+        rec.setGPR(X86_REF_RAX, X86_SIZE_BYTE, quotient); // TODO: word write
         rec.setGPR(X86_REF_RAX, X86_SIZE_BYTE_HIGH, mod);
         break;
     }
     case X86_SIZE_WORD: {
+        biscuit::GPR product = rec.scratch();
         biscuit::GPR ax = rec.getGPR(X86_REF_RAX, X86_SIZE_WORD);
         biscuit::GPR dx = rec.getGPR(X86_REF_RDX, X86_SIZE_WORD);
         as.SLLIW(dx, dx, 16);
         as.OR(dx, dx, ax);
 
         as.DIVUW(ax, dx, src);
-        as.REMUW(dx, dx, src);
+        as.MULW(product, ax, src);
+        as.SUBW(dx, dx, product);
 
         rec.setGPR(X86_REF_RAX, X86_SIZE_WORD, ax);
         rec.setGPR(X86_REF_RDX, X86_SIZE_WORD, dx);
         break;
     }
     case X86_SIZE_DWORD: {
+        biscuit::GPR product = rec.scratch();
         biscuit::GPR eax = rec.getGPR(X86_REF_RAX, X86_SIZE_DWORD);
         biscuit::GPR edx = rec.getGPR(X86_REF_RDX, X86_SIZE_QWORD);
         as.SLLI(edx, edx, 32);
@@ -3104,7 +3109,8 @@ FAST_HANDLE(DIV) {
 
         // This order is okay as RDX is modified last
         as.DIVU(eax, edx, src);
-        as.REMU(edx, edx, src);
+        as.MUL(product, eax, src);
+        as.SUB(edx, edx, product);
 
         rec.setGPR(X86_REF_RAX, X86_SIZE_DWORD, eax);
         rec.setGPR(X86_REF_RDX, X86_SIZE_DWORD, edx);
@@ -3129,7 +3135,8 @@ FAST_HANDLE(DIV) {
         biscuit::GPR div = rec.scratch();
 
         as.DIVU(div, rax, src);
-        as.REMU(mod, rax, src);
+        as.MUL(mod, div, src);
+        as.SUB(mod, rax, mod);
 
         rec.setGPR(X86_REF_RAX, X86_SIZE_QWORD, div);
         rec.setGPR(X86_REF_RDX, X86_SIZE_QWORD, mod);
@@ -3184,8 +3191,9 @@ FAST_HANDLE(IDIV) {
         rec.sexth(ax_sext, ax);
         rec.sextb(divisor, src);
 
-        as.REMW(mod, ax_sext, divisor);
         as.DIVW(ax, ax_sext, divisor);
+        as.MULW(mod, ax, divisor);
+        as.SUBW(mod, ax_sext, mod);
 
         rec.popScratch();
 
@@ -3195,6 +3203,7 @@ FAST_HANDLE(IDIV) {
     }
     case X86_SIZE_WORD: {
         biscuit::GPR src_sext = rec.scratch();
+        biscuit::GPR product = rec.scratch();
         biscuit::GPR ax = rec.getGPR(X86_REF_RAX, X86_SIZE_WORD);
         biscuit::GPR dx = rec.getGPR(X86_REF_RDX, X86_SIZE_WORD);
         as.SLLIW(dx, dx, 16);
@@ -3203,7 +3212,8 @@ FAST_HANDLE(IDIV) {
         rec.sexth(src_sext, src);
 
         as.DIVW(ax, dx, src_sext);
-        as.REMW(dx, dx, src_sext);
+        as.MULW(product, ax, src_sext);
+        as.SUBW(dx, dx, product);
 
         rec.setGPR(X86_REF_RAX, X86_SIZE_WORD, ax);
         rec.setGPR(X86_REF_RDX, X86_SIZE_WORD, dx);
@@ -3211,6 +3221,7 @@ FAST_HANDLE(IDIV) {
     }
     case X86_SIZE_DWORD: {
         biscuit::GPR src_sext = rec.scratch();
+        biscuit::GPR product = rec.scratch();
         biscuit::GPR eax = rec.getGPR(X86_REF_RAX, X86_SIZE_DWORD);
         biscuit::GPR edx = rec.getGPR(X86_REF_RDX, X86_SIZE_QWORD);
         as.SLLI(edx, edx, 32);
@@ -3219,7 +3230,8 @@ FAST_HANDLE(IDIV) {
         as.ADDIW(src_sext, src, 0);
 
         as.DIV(eax, edx, src_sext);
-        as.REM(edx, edx, src_sext);
+        as.MUL(product, eax, src_sext);
+        as.SUB(edx, edx, product);
 
         rec.setGPR(X86_REF_RAX, X86_SIZE_DWORD, eax);
         rec.setGPR(X86_REF_RDX, X86_SIZE_DWORD, edx);
@@ -3247,7 +3259,8 @@ FAST_HANDLE(IDIV) {
         biscuit::GPR div = rec.scratch();
 
         as.DIV(div, rax, src);
-        as.REM(mod, rax, src);
+        as.MUL(mod, div, src);
+        as.SUB(mod, rax, mod);
 
         rec.setGPR(X86_REF_RAX, X86_SIZE_QWORD, div);
         rec.setGPR(X86_REF_RDX, X86_SIZE_QWORD, mod);
