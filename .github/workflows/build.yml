@@ -144,8 +144,9 @@ jobs:
           path: ${{ github.workspace }}/test
       - name: Measure difference
         run: |
+          export FELIX86_QUIET=1
           chmod +x ${{ github.workspace }}/test/felix86_latency_measurer
-          ${{ github.workspace }}/test/felix86_latency_measurer | tee $RUNNER_TEMP/latency_report.txt
+          ${{ github.workspace }}/test/felix86_latency_measurer
       - name: Commit latencies
         run: |
           git add latencies
@@ -155,7 +156,6 @@ jobs:
           {
             echo "Update latencies for ${{ github.sha }}"
             echo
-            cat $RUNNER_TEMP/latency_report.txt
             echo
             echo "[skip ci]"
           } > $RUNNER_TEMP/commit_message.txt
