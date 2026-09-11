@@ -962,6 +962,7 @@ void Recompiler::compileInstruction(ZydisDecodedInstruction& instruction, ZydisD
                 u8 bytes = size / 8;
                 u8 alignment_bits = log2(bytes);
                 u64 mask = (1 << alignment_bits) - 1;
+                flushX87();
                 biscuit::GPR address = lea(&operands[0]);
                 biscuit::GPR temp = scratch();
                 biscuit::Label ok;
