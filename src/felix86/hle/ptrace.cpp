@@ -750,7 +750,7 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
             return -EPERM;
         }
 
-        pid_t tracer = getppid();
+        pid_t tracer = local_state->ptrace_data.constants.parent_tid;
         local_state->ptrace_data.constants.tracer_pid = tracer;
         int result = __ptrace(PTRACE_TRACEME, 0, 0, 0);
         if (result != 0) {

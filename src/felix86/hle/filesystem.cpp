@@ -1030,7 +1030,7 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
         }
 
         std::filesystem::path current = current_relative_path / current_component;
-        struct stat current_stat;
+        struct stat current_stat{};
         result = fstatat(current_fd, current.c_str(), &current_stat, AT_SYMLINK_NOFOLLOW);
         if (result != 0) {
             switch (errno) {

@@ -311,6 +311,7 @@ static long ForkMe(CloneArgs& host_clone_args) {
     ASSERT(!(host_clone_args.guest_flags & CLONE_VM));
     ASSERT(!(host_clone_args.guest_flags & CLONE_VFORK));
     int parent_pid = getpid();
+    pid_t parent_tid = gettid();
     ThreadState* state = ThreadState::Get();
     u64 parent_flags = state->ptrace_data.constants.flags;
     bool trace_fork = parent_flags & PTRACE_O_TRACEFORK;
@@ -338,6 +339,7 @@ static long ForkMe(CloneArgs& host_clone_args) {
         int pid = getpid();
         state->ptrace_data.constants.my_tgid = pid;
         state->ptrace_data.constants.my_tid = gettid();
+        state->ptrace_data.constants.parent_tid = parent_tid;
         if (!trace_fork) {
             state->ptrace_data.constants.tracer_pid = 0;
             state->ptrace_data.constants.flags = 0;
@@ -382,6 +384,7 @@ static long VForkMe(CloneArgs& args) {
     // Thank you FEX
     // https://github.com/FEX-Emu/FEX/pull/2690
     int parent_pid = getpid();
+    pid_t parent_tid = gettid();
     int pipes[2];
     ASSERT(pipe2(pipes, O_CLOEXEC) != -1);
 
@@ -410,6 +413,7 @@ static long VForkMe(CloneArgs& args) {
         SIGLOG("%d vforked to %d", parent_pid, pid);
         ThreadState* state = ThreadState::Get();
         g_process_globals.vfork_rootfs = shared_rootfs;
+        state->ptrace_data.constants.parent_tid = parent_tid;
         if (!trace_vfork) {
             state->ptrace_data.constants.tracer_pid = 0;
             state->ptrace_data.constants.flags = 0;

@@ -347,6 +347,8 @@ void Emulator::Start() {
     }
 
     ThreadState* main_state = ThreadState::Create();
+    const char* parent_tid_env = getenv("__FELIX86_PARENT_TID");
+    main_state->ptrace_data.constants.parent_tid = parent_tid_env ? std::atoi(parent_tid_env) : getppid();
     main_state->ctx.cs = mode32 ? 0x23 : 0x33;
     main_state->ctx.ds = main_state->ctx.es = mode32 ? 0x2b : 0x00;
 
