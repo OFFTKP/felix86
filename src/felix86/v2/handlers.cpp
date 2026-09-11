@@ -977,6 +977,7 @@ FAST_HANDLE(SUB) {
         }
         case 32: {
             biscuit::Label loop, good_alignment, best_alignment, end;
+            rec.flushX87();
             as.LI(dst, 4);
             as.ANDI(result, address, 0b111);
             as.BEQZ(result, &best_alignment);

@@ -268,7 +268,7 @@ int Filesystem::Getcwd(char* buf, size_t size) {
         std::string str = buf;
         removeRootfsPrefix(str);
         strncpy(buf, str.c_str(), size);
-        return strlen(buf);
+        return str.size() + 1;
     }
 
     return result;
