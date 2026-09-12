@@ -2836,7 +2836,9 @@ FAST_HANDLE(MOVQ) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         ASSERT(operands[0].size == 64);
         biscuit::Vec src = rec.getVec(&operands[1]);
-        rec.setVectorState(SEW::E64, 1);
+        if (Extensions::Zicclsm) {
+            rec.setVectorState(SEW::E64, 1);
+        }
         rec.setVec(&operands[0], src);
     } else if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY || rec.isGPR(operands[1].reg.value)) {
         biscuit::GPR src = rec.getGPR(&operands[1]);
@@ -2876,7 +2878,9 @@ FAST_HANDLE(MOVD) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         ASSERT(operands[0].size == 32);
         biscuit::Vec src = rec.getVec(&operands[1]);
-        rec.setVectorState(SEW::E32, 1);
+        if (Extensions::Zicclsm) {
+            rec.setVectorState(SEW::E32, 1);
+        }
         rec.setVec(&operands[0], src);
     } else if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY || rec.isGPR(operands[1].reg.value)) {
         biscuit::GPR src = rec.getGPR(&operands[1]);
