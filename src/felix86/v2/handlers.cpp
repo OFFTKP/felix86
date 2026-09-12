@@ -2835,13 +2835,9 @@ FAST_HANDLE(SAR) {
 FAST_HANDLE(MOVQ) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         ASSERT(operands[0].size == 64);
-        biscuit::GPR dst = rec.scratch();
         biscuit::Vec src = rec.getVec(&operands[1]);
-
-        rec.setVectorState(SEW::E64, 2);
-        as.VMV_XS(dst, src);
-
-        rec.setGPR(&operands[0], dst);
+        rec.setVectorState(SEW::E64, 1);
+        rec.setVec(&operands[0], src);
     } else if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY || rec.isGPR(operands[1].reg.value)) {
         biscuit::GPR src = rec.getGPR(&operands[1]);
         biscuit::Vec dst = rec.getVec(&operands[0]);
@@ -2863,15 +2859,14 @@ FAST_HANDLE(MOVQ) {
 
             rec.setGPR(&operands[0], dst);
         } else {
-            biscuit::Vec result = rec.scratchVec();
+            biscuit::Vec dst = rec.getVec(&operands[0]);
             biscuit::Vec src = rec.getVec(&operands[1]);
 
             rec.setVectorState(SEW::E64, 2);
-            as.VMV(v0, 0b01);
-            as.VMV(result, 0);
-            as.VOR(result, src, 0, VecMask::Yes);
+            as.VMV(v0, 0b10);
+            as.VMERGE(dst, src, 0);
 
-            rec.setVec(&operands[0], result);
+            rec.setVec(&operands[0], dst);
             rec.v0Modified();
         }
     }
@@ -2880,13 +2875,9 @@ FAST_HANDLE(MOVQ) {
 FAST_HANDLE(MOVD) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         ASSERT(operands[0].size == 32);
-        biscuit::GPR dst = rec.scratch();
         biscuit::Vec src = rec.getVec(&operands[1]);
-
         rec.setVectorState(SEW::E32, 1);
-        as.VMV_XS(dst, src);
-
-        rec.setGPR(&operands[0], dst);
+        rec.setVec(&operands[0], src);
     } else if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY || rec.isGPR(operands[1].reg.value)) {
         biscuit::GPR src = rec.getGPR(&operands[1]);
         biscuit::Vec dst = rec.getVec(&operands[0]);
@@ -2908,15 +2899,14 @@ FAST_HANDLE(MOVD) {
 
             rec.setGPR(&operands[0], dst);
         } else {
-            biscuit::Vec result = rec.scratchVec();
+            biscuit::Vec dst = rec.getVec(&operands[0]);
             biscuit::Vec src = rec.getVec(&operands[1]);
 
             rec.setVectorState(SEW::E32, 4);
-            as.VMV(v0, 0b01);
-            as.VMV(result, 0);
-            as.VOR(result, src, 0, VecMask::Yes);
+            as.VMV(v0, 0b1110);
+            as.VMERGE(dst, src, 0);
 
-            rec.setVec(&operands[0], result);
+            rec.setVec(&operands[0], dst);
             rec.v0Modified();
         }
     }
