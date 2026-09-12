@@ -165,6 +165,7 @@ int main() {
     Extensions::VLEN = 256;
     Extensions::Zicond = true;
     Extensions::Zvkned = true;
+    Extensions::Zicclsm = true;
     Handlers::initialize();
 
     std::unique_ptr<Recompiler> rec_storage = std::make_unique<Recompiler>(true /* relocatable code */);
@@ -1976,7 +1977,6 @@ int main() {
         json.clear();
     }
 
-    Extensions::Zicclsm = true;
     g_config.reduced_precision = 1;
     rec.setFlagMode(FlagMode::Default);
     gen_sequence(rec, json, "crysis1", false);

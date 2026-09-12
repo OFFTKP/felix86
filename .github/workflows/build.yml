@@ -124,7 +124,7 @@ jobs:
 
   latency:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    needs: [build]
+    needs: [test]
     runs-on: bpi-f3
     steps:
       - name: Create bot token
