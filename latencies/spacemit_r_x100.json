@@ -1,6 +1,6 @@
 {
     "schema": 1,
-    "commit": "5faf34f",
+    "commit": "31437b8",
     "model": "Spacemit(R) X100",
     "results": {
         "add r, r": {
@@ -133,28 +133,28 @@
                 "throughput": 1.01
             },
             "r32": {
-                "latency": 4.095,
+                "latency": 4.114,
                 "throughput": 1.68
             },
             "r16": {
-                "latency": 6.268,
-                "throughput": 2.68
+                "latency": 6.294,
+                "throughput": 2.695
             },
             "r8 lo, lo": {
-                "latency": 5.444,
+                "latency": 5.461,
                 "throughput": 2.12
             },
             "r8 hi, lo": {
-                "latency": 7.598,
+                "latency": 7.608,
                 "throughput": 3.025
             },
             "r8 lo, hi": {
                 "latency": 5.323,
-                "throughput": 2.546
+                "throughput": 2.551
             },
             "r8 hi, hi": {
-                "latency": 7.624,
-                "throughput": 3.601
+                "latency": 7.634,
+                "throughput": 3.606
             }
         },
         "adc r, imm": {
@@ -167,29 +167,29 @@
                 "throughput": 1.68
             },
             "r16": {
-                "latency": 6.27,
-                "throughput": 2.68
+                "latency": 6.33,
+                "throughput": 2.689
             },
             "r8 lo, lo": {
-                "latency": 5.466,
-                "throughput": 2.125
+                "latency": 5.459,
+                "throughput": 2.12
             },
             "r8 hi, lo": {
-                "latency": 7.61,
+                "latency": 7.615,
                 "throughput": 3.025
             }
         },
         "sbb r, r": {
             "r64": {
-                "latency": 2.359,
+                "latency": 2.373,
                 "throughput": 1.01
             },
             "r32": {
-                "latency": 4.112,
+                "latency": 4.117,
                 "throughput": 1.68
             },
             "r16": {
-                "latency": 6.29,
+                "latency": 6.298,
                 "throughput": 2.68
             },
             "r8 lo, lo": {
@@ -198,14 +198,14 @@
             },
             "r8 hi, lo": {
                 "latency": 7.603,
-                "throughput": 3.025
+                "throughput": 3.041
             },
             "r8 lo, hi": {
-                "latency": 5.323,
-                "throughput": 2.546
+                "latency": 5.361,
+                "throughput": 2.556
             },
             "r8 hi, hi": {
-                "latency": 7.624,
+                "latency": 7.637,
                 "throughput": 3.601
             }
         },
@@ -220,7 +220,7 @@
             },
             "r16": {
                 "latency": 6.27,
-                "throughput": 2.68
+                "throughput": 2.679
             },
             "r8 lo, lo": {
                 "latency": 5.441,
@@ -648,11 +648,11 @@
             },
             "r16": {
                 "latency": 6.59,
-                "throughput": 6.529
+                "throughput": 6.5
             },
             "r8 lo, lo": {
-                "latency": 6.709,
-                "throughput": 6.031
+                "latency": 6.626,
+                "throughput": 5.971
             },
             "r8 hi, lo": {
                 "latency": 9.175,
@@ -727,24 +727,24 @@
         },
         "rcl r, imm": {
             "r64": {
-                "latency": 105.153,
-                "throughput": 100.99
+                "latency": 105.361,
+                "throughput": 101.18
             },
             "r32": {
-                "latency": 53.333,
-                "throughput": 53.439
+                "latency": 53.318,
+                "throughput": 53.447
             },
             "r16": {
-                "latency": 27.94,
-                "throughput": 27.838
+                "latency": 27.804,
+                "throughput": 27.605
             },
             "r8 lo, lo": {
-                "latency": 17.314,
-                "throughput": 17.276
+                "latency": 17.392,
+                "throughput": 17.344
             },
             "r8 hi, lo": {
-                "latency": 19.024,
-                "throughput": 16.706
+                "latency": 19.021,
+                "throughput": 16.764
             }
         },
         "rcl r, cl": {
@@ -771,46 +771,200 @@
         },
         "rcr r, imm": {
             "r64": {
-                "latency": 111.062,
-                "throughput": 109.496
+                "latency": 111.024,
+                "throughput": 109.883
             },
             "r32": {
-                "latency": 57.978,
-                "throughput": 57.999
+                "latency": 57.977,
+                "throughput": 57.981
             },
             "r16": {
-                "latency": 32.535,
-                "throughput": 32.422
+                "latency": 32.509,
+                "throughput": 32.443
             },
             "r8 lo, lo": {
-                "latency": 21.075,
-                "throughput": 20.962
+                "latency": 20.931,
+                "throughput": 20.913
             },
             "r8 hi, lo": {
-                "latency": 19.258,
-                "throughput": 19.164
+                "latency": 19.271,
+                "throughput": 19.12
             }
         },
         "rcr r, cl": {
             "r64": {
-                "latency": 8.978,
-                "throughput": 9.0
+                "latency": 8.967,
+                "throughput": 8.998
             },
             "r32": {
-                "latency": 9.984,
-                "throughput": 9.996
+                "latency": 9.987,
+                "throughput": 9.98
             },
             "r16": {
-                "latency": 11.465,
-                "throughput": 11.484
+                "latency": 11.479,
+                "throughput": 11.49
             },
             "r8 lo, lo": {
-                "latency": 10.977,
-                "throughput": 10.983
+                "latency": 10.985,
+                "throughput": 10.989
             },
             "r8 hi, lo": {
-                "latency": 10.972,
-                "throughput": 10.97
+                "latency": 10.989,
+                "throughput": 10.976
+            }
+        },
+        "shl r, 1": {
+            "r64": {
+                "latency": 1.06,
+                "throughput": 0.344
+            },
+            "r32": {
+                "latency": 3.0,
+                "throughput": 1.01
+            },
+            "r16": {
+                "latency": 6.035,
+                "throughput": 2.01
+            },
+            "r8 lo, lo": {
+                "latency": 5.204,
+                "throughput": 1.445
+            },
+            "r8 hi, lo": {
+                "latency": 6.739,
+                "throughput": 2.509
+            }
+        },
+        "shr r, 1": {
+            "r64": {
+                "latency": 1.422,
+                "throughput": 0.68
+            },
+            "r32": {
+                "latency": 3.0,
+                "throughput": 1.01
+            },
+            "r16": {
+                "latency": 6.035,
+                "throughput": 2.01
+            },
+            "r8 lo, lo": {
+                "latency": 5.204,
+                "throughput": 1.445
+            },
+            "r8 hi, lo": {
+                "latency": 6.739,
+                "throughput": 2.509
+            }
+        },
+        "sar r, 1": {
+            "r64": {
+                "latency": 1.422,
+                "throughput": 0.68
+            },
+            "r32": {
+                "latency": 3.0,
+                "throughput": 1.01
+            },
+            "r16": {
+                "latency": 5.441,
+                "throughput": 2.095
+            },
+            "r8 lo, lo": {
+                "latency": 4.91,
+                "throughput": 1.564
+            },
+            "r8 hi, lo": {
+                "latency": 7.184,
+                "throughput": 2.65
+            }
+        },
+        "rol r, 1": {
+            "r64": {
+                "latency": 1.06,
+                "throughput": 0.344
+            },
+            "r32": {
+                "latency": 2.02,
+                "throughput": 0.68
+            },
+            "r16": {
+                "latency": 6.511,
+                "throughput": 6.5
+            },
+            "r8 lo, lo": {
+                "latency": 6.626,
+                "throughput": 5.971
+            },
+            "r8 hi, lo": {
+                "latency": 8.908,
+                "throughput": 6.786
+            }
+        },
+        "ror r, 1": {
+            "r64": {
+                "latency": 1.06,
+                "throughput": 0.344
+            },
+            "r32": {
+                "latency": 2.02,
+                "throughput": 0.68
+            },
+            "r16": {
+                "latency": 7.0,
+                "throughput": 6.92
+            },
+            "r8 lo, lo": {
+                "latency": 9.42,
+                "throughput": 6.041
+            },
+            "r8 hi, lo": {
+                "latency": 9.434,
+                "throughput": 7.297
+            }
+        },
+        "rcl r, 1": {
+            "r64": {
+                "latency": 4.517,
+                "throughput": 4.012
+            },
+            "r32": {
+                "latency": 6.358,
+                "throughput": 4.386
+            },
+            "r16": {
+                "latency": 7.402,
+                "throughput": 6.406
+            },
+            "r8 lo, lo": {
+                "latency": 7.457,
+                "throughput": 5.897
+            },
+            "r8 hi, lo": {
+                "latency": 9.903,
+                "throughput": 6.99
+            }
+        },
+        "rcr r, 1": {
+            "r64": {
+                "latency": 8.97,
+                "throughput": 8.99
+            },
+            "r32": {
+                "latency": 9.998,
+                "throughput": 10.016
+            },
+            "r16": {
+                "latency": 11.49,
+                "throughput": 11.507
+            },
+            "r8 lo, lo": {
+                "latency": 10.955,
+                "throughput": 10.986
+            },
+            "r8 hi, lo": {
+                "latency": 10.996,
+                "throughput": 10.984
             }
         },
         "shld r, r, imm": {
@@ -942,13 +1096,13 @@
         },
         "xor edx, edx; div r": {
             "r64": {
-                "latency": 7.182
+                "latency": 7.187
             },
             "r32": {
                 "latency": 9.82
             },
             "r16": {
-                "latency": 10.662
+                "latency": 10.647
             }
         },
         "cbw; idiv r": {
@@ -958,7 +1112,7 @@
         },
         "cwd; idiv r": {
             "r16": {
-                "latency": 19.551
+                "latency": 19.55
             }
         },
         "cdq; idiv r": {
@@ -968,7 +1122,7 @@
         },
         "cqo; idiv r": {
             "r64": {
-                "latency": 7.021
+                "latency": 7.041
             }
         },
         "mov r, r": {
@@ -1108,6 +1262,121 @@
                 "latency": 1.06
             }
         },
+        "cwd": {
+            "r16": {
+                "latency": 3.454
+            }
+        },
+        "cdq": {
+            "r32": {
+                "latency": 0.678
+            }
+        },
+        "cqo": {
+            "r64": {
+                "latency": 0.344
+            }
+        },
+        "lahf": {
+            "r8 hi, lo": {
+                "latency": 4.116
+            }
+        },
+        "sahf": {
+            "r8 hi, lo": {
+                "latency": 3.99
+            }
+        },
+        "xchg r, r": {
+            "r64": {
+                "latency": 1.05,
+                "throughput": 1.01
+            },
+            "r32": {
+                "latency": 1.801,
+                "throughput": 1.677
+            },
+            "r16": {
+                "latency": 4.035,
+                "throughput": 3.726
+            },
+            "r8 lo, lo": {
+                "latency": 3.055,
+                "throughput": 2.525
+            },
+            "r8 hi, lo": {
+                "latency": 6.507,
+                "throughput": 3.546
+            },
+            "r8 lo, hi": {
+                "latency": 6.405,
+                "throughput": 4.357
+            },
+            "r8 hi, hi": {
+                "latency": 7.28,
+                "throughput": 4.71
+            }
+        },
+        "xadd r, r": {
+            "r64": {
+                "latency": 1.605,
+                "throughput": 1.01
+            },
+            "r32": {
+                "latency": 3.749,
+                "throughput": 1.69
+            },
+            "r16": {
+                "latency": 5.208,
+                "throughput": 3.73
+            },
+            "r8 lo, lo": {
+                "latency": 5.28,
+                "throughput": 2.535
+            },
+            "r8 hi, lo": {
+                "latency": 7.722,
+                "throughput": 3.553
+            },
+            "r8 lo, hi": {
+                "latency": 5.727,
+                "throughput": 4.13
+            },
+            "r8 hi, hi": {
+                "latency": 8.375,
+                "throughput": 4.816
+            }
+        },
+        "cmpxchg r, r": {
+            "r64": {
+                "latency": 1.952,
+                "throughput": 2.413
+            },
+            "r32": {
+                "latency": 2.97,
+                "throughput": 2.965
+            },
+            "r16": {
+                "latency": 3.983,
+                "throughput": 4.119
+            },
+            "r8 lo, lo": {
+                "latency": 4.001,
+                "throughput": 4.0
+            },
+            "r8 hi, lo": {
+                "latency": 4.512,
+                "throughput": 4.35
+            },
+            "r8 lo, hi": {
+                "latency": 4.035,
+                "throughput": 4.082
+            },
+            "r8 hi, hi": {
+                "latency": 4.046,
+                "throughput": 4.701
+            }
+        },
         "lea r, [r]": {
             "r64": {
                 "latency": 1.011,
@@ -1138,7 +1407,7 @@
         },
         "lea r, [r + disp32]": {
             "r64": {
-                "latency": 2.272,
+                "latency": 2.293,
                 "throughput": 1.347
             },
             "r32": {
@@ -1250,15 +1519,15 @@
         },
         "lea r, [r + r*4 + disp32]": {
             "r64": {
-                "latency": 3.437,
-                "throughput": 1.68
+                "latency": 3.415,
+                "throughput": 1.684
             },
             "r32": {
-                "latency": 3.426,
-                "throughput": 1.68
+                "latency": 3.447,
+                "throughput": 1.69
             },
             "r16": {
-                "latency": 5.068,
+                "latency": 5.161,
                 "throughput": 2.68
             }
         },
@@ -1318,6 +1587,146 @@
             "r8 hi, lo": {
                 "latency": 3.598,
                 "throughput": 1.555
+            }
+        },
+        "cmovbe r, r": {
+            "r64": {
+                "latency": 2.197,
+                "throughput": 1.347
+            },
+            "r32": {
+                "latency": 3.475,
+                "throughput": 1.68
+            },
+            "r16": {
+                "latency": 5.011,
+                "throughput": 2.678
+            }
+        },
+        "cmovle r, r": {
+            "r64": {
+                "latency": 2.507,
+                "throughput": 1.458
+            },
+            "r32": {
+                "latency": 3.544,
+                "throughput": 1.845
+            },
+            "r16": {
+                "latency": 5.453,
+                "throughput": 2.765
+            }
+        },
+        "cmovs r, r": {
+            "r64": {
+                "latency": 2.191,
+                "throughput": 1.01
+            },
+            "r32": {
+                "latency": 3.025,
+                "throughput": 1.344
+            },
+            "r16": {
+                "latency": 5.459,
+                "throughput": 2.346
+            }
+        },
+        "cmovo r, r": {
+            "r64": {
+                "latency": 2.191,
+                "throughput": 1.01
+            },
+            "r32": {
+                "latency": 3.025,
+                "throughput": 1.344
+            },
+            "r16": {
+                "latency": 5.459,
+                "throughput": 2.346
+            }
+        },
+        "cmovp r, r": {
+            "r64": {
+                "latency": 2.157,
+                "throughput": 1.02
+            },
+            "r32": {
+                "latency": 3.621,
+                "throughput": 1.361
+            },
+            "r16": {
+                "latency": 5.22,
+                "throughput": 2.398
+            }
+        },
+        "setb r8": {
+            "r8 lo, lo": {
+                "latency": 1.561,
+                "throughput": 0.771
+            },
+            "r8 hi, lo": {
+                "latency": 3.598,
+                "throughput": 1.555
+            }
+        },
+        "setl r8": {
+            "r8 lo, lo": {
+                "latency": 1.428,
+                "throughput": 1.235
+            },
+            "r8 hi, lo": {
+                "latency": 3.25,
+                "throughput": 1.745
+            }
+        },
+        "setbe r8": {
+            "r8 lo, lo": {
+                "latency": 1.428,
+                "throughput": 1.235
+            },
+            "r8 hi, lo": {
+                "latency": 3.25,
+                "throughput": 1.745
+            }
+        },
+        "setle r8": {
+            "r8 lo, lo": {
+                "latency": 1.276,
+                "throughput": 1.27
+            },
+            "r8 hi, lo": {
+                "latency": 3.763,
+                "throughput": 1.883
+            }
+        },
+        "sets r8": {
+            "r8 lo, lo": {
+                "latency": 1.561,
+                "throughput": 0.771
+            },
+            "r8 hi, lo": {
+                "latency": 3.598,
+                "throughput": 1.555
+            }
+        },
+        "seto r8": {
+            "r8 lo, lo": {
+                "latency": 1.561,
+                "throughput": 0.771
+            },
+            "r8 hi, lo": {
+                "latency": 3.598,
+                "throughput": 1.555
+            }
+        },
+        "setp r8": {
+            "r8 lo, lo": {
+                "latency": 1.633,
+                "throughput": 1.02
+            },
+            "r8 hi, lo": {
+                "latency": 3.507,
+                "throughput": 1.52
             }
         },
         "bswap r": {
@@ -1402,22 +1811,58 @@
         },
         "crc32 r, r8": {
             "r64": {
-                "latency": 9.944,
+                "latency": 9.971,
                 "throughput": 7.036
             },
             "r32": {
-                "latency": 10.016,
+                "latency": 10.028,
                 "throughput": 7.036
             }
         },
         "crc32 r, r": {
             "r64": {
-                "latency": 8.237,
+                "latency": 8.255,
                 "throughput": 6.02
             },
             "r32": {
-                "latency": 8.689,
+                "latency": 8.687,
                 "throughput": 6.665
+            }
+        },
+        "crc32 r, r16": {
+            "r32": {
+                "latency": 10.025,
+                "throughput": 7.036
+            }
+        },
+        "adcx r, r": {
+            "r64": {
+                "latency": 2.359,
+                "throughput": 1.01
+            },
+            "r32": {
+                "latency": 4.202,
+                "throughput": 1.681
+            }
+        },
+        "adox r, r": {
+            "r64": {
+                "latency": 2.359,
+                "throughput": 1.01
+            },
+            "r32": {
+                "latency": 4.202,
+                "throughput": 1.681
+            }
+        },
+        "mulx r, r, r": {
+            "r64": {
+                "latency": 2.0,
+                "throughput": 2.275
+            },
+            "r32": {
+                "latency": 2.27,
+                "throughput": 2.315
             }
         },
         "andn r, r, r": {
@@ -1472,12 +1917,12 @@
         },
         "bzhi r, r, r": {
             "r64": {
-                "latency": 2.961,
-                "throughput": 2.971
+                "latency": 2.981,
+                "throughput": 2.958
             },
             "r32": {
                 "latency": 3.212,
-                "throughput": 3.256
+                "throughput": 3.23
             }
         },
         "pext r, r, r": {
@@ -1713,7 +2158,7 @@
         "sqrtpd x, x": {
             "xmm": {
                 "latency": 39.009,
-                "throughput": 39.007
+                "throughput": 39.001
             }
         },
         "sqrtss x, x": {
@@ -1724,8 +2169,8 @@
         },
         "sqrtsd x, x": {
             "xmm": {
-                "latency": 39.008,
-                "throughput": 39.001
+                "latency": 39.001,
+                "throughput": 39.007
             }
         },
         "rcpps x, x": {
@@ -1736,8 +2181,8 @@
         },
         "rsqrtps x, x": {
             "xmm": {
-                "latency": 48.013,
-                "throughput": 48.014
+                "latency": 48.019,
+                "throughput": 48.019
             }
         },
         "rcpss x, x": {
@@ -1748,8 +2193,8 @@
         },
         "rsqrtss x, x": {
             "xmm": {
-                "latency": 48.013,
-                "throughput": 48.013
+                "latency": 48.018,
+                "throughput": 48.023
             }
         },
         "minps x, x": {
@@ -1905,7 +2350,7 @@
         "cmpsd x, x, imm": {
             "xmm": {
                 "latency": 26.61,
-                "throughput": 24.63
+                "throughput": 24.631
             }
         },
         "shufps x, x, imm": {
@@ -1982,26 +2427,26 @@
         },
         "roundps x, x, imm": {
             "xmm": {
-                "latency": 48.734,
-                "throughput": 48.248
+                "latency": 48.727,
+                "throughput": 48.253
             }
         },
         "roundpd x, x, imm": {
             "xmm": {
-                "latency": 49.55,
-                "throughput": 49.062
+                "latency": 49.54,
+                "throughput": 49.065
             }
         },
         "roundss x, x, imm": {
             "xmm": {
-                "latency": 49.317,
-                "throughput": 49.308
+                "latency": 49.313,
+                "throughput": 49.314
             }
         },
         "roundsd x, x, imm": {
             "xmm": {
-                "latency": 50.159,
-                "throughput": 50.15
+                "latency": 50.15,
+                "throughput": 50.154
             }
         },
         "insertps x, x, imm": {
@@ -2100,6 +2545,30 @@
                 "throughput": 15.74
             }
         },
+        "cvtss2si r, x; cvtsi2ss x, r": {
+            "xmm": {
+                "latency": 29.27,
+                "throughput": 27.29
+            }
+        },
+        "pmovmskb r32, x; movd x, r32": {
+            "xmm": {
+                "latency": 19.31,
+                "throughput": 17.33
+            }
+        },
+        "movmskps r32, x; movd x, r32": {
+            "xmm": {
+                "latency": 19.56,
+                "throughput": 17.58
+            }
+        },
+        "movmskpd r32, x; movd x, r32": {
+            "xmm": {
+                "latency": 19.551,
+                "throughput": 17.571
+            }
+        },
         "movd x, r32": {
             "xmm": {
                 "latency": 5.151,
@@ -2110,6 +2579,12 @@
             "xmm": {
                 "latency": 5.101,
                 "throughput": 4.151
+            }
+        },
+        "movq x, x": {
+            "xmm": {
+                "latency": 3.031,
+                "throughput": 3.031
             }
         },
         "movd r32, x; movd x, r32": {
@@ -2481,7 +2956,7 @@
         "phminposuw x, x": {
             "xmm": {
                 "latency": 37.231,
-                "throughput": 37.231
+                "throughput": 37.235
             }
         },
         "pabsb x, x": {
@@ -2504,7 +2979,7 @@
         },
         "psignb x, x": {
             "xmm": {
-                "latency": 14.005,
+                "latency": 14.001,
                 "throughput": 14.001
             }
         },
@@ -2856,6 +3331,18 @@
                 "throughput": 15.111
             }
         },
+        "pextrb r32, x, imm; pinsrb x, r32, imm": {
+            "xmm": {
+                "latency": 21.151,
+                "throughput": 20.171
+            }
+        },
+        "extractps r32, x, imm; pinsrd x, r32, imm": {
+            "xmm": {
+                "latency": 19.411,
+                "throughput": 18.421
+            }
+        },
         "aesenc x, x": {
             "xmm": {
                 "latency": 2.021,
@@ -2886,15 +3373,9 @@
                 "throughput": 5.141
             }
         },
-        "aeskeygenassist x, x, imm": {
-            "xmm": {
-                "latency": 158.957,
-                "throughput": 160.644
-            }
-        },
         "pclmulqdq x, x, imm": {
             "xmm": {
-                "latency": 13.63,
+                "latency": 13.651,
                 "throughput": 12.911
             }
         },
@@ -2923,7 +3404,7 @@
         "vmovapd v, v": {
             "xmm": {
                 "latency": 2.015,
-                "throughput": 1.171
+                "throughput": 1.181
             },
             "ymm": {
                 "latency": 0.18,
@@ -2943,7 +3424,7 @@
         "vmovupd v, v": {
             "xmm": {
                 "latency": 2.015,
-                "throughput": 1.171
+                "throughput": 1.181
             },
             "ymm": {
                 "latency": 0.18,
@@ -2953,7 +3434,7 @@
         "vmovdqa v, v": {
             "xmm": {
                 "latency": 2.015,
-                "throughput": 1.171
+                "throughput": 1.181
             },
             "ymm": {
                 "latency": 0.18,
@@ -2963,10 +3444,10 @@
         "vmovdqu v, v": {
             "xmm": {
                 "latency": 2.015,
-                "throughput": 1.171
+                "throughput": 1.181
             },
             "ymm": {
-                "latency": 0.2,
+                "latency": 0.18,
                 "throughput": 0.087
             }
         },
@@ -3024,6 +3505,12 @@
                 "throughput": 6.061
             }
         },
+        "vmovq x, x": {
+            "xmm": {
+                "latency": 3.031,
+                "throughput": 3.031
+            }
+        },
         "vmovd r32, x; vmovd x, r32": {
             "xmm": {
                 "latency": 15.361,
@@ -3036,9 +3523,49 @@
                 "throughput": 11.96
             }
         },
+        "vpmovmskb r32, v; vmovd x, r32": {
+            "xmm": {
+                "latency": 23.331,
+                "throughput": 22.341
+            },
+            "ymm": {
+                "latency": 23.331,
+                "throughput": 22.341
+            }
+        },
+        "vmovmskps r32, v; vmovd x, r32": {
+            "xmm": {
+                "latency": 23.211,
+                "throughput": 22.221
+            },
+            "ymm": {
+                "latency": 23.211,
+                "throughput": 22.221
+            }
+        },
+        "vmovmskpd r32, v; vmovd x, r32": {
+            "xmm": {
+                "latency": 23.221,
+                "throughput": 22.231
+            },
+            "ymm": {
+                "latency": 23.221,
+                "throughput": 22.231
+            }
+        },
+        "vzeroupper": {
+            "ymm": {
+                "latency": 18.021
+            }
+        },
+        "vzeroall": {
+            "ymm": {
+                "latency": 16.0
+            }
+        },
         "vaddps v, v, v": {
             "xmm": {
-                "latency": 5.016,
+                "latency": 5.015,
                 "throughput": 4.271
             },
             "ymm": {
@@ -3099,11 +3626,11 @@
         "vdivps v, v, v": {
             "xmm": {
                 "latency": 27.994,
-                "throughput": 27.897
+                "throughput": 27.88
             },
             "ymm": {
-                "latency": 43.981,
-                "throughput": 43.77
+                "latency": 43.972,
+                "throughput": 43.772
             }
         },
         "vdivpd v, v, v": {
@@ -3176,12 +3703,12 @@
         },
         "vsqrtpd v, v": {
             "xmm": {
-                "latency": 39.017,
-                "throughput": 39.007
+                "latency": 39.018,
+                "throughput": 39.001
             },
             "ymm": {
-                "latency": 66.05,
-                "throughput": 66.045
+                "latency": 66.038,
+                "throughput": 66.046
             }
         },
         "vsqrtss v, v, v": {
@@ -3192,8 +3719,8 @@
         },
         "vsqrtsd v, v, v": {
             "xmm": {
-                "latency": 41.028,
-                "throughput": 41.009
+                "latency": 41.017,
+                "throughput": 41.007
             }
         },
         "vrcpps v, v": {
@@ -3208,12 +3735,12 @@
         },
         "vrsqrtps v, v": {
             "xmm": {
-                "latency": 50.021,
-                "throughput": 50.021
+                "latency": 50.018,
+                "throughput": 50.023
             },
             "ymm": {
-                "latency": 72.047,
-                "throughput": 72.04
+                "latency": 72.054,
+                "throughput": 72.049
             }
         },
         "vrcpss v, v, v": {
@@ -3225,7 +3752,7 @@
         "vrsqrtss v, v, v": {
             "xmm": {
                 "latency": 53.02,
-                "throughput": 53.019
+                "throughput": 53.018
             }
         },
         "vminps v, v, v": {
@@ -3480,8 +4007,8 @@
                 "throughput": 12.541
             },
             "ymm": {
-                "latency": 12.001,
-                "throughput": 9.051
+                "latency": 12.011,
+                "throughput": 9.041
             }
         },
         "vunpcklps v, v, v": {
@@ -3570,8 +4097,8 @@
                 "throughput": 36.061
             },
             "ymm": {
-                "latency": 70.925,
-                "throughput": 70.922
+                "latency": 70.917,
+                "throughput": 70.923
             }
         },
         "vdppd v, v, v, imm": {
@@ -3583,33 +4110,33 @@
         "vroundps v, v, imm": {
             "xmm": {
                 "latency": 38.627,
-                "throughput": 38.387
+                "throughput": 38.386
             },
             "ymm": {
-                "latency": 38.239,
-                "throughput": 37.997
+                "latency": 38.236,
+                "throughput": 37.998
             }
         },
         "vroundpd v, v, imm": {
             "xmm": {
-                "latency": 38.281,
+                "latency": 38.287,
                 "throughput": 38.037
             },
             "ymm": {
-                "latency": 38.239,
+                "latency": 38.231,
                 "throughput": 37.997
             }
         },
         "vroundss v, v, v, imm": {
             "xmm": {
-                "latency": 42.924,
+                "latency": 42.922,
                 "throughput": 42.476
             }
         },
         "vroundsd v, v, v, imm": {
             "xmm": {
-                "latency": 42.917,
-                "throughput": 42.486
+                "latency": 42.926,
+                "throughput": 42.484
             }
         },
         "vinsertps v, v, v, imm": {
@@ -3900,14 +4427,26 @@
         },
         "vcvttss2si r, x; vcvtsi2ss x, x, r": {
             "xmm": {
-                "latency": 24.12,
+                "latency": 24.121,
                 "throughput": 23.12
             }
         },
         "vcvttsd2si r, x; vcvtsi2sd x, x, r": {
             "xmm": {
-                "latency": 23.108,
-                "throughput": 22.169
+                "latency": 23.106,
+                "throughput": 22.172
+            }
+        },
+        "vcvtss2si r, x; vcvtsi2ss x, x, r": {
+            "xmm": {
+                "latency": 31.691,
+                "throughput": 30.691
+            }
+        },
+        "vcvtsd2si r, x; vcvtsi2sd x, x, r": {
+            "xmm": {
+                "latency": 33.019,
+                "throughput": 32.024
             }
         },
         "vpaddb v, v, v": {
@@ -4223,7 +4762,7 @@
         "vphminposuw v, v": {
             "xmm": {
                 "latency": 37.251,
-                "throughput": 37.251
+                "throughput": 37.257
             }
         },
         "vpand v, v, v": {
@@ -4492,17 +5031,17 @@
                 "throughput": 30.011
             },
             "ymm": {
-                "latency": 40.525,
+                "latency": 40.517,
                 "throughput": 39.528
             }
         },
         "vmpsadbw v, v, v, imm": {
             "xmm": {
-                "latency": 34.521,
+                "latency": 34.529,
                 "throughput": 34.281
             },
             "ymm": {
-                "latency": 67.565,
+                "latency": 67.548,
                 "throughput": 67.301
             }
         },
@@ -5152,6 +5691,24 @@
                 "throughput": 18.071
             }
         },
+        "vpextrb r32, x, imm; vpinsrb x, x, r32, imm": {
+            "xmm": {
+                "latency": 23.131,
+                "throughput": 22.141
+            }
+        },
+        "vpextrw r32, x, imm; vpinsrw x, x, r32, imm": {
+            "xmm": {
+                "latency": 22.871,
+                "throughput": 21.881
+            }
+        },
+        "vextractps r32, x, imm; vpinsrd x, x, r32, imm": {
+            "xmm": {
+                "latency": 21.411,
+                "throughput": 20.421
+            }
+        },
         "vaesenc v, v, v": {
             "xmm": {
                 "latency": 6.036,
@@ -5180,12 +5737,6 @@
             "xmm": {
                 "latency": 5.201,
                 "throughput": 5.201
-            }
-        },
-        "vaeskeygenassist v, v, imm": {
-            "xmm": {
-                "latency": 167.196,
-                "throughput": 167.274
             }
         },
         "vpclmulqdq v, v, v, imm": {
