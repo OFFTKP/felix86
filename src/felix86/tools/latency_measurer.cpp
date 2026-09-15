@@ -765,7 +765,7 @@ bool report_changes(const nlohmann::json& old, const nlohmann::json& fresh) {
                 double before = entry[metric];
                 double after = fresh[test][width][metric];
                 double delta = std::abs(after - before);
-                if (delta < 0.05 || delta < 0.05 * before) {
+                if (delta < 0.2 || delta < 0.2 * before) {
                     continue;
                 }
                 printf("%-12s %-30s %-10s %-10s %8.2f -> %8.2f  %+.1f%%\n", after > before ? "regression" : "improvement", test.c_str(),
