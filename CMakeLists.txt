@@ -56,6 +56,56 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffixed-gp")
 endif()
 
+include(ExternalProject)
+include(ProcessorCount)
+
+set(JEMALLOC_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/jemalloc)
+set(JEMALLOC_BINARY_DIR ${CMAKE_BINARY_DIR}/external/jemalloc)
+set(JEMALLOC_LIBRARY ${JEMALLOC_BINARY_DIR}/lib/libjemalloc_pic.a)
+
+set(JEMALLOC_CC "${CMAKE_C_COMPILER}")
+if (CMAKE_C_COMPILER_LAUNCHER)
+    set(JEMALLOC_CC "${CMAKE_C_COMPILER_LAUNCHER} ${CMAKE_C_COMPILER}")
+endif()
+
+set(JEMALLOC_CFLAGS "${CMAKE_C_FLAGS}")
+
+set(JEMALLOC_CONFIGURE_ARGS
+    --disable-cxx
+    --disable-doc
+    --with-lg-page=12
+)
+if (CMAKE_CROSSCOMPILING)
+    list(APPEND JEMALLOC_CONFIGURE_ARGS --host=${CMAKE_SYSTEM_PROCESSOR}-linux-gnu)
+endif()
+
+if (CMAKE_GENERATOR MATCHES "Make")
+    set(JEMALLOC_MAKE "$(MAKE)")
+else()
+    ProcessorCount(JEMALLOC_JOBS)
+    if (JEMALLOC_JOBS EQUAL 0)
+        set(JEMALLOC_JOBS 1)
+    endif()
+    set(JEMALLOC_MAKE make -j${JEMALLOC_JOBS})
+endif()
+
+ExternalProject_Add(jemalloc_build
+    SOURCE_DIR ${JEMALLOC_SOURCE_DIR}
+    BINARY_DIR ${JEMALLOC_BINARY_DIR}
+    CONFIGURE_COMMAND ${CMAKE_COMMAND} -E chdir ${JEMALLOC_SOURCE_DIR} autoconf -o ${JEMALLOC_BINARY_DIR}/configure
+              COMMAND ${CMAKE_COMMAND} -E env "CC=${JEMALLOC_CC}" "CFLAGS=${JEMALLOC_CFLAGS}" ${JEMALLOC_BINARY_DIR}/configure --srcdir=${JEMALLOC_SOURCE_DIR} ${JEMALLOC_CONFIGURE_ARGS}
+    BUILD_COMMAND ${JEMALLOC_MAKE} build_lib_static
+    INSTALL_COMMAND ""
+    BUILD_BYPRODUCTS ${JEMALLOC_LIBRARY}
+    LOG_CONFIGURE ON
+    LOG_BUILD ON
+    LOG_OUTPUT_ON_FAILURE ON
+)
+
+add_library(jemalloc STATIC IMPORTED GLOBAL)
+set_target_properties(jemalloc PROPERTIES IMPORTED_LOCATION ${JEMALLOC_LIBRARY})
+add_dependencies(jemalloc jemalloc_build)
+
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 cmake_policy(SET CMP0083 NEW)
 include(CheckPIESupported)
@@ -176,7 +226,7 @@ add_library(tomlc17 STATIC external/tomlc17/tomlc17.c)
 add_library(felix86_core STATIC)
 target_sources(felix86_core PRIVATE ${FELIX86_CORE_SOURCES})
 target_include_directories(felix86_core PUBLIC ${FELIX86_INCLUDES})
-target_link_libraries(felix86_core PUBLIC Zydis fmt tomlc17 biscuit berkeley-softfloat cephes git_version x64_vdso)
+target_link_libraries(felix86_core PUBLIC Zydis fmt tomlc17 biscuit berkeley-softfloat cephes git_version x64_vdso jemalloc ${CMAKE_DL_LIBS})
 
 target_compile_options(felix86_core PRIVATE -Wall -Werror=implicit-fallthrough -Werror=switch -fPIE)
 target_compile_options(felix86_core PRIVATE $<$<COMPILE_LANGUAGE:C>:-Werror=incompatible-pointer-types>)
