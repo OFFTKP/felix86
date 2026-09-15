@@ -1139,8 +1139,12 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             __atomic_store_n(state->clear_tid_address, 0, __ATOMIC_SEQ_CST);
             syscall(SYS_futex, state->clear_tid_address, FUTEX_WAKE, ~0ULL, 0, 0, 0);
         }
+        sigset_t all;
+        sigfillset(&all);
+        syscall(SYS_rt_sigprocmask, SIG_SETMASK, &all, nullptr, 8);
+        void* host_stack = state->host_stack;
         ThreadState::Destroy(state);
-        syscall(SYS_exit, arg1);
+        Threads::ExitThread(host_stack, arg1);
         UNREACHABLE();
         break;
     }

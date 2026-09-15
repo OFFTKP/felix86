@@ -117,6 +117,8 @@ Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
             min &= ~(2 * MB - 1);
             address = ::mmap((void*)min, total_size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE | MAP_FIXED_NOREPLACE, -1, 0);
             if (address != MAP_FAILED) {
+                reservation_base = address;
+                reservation_size = total_size;
                 break;
             }
         }
@@ -128,9 +130,13 @@ Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
     if (address == MAP_FAILED) {
         // Allocate an extra 2MB of virtual address space and skip it so that the mapping is aligned
         // to 2MB for the MADV_HUGEPAGE to work
-        address = ::mmap(nullptr, total_size + 2 * MB, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
-        if (address != MAP_FAILED) {
-            address = (void*)(((u64)address + 2 * MB - 1) & ~(2 * MB - 1));
+        void* raw = ::mmap(nullptr, total_size + 2 * MB, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+        if (raw != MAP_FAILED) {
+            reservation_base = raw;
+            reservation_size = total_size + 2 * MB;
+            address = (void*)(((u64)raw + 2 * MB - 1) & ~(2 * MB - 1));
+        } else {
+            address = MAP_FAILED;
         }
     }
     ASSERT_MSG(address != MAP_FAILED, "Failed to reserve code cache for thread %d?", gettid());
@@ -180,8 +186,7 @@ Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
 }
 
 Recompiler::~Recompiler() {
-    munmap(address_cache, (1 << address_cache_bits) * sizeof(AddressCacheEntry));
-    munmap(as.GetBufferPointer(0), max_code_cache_size);
+    munmap(reservation_base, reservation_size);
 }
 
 void Recompiler::emitNecessaryStuff() {

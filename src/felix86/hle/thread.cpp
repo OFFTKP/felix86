@@ -2,6 +2,7 @@
 #include <csignal>
 #include <dlfcn.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <linux/futex.h>
 #include <sys/mman.h>
 #include <sys/personality.h>
@@ -28,7 +29,9 @@ void je_jemalloc_postfork_parent();
 void je_jemalloc_postfork_child();
 }
 
-static void* pthread_handler(void* args) {
+constexpr static size_t host_stack_size = 8 * 1024 * 1024;
+
+static void pthread_handler_impl(void* args, void* host_stack) {
     u32* finished;
     CloneArgs clone_args;
     {
@@ -40,6 +43,7 @@ static void* pthread_handler(void* args) {
     }
 
     ThreadState* state = ThreadState::Create(clone_args.parent_state);
+    state->host_stack = host_stack;
     bool trace_clone = state->ptrace_data.constants.flags & PTRACE_O_TRACECLONE;
     if (!trace_clone) {
         state->ptrace_data.constants.tracer_pid = 0;
@@ -119,6 +123,27 @@ static void* pthread_handler(void* args) {
 
     Threads::StartThread(state);
     UNREACHABLE();
+}
+
+#ifdef __riscv
+__attribute__((naked)) static void run_on_stack(void* args, u8* stack_top, void (*func)(void*, void*), void* host_stack) {
+    asm volatile(R"(
+        mv sp, a1
+        mv a1, a3
+        jr a2
+    )");
+}
+#else
+static void run_on_stack(void* args, u8* stack_top, void (*func)(void*, void*), void* host_stack) {
+    UNREACHABLE();
+}
+#endif
+
+static void* pthread_handler(void* args) {
+    u8* host_stack = (u8*)mmap(nullptr, host_stack_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0);
+    ASSERT(host_stack != MAP_FAILED);
+    run_on_stack(args, host_stack + host_stack_size, pthread_handler_impl, host_stack);
+    UNREACHABLE();
     return nullptr;
 }
 
@@ -129,7 +154,11 @@ static int clone_handler(void* args) {
     // We can't use this cloned process, because when the guest created it, it passed a guest TLS which we can't use,
     // both due to differences in TLS and because the guest needs it, and creating a host TLS is not possible sans some hacky ways.
     // So we need to create a pthread (which will create a proper TLS) as the actual child process.
-    pthread_create(&clone_args->new_thread, nullptr, pthread_handler, args);
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
+    pthread_create(&clone_args->new_thread, &attr, pthread_handler, args);
+    pthread_attr_destroy(&attr);
     pthread_detach(clone_args->new_thread);
 
     return 0;
@@ -268,6 +297,7 @@ static long NewCloneMe(CloneArgs& host_clone_args) {
 
     pthread_attr_t attr;
     pthread_attr_init(&attr);
+    pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
     if (host_clone_args.guest_flags == pthread_create_flags) {
         // Great, just passthrough to host
     } else {
@@ -645,6 +675,28 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
 
 void Threads::StartThread(ThreadState* state) {
     state->recompiler->enterDispatcher(state);
+}
+
+void Threads::ExitThread(void* host_stack, int status) {
+#ifdef __riscv
+    if (host_stack) {
+        register u64 a0 asm("a0") = (u64)host_stack;
+        register u64 a1 asm("a1") = host_stack_size;
+        register u64 a2 asm("a2") = (u64)status;
+        register u64 a7 asm("a7") = SYS_munmap;
+        asm volatile(R"(
+            ecall
+            mv a0, a2
+            li a7, %[sys_exit]
+            ecall
+        )"
+                     : "+r"(a0), "+r"(a7)
+                     : "r"(a1), "r"(a2), [sys_exit] "i"(SYS_exit)
+                     : "memory");
+    }
+#endif
+    syscall(SYS_exit, status);
+    UNREACHABLE();
 }
 
 int Threads::Unshare(int flags) {
