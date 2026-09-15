@@ -1185,11 +1185,14 @@ static void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uct
         sa.sa_handler = SIG_DFL;
         sigemptyset(&sa.sa_mask);
         sa.sa_flags = 0;
-        ASSERT(syscall(SYS_rt_sigaction, sig, &sa, nullptr, sizeof(u64)) == 0);
-        sigset_t set;
-        sigemptyset(&set);
-        sigaddset(&set, sig);
-        ASSERT(syscall(SYS_rt_sigprocmask, SIG_UNBLOCK, &set, nullptr, sizeof(u64)) == 0);
+        int result = syscall(SYS_rt_sigaction, sig, &sa, nullptr, sizeof(u64));
+        if (sig != SIGSTOP) { // can happen during ptrace scenarios
+            ASSERT(result == 0);
+            sigset_t set;
+            sigemptyset(&set);
+            sigaddset(&set, sig);
+            ASSERT(syscall(SYS_rt_sigprocmask, SIG_UNBLOCK, &set, nullptr, sizeof(u64)) == 0);
+        }
         state->ptrace_data.constants.is_terminating = true;
         syscall(SYS_tgkill, getpid(), gettid(), sig);
         ERROR("Our attempt to terminate with sig %d failed?", sig); // should not be skipped by tracer as is_terminating is set

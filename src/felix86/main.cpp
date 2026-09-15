@@ -155,12 +155,13 @@ static void kill_all() {
         exe_target[len] = '\0';
 
         std::string path = exe_target;
-        if (path.find(' ') != std::string::npos) {
+        const std::string deleted_suffix = " (deleted)";
+        if (path.ends_with(deleted_suffix)) {
             // Sometimes paths come up as "/path/to/felix86 (deleted)"
             // This happens when the executable... was deleted
             // Helpful when I eg. recompile but also wanna kill old running instances
             // ie. wine leftovers and stuff like that
-            path = path.substr(0, path.find(' '));
+            path.erase(path.size() - deleted_suffix.size());
         }
 
         char* base = basename(path.data());
