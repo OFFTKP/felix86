@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <functional>
+#include <optional>
 #include <fcntl.h>
 #include <linux/limits.h>
 #include <linux/stat.h>
@@ -298,7 +299,7 @@ private:
 
     static int rmdirInternal(const char* path);
 
-    static bool isProcSelfExe(const char* path);
+    static std::optional<std::string> getProcSelfExe(int fd, const char* path);
 
     static FdPath resolveImpl(int fd, const char* path, bool resolve_final);
 

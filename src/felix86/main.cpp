@@ -704,6 +704,8 @@ int main(int argc, char* argv[]) {
              "it, make sure to remove other x86/x86-64 emulators from binfmt_misc");
     }
 
+    g_params.envp.push_back("__FELIX86_EXE=" + std::filesystem::absolute(g_params.executable_path).string());
+
     SIGLOG("New felix86 instance with PID %d and executable path %s", getpid(), g_params.executable_path.c_str());
 
     Emulator::Start();
