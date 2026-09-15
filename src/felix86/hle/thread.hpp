@@ -31,4 +31,6 @@ struct Threads {
     static void StartThread(ThreadState* state);
 
     static std::pair<u8*, size_t> AllocateStack(bool mode32);
+
+    [[noreturn]] static void ExitThread(void* host_stack, int status);
 };

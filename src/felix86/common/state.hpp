@@ -390,6 +390,8 @@ struct ThreadState {
 
     bool use_precision_control = false;
 
+    void* host_stack = nullptr;
+
     PtraceData ptrace_data;
 
     FEXCore::SHMStats::ThreadStats* thread_stats = nullptr;
@@ -568,3 +570,5 @@ struct ThreadState {
 
     static void Destroy(ThreadState* state);
 };
+
+static_assert(offsetof(ThreadState, unaligned_atomics_counter) < 2048);
