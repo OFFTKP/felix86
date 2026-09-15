@@ -875,7 +875,13 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
     }
     case felix86_ptrace_request::felix86_PTRACE_SETSIGINFO: {
         remote_state->ptrace_data.injected.siginfo_changed = true;
-        memcpy(&remote_state->ptrace_data.stop_info.info, data, tracer_mode32 ? sizeof(x86_siginfo_t) : sizeof(siginfo_t));
+        siginfo_t host_info;
+        if (tracer_mode32) {
+            host_info = *(x86_siginfo_t*)data;
+        } else {
+            host_info = *(siginfo_t*)data;
+        }
+        memcpy(&remote_state->ptrace_data.stop_info.info, &host_info, sizeof(siginfo_t));
         return 0;
     }
     case felix86_ptrace_request::felix86_PTRACE_GETEVENTMSG: {
