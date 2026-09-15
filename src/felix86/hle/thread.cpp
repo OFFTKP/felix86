@@ -22,6 +22,12 @@
 #include "felix86/hle/thread.hpp"
 #include "felix86/v2/recompiler.hpp"
 
+extern "C" {
+void je_jemalloc_prefork();
+void je_jemalloc_postfork_parent();
+void je_jemalloc_postfork_child();
+}
+
 static void* pthread_handler(void* args) {
     u32* finished;
     CloneArgs clone_args;
@@ -318,8 +324,14 @@ static long ForkMe(CloneArgs& host_clone_args) {
     // By setting ThreadState to null temporarily the tracer will know to skip the SIGSTOP the child starts with which will be re-raised
     // with raise_stop later after everything is initialized
     state->ptrace_data.stop_info.in_clone = true;
+    je_jemalloc_prefork();
     long ret = syscall(SYS_clone, host_clone_args.guest_flags, nullptr, host_clone_args.parent_tid, host_clone_args.child_tid,
                        nullptr); // args are flipped in syscall
+    if (ret == 0) {
+        je_jemalloc_postfork_child();
+    } else {
+        je_jemalloc_postfork_parent();
+    }
     state->ptrace_data.stop_info.in_clone = false;
     ASSERT(ret >= 0);
 
