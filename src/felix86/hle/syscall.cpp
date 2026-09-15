@@ -1140,7 +1140,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             syscall(SYS_futex, state->clear_tid_address, FUTEX_WAKE, ~0ULL, 0, 0, 0);
         }
         ThreadState::Destroy(state);
-        syscall(SYS_exit, arg1);
+        pthread_exit((void*)arg1); // Our custom glibc fork will passthrough the arg1 to SYS_exit
         UNREACHABLE();
         break;
     }

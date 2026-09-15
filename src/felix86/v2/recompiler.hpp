@@ -919,6 +919,9 @@ private:
 
     AddressCacheEntry* address_cache = nullptr;
 
+    void* reservation_base = nullptr;
+    size_t reservation_size = 0;
+
     std::deque<u64> calltrace{};
 
     FlagMode flag_mode = FlagMode::Default;
