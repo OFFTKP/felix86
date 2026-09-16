@@ -792,12 +792,11 @@
         "disassembly": "pcmpeqq xmm1, [rdi]"
     },
     "660f3817dc": {
-        "instruction_count": 16,
+        "instruction_count": 15,
         "expected_asm": [
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VAND.VV         v4, xmm3, xmm4, none",
-            "VXOR.VI         v6, xmm3, 0xffffffff(-1), none",
-            "VAND.VV         v5, xmm4, v6, none",
+            "VANDN.VV        v5, xmm4, xmm3, none",
             "VMSNE.VI        v2, v4, 0x0(0), none",
             "VMV.X.S         zf, v2",
             "SLLI            zf, zf, 0x3e(62)",
@@ -830,14 +829,13 @@
         "disassembly": "ptest xmm2, xmm2"
     },
     "660f38170f": {
-        "instruction_count": 18,
+        "instruction_count": 17,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VLE8.V          v6, rdi, none, 1",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VAND.VV         v4, xmm1, v6, none",
-            "VXOR.VI         v7, xmm1, 0xffffffff(-1), none",
-            "VAND.VV         v5, v6, v7, none",
+            "VANDN.VV        v5, v6, xmm1, none",
             "VMSNE.VI        v2, v4, 0x0(0), none",
             "VMV.X.S         zf, v2",
             "SLLI            zf, zf, 0x3e(62)",
