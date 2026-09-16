@@ -5720,30 +5720,46 @@ FAST_HANDLE(MOVHPD) {
 
 FAST_HANDLE(SHUFPD) {
     u8 imm = rec.getImmediate(&operands[2]);
-    biscuit::GPR temp = rec.scratch();
+    if ((imm & 0b11) != 0b01) {
+        rec.setVectorState(SEW::E64, 2);
+    }
     biscuit::Vec vtemp = rec.scratchVec();
-    biscuit::Vec vsrc = rec.scratchVec();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
-
-    rec.setVectorState(SEW::E64, 2);
-
-    if ((imm & 0b1) == 0) {
-        as.VMV_XS(temp, dst);
-    } else {
-        as.VSLIDEDOWN(vtemp, dst, 1);
-        as.VMV_XS(temp, vtemp);
+    switch (imm & 0b11) {
+    case 0b00: {
+        if (dst == src) {
+            as.VMV1R(vtemp, dst);
+            src = vtemp;
+        }
+        as.VSLIDEUP(dst, src, 1);
+        break;
     }
-
-    if ((imm & 0b10) != 0) {
-        as.VSLIDEDOWN(vsrc, src, 1);
-    } else {
-        vsrc = src;
+    case 0b01: {
+        if (dst == src) {
+            as.VMV1R(vtemp, dst);
+            src = vtemp;
+        }
+        rec.setVectorState(SEW::E64, 1);
+        as.VSLIDEDOWN(dst, dst, 1);
+        rec.setVectorState(SEW::E64, 2);
+        as.VSLIDEUP(dst, src, 1);
+        break;
     }
-
-    as.VSLIDE1UP(vtemp, vsrc, temp);
-
-    rec.setVec(&operands[0], vtemp);
+    case 0b10: {
+        as.VSLIDEDOWN(vtemp, src, 1);
+        as.VSLIDEUP(dst, vtemp, 1);
+        break;
+    }
+    case 0b11: {
+        as.VMV1R(vtemp, dst);
+        as.VMV(dst, src);
+        rec.setVectorState(SEW::E64, 1);
+        as.VSLIDEDOWN(dst, vtemp, 1);
+        break;
+    }
+    }
+    rec.setVec(&operands[0], dst);
 }
 
 FAST_HANDLE(SIDT) {
