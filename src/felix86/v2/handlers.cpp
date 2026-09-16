@@ -1918,7 +1918,6 @@ FAST_HANDLE(CALL) {
 
         rec.writeMemory(scratch, rsp, 0, rec.stackWidth());
         rec.backToDispatcher();
-        rec.stopCompiling();
         break;
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
@@ -1940,7 +1939,6 @@ FAST_HANDLE(CALL) {
         }
         as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
         rec.jumpAndLink(address);
-        rec.stopCompiling();
         break;
     }
     default: {

@@ -5,6 +5,7 @@
 #include "Zycore/Status.h"
 #include "Zydis/Disassembler.h"
 #include "Zydis/SharedTypes.h"
+#include "biscuit/registers.hpp"
 #include "felix86/common/config.hpp"
 #include "felix86/common/frame.hpp"
 #include "felix86/common/gdbjit.hpp"
@@ -247,34 +248,8 @@ void Recompiler::emitDispatcher() {
     compile_next_handler = (u64)as.GetCursorPointer();
 
     if (g_config.address_cache) {
-        biscuit::GPR temp = scratch();
-        biscuit::GPR temp2 = scratch();
-        biscuit::GPR rip = scratch();
         biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
-        biscuit::Label not_equal;
-        u64 offset = (u64)address_cache - (u64)as.GetCursorPointer();
-        const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
-        const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
-        const bool lo12overflow = (((u16)lo12 + 8) & 0xFFF) == 0;
-        ASSERT(!lo12overflow);
-        const i32 offset_guest = lo12 + 8;
-        const i32 offset_host = lo12;
-        as.AUIPC(temp, hi20);
-        as.SLLI(temp2, ripreg, 64 - address_cache_bits);
-        // Multiply by 16, which is size of each address cache entry
-        as.SRLI(temp2, temp2, 64 - address_cache_bits - 4);
-        as.ADD(temp, temp, temp2);
-        // Load even if branch fails is slightly better for fusion
-        as.LD(rip, offset_host, temp);
-        as.LD(temp2, offset_guest, temp);
-        as.BNE(temp2, ripreg, &not_equal);
-        as.MV(t5, x0); // zero out t5, see invalidate_caller_thunk
-        as.JR(rip);
-
-        as.Bind(&not_equal);
-        popScratch();
-        popScratch();
-        popScratch();
+        addressCacheLookup(ripreg, [](Assembler& as, biscuit::GPR new_rip) { as.JR(new_rip); });
     }
 
     writebackState();
@@ -2229,7 +2204,8 @@ void Recompiler::scanAhead(u64 rip) {
         bool too_big = instructions.size() > g_config.max_block_size;
         bool is_jump = instruction.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
         bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET || mnemonic == ZYDIS_MNEMONIC_IRETD || mnemonic == ZYDIS_MNEMONIC_IRETQ;
-        bool is_call = mnemonic == ZYDIS_MNEMONIC_CALL;
+        bool is_far_call = mnemonic == ZYDIS_MNEMONIC_CALL && operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY &&
+                           (operands[0].size == 64 + 16 || operands[0].size == 32 + 16);
         bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2 || mnemonic == ZYDIS_MNEMONIC_OUTSB || mnemonic == ZYDIS_MNEMONIC_OUTSW ||
                           mnemonic == ZYDIS_MNEMONIC_OUTSD || mnemonic == ZYDIS_MNEMONIC_INSB || mnemonic == ZYDIS_MNEMONIC_INSW ||
                           mnemonic == ZYDIS_MNEMONIC_INSD || mnemonic == ZYDIS_MNEMONIC_IN || mnemonic == ZYDIS_MNEMONIC_OUT;
@@ -2237,7 +2213,7 @@ void Recompiler::scanAhead(u64 rip) {
         bool is_int3 = mnemonic == ZYDIS_MNEMONIC_INT3;
 
         if (g_config.unsafe_flags && !g_config.paranoid) {
-            if (is_call || is_ret) {
+            if (is_far_call || is_ret) {
                 // Pretend that the call/ret changes the flags so that we don't calculate the flags
                 // This is most often the case so it's a good optimization.
                 scan_entries.push_back({.rip = rip, .flags_used = 0, .flags_changed = ALL_CPUFLAGS});
@@ -2286,7 +2262,7 @@ void Recompiler::scanAhead(u64 rip) {
         }
 
         if (too_big) {
-            if (is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3) {
+            if (is_jump || is_ret || is_far_call || is_illegal || is_hlt || is_int3) {
                 // If a jump/ret/call/... that would end the block anyway, don't mark this block as big
                 // This way if current_block_big == true we know that it doesn't end in a block-ending instruction
                 current_block_big = false;
@@ -2297,8 +2273,8 @@ void Recompiler::scanAhead(u64 rip) {
             }
         }
 
-        if (is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3) {
-            if (g_config.scan_ahead_multi && !g_config.paranoid && !is_ret && !is_call && !is_illegal && !is_hlt && !is_int3 &&
+        if (is_jump || is_ret || is_far_call || is_illegal || is_hlt || is_int3) {
+            if (g_config.scan_ahead_multi && !g_config.paranoid && !is_ret && !is_far_call && !is_illegal && !is_hlt && !is_int3 &&
                 operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
                 // In some cases, the program may deliberately jump to a bad location
                 // This was seen in a Ubisoft installer, for example. Now, we could use Mapper::is_guest_address,
