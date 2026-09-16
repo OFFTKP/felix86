@@ -4386,9 +4386,12 @@ FAST_HANDLE(UNPCKLPS) {
     biscuit::Vec wide1 = rec.scratchVecM2();
     biscuit::Vec wide2 = rec.scratchVecM2();
     biscuit::Vec result = rec.scratchVec();
-    rec.setVectorState(SEW::E32, 4);
+    if (Extensions::Zicclsm) {
+        rec.setVectorState(SEW::E32, 4);
+    }
     biscuit::Vec src1 = rec.getVec(&operands[0]);
     biscuit::Vec src2 = rec.getVec(&operands[1]);
+    rec.setVectorState(SEW::E32, 4);
 
     as.VWADDU(wide1, src1, x0);
     if (Extensions::Zvbb) {
@@ -4413,9 +4416,12 @@ FAST_HANDLE(UNPCKHPS) {
     biscuit::Vec wide1 = rec.scratchVecM2();
     biscuit::Vec wide2 = rec.scratchVecM2();
     biscuit::Vec result = rec.scratchVec();
-    rec.setVectorState(SEW::E32, 4);
+    if (Extensions::Zicclsm) {
+        rec.setVectorState(SEW::E32, 4);
+    }
     biscuit::Vec src1 = rec.getVec(&operands[0]);
     biscuit::Vec src2 = rec.getVec(&operands[1]);
+    rec.setVectorState(SEW::E32, 4);
 
     if (Extensions::Zvbb) {
         biscuit::GPR shift = rec.scratch();
@@ -4448,9 +4454,12 @@ FAST_HANDLE(UNPCKHPS) {
 }
 
 FAST_HANDLE(UNPCKLPD) {
-    rec.setVectorState(SEW::E64, 2);
+    if (Extensions::Zicclsm) {
+        rec.setVectorState(SEW::E64, 2);
+    }
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
+    rec.setVectorState(SEW::E64, 2);
     if (dst == src) {
         src = rec.scratchVec();
         as.VMV(src, dst);
@@ -5720,7 +5729,7 @@ FAST_HANDLE(MOVHPD) {
 
 FAST_HANDLE(SHUFPD) {
     u8 imm = rec.getImmediate(&operands[2]);
-    if ((imm & 0b11) != 0b01) {
+    if (Extensions::Zicclsm && (imm & 0b11) != 0b01) {
         rec.setVectorState(SEW::E64, 2);
     }
     biscuit::Vec vtemp = rec.scratchVec();
@@ -5728,6 +5737,7 @@ FAST_HANDLE(SHUFPD) {
     biscuit::Vec src = rec.getVec(&operands[1]);
     switch (imm & 0b11) {
     case 0b00: {
+        rec.setVectorState(SEW::E64, 2);
         if (dst == src) {
             as.VMV1R(vtemp, dst);
             src = vtemp;
@@ -5747,11 +5757,13 @@ FAST_HANDLE(SHUFPD) {
         break;
     }
     case 0b10: {
+        rec.setVectorState(SEW::E64, 2);
         as.VSLIDEDOWN(vtemp, src, 1);
         as.VSLIDEUP(dst, vtemp, 1);
         break;
     }
     case 0b11: {
+        rec.setVectorState(SEW::E64, 2);
         as.VMV1R(vtemp, dst);
         as.VMV(dst, src);
         rec.setVectorState(SEW::E64, 1);

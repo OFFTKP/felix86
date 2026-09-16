@@ -1023,12 +1023,18 @@ int main() {
     GEN_SSE_CMP(cmpsd);
     GEN_SSE_CMP(cmppd);
 
-    GEN(shufpd(xmm3, xmm4, (u8)0));
-    GEN(shufpd(xmm2, xmm2, (u8)0));
-    GEN(shufpd(xmm3, ptr[rdi], (u8)0));
-    GEN(shufpd(xmm3, xmm4, (u8)0xE4));
-    GEN(shufpd(xmm2, xmm2, (u8)0xE4));
-    GEN(shufpd(xmm3, ptr[rdi], (u8)0xE4));
+    GEN(shufpd(xmm3, xmm4, 0));
+    GEN(shufpd(xmm2, xmm2, 0));
+    GEN(shufpd(xmm3, ptr[rdi], 0));
+    GEN(shufpd(xmm3, xmm4, 1));
+    GEN(shufpd(xmm2, xmm2, 1));
+    GEN(shufpd(xmm3, ptr[rdi], 1));
+    GEN(shufpd(xmm3, xmm4, 2));
+    GEN(shufpd(xmm2, xmm2, 2));
+    GEN(shufpd(xmm3, ptr[rdi], 2));
+    GEN(shufpd(xmm3, xmm4, 3));
+    GEN(shufpd(xmm2, xmm2, 3));
+    GEN(shufpd(xmm3, ptr[rdi], 3));
 
     GEN_SSE(punpcklbw);
     GEN_SSE(punpcklwd);
