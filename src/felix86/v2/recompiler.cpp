@@ -2144,7 +2144,7 @@ void Recompiler::restoreState() {
     scratch_index = saved_scratch_index;
 }
 
-void Recompiler::backToDispatcher() {
+void Recompiler::backToDispatcher(bool return_hint) {
     OptimizationGuard guard(as, optimization_guard_counter);
     const bool is_single_step = single_step != SingleStepMode::None;
     if (compiling && is_single_step) {
@@ -2160,7 +2160,10 @@ void Recompiler::backToDispatcher() {
         const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
         ASSERT(isScratch(t6));
         as.AUIPC(t6, hi20);
-        as.JR(t6, lo12);
+        if (return_hint)
+            as.JALR(x1, lo12, t6);
+        else
+            as.JR(t6, lo12);
     } else {
         ASSERT(isScratch(t6));
         as.LD(t6, offsetof(ThreadState, recompiler), threadStatePointer());
@@ -2168,7 +2171,10 @@ void Recompiler::backToDispatcher() {
 #pragma GCC diagnostic ignored "-Winvalid-offsetof"
         as.LD(t6, offsetof(Recompiler, compile_next_handler), t6);
 #pragma GCC diagnostic pop
-        as.JR(t6);
+        if (return_hint)
+            as.JALR(x1, 0, t6);
+        else
+            as.JR(t6);
     }
 }
 
@@ -2744,7 +2750,8 @@ void Recompiler::jumpAndLink(u64 rip) {
             if (offset - 4 == 4) {
                 as.NOP();
             } else {
-                as.J(offset - 4);
+                // Use x1 here as the destination to signal to use the return-address stack for faster future returns.
+                as.JAL(x1, offset - 4);
             }
         } else {
             // Too far for a regular jump, use AUIPC+JR
@@ -2755,7 +2762,8 @@ void Recompiler::jumpAndLink(u64 rip) {
             ASSERT(isScratch(t4));
             ASSERT(isScratch(t5));
             as.AUIPC(t4, hi20);
-            as.JR(t4, lo12);
+            // Use x1 here as the destination to signal to use the return-address stack for faster future returns.
+            as.JALR(x1, lo12, t4);
         }
     }
 
@@ -3761,4 +3769,47 @@ void Recompiler::switchToX87() {
     popScratch();
 
     local_x87_state = x87State::x87;
+}
+
+void Recompiler::addressCacheLookup(biscuit::GPR host_address_register, biscuit::GPR guest_address, void on_hit(Assembler&, biscuit::GPR)) {
+    biscuit::GPR temp = scratch();
+    biscuit::GPR temp2 = scratch();
+    bool should_pop_third = false;
+
+    // Ensure no collision with the chosen host address register.
+    if (temp == host_address_register) {
+        temp = scratch();
+        should_pop_third = true;
+    } else if (temp2 == host_address_register) {
+        temp2 = scratch();
+        should_pop_third = true;
+    }
+
+    biscuit::Label not_equal;
+    u64 offset = (u64)address_cache - (u64)as.GetCursorPointer();
+    const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
+    auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
+    const bool lo12overflow = (((u16)lo12 + 8) & 0x7FF) < ((u16)lo12 & 0x7FF);
+    as.AUIPC(temp, hi20);
+    if (lo12overflow) {
+        as.ADDI(temp, temp, lo12);
+        lo12 = 0;
+    }
+    const i32 offset_guest = lo12 + 8;
+    const i32 offset_host = lo12;
+    as.SLLI(temp2, guest_address, 64 - address_cache_bits);
+    // Multiply by 16, which is size of each address cache entry
+    as.SRLI(temp2, temp2, 64 - address_cache_bits - 4);
+    as.ADD(temp, temp, temp2);
+    // Load even if branch fails is slightly better for fusion
+    as.LD(host_address_register, offset_host, temp);
+    as.LD(temp2, offset_guest, temp);
+    as.BNE(temp2, guest_address, &not_equal);
+    as.MV(t5, x0); // zero out t5, see invalidate_caller_thunk
+    on_hit(as, host_address_register);
+    as.Bind(&not_equal);
+    popScratch();
+    popScratch();
+    if (should_pop_third)
+        popScratch();
 }

@@ -1917,7 +1917,7 @@ FAST_HANDLE(CALL) {
         rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
 
         rec.writeMemory(scratch, rsp, 0, rec.stackWidth());
-        rec.backToDispatcher();
+        rec.backToDispatcher(true);
         break;
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
@@ -1946,6 +1946,10 @@ FAST_HANDLE(CALL) {
         break;
     }
     }
+
+    rec.resetVectorState();
+    rec.flushPushpop();
+    rec.flushX87();
 }
 
 FAST_HANDLE(RET) {
@@ -1984,6 +1988,9 @@ FAST_HANDLE(RET) {
         return;
     }
 
+    // Hack to not use register x1 as scratch register.
+    rec.scratch();
+
     biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
     biscuit::GPR scratch = rec.scratch();
     rec.readMemory(scratch, rsp, 0, rec.stackWidth());
@@ -2000,6 +2007,12 @@ FAST_HANDLE(RET) {
     biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
     // Don't need to zero extend here as it's loaded as a DWORD
     as.MV(ripreg, scratch);
+
+    if (g_config.address_cache) {
+        // If the guest address exists inside of the guest address cache lookup table then we may assume a block is compiled for that address.
+        rec.addressCacheLookup(x1, scratch, [](Assembler& as, biscuit::GPR ret) { as.JALR(x1, 0, ret); });
+    }
+
     rec.backToDispatcher();
     rec.stopCompiling();
 }

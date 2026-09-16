@@ -175,7 +175,7 @@ struct Recompiler {
 
     void stopCompiling();
 
-    void backToDispatcher();
+    void backToDispatcher(bool return_hint = false);
 
     void writebackState();
 
@@ -835,38 +835,13 @@ struct Recompiler {
         }
     }
 
-    template <typename F>
-    void addressCacheLookup(biscuit::GPR guest_address, F on_hit)
-        requires std::invocable<F, Assembler&, biscuit::GPR>
-    {
-        biscuit::GPR temp = scratch();
-        biscuit::GPR temp2 = scratch();
+    void addressCacheLookup(biscuit::GPR guest_address, void on_hit(Assembler&, biscuit::GPR)) {
         biscuit::GPR host_address = scratch();
-        biscuit::Label not_equal;
-        u64 offset = (u64)address_cache - (u64)as.GetCursorPointer();
-        const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
-        const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
-        const bool lo12overflow = (((u16)lo12 + 8) & 0xFFF) == 0;
-        ASSERT(!lo12overflow);
-        const i32 offset_guest = lo12 + 8;
-        const i32 offset_host = lo12;
-        as.AUIPC(temp, hi20);
-        as.SLLI(temp2, guest_address, 64 - address_cache_bits);
-        // Multiply by 16, which is size of each address cache entry
-        as.SRLI(temp2, temp2, 64 - address_cache_bits - 4);
-        as.ADD(temp, temp, temp2);
-        // Load even if branch fails is slightly better for fusion
-        as.LD(host_address, offset_host, temp);
-        as.LD(temp2, offset_guest, temp);
-        as.BNE(temp2, guest_address, &not_equal);
-        as.MV(t5, x0); // zero out t5, see invalidate_caller_thunk
-        on_hit(as, host_address);
-
-        as.Bind(&not_equal);
-        popScratch();
-        popScratch();
+        addressCacheLookup(host_address, guest_address, on_hit);
         popScratch();
     }
+
+    void addressCacheLookup(biscuit::GPR host_address_register, biscuit::GPR guest_address, void on_hit(Assembler&, biscuit::GPR));
 
 private:
     void emitNecessaryStuff();
