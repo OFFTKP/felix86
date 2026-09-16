@@ -2725,7 +2725,7 @@ void Recompiler::updateSign(biscuit::GPR result, x86_size_e size) {
     }
 }
 
-void Recompiler::jumpAndLink(u64 rip) {
+void Recompiler::jumpAndLink(u64 rip, bool return_link) {
     OptimizationGuard guard(as, optimization_guard_counter);
     const bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
     if (!g_config.link || is_single_step || relocatable) {
@@ -2750,8 +2750,10 @@ void Recompiler::jumpAndLink(u64 rip) {
             if (offset - 4 == 4) {
                 as.NOP();
             } else {
-                // Use x1 here as the destination to signal to use the return-address stack for faster future returns.
-                as.JAL(x1, offset - 4);
+                if (return_link)
+                    as.JAL(x1, offset - 4);
+                else
+                    as.J(offset - 4);
             }
         } else {
             // Too far for a regular jump, use AUIPC+JR
@@ -2762,8 +2764,10 @@ void Recompiler::jumpAndLink(u64 rip) {
             ASSERT(isScratch(t4));
             ASSERT(isScratch(t5));
             as.AUIPC(t4, hi20);
-            // Use x1 here as the destination to signal to use the return-address stack for faster future returns.
-            as.JALR(x1, lo12, t4);
+            if (return_link)
+                as.JALR(x1, lo12, t4);
+            else
+                as.JR(t4, lo12);
         }
     }
 

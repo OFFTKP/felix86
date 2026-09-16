@@ -211,7 +211,7 @@ struct Recompiler {
 
     int getBitSize(x86_size_e size);
 
-    void jumpAndLink(u64 rip);
+    void jumpAndLink(u64 rip, bool return_hint = false);
 
     void jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false);
 
