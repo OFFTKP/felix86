@@ -1938,7 +1938,7 @@ FAST_HANDLE(CALL) {
             address = (u32)address;
         }
         as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
-        rec.jumpAndLink(address);
+        rec.jumpAndLink(address, true);
         break;
     }
     default: {
@@ -1988,8 +1988,9 @@ FAST_HANDLE(RET) {
         return;
     }
 
-    // Hack to not use register x1 as scratch register.
-    rec.scratch();
+    // Hack to not use register x1 as scratch register later in address cache lookup.
+    biscuit::GPR ra_tmp = rec.scratch();
+    ASSERT(ra_tmp == x1);
 
     biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
     biscuit::GPR scratch = rec.scratch();
@@ -2010,7 +2011,7 @@ FAST_HANDLE(RET) {
 
     if (g_config.address_cache) {
         // If the guest address exists inside of the guest address cache lookup table then we may assume a block is compiled for that address.
-        rec.addressCacheLookup(x1, scratch, [](Assembler& as, biscuit::GPR ret) { as.JALR(x1, 0, ret); });
+        rec.addressCacheLookup(scratch, [](Assembler& as, biscuit::GPR ret) { as.JALR(x1, 0, ret); }, true);
     }
 
     rec.backToDispatcher();

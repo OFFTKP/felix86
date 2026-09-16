@@ -3775,20 +3775,10 @@ void Recompiler::switchToX87() {
     local_x87_state = x87State::x87;
 }
 
-void Recompiler::addressCacheLookup(biscuit::GPR host_address_register, biscuit::GPR guest_address, void on_hit(Assembler&, biscuit::GPR)) {
+void Recompiler::addressCacheLookup(biscuit::GPR guest_address, void on_hit(Assembler&, biscuit::GPR), bool use_ra) {
+    biscuit::GPR host_address = use_ra ? x1 : scratch();
     biscuit::GPR temp = scratch();
     biscuit::GPR temp2 = scratch();
-    bool should_pop_third = false;
-
-    // Ensure no collision with the chosen host address register.
-    if (temp == host_address_register) {
-        temp = scratch();
-        should_pop_third = true;
-    } else if (temp2 == host_address_register) {
-        temp2 = scratch();
-        should_pop_third = true;
-    }
-
     biscuit::Label not_equal;
     u64 offset = (u64)address_cache - (u64)as.GetCursorPointer();
     const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
@@ -3806,14 +3796,14 @@ void Recompiler::addressCacheLookup(biscuit::GPR host_address_register, biscuit:
     as.SRLI(temp2, temp2, 64 - address_cache_bits - 4);
     as.ADD(temp, temp, temp2);
     // Load even if branch fails is slightly better for fusion
-    as.LD(host_address_register, offset_host, temp);
+    as.LD(host_address, offset_host, temp);
     as.LD(temp2, offset_guest, temp);
     as.BNE(temp2, guest_address, &not_equal);
     as.MV(t5, x0); // zero out t5, see invalidate_caller_thunk
-    on_hit(as, host_address_register);
+    on_hit(as, host_address);
     as.Bind(&not_equal);
     popScratch();
     popScratch();
-    if (should_pop_third)
+    if (!use_ra)
         popScratch();
 }

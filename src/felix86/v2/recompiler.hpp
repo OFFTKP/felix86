@@ -835,13 +835,7 @@ struct Recompiler {
         }
     }
 
-    void addressCacheLookup(biscuit::GPR guest_address, void on_hit(Assembler&, biscuit::GPR)) {
-        biscuit::GPR host_address = scratch();
-        addressCacheLookup(host_address, guest_address, on_hit);
-        popScratch();
-    }
-
-    void addressCacheLookup(biscuit::GPR host_address_register, biscuit::GPR guest_address, void on_hit(Assembler&, biscuit::GPR));
+    void addressCacheLookup(biscuit::GPR guest_address, void on_hit(Assembler&, biscuit::GPR), bool use_ra = false);
 
 private:
     void emitNecessaryStuff();
