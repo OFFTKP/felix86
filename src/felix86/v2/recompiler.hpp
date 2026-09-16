@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <concepts>
+#include <cstdint>
 #include <unordered_map>
 #include <Zydis/Utils.h>
 #include "Zydis/Decoder.h"
@@ -69,13 +70,19 @@ struct TranslationSize {
 };
 static_assert(sizeof(TranslationSize) == sizeof(u16));
 
+enum class PendingLinkFlags : u64 {
+    HasReturnHint = 0x8000'0000'0000'0000,
+};
+
 struct BlockMetadata {
     u64 host_address{};
     u64 guest_address{};
     // This gives us a count of x86 instructions per block, the size of each instruction
     // and the size of the risc-v instructions used to translate it
     std::vector<TranslationSize> translation_sizes{};
-    std::vector<u8*> pending_links{};
+    /// Pointers to blocks to be linked. The top 7 bits are used to denote various flags
+    // related to the block as a bitset.
+    std::vector<uintptr_t> pending_links{};
 };
 
 // WARN: don't allocate this struct on the stack as it's quite big due to address_cache and can lead to stack overflow

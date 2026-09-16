@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cstdint>
 #include <sys/file.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -2730,15 +2731,19 @@ void Recompiler::jumpAndLink(u64 rip, bool return_link) {
     const bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
     if (!g_config.link || is_single_step || relocatable) {
         // Just emit jump to dispatcher
-        backToDispatcher();
+        backToDispatcher(true);
         return;
     }
 
     u8* start = as.GetCursorPointer();
     if (!blockExists(rip)) {
-        u8* link_me = as.GetCursorPointer();
-        backToDispatcher();
+        uintptr_t link_me = (uintptr_t)as.GetCursorPointer();
+        backToDispatcher(true);
 
+        // The top 7 bits are used as flags.
+        link_me &= ((u64)1 << 57) - 1;
+        if (return_link)
+            link_me |= (u64)PendingLinkFlags::HasReturnHint;
         getBlockMetadata(rip).pending_links.push_back(link_me);
     } else {
         auto& target_meta = getBlockMetadata(rip);
@@ -2852,24 +2857,28 @@ void Recompiler::expirePendingLinks(u64 rip) {
         return;
     }
 
-    for (u8* link : links) {
+    for (uintptr_t link : links) {
+        bool has_return_hint = link & (u64)PendingLinkFlags::HasReturnHint;
+
+        intptr_t signed_link = link;
+        u8* link_addr = (u8*)((signed_link << 7) >> 7);
         u8* cursor = as.GetCursorPointer();
-        as.SetCursorPointer(link);
-        jumpAndLink(rip);
+        as.SetCursorPointer(link_addr);
+        jumpAndLink(rip, has_return_hint);
         as.SetCursorPointer(cursor);
 
-        if ((u64)link < min) {
-            min = (u64)link;
+        if (link < min) {
+            min = link;
         }
-        if ((u64)link > max) {
-            max = (u64)link;
+        if (link > max) {
+            max = link;
         }
     }
 
     flush_icache(min, max + 4096);
 
     // Free the memory as pending_links won't be used after the block is compiled
-    std::vector<u8*>().swap(links);
+    std::vector<uintptr_t>().swap(links);
 }
 
 u64 Recompiler::zextImmediate(u64 imm, ZyanU8 size) {
