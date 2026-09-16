@@ -159,6 +159,7 @@ int main() {
     Extensions::Zbb = true;
     Extensions::Zbs = true;
     Extensions::Zbc = true;
+    Extensions::Zvbb = true;
     Extensions::Zvbc = true;
     Extensions::C = true;
     Extensions::V = true;

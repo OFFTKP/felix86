@@ -1293,11 +1293,10 @@
         "disassembly": "vpand ymm1, ymm2, [rdi]"
     },
     "c5d855dd": {
-        "instruction_count": 6,
+        "instruction_count": 5,
         "expected_asm": [
             "VSETIVLI        zero, 8, e32, m1, tu, mu",
-            "VXOR.VI         v3, xmm4, 0xffffffff(-1), none",
-            "VAND.VV         v2, xmm5, v3, none",
+            "VANDN.VV        v2, xmm5, xmm4, none",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "VMV.V.I         vmask, 0xfffffffc(-4)",
             "VMERGE.VIM      xmm3, v2, 0x0(0)"
@@ -1305,12 +1304,11 @@
         "disassembly": "vandnps xmm3, xmm4, xmm5"
     },
     "c5e8550f": {
-        "instruction_count": 7,
+        "instruction_count": 6,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VLE8.V          v3, rdi, none, 1",
-            "VXOR.VI         v4, xmm2, 0xffffffff(-1), none",
-            "VAND.VV         v2, v3, v4, none",
+            "VANDN.VV        v2, v3, xmm2, none",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "VMV.V.I         vmask, 0xfffffffc(-4)",
             "VMERGE.VIM      xmm1, v2, 0x0(0)"
@@ -1318,43 +1316,39 @@
         "disassembly": "vandnps xmm1, xmm2, [rdi]"
     },
     "c5dc55dd": {
-        "instruction_count": 3,
+        "instruction_count": 2,
         "expected_asm": [
             "VSETIVLI        zero, 8, e32, m1, tu, mu",
-            "VXOR.VI         v2, xmm4, 0xffffffff(-1), none",
-            "VAND.VV         xmm3, xmm5, v2, none"
+            "VANDN.VV        xmm3, xmm5, xmm4, none"
         ],
         "disassembly": "vandnps ymm3, ymm4, ymm5"
     },
     "c5ec550f": {
-        "instruction_count": 5,
+        "instruction_count": 4,
         "expected_asm": [
             "ADDIW           ra, zero, 0x20(32)",
             "VSETVLI         zero, ra, e8, m1, tu, mu",
             "VLE8.V          v2, rdi, none, 1",
-            "VXOR.VI         v3, xmm2, 0xffffffff(-1), none",
-            "VAND.VV         xmm1, v2, v3, none"
+            "VANDN.VV        xmm1, v2, xmm2, none"
         ],
         "disassembly": "vandnps ymm1, ymm2, [rdi]"
     },
     "c5d955dd": {
-        "instruction_count": 5,
+        "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VXOR.VI         v3, xmm4, 0xffffffff(-1), none",
-            "VAND.VV         v2, xmm5, v3, none",
+            "VANDN.VV        v2, xmm5, xmm4, none",
             "VMV.V.I         vmask, 0xfffffffc(-4)",
             "VMERGE.VIM      xmm3, v2, 0x0(0)"
         ],
         "disassembly": "vandnpd xmm3, xmm4, xmm5"
     },
     "c5e9550f": {
-        "instruction_count": 7,
+        "instruction_count": 6,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VLE8.V          v3, rdi, none, 1",
-            "VXOR.VI         v4, xmm2, 0xffffffff(-1), none",
-            "VAND.VV         v2, v3, v4, none",
+            "VANDN.VV        v2, v3, xmm2, none",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "VMV.V.I         vmask, 0xfffffffc(-4)",
             "VMERGE.VIM      xmm1, v2, 0x0(0)"
@@ -1362,43 +1356,39 @@
         "disassembly": "vandnpd xmm1, xmm2, [rdi]"
     },
     "c5dd55dd": {
-        "instruction_count": 3,
+        "instruction_count": 2,
         "expected_asm": [
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VXOR.VI         v2, xmm4, 0xffffffff(-1), none",
-            "VAND.VV         xmm3, xmm5, v2, none"
+            "VANDN.VV        xmm3, xmm5, xmm4, none"
         ],
         "disassembly": "vandnpd ymm3, ymm4, ymm5"
     },
     "c5ed550f": {
-        "instruction_count": 5,
+        "instruction_count": 4,
         "expected_asm": [
             "ADDIW           ra, zero, 0x20(32)",
             "VSETVLI         zero, ra, e8, m1, tu, mu",
             "VLE8.V          v2, rdi, none, 1",
-            "VXOR.VI         v3, xmm2, 0xffffffff(-1), none",
-            "VAND.VV         xmm1, v2, v3, none"
+            "VANDN.VV        xmm1, v2, xmm2, none"
         ],
         "disassembly": "vandnpd ymm1, ymm2, [rdi]"
     },
     "c5d9dfdd": {
-        "instruction_count": 5,
+        "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VXOR.VI         v3, xmm4, 0xffffffff(-1), none",
-            "VAND.VV         v2, xmm5, v3, none",
+            "VANDN.VV        v2, xmm5, xmm4, none",
             "VMV.V.I         vmask, 0xfffffffc(-4)",
             "VMERGE.VIM      xmm3, v2, 0x0(0)"
         ],
         "disassembly": "vpandn xmm3, xmm4, xmm5"
     },
     "c5e9df0f": {
-        "instruction_count": 7,
+        "instruction_count": 6,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VLE8.V          v3, rdi, none, 1",
-            "VXOR.VI         v4, xmm2, 0xffffffff(-1), none",
-            "VAND.VV         v2, v3, v4, none",
+            "VANDN.VV        v2, v3, xmm2, none",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "VMV.V.I         vmask, 0xfffffffc(-4)",
             "VMERGE.VIM      xmm1, v2, 0x0(0)"
@@ -1406,22 +1396,20 @@
         "disassembly": "vpandn xmm1, xmm2, [rdi]"
     },
     "c5dddfdd": {
-        "instruction_count": 3,
+        "instruction_count": 2,
         "expected_asm": [
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VXOR.VI         v2, xmm4, 0xffffffff(-1), none",
-            "VAND.VV         xmm3, xmm5, v2, none"
+            "VANDN.VV        xmm3, xmm5, xmm4, none"
         ],
         "disassembly": "vpandn ymm3, ymm4, ymm5"
     },
     "c5eddf0f": {
-        "instruction_count": 5,
+        "instruction_count": 4,
         "expected_asm": [
             "ADDIW           ra, zero, 0x20(32)",
             "VSETVLI         zero, ra, e8, m1, tu, mu",
             "VLE8.V          v2, rdi, none, 1",
-            "VXOR.VI         v3, xmm2, 0xffffffff(-1), none",
-            "VAND.VV         xmm1, v2, v3, none"
+            "VANDN.VV        xmm1, v2, xmm2, none"
         ],
         "disassembly": "vpandn ymm1, ymm2, [rdi]"
     },
@@ -12703,13 +12691,12 @@
         "disassembly": "vpsignd ymm1, ymm2, [rdi]"
     },
     "c5d814dd": {
-        "instruction_count": 8,
+        "instruction_count": 7,
         "expected_asm": [
-            "VSETIVLI        zero, 8, e32, m1, tu, mu",
-            "VWADDU.VX       v2, xmm4, zero, none",
-            "VWADDU.VX       v4, xmm5, zero, none",
-            "VSLIDE1UP.VX    v6, v4, zero, none",
-            "VOR.VV          v2, v2, v6, none",
+            "ADDIW           ra, zero, 0x20(32)",
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VWSLL.VX        v2, xmm5, ra, none",
+            "VWADDU.WV       v2, v2, xmm4, none",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "VMV.V.I         vmask, 0xfffffffc(-4)",
             "VMERGE.VIM      xmm3, v2, 0x0(0)"
@@ -12717,15 +12704,14 @@
         "disassembly": "vunpcklps xmm3, xmm4, xmm5"
     },
     "c5e8140f": {
-        "instruction_count": 10,
+        "instruction_count": 9,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VLE8.V          v1, rdi, none, 1",
-            "VSETIVLI        zero, 8, e32, m1, tu, mu",
-            "VWADDU.VX       v2, xmm2, zero, none",
-            "VWADDU.VX       v4, v1, zero, none",
-            "VSLIDE1UP.VX    v6, v4, zero, none",
-            "VOR.VV          v2, v2, v6, none",
+            "ADDIW           ra, zero, 0x20(32)",
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VWSLL.VX        v2, v1, ra, none",
+            "VWADDU.WV       v2, v2, xmm2, none",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "VMV.V.I         vmask, 0xfffffffc(-4)",
             "VMERGE.VIM      xmm1, v2, 0x0(0)"
@@ -12733,106 +12719,86 @@
         "disassembly": "vunpcklps xmm1, xmm2, [rdi]"
     },
     "c5dc14dd": {
-        "instruction_count": 10,
+        "instruction_count": 6,
         "expected_asm": [
+            "ADDIW           ra, zero, 0x20(32)",
             "VSETIVLI        zero, 8, e32, m1, tu, mu",
-            "VWADDU.VX       v2, xmm4, zero, none",
-            "VWADDU.VX       v4, xmm5, zero, none",
-            "VSETIVLI        zero, 16, e32, m2, tu, mu",
-            "VSLIDE1UP.VX    v6, v4, zero, none",
-            "VOR.VV          v2, v2, v6, none",
-            "VSLIDEDOWN.VI   v4, v2, 0x8(8), none",
-            "VSETIVLI        zero, 8, e32, m1, tu, mu",
-            "VSLIDEUP.VI     v2, v4, 0x4(4), none",
+            "VWSLL.VX        v2, xmm5, ra, none",
+            "VWADDU.WV       v2, v2, xmm4, none",
+            "VSLIDEUP.VI     v2, v3, 0x4(4), none",
             "VMV1R.V         xmm3, v2"
         ],
         "disassembly": "vunpcklps ymm3, ymm4, ymm5"
     },
     "c5ec140f": {
-        "instruction_count": 13,
+        "instruction_count": 9,
         "expected_asm": [
             "ADDIW           ra, zero, 0x20(32)",
             "VSETVLI         zero, ra, e8, m1, tu, mu",
             "VLE8.V          v1, rdi, none, 1",
+            "ADDIW           ra, zero, 0x20(32)",
             "VSETIVLI        zero, 8, e32, m1, tu, mu",
-            "VWADDU.VX       v2, xmm2, zero, none",
-            "VWADDU.VX       v4, v1, zero, none",
-            "VSETIVLI        zero, 16, e32, m2, tu, mu",
-            "VSLIDE1UP.VX    v6, v4, zero, none",
-            "VOR.VV          v2, v2, v6, none",
-            "VSLIDEDOWN.VI   v4, v2, 0x8(8), none",
-            "VSETIVLI        zero, 8, e32, m1, tu, mu",
-            "VSLIDEUP.VI     v2, v4, 0x4(4), none",
+            "VWSLL.VX        v2, v1, ra, none",
+            "VWADDU.WV       v2, v2, xmm2, none",
+            "VSLIDEUP.VI     v2, v3, 0x4(4), none",
             "VMV1R.V         xmm1, v2"
         ],
         "disassembly": "vunpcklps ymm1, ymm2, [rdi]"
     },
     "c5d815dd": {
-        "instruction_count": 9,
+        "instruction_count": 6,
         "expected_asm": [
+            "ADDIW           ra, zero, 0x20(32)",
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VWSLL.VX        v2, xmm5, ra, none",
+            "VWADDU.WV       v2, v2, xmm4, none",
             "VSETIVLI        zero, 8, e32, m1, tu, mu",
-            "VWADDU.VX       v2, xmm4, zero, none",
-            "VWADDU.VX       v4, xmm5, zero, none",
-            "VSLIDE1UP.VX    v6, v4, zero, none",
-            "VOR.VV          v2, v2, v6, none",
-            "VSLIDEDOWN.VI   v2, v2, 0x4(4), none",
-            "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VMV.V.I         vmask, 0xfffffffc(-4)",
-            "VMERGE.VIM      xmm3, v2, 0x0(0)"
+            "VSLIDEDOWN.VI   xmm3, v2, 0x4(4), none"
         ],
         "disassembly": "vunpckhps xmm3, xmm4, xmm5"
     },
     "c5e8150f": {
-        "instruction_count": 11,
+        "instruction_count": 8,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VLE8.V          v1, rdi, none, 1",
+            "ADDIW           ra, zero, 0x20(32)",
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VWSLL.VX        v2, v1, ra, none",
+            "VWADDU.WV       v2, v2, xmm2, none",
             "VSETIVLI        zero, 8, e32, m1, tu, mu",
-            "VWADDU.VX       v2, xmm2, zero, none",
-            "VWADDU.VX       v4, v1, zero, none",
-            "VSLIDE1UP.VX    v6, v4, zero, none",
-            "VOR.VV          v2, v2, v6, none",
-            "VSLIDEDOWN.VI   v2, v2, 0x4(4), none",
-            "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VMV.V.I         vmask, 0xfffffffc(-4)",
-            "VMERGE.VIM      xmm1, v2, 0x0(0)"
+            "VSLIDEDOWN.VI   xmm1, v2, 0x4(4), none"
         ],
         "disassembly": "vunpckhps xmm1, xmm2, [rdi]"
     },
     "c5dc15dd": {
-        "instruction_count": 11,
+        "instruction_count": 8,
         "expected_asm": [
+            "ADDIW           ra, zero, 0x20(32)",
             "VSETIVLI        zero, 8, e32, m1, tu, mu",
-            "VWADDU.VX       v2, xmm4, zero, none",
-            "VWADDU.VX       v4, xmm5, zero, none",
-            "VSETIVLI        zero, 16, e32, m2, tu, mu",
-            "VSLIDE1UP.VX    v6, v4, zero, none",
-            "VOR.VV          v2, v2, v6, none",
+            "VWSLL.VX        v2, xmm5, ra, none",
+            "VWADDU.WV       v2, v2, xmm4, none",
             "VSLIDEDOWN.VI   v2, v2, 0x4(4), none",
-            "VSLIDEDOWN.VI   v4, v2, 0x8(8), none",
-            "VSETIVLI        zero, 8, e32, m1, tu, mu",
-            "VSLIDEUP.VI     v2, v4, 0x4(4), none",
-            "VMV1R.V         xmm3, v2"
+            "VSETIVLI        zero, 4, e64, m1, tu, mu",
+            "VMV.V.I         vmask, 0xfffffffc(-4)",
+            "VMERGE.VVM      xmm3, v2, v3"
         ],
         "disassembly": "vunpckhps ymm3, ymm4, ymm5"
     },
     "c5ec150f": {
-        "instruction_count": 14,
+        "instruction_count": 11,
         "expected_asm": [
             "ADDIW           ra, zero, 0x20(32)",
             "VSETVLI         zero, ra, e8, m1, tu, mu",
             "VLE8.V          v1, rdi, none, 1",
+            "ADDIW           ra, zero, 0x20(32)",
             "VSETIVLI        zero, 8, e32, m1, tu, mu",
-            "VWADDU.VX       v2, xmm2, zero, none",
-            "VWADDU.VX       v4, v1, zero, none",
-            "VSETIVLI        zero, 16, e32, m2, tu, mu",
-            "VSLIDE1UP.VX    v6, v4, zero, none",
-            "VOR.VV          v2, v2, v6, none",
+            "VWSLL.VX        v2, v1, ra, none",
+            "VWADDU.WV       v2, v2, xmm2, none",
             "VSLIDEDOWN.VI   v2, v2, 0x4(4), none",
-            "VSLIDEDOWN.VI   v4, v2, 0x8(8), none",
-            "VSETIVLI        zero, 8, e32, m1, tu, mu",
-            "VSLIDEUP.VI     v2, v4, 0x4(4), none",
-            "VMV1R.V         xmm1, v2"
+            "VSETIVLI        zero, 4, e64, m1, tu, mu",
+            "VMV.V.I         vmask, 0xfffffffc(-4)",
+            "VMERGE.VVM      xmm1, v2, v3"
         ],
         "disassembly": "vunpckhps ymm1, ymm2, [rdi]"
     },
@@ -12851,53 +12817,45 @@
         "instruction_count": 7,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v5, rdi, none, 1",
+            "VLE8.V          v3, rdi, none, 1",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "VMV1R.V         v2, xmm2",
-            "VSLIDEUP.VI     v2, v5, 0x1(1), none",
+            "VSLIDEUP.VI     v2, v3, 0x1(1), none",
             "VMV.V.I         vmask, 0xfffffffc(-4)",
             "VMERGE.VIM      xmm1, v2, 0x0(0)"
         ],
         "disassembly": "vunpcklpd xmm1, xmm2, [rdi]"
     },
     "c5dd14dd": {
-        "instruction_count": 8,
+        "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VMV1R.V         v2, xmm4",
             "VSLIDEUP.VI     v2, xmm5, 0x1(1), none",
-            "VSLIDEDOWN.VI   v3, xmm4, 0x2(2), none",
-            "VSLIDEDOWN.VI   v4, xmm5, 0x2(2), none",
-            "VSLIDEUP.VI     v3, v4, 0x1(1), none",
-            "VSLIDEUP.VI     v2, v3, 0x2(2), none",
-            "VMV1R.V         xmm3, v2"
+            "VMV.V.I         vmask, 0xa(10)",
+            "VMERGE.VVM      xmm3, xmm4, v2"
         ],
         "disassembly": "vunpcklpd ymm3, ymm4, ymm5"
     },
     "c5ed140f": {
-        "instruction_count": 11,
+        "instruction_count": 7,
         "expected_asm": [
             "ADDIW           ra, zero, 0x20(32)",
             "VSETVLI         zero, ra, e8, m1, tu, mu",
-            "VLE8.V          v5, rdi, none, 1",
+            "VLE8.V          v3, rdi, none, 1",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VMV1R.V         v2, xmm2",
-            "VSLIDEUP.VI     v2, v5, 0x1(1), none",
-            "VSLIDEDOWN.VI   v3, xmm2, 0x2(2), none",
-            "VSLIDEDOWN.VI   v4, v5, 0x2(2), none",
-            "VSLIDEUP.VI     v3, v4, 0x1(1), none",
-            "VSLIDEUP.VI     v2, v3, 0x2(2), none",
-            "VMV1R.V         xmm1, v2"
+            "VSLIDEUP.VI     v2, v3, 0x1(1), none",
+            "VMV.V.I         vmask, 0xa(10)",
+            "VMERGE.VVM      xmm1, xmm2, v2"
         ],
         "disassembly": "vunpcklpd ymm1, ymm2, [rdi]"
     },
     "c5d915dd": {
         "instruction_count": 6,
         "expected_asm": [
-            "VSETIVLI        zero, 4, e64, m1, tu, mu",
+            "VMV1R.V         v2, xmm5",
+            "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VSLIDEDOWN.VI   v2, xmm4, 0x1(1), none",
-            "VSLIDEDOWN.VI   v3, xmm5, 0x1(1), none",
-            "VSLIDEUP.VI     v2, v3, 0x1(1), none",
+            "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "VMV.V.I         vmask, 0xfffffffc(-4)",
             "VMERGE.VIM      xmm3, v2, 0x0(0)"
         ],
@@ -12907,46 +12865,36 @@
         "instruction_count": 8,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v6, rdi, none, 1",
-            "VSETIVLI        zero, 4, e64, m1, tu, mu",
+            "VLE8.V          v3, rdi, none, 1",
+            "VMV1R.V         v2, v3",
+            "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VSLIDEDOWN.VI   v2, xmm2, 0x1(1), none",
-            "VSLIDEDOWN.VI   v3, v6, 0x1(1), none",
-            "VSLIDEUP.VI     v2, v3, 0x1(1), none",
+            "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "VMV.V.I         vmask, 0xfffffffc(-4)",
             "VMERGE.VIM      xmm1, v2, 0x0(0)"
         ],
         "disassembly": "vunpckhpd xmm1, xmm2, [rdi]"
     },
     "c5dd15dd": {
-        "instruction_count": 9,
+        "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "VSLIDEDOWN.VI   v2, xmm4, 0x1(1), none",
-            "VSLIDEDOWN.VI   v3, xmm5, 0x1(1), none",
-            "VSLIDEUP.VI     v2, v3, 0x1(1), none",
-            "VSLIDEDOWN.VI   v4, xmm4, 0x3(3), none",
-            "VSLIDEDOWN.VI   v5, xmm5, 0x3(3), none",
-            "VSLIDEUP.VI     v4, v5, 0x1(1), none",
-            "VSLIDEUP.VI     v2, v4, 0x2(2), none",
-            "VMV1R.V         xmm3, v2"
+            "VMV.V.I         vmask, 0xa(10)",
+            "VMERGE.VVM      xmm3, v2, xmm5"
         ],
         "disassembly": "vunpckhpd ymm3, ymm4, ymm5"
     },
     "c5ed150f": {
-        "instruction_count": 12,
+        "instruction_count": 7,
         "expected_asm": [
             "ADDIW           ra, zero, 0x20(32)",
             "VSETVLI         zero, ra, e8, m1, tu, mu",
-            "VLE8.V          v6, rdi, none, 1",
+            "VLE8.V          v3, rdi, none, 1",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "VSLIDEDOWN.VI   v2, xmm2, 0x1(1), none",
-            "VSLIDEDOWN.VI   v3, v6, 0x1(1), none",
-            "VSLIDEUP.VI     v2, v3, 0x1(1), none",
-            "VSLIDEDOWN.VI   v4, xmm2, 0x3(3), none",
-            "VSLIDEDOWN.VI   v5, v6, 0x3(3), none",
-            "VSLIDEUP.VI     v4, v5, 0x1(1), none",
-            "VSLIDEUP.VI     v2, v4, 0x2(2), none",
-            "VMV1R.V         xmm1, v2"
+            "VMV.V.I         vmask, 0xa(10)",
+            "VMERGE.VVM      xmm1, v2, v3"
         ],
         "disassembly": "vunpckhpd ymm1, ymm2, [rdi]"
     },
