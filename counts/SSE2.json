@@ -2441,68 +2441,125 @@
         "disassembly": "cmppd xmm3, [rdi], 0x07"
     },
     "660fc6dc00": {
-        "instruction_count": 4,
+        "instruction_count": 2,
         "expected_asm": [
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VMV.X.S         ra, xmm3",
-            "VSLIDE1UP.VX    v2, xmm4, ra, none",
-            "VMV.V.V         xmm3, v2"
+            "VSLIDEUP.VI     xmm3, xmm4, 0x1(1), none"
         ],
         "disassembly": "shufpd xmm3, xmm4, 0x00"
     },
     "660fc6d200": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VMV.X.S         ra, xmm2",
-            "VSLIDE1UP.VX    v2, xmm2, ra, none",
-            "VMV.V.V         xmm2, v2"
+            "VMV1R.V         v2, xmm2",
+            "VSLIDEUP.VI     xmm2, v2, 0x1(1), none"
         ],
         "disassembly": "shufpd xmm2, xmm2, 0x00"
     },
     "660fc61f00": {
-        "instruction_count": 6,
+        "instruction_count": 3,
         "expected_asm": [
-            "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v4, rdi, none, 1",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VMV.X.S         ra, xmm3",
-            "VSLIDE1UP.VX    v2, v4, ra, none",
-            "VMV.V.V         xmm3, v2"
+            "VLE64.V         v3, rdi, none, 1",
+            "VSLIDEUP.VI     xmm3, v3, 0x1(1), none"
         ],
         "disassembly": "shufpd xmm3, [rdi], 0x00"
     },
-    "660fc6dce4": {
+    "660fc6dc01": {
         "instruction_count": 4,
         "expected_asm": [
+            "VSETIVLI        zero, 1, e64, m1, tu, mu",
+            "VSLIDEDOWN.VI   xmm3, xmm3, 0x1(1), none",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VMV.X.S         ra, xmm3",
-            "VSLIDE1UP.VX    v2, xmm4, ra, none",
-            "VMV.V.V         xmm3, v2"
+            "VSLIDEUP.VI     xmm3, xmm4, 0x1(1), none"
         ],
-        "disassembly": "shufpd xmm3, xmm4, 0xE4"
+        "disassembly": "shufpd xmm3, xmm4, 0x01"
     },
-    "660fc6d2e4": {
-        "instruction_count": 4,
+    "660fc6d201": {
+        "instruction_count": 5,
         "expected_asm": [
+            "VMV1R.V         v2, xmm2",
+            "VSETIVLI        zero, 1, e64, m1, tu, mu",
+            "VSLIDEDOWN.VI   xmm2, xmm2, 0x1(1), none",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VMV.X.S         ra, xmm2",
-            "VSLIDE1UP.VX    v2, xmm2, ra, none",
-            "VMV.V.V         xmm2, v2"
+            "VSLIDEUP.VI     xmm2, v2, 0x1(1), none"
         ],
-        "disassembly": "shufpd xmm2, xmm2, 0xE4"
+        "disassembly": "shufpd xmm2, xmm2, 0x01"
     },
-    "660fc61fe4": {
+    "660fc61f01": {
         "instruction_count": 6,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v4, rdi, none, 1",
+            "VLE8.V          v3, rdi, none, 1",
+            "VSETIVLI        zero, 1, e64, m1, tu, mu",
+            "VSLIDEDOWN.VI   xmm3, xmm3, 0x1(1), none",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VMV.X.S         ra, xmm3",
-            "VSLIDE1UP.VX    v2, v4, ra, none",
-            "VMV.V.V         xmm3, v2"
+            "VSLIDEUP.VI     xmm3, v3, 0x1(1), none"
         ],
-        "disassembly": "shufpd xmm3, [rdi], 0xE4"
+        "disassembly": "shufpd xmm3, [rdi], 0x01"
+    },
+    "660fc6dc02": {
+        "instruction_count": 3,
+        "expected_asm": [
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
+            "VSLIDEDOWN.VI   v2, xmm4, 0x1(1), none",
+            "VSLIDEUP.VI     xmm3, v2, 0x1(1), none"
+        ],
+        "disassembly": "shufpd xmm3, xmm4, 0x02"
+    },
+    "660fc6d202": {
+        "instruction_count": 3,
+        "expected_asm": [
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
+            "VSLIDEDOWN.VI   v2, xmm2, 0x1(1), none",
+            "VSLIDEUP.VI     xmm2, v2, 0x1(1), none"
+        ],
+        "disassembly": "shufpd xmm2, xmm2, 0x02"
+    },
+    "660fc61f02": {
+        "instruction_count": 4,
+        "expected_asm": [
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
+            "VLE64.V         v3, rdi, none, 1",
+            "VSLIDEDOWN.VI   v2, v3, 0x1(1), none",
+            "VSLIDEUP.VI     xmm3, v2, 0x1(1), none"
+        ],
+        "disassembly": "shufpd xmm3, [rdi], 0x02"
+    },
+    "660fc6dc03": {
+        "instruction_count": 5,
+        "expected_asm": [
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
+            "VMV1R.V         v2, xmm3",
+            "VMV.V.V         xmm3, xmm4",
+            "VSETIVLI        zero, 1, e64, m1, tu, mu",
+            "VSLIDEDOWN.VI   xmm3, v2, 0x1(1), none"
+        ],
+        "disassembly": "shufpd xmm3, xmm4, 0x03"
+    },
+    "660fc6d203": {
+        "instruction_count": 5,
+        "expected_asm": [
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
+            "VMV1R.V         v2, xmm2",
+            "VMV.V.V         xmm2, xmm2",
+            "VSETIVLI        zero, 1, e64, m1, tu, mu",
+            "VSLIDEDOWN.VI   xmm2, v2, 0x1(1), none"
+        ],
+        "disassembly": "shufpd xmm2, xmm2, 0x03"
+    },
+    "660fc61f03": {
+        "instruction_count": 6,
+        "expected_asm": [
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
+            "VLE64.V         v3, rdi, none, 1",
+            "VMV1R.V         v2, xmm3",
+            "VMV.V.V         xmm3, v3",
+            "VSETIVLI        zero, 1, e64, m1, tu, mu",
+            "VSLIDEDOWN.VI   xmm3, v2, 0x1(1), none"
+        ],
+        "disassembly": "shufpd xmm3, [rdi], 0x03"
     },
     "660f60dc": {
         "instruction_count": 4,
