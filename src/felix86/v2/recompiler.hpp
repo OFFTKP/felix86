@@ -484,6 +484,14 @@ struct Recompiler {
         return block_metadata[rip];
     }
 
+    /// Used to register a block which exists as a part of another compiled block.
+    BlockMetadata& registerPartialBlock(u64 rip, u64 host) {
+        ASSERT(!blockExists(rip));
+        auto& block = block_metadata[rip];
+        block.guest_address = rip;
+        block.host_address = host;
+    }
+
     bool blockExists(u64 rip);
 
     biscuit::GPR getFlags();
@@ -843,6 +851,8 @@ struct Recompiler {
     }
 
     void addressCacheLookup(biscuit::GPR guest_address, void on_hit(Assembler&, biscuit::GPR), bool use_ra = false);
+
+    void addressCacheStore(biscuit::GPR guest_address, biscuit::GPR host_address);
 
 private:
     void emitNecessaryStuff();

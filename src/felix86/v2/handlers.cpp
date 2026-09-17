@@ -1906,12 +1906,24 @@ FAST_HANDLE(CALL) {
     rec.flushPushpop();
     rec.flushX87();
 
+    biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+
+    biscuit::Label return_label;
+    biscuit::GPR guest_address = rec.scratch();
+    biscuit::GPR host_address = rec.scratch();
+
+    if (g_config.address_cache) {
+        u64 rip_diff = rip - rec.getCurrentRipregValue();
+        as.ADDI(guest_address, ripreg, rip_diff + instruction.length);
+        as.LILabel(host_address, &return_label);
+        rec.addressCacheStore(guest_address, host_address);
+    }
+
     switch (operands[0].type) {
     case ZYDIS_OPERAND_TYPE_REGISTER:
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::GPR src = rec.getGPR(&operands[0]);
         biscuit::GPR scratch = rec.scratch();
-        biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
         u64 return_address_offset = (rip - rec.getCurrentRipregValue()) + instruction.length;
         rec.addi(scratch, ripreg, return_address_offset);
         // Don't need to zero extend here as it's loaded as a DWORD
@@ -1932,7 +1944,6 @@ FAST_HANDLE(CALL) {
         as.ADDI(rsp, rsp, -rec.stackPointerSize());
         rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
 
-        biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
         rec.addi(ripreg, ripreg, return_address_offset);
         rec.writeMemory(ripreg, rsp, 0, rec.stackWidth());
         rec.addi(ripreg, ripreg, displacement);
@@ -1950,6 +1961,9 @@ FAST_HANDLE(CALL) {
         break;
     }
     }
+
+    // Bind the label for the return address.
+    as.Bind(&return_label);
 }
 
 FAST_HANDLE(RET) {

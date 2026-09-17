@@ -3816,3 +3816,28 @@ void Recompiler::addressCacheLookup(biscuit::GPR guest_address, void on_hit(Asse
     if (!use_ra)
         popScratch();
 }
+
+void Recompiler::addressCacheStore(biscuit::GPR guest_address, biscuit::GPR host_address) {
+    biscuit::GPR temp = scratch();
+    biscuit::GPR temp2 = scratch();
+    u64 offset = (u64)address_cache - (u64)as.GetCursorPointer();
+    const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
+    auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
+    const bool lo12overflow = (((u16)lo12 + 8) & 0x7FF) < ((u16)lo12 & 0x7FF);
+    as.AUIPC(temp, hi20);
+    if (lo12overflow) {
+        as.ADDI(temp, temp, lo12);
+        lo12 = 0;
+    }
+    const i32 offset_guest = lo12 + 8;
+    const i32 offset_host = lo12;
+    as.SLLI(temp2, guest_address, 64 - address_cache_bits);
+    // Multiply by 16, which is size of each address cache entry
+    as.SRLI(temp2, temp2, 64 - address_cache_bits - 4);
+    as.ADD(temp, temp, temp2);
+    // Load even if branch fails is slightly better for fusion
+    as.SD(host_address, offset_host, temp);
+    as.SD(temp2, offset_guest, temp);
+    popScratch();
+    popScratch();
+}
