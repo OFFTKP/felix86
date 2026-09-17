@@ -1921,7 +1921,7 @@ FAST_HANDLE(CALL) {
         rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
 
         rec.writeMemory(scratch, rsp, 0, rec.stackWidth());
-        rec.backToDispatcher(true);
+        rec.backToDispatcher(g_config.address_cache);
         break;
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
@@ -1942,7 +1942,7 @@ FAST_HANDLE(CALL) {
             address = (u32)address;
         }
         as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
-        rec.jumpAndLink(address, true);
+        rec.jumpAndLink(address, g_config.address_cache);
         break;
     }
     default: {
