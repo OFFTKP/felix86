@@ -485,11 +485,13 @@ struct Recompiler {
     }
 
     /// Used to register a block which exists as a part of another compiled block.
-    BlockMetadata& registerPartialBlock(u64 rip, u64 host) {
-        ASSERT(!blockExists(rip));
-        auto& block = block_metadata[rip];
-        block.guest_address = rip;
-        block.host_address = host;
+    void registerPartialBlock(u64 guest, u64 host) {
+        if (!blockExists(guest)) {
+            block_metadata.insert({guest, BlockMetadata{
+                                              .host_address = host,
+                                              .guest_address = guest,
+                                          }});
+        }
     }
 
     bool blockExists(u64 rip);

@@ -1964,6 +1964,14 @@ FAST_HANDLE(CALL) {
 
     // Bind the label for the return address.
     as.Bind(&return_label);
+
+    // Because call instructions do not denote an end of a block, register a block
+    // at the return address to prevent redundant recompilations.
+    u64 return_guest_adr = rip + instruction.length;
+    rec.registerPartialBlock(return_guest_adr, (u64)as.GetCursorPointer());
+
+    rec.setCurrentRipregValue(return_guest_adr);
+    as.LI(ripreg, return_guest_adr);
 }
 
 FAST_HANDLE(RET) {

@@ -3835,7 +3835,6 @@ void Recompiler::addressCacheStore(biscuit::GPR guest_address, biscuit::GPR host
     // Multiply by 16, which is size of each address cache entry
     as.SRLI(temp2, temp2, 64 - address_cache_bits - 4);
     as.ADD(temp, temp, temp2);
-    // Load even if branch fails is slightly better for fusion
     as.SD(host_address, offset_host, temp);
     as.SD(temp2, offset_guest, temp);
     popScratch();
