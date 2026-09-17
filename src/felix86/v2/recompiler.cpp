@@ -1777,8 +1777,19 @@ void Recompiler::setVec(const ZydisDecodedOperand* operand, biscuit::Vec vec) {
             break;
         }
         case 64: {
-            if (Extensions::Zicclsm && current_sew == SEW::E64 && current_vlen == 1 && current_grouping == LMUL::M1) {
-                as.VSE64(vec, address);
+            if (Extensions::Zicclsm && current_grouping == LMUL::M1 && current_vlen * (8u << (u32)current_sew) >= 64) {
+                if (current_vlen == 1) {
+                    as.VSE64(vec, address);
+                } else if (current_vlen == 2) {
+                    as.VSE32(vec, address);
+                } else if (current_vlen == 4) {
+                    as.VSE16(vec, address);
+                } else if (current_vlen == 8) {
+                    as.VSE8(vec, address);
+                } else {
+                    setVectorState(SEW::E8, 64 / 8);
+                    as.VSE8(vec, address);
+                }
             } else {
                 setVectorState(SEW::E8, 64 / 8);
                 as.VSE8(vec, address);
@@ -1786,8 +1797,17 @@ void Recompiler::setVec(const ZydisDecodedOperand* operand, biscuit::Vec vec) {
             break;
         }
         case 32: {
-            if (Extensions::Zicclsm && current_sew == SEW::E32 && current_vlen == 1 && current_grouping == LMUL::M1) {
-                as.VSE32(vec, address);
+            if (Extensions::Zicclsm && current_grouping == LMUL::M1 && current_vlen * (8u << (u32)current_sew) >= 32) {
+                if (current_vlen == 1) {
+                    as.VSE32(vec, address);
+                } else if (current_vlen == 2) {
+                    as.VSE16(vec, address);
+                } else if (current_vlen == 4) {
+                    as.VSE8(vec, address);
+                } else {
+                    setVectorState(SEW::E8, 32 / 8);
+                    as.VSE8(vec, address);
+                }
             } else {
                 setVectorState(SEW::E8, 32 / 8);
                 as.VSE8(vec, address);
@@ -1902,8 +1922,8 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp, 
     ASSERT(!has_segment || current_mode32 || operand->mem.segment == ZYDIS_REGISTER_FS || operand->mem.segment == ZYDIS_REGISTER_GS);
     i64 disp = operand->mem.disp.value;
     bool addressing32 = current_mode32 || (current_instruction->attributes & ZYDIS_ATTRIB_HAS_ADDRESSSIZE);
-    bool fold_disp = offset && disp != 0 && IsValidSigned12BitImm(disp) && !has_segment && !g_config.paranoid &&
-                     (g_config.no_address_overflow || !addressing32);
+    bool fold_disp =
+        offset && disp != 0 && IsValidSigned12BitImm(disp) && !has_segment && !g_config.paranoid && (g_config.no_address_overflow || !addressing32);
     if (fold_disp) {
         *offset = disp;
         disp = 0;

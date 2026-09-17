@@ -1286,12 +1286,11 @@
         "disassembly": "movlps xmm3, [rdi]"
     },
     "0f171f": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VSLIDEDOWN.VI   v2, xmm3, 0x1(1), none",
-            "VSETIVLI        zero, 8, e8, m1, tu, mu",
-            "VSE8.V          v2, rdi, none, 1"
+            "VSE32.V         v2, rdi, none, 1"
         ],
         "disassembly": "movhps qword ptr [rdi], xmm3"
     },

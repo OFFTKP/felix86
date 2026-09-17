@@ -9103,23 +9103,22 @@ FAST_HANDLE(CVTTSD2SI) {
 }
 
 FAST_HANDLE(CVTPD2PS) {
-    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
-
-    rec.setVectorState(SEW::E32, 4, LMUL::MF2);
-    as.VFNCVT_F_F(result, src);
+    rec.setVectorState(SEW::E32, 2, LMUL::MF2);
+    as.VFNCVT_F_F(dst, src);
     rec.setVectorState(SEW::E32, 4);
     as.VMV(v0, 0b1100);
-    as.VAND(result, result, 0, VecMask::Yes);
-    rec.setVec(&operands[0], result);
+    as.VMERGE(dst, dst, 0);
+    rec.setVec(&operands[0], dst);
     rec.v0Modified();
 }
 
 FAST_HANDLE(CVTPS2PD) {
-    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
-
-    rec.setVectorState(SEW::E32, 4, LMUL::MF2);
+    biscuit::Vec result = dst != src ? dst : rec.scratchVec();
+    rec.setVectorState(SEW::E32, 2, LMUL::MF2);
     as.VFWCVT_F_F(result, src);
     rec.setVec(&operands[0], result);
 }
