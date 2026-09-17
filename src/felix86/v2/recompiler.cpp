@@ -3836,7 +3836,7 @@ void Recompiler::addressCacheStore(biscuit::GPR guest_address, biscuit::GPR host
     as.SRLI(temp2, temp2, 64 - address_cache_bits - 4);
     as.ADD(temp, temp, temp2);
     as.SD(host_address, offset_host, temp);
-    as.SD(temp2, offset_guest, temp);
+    as.SD(guest_address, offset_guest, temp);
     popScratch();
     popScratch();
 }

@@ -2033,7 +2033,7 @@ FAST_HANDLE(RET) {
 
     if (g_config.address_cache) {
         // If the guest address exists inside of the guest address cache lookup table then we may assume a block is compiled for that address.
-        rec.addressCacheLookup(scratch, [](Assembler& as, biscuit::GPR ret) { as.JALR(x1, 0, ret); }, true);
+        rec.addressCacheLookup(scratch, [](Assembler& as, biscuit::GPR ret) { as.JALR(x0, 0, ret); }, true);
     }
 
     rec.backToDispatcher();
