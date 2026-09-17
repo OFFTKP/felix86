@@ -997,19 +997,17 @@
         "disassembly": "cvttsd2si rax, [rdi]"
     },
     "0f5adc": {
-        "instruction_count": 4,
+        "instruction_count": 2,
         "expected_asm": [
-            "VSETIVLI        zero, 4, e32, mf2, tu, mu",
-            "VFWCVT.F.F.V    v2, xmm4, none",
-            "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VMV.V.V         xmm3, v2"
+            "VSETIVLI        zero, 2, e32, mf2, tu, mu",
+            "VFWCVT.F.F.V    xmm3, xmm4, none"
         ],
         "disassembly": "cvtps2pd xmm3, xmm4"
     },
     "0f5ad2": {
         "instruction_count": 4,
         "expected_asm": [
-            "VSETIVLI        zero, 4, e32, mf2, tu, mu",
+            "VSETIVLI        zero, 2, e32, mf2, tu, mu",
             "VFWCVT.F.F.V    v2, xmm2, none",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VMV.V.V         xmm2, v2"
@@ -1017,14 +1015,12 @@
         "disassembly": "cvtps2pd xmm2, xmm2"
     },
     "0f5a1f": {
-        "instruction_count": 6,
+        "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
-            "VLE8.V          v3, rdi, none, 1",
-            "VSETIVLI        zero, 4, e32, mf2, tu, mu",
-            "VFWCVT.F.F.V    v2, v3, none",
-            "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VMV.V.V         xmm3, v2"
+            "VLE8.V          v2, rdi, none, 1",
+            "VSETIVLI        zero, 2, e32, mf2, tu, mu",
+            "VFWCVT.F.F.V    xmm3, v2, none"
         ],
         "disassembly": "cvtps2pd xmm3, qword ptr [rdi]"
     },
@@ -1100,40 +1096,37 @@
         "disassembly": "cvtpd2dq xmm3, [rdi]"
     },
     "660f5adc": {
-        "instruction_count": 6,
+        "instruction_count": 5,
         "expected_asm": [
-            "VSETIVLI        zero, 4, e32, mf2, tu, mu",
-            "VFNCVT.F.F.W    v2, xmm4, none",
+            "VSETIVLI        zero, 2, e32, mf2, tu, mu",
+            "VFNCVT.F.F.W    xmm3, xmm4, none",
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
             "VMV.V.I         vmask, 0xc(12)",
-            "VAND.VI         v2, v2, 0x0(0), v0.t",
-            "VMV.V.V         xmm3, v2"
+            "VMERGE.VIM      xmm3, xmm3, 0x0(0)"
         ],
         "disassembly": "cvtpd2ps xmm3, xmm4"
     },
     "660f5ad2": {
-        "instruction_count": 6,
+        "instruction_count": 5,
         "expected_asm": [
-            "VSETIVLI        zero, 4, e32, mf2, tu, mu",
-            "VFNCVT.F.F.W    v2, xmm2, none",
+            "VSETIVLI        zero, 2, e32, mf2, tu, mu",
+            "VFNCVT.F.F.W    xmm2, xmm2, none",
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
             "VMV.V.I         vmask, 0xc(12)",
-            "VAND.VI         v2, v2, 0x0(0), v0.t",
-            "VMV.V.V         xmm2, v2"
+            "VMERGE.VIM      xmm2, xmm2, 0x0(0)"
         ],
         "disassembly": "cvtpd2ps xmm2, xmm2"
     },
     "660f5a1f": {
-        "instruction_count": 8,
+        "instruction_count": 7,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v3, rdi, none, 1",
-            "VSETIVLI        zero, 4, e32, mf2, tu, mu",
-            "VFNCVT.F.F.W    v2, v3, none",
+            "VLE8.V          v2, rdi, none, 1",
+            "VSETIVLI        zero, 2, e32, mf2, tu, mu",
+            "VFNCVT.F.F.W    xmm3, v2, none",
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
             "VMV.V.I         vmask, 0xc(12)",
-            "VAND.VI         v2, v2, 0x0(0), v0.t",
-            "VMV.V.V         xmm3, v2"
+            "VMERGE.VIM      xmm3, xmm3, 0x0(0)"
         ],
         "disassembly": "cvtpd2ps xmm3, [rdi]"
     },
@@ -3064,12 +3057,11 @@
         "disassembly": "movlpd xmm3, [rdi]"
     },
     "660f171f": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VSLIDEDOWN.VI   v2, xmm3, 0x1(1), none",
-            "VSETIVLI        zero, 8, e8, m1, tu, mu",
-            "VSE8.V          v2, rdi, none, 1"
+            "VSE32.V         v2, rdi, none, 1"
         ],
         "disassembly": "movhpd [rdi], xmm3"
     },

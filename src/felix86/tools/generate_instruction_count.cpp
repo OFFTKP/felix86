@@ -1991,6 +1991,8 @@ int main() {
     gen_sequence(rec, json, "crysis3", false);
     gen_sequence(rec, json, "tekken1", false);
     gen_sequence(rec, json, "7z1", false);
+    gen_sequence(rec, json, "overcooked1", true);
+    gen_sequence(rec, json, "overcooked2", true);
     g_config.reduced_precision = 2;
     gen_sequence(rec, json, "tombraider1", false);
 
