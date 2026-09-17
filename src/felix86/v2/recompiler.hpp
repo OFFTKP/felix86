@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <array>
-#include <concepts>
 #include <cstdint>
 #include <unordered_map>
 #include <Zydis/Utils.h>
@@ -83,6 +82,14 @@ struct BlockMetadata {
     /// Pointers to blocks to be linked. The top 7 bits are used to denote various flags
     // related to the block as a bitset.
     std::vector<uintptr_t> pending_links{};
+    // We always end blocks on CALL. This is because some games (e.g. Celeste) may include garbage or
+    // unmapped pages if we don't end sequences on CALL. Since we want to do the CALL/RET optimization,
+    // and the hardware RSB needs to match the return address, but we can't continue scanning after the call,
+    // we place a jumpAndLink after the CALL, and populate the address cache with it. But if the address cache
+    // entry of the return block gets evicted, the next return misses and the dispatcher re-inserts an entry.
+    // When the block would get recompiled the address cache entry would point to the new block and RSB prediction
+    // would fail. We want RSB to succeed and to not compile past the CALL, so this is our compromise.
+    u64 ret_stub{};
 };
 
 // WARN: don't allocate this struct on the stack as it's quite big due to address_cache and can lead to stack overflow
@@ -182,7 +189,7 @@ struct Recompiler {
 
     void stopCompiling();
 
-    void backToDispatcher(bool return_hint = false);
+    void backToDispatcher(bool return_hint = false, bool skip_lookup = false);
 
     void writebackState();
 
@@ -218,7 +225,7 @@ struct Recompiler {
 
     int getBitSize(x86_size_e size);
 
-    void jumpAndLink(u64 rip, bool return_hint = false);
+    void jumpAndLink(u64 rip, bool return_hint = false, bool skip_lookup = false);
 
     void jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false);
 
@@ -242,6 +249,14 @@ struct Recompiler {
 
     SingleStepMode getSingleStepMode() {
         return single_step;
+    }
+
+    bool isSingleStepping() const {
+        return g_config.single_step || single_step != SingleStepMode::None;
+    }
+
+    bool canEmitRetStub() const {
+        return g_config.address_cache && g_config.link && !relocatable && !isSingleStepping();
     }
 
     // TODO: move these elsewhere
@@ -484,16 +499,6 @@ struct Recompiler {
         return block_metadata[rip];
     }
 
-    /// Used to register a block which exists as a part of another compiled block.
-    void registerPartialBlock(u64 guest, u64 host) {
-        if (!blockExists(guest)) {
-            block_metadata.insert({guest, BlockMetadata{
-                                              .host_address = host,
-                                              .guest_address = guest,
-                                          }});
-        }
-    }
-
     bool blockExists(u64 rip);
 
     biscuit::GPR getFlags();
@@ -522,14 +527,12 @@ struct Recompiler {
 
     u64 getCompiledBlock(ThreadState* state, u64 rip) {
         if (g_config.address_cache) {
-            AddressCacheEntry& entry = getAddressCacheEntry(rip);
-            if (entry.guest == rip) {
-                return entry.host;
-            } else if (blockExists(rip)) {
-                u64 host = getBlockMetadata(rip).host_address;
+            BlockMetadata& meta = getBlockMetadata(rip);
+            if (meta.host_address != 0) {
+                AddressCacheEntry& entry = getAddressCacheEntry(rip);
                 entry.guest = rip;
-                entry.host = host;
-                return host;
+                entry.host = meta.ret_stub ? meta.ret_stub : meta.host_address;
+                return meta.host_address;
             } else {
                 return compile(state, rip);
             }
@@ -854,8 +857,6 @@ struct Recompiler {
 
     void addressCacheLookup(biscuit::GPR guest_address, void on_hit(Assembler&, biscuit::GPR), bool use_ra = false);
 
-    void addressCacheStore(biscuit::GPR guest_address, biscuit::GPR host_address);
-
 private:
     void emitNecessaryStuff();
 
@@ -885,6 +886,7 @@ private:
     void (*exit_dispatcher)(felix86_frame*){};
 
     u64 compile_next_handler{};
+    u64 compile_next_skip_address_cache{};
 
     u64 restore_state_handler{};
 

@@ -1902,22 +1902,7 @@ FAST_HANDLE(CALL) {
         }
     }
 
-    rec.resetVectorState();
-    rec.flushPushpop();
-    rec.flushX87();
-
     biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
-
-    biscuit::Label return_label;
-    biscuit::GPR guest_address = rec.scratch();
-    biscuit::GPR host_address = rec.scratch();
-
-    if (g_config.address_cache) {
-        u64 rip_diff = rip - rec.getCurrentRipregValue();
-        as.ADDI(guest_address, ripreg, rip_diff + instruction.length);
-        as.LILabel(host_address, &return_label);
-        rec.addressCacheStore(guest_address, host_address);
-    }
 
     switch (operands[0].type) {
     case ZYDIS_OPERAND_TYPE_REGISTER:
@@ -1933,7 +1918,7 @@ FAST_HANDLE(CALL) {
         rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
 
         rec.writeMemory(scratch, rsp, 0, rec.stackWidth());
-        rec.backToDispatcher(g_config.address_cache);
+        rec.backToDispatcher(rec.canEmitRetStub());
         break;
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
@@ -1953,7 +1938,7 @@ FAST_HANDLE(CALL) {
             address = (u32)address;
         }
         as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
-        rec.jumpAndLink(address, g_config.address_cache);
+        rec.jumpAndLink(address, rec.canEmitRetStub());
         break;
     }
     default: {
@@ -1962,16 +1947,21 @@ FAST_HANDLE(CALL) {
     }
     }
 
-    // Bind the label for the return address.
-    as.Bind(&return_label);
-
-    // Because call instructions do not denote an end of a block, register a block
-    // at the return address to prevent redundant recompilations.
-    u64 return_guest_adr = rip + instruction.length;
-    rec.registerPartialBlock(return_guest_adr, (u64)as.GetCursorPointer());
-
-    rec.setCurrentRipregValue(return_guest_adr);
-    as.LI(ripreg, return_guest_adr);
+    if (rec.canEmitRetStub()) {
+        u64 return_rip = rip + instruction.length;
+        if (MODE32) {
+            ASSERT(return_rip <= UINT32_MAX);
+        }
+        u64 stub = (u64)as.GetCursorPointer();
+        as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
+        // Don't make the ret stub jump go to address cache, as it would jump to itself
+        rec.jumpAndLink(return_rip, false, true);
+        rec.getBlockMetadata(return_rip).ret_stub = stub;
+        AddressCacheEntry& entry = rec.getAddressCacheEntry(return_rip);
+        entry.guest = return_rip;
+        entry.host = stub;
+    }
+    rec.stopCompiling();
 }
 
 FAST_HANDLE(RET) {
@@ -2031,12 +2021,13 @@ FAST_HANDLE(RET) {
     // Don't need to zero extend here as it's loaded as a DWORD
     as.MV(ripreg, scratch);
 
-    if (g_config.address_cache) {
+    bool inline_lookup = g_config.address_cache && !rec.isSingleStepping();
+    if (inline_lookup) {
         // If the guest address exists inside of the guest address cache lookup table then we may assume a block is compiled for that address.
         rec.addressCacheLookup(scratch, [](Assembler& as, biscuit::GPR ret) { as.JALR(x0, 0, ret); }, true);
     }
 
-    rec.backToDispatcher();
+    rec.backToDispatcher(false, inline_lookup);
     rec.stopCompiling();
 }
 
