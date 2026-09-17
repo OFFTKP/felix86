@@ -1902,6 +1902,10 @@ FAST_HANDLE(CALL) {
         }
     }
 
+    rec.resetVectorState();
+    rec.flushPushpop();
+    rec.flushX87();
+
     switch (operands[0].type) {
     case ZYDIS_OPERAND_TYPE_REGISTER:
     case ZYDIS_OPERAND_TYPE_MEMORY: {
@@ -1946,10 +1950,6 @@ FAST_HANDLE(CALL) {
         break;
     }
     }
-
-    rec.resetVectorState();
-    rec.flushPushpop();
-    rec.flushX87();
 }
 
 FAST_HANDLE(RET) {
