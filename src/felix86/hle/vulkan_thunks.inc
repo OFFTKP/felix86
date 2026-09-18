@@ -360,6 +360,9 @@ KHR("libvulkan.so", vkCmdPushDescriptorSetWithTemplate2, v_qq)
 // VK_KHR_present_wait
 KHR("libvulkan.so", vkWaitForPresent, d_qqqq)
 
+// VK_KHR_present_wait2
+KHR("libvulkan.so", vkWaitForPresent2, d_qqq)
+
 // VK_KHR_line_rasterization
 KHR_EXT("libvulkan.so", vkCmdSetLineStipple, v_qdw)
 
