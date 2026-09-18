@@ -1,6 +1,6 @@
 {
     "crysis1": {
-        "instruction_count": 50,
+        "instruction_count": 40,
         "expected_asm": [
             "SD              zero, state, 0xfffffff8(-8)",
             "ADDIW           rdx, rdx, 0x0(0)",
@@ -39,23 +39,13 @@
             "LD              t1, rsp, 0x0(0)",
             "ADDI            rsp, rsp, 0x8(8)",
             "ADDI            rip, t1, 0x0(0)",
-            "LD              t2, state, 0x3a0(928)",
-            "LD              t2, t2, 0x220(544)",
-            "SLLI            t3, t1, 0x2f(47)",
-            "SRLI            t3, t3, 0x2b(43)",
-            "ADD             t2, t2, t3",
-            "LD              ra, t2, 0x0(0)",
-            "LD              t3, t2, 0x8(8)",
-            "BNE             t3, t1, 0xc(12)",
-            "ADDI            t5, zero, 0x0(0)",
-            "JALR            zero, ra, 0x0(0)",
             "LD              t6, state, 0x3a0(928)",
             "LD              t6, t6, 0x90(144)",
             "JALR            zero, t6, 0x0(0)"
         ]
     },
     "crysis2": {
-        "instruction_count": 81,
+        "instruction_count": 71,
         "expected_asm": [
             "SD              zero, state, 0xfffffff8(-8)",
             "LUI             t1, 0xd8(216)",
@@ -125,16 +115,6 @@
             "LD              t1, rsp, 0x0(0)",
             "ADDI            rsp, rsp, 0x8(8)",
             "ADDI            rip, t1, 0x0(0)",
-            "LD              t2, state, 0x3a0(928)",
-            "LD              t2, t2, 0x220(544)",
-            "SLLI            t3, t1, 0x2f(47)",
-            "SRLI            t3, t3, 0x2b(43)",
-            "ADD             t2, t2, t3",
-            "LD              ra, t2, 0x0(0)",
-            "LD              t3, t2, 0x8(8)",
-            "BNE             t3, t1, 0xc(12)",
-            "ADDI            t5, zero, 0x0(0)",
-            "JALR            zero, ra, 0x0(0)",
             "LD              t6, state, 0x3a0(928)",
             "LD              t6, t6, 0x90(144)",
             "JALR            zero, t6, 0x0(0)"

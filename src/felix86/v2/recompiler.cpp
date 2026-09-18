@@ -434,6 +434,7 @@ void Recompiler::clearCodeCache(ThreadState* state) {
     for (size_t i = 0; i < (1 << address_cache_bits); i++) {
         address_cache[i] = AddressCacheEntry{};
     }
+    address_cache[0].guest = -1ull;
 
     as.RewindBuffer();
     emitNecessaryStuff();
