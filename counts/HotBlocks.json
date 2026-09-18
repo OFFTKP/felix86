@@ -36,9 +36,9 @@
             "VFMUL.VV        xmm0, xmm0, v2, none",
             "VLE32.V         v2, rcx, none, 1",
             "VFADD.VV        xmm0, xmm0, v2, none",
-            "LD              ra, rsp, 0x0(0)",
+            "LD              t1, rsp, 0x0(0)",
             "ADDI            rsp, rsp, 0x8(8)",
-            "ADDI            rip, ra, 0x0(0)",
+            "ADDI            rip, t1, 0x0(0)",
             "LD              t6, state, 0x3a0(928)",
             "LD              t6, t6, 0x90(144)",
             "JALR            zero, t6, 0x0(0)"
@@ -112,9 +112,9 @@
             "ADDI            rsp, ra, 0x0(0)",
             "LD              rdi, rsp, 0x0(0)",
             "ADDI            rsp, rsp, 0x8(8)",
-            "LD              ra, rsp, 0x0(0)",
+            "LD              t1, rsp, 0x0(0)",
             "ADDI            rsp, rsp, 0x8(8)",
-            "ADDI            rip, ra, 0x0(0)",
+            "ADDI            rip, t1, 0x0(0)",
             "LD              t6, state, 0x3a0(928)",
             "LD              t6, t6, 0x90(144)",
             "JALR            zero, t6, 0x0(0)"

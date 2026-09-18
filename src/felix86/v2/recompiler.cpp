@@ -1,10 +1,12 @@
 #include <algorithm>
+#include <cstdint>
 #include <sys/file.h>
 #include <sys/mman.h>
 #include <unistd.h>
 #include "Zycore/Status.h"
 #include "Zydis/Disassembler.h"
 #include "Zydis/SharedTypes.h"
+#include "biscuit/registers.hpp"
 #include "felix86/common/config.hpp"
 #include "felix86/common/frame.hpp"
 #include "felix86/common/gdbjit.hpp"
@@ -247,35 +249,11 @@ void Recompiler::emitDispatcher() {
     compile_next_handler = (u64)as.GetCursorPointer();
 
     if (g_config.address_cache) {
-        biscuit::GPR temp = scratch();
-        biscuit::GPR temp2 = scratch();
-        biscuit::GPR rip = scratch();
         biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
-        biscuit::Label not_equal;
-        u64 offset = (u64)address_cache - (u64)as.GetCursorPointer();
-        const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
-        const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
-        const bool lo12overflow = (((u16)lo12 + 8) & 0xFFF) == 0;
-        ASSERT(!lo12overflow);
-        const i32 offset_guest = lo12 + 8;
-        const i32 offset_host = lo12;
-        as.AUIPC(temp, hi20);
-        as.SLLI(temp2, ripreg, 64 - address_cache_bits);
-        // Multiply by 16, which is size of each address cache entry
-        as.SRLI(temp2, temp2, 64 - address_cache_bits - 4);
-        as.ADD(temp, temp, temp2);
-        // Load even if branch fails is slightly better for fusion
-        as.LD(rip, offset_host, temp);
-        as.LD(temp2, offset_guest, temp);
-        as.BNE(temp2, ripreg, &not_equal);
-        as.MV(t5, x0); // zero out t5, see invalidate_caller_thunk
-        as.JR(rip);
-
-        as.Bind(&not_equal);
-        popScratch();
-        popScratch();
-        popScratch();
+        addressCacheLookup(ripreg, [](Assembler& as, biscuit::GPR new_rip) { as.JR(new_rip); });
     }
+
+    compile_next_skip_address_cache = (u64)as.GetCursorPointer();
 
     writebackState();
     as.MV(a0, threadStatePointer());
@@ -406,7 +384,11 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_
         state->recompiler->as.SetCursorPointer(link_location);
         // Because there was a writebackState before entering this function, state->rip contains the guest address that we tried
         // to jump to before getting hit by this invalidation. So we can jumpAndLink there.
-        state->recompiler->jumpAndLink(rip);
+        u32 link_instruction = *(u32*)(link_location + sizeof(u32));
+        bool return_hint = ((link_instruction >> 7) & 0x1f) == ra.Index();
+        // Don't make the ret stub jump go to address cache, as it would jump to itself
+        bool is_ret_stub = metadata.ret_stub == (u64)linked_block;
+        state->recompiler->jumpAndLink(rip, return_hint, is_ret_stub);
         state->recompiler->as.SetCursorPointer(cursor);
         flush_icache((u64)link_location, (u64)link_location + 4096);
     } else {
@@ -452,6 +434,7 @@ void Recompiler::clearCodeCache(ThreadState* state) {
     for (size_t i = 0; i < (1 << address_cache_bits); i++) {
         address_cache[i] = AddressCacheEntry{};
     }
+    address_cache[0].guest = -1ull;
 
     as.RewindBuffer();
     emitNecessaryStuff();
@@ -495,7 +478,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
 
     if (g_config.address_cache) {
         AddressCacheEntry& entry = getAddressCacheEntry(start_rip);
-        entry.host = block_meta.host_address;
+        entry.host = block_meta.ret_stub ? block_meta.ret_stub : block_meta.host_address;
         entry.guest = start_rip;
     }
 
@@ -2169,9 +2152,10 @@ void Recompiler::restoreState() {
     scratch_index = saved_scratch_index;
 }
 
-void Recompiler::backToDispatcher() {
+void Recompiler::backToDispatcher(bool return_hint, bool skip_lookup) {
     OptimizationGuard guard(as, optimization_guard_counter);
     const bool is_single_step = single_step != SingleStepMode::None;
+    const u64 handler = skip_lookup ? compile_next_skip_address_cache : compile_next_handler;
     if (compiling && is_single_step) {
         as.SD(x0, 0, x0);
         as.SLTIU(x0, x0, FELIX86_HINT_TF);
@@ -2179,21 +2163,30 @@ void Recompiler::backToDispatcher() {
         as.C_UNDEF();
         as.C_UNDEF();
     } else if (!relocatable) {
-        const u64 offset = compile_next_handler - (u64)as.GetCursorPointer();
+        const u64 offset = handler - (u64)as.GetCursorPointer();
         ASSERT(IsValid2GBImm(offset));
         const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
         const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
         ASSERT(isScratch(t6));
         as.AUIPC(t6, hi20);
-        as.JR(t6, lo12);
+        if (return_hint)
+            as.JALR(x1, lo12, t6);
+        else
+            as.JR(t6, lo12);
     } else {
         ASSERT(isScratch(t6));
         as.LD(t6, offsetof(ThreadState, recompiler), threadStatePointer());
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Winvalid-offsetof"
-        as.LD(t6, offsetof(Recompiler, compile_next_handler), t6);
+        if (skip_lookup)
+            as.LD(t6, offsetof(Recompiler, compile_next_skip_address_cache), t6);
+        else
+            as.LD(t6, offsetof(Recompiler, compile_next_handler), t6);
 #pragma GCC diagnostic pop
-        as.JR(t6);
+        if (return_hint)
+            as.JALR(x1, 0, t6);
+        else
+            as.JR(t6);
     }
 }
 
@@ -2743,20 +2736,24 @@ void Recompiler::updateSign(biscuit::GPR result, x86_size_e size) {
     }
 }
 
-void Recompiler::jumpAndLink(u64 rip) {
+void Recompiler::jumpAndLink(u64 rip, bool return_link, bool skip_lookup) {
     OptimizationGuard guard(as, optimization_guard_counter);
     const bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
     if (!g_config.link || is_single_step || relocatable) {
         // Just emit jump to dispatcher
-        backToDispatcher();
+        backToDispatcher(return_link, skip_lookup);
         return;
     }
 
     u8* start = as.GetCursorPointer();
     if (!blockExists(rip)) {
-        u8* link_me = as.GetCursorPointer();
-        backToDispatcher();
+        uintptr_t link_me = (uintptr_t)as.GetCursorPointer();
+        backToDispatcher(return_link, skip_lookup);
 
+        // The top 7 bits are used as flags.
+        link_me &= ((u64)1 << 57) - 1;
+        if (return_link)
+            link_me |= (u64)PendingLinkFlags::HasReturnHint;
         getBlockMetadata(rip).pending_links.push_back(link_me);
     } else {
         auto& target_meta = getBlockMetadata(rip);
@@ -2768,7 +2765,10 @@ void Recompiler::jumpAndLink(u64 rip) {
             if (offset - 4 == 4) {
                 as.NOP();
             } else {
-                as.J(offset - 4);
+                if (return_link)
+                    as.JAL(x1, offset - 4);
+                else
+                    as.J(offset - 4);
             }
         } else {
             // Too far for a regular jump, use AUIPC+JR
@@ -2779,7 +2779,10 @@ void Recompiler::jumpAndLink(u64 rip) {
             ASSERT(isScratch(t4));
             ASSERT(isScratch(t5));
             as.AUIPC(t4, hi20);
-            as.JR(t4, lo12);
+            if (return_link)
+                as.JALR(x1, lo12, t4);
+            else
+                as.JR(t4, lo12);
         }
     }
 
@@ -2864,24 +2867,29 @@ void Recompiler::expirePendingLinks(u64 rip) {
         return;
     }
 
-    for (u8* link : links) {
+    for (uintptr_t link : links) {
+        bool has_return_hint = link & (u64)PendingLinkFlags::HasReturnHint;
+
+        intptr_t signed_link = link;
+        u8* link_addr = (u8*)((signed_link << 7) >> 7);
         u8* cursor = as.GetCursorPointer();
-        as.SetCursorPointer(link);
-        jumpAndLink(rip);
+        as.SetCursorPointer(link_addr);
+        jumpAndLink(rip, has_return_hint);
         as.SetCursorPointer(cursor);
 
-        if ((u64)link < min) {
-            min = (u64)link;
+        u64 addr = (u64)link_addr;
+        if (addr < min) {
+            min = addr;
         }
-        if ((u64)link > max) {
-            max = (u64)link;
+        if (addr > max) {
+            max = addr;
         }
     }
 
     flush_icache(min, max + 4096);
 
     // Free the memory as pending_links won't be used after the block is compiled
-    std::vector<u8*>().swap(links);
+    std::vector<uintptr_t>().swap(links);
 }
 
 u64 Recompiler::zextImmediate(u64 imm, ZyanU8 size) {
@@ -3785,4 +3793,52 @@ void Recompiler::switchToX87() {
     popScratch();
 
     local_x87_state = x87State::x87;
+}
+
+void Recompiler::addressCacheLookup(biscuit::GPR guest_address, void on_hit(Assembler&, biscuit::GPR), bool use_ra) {
+    if (!use_ra) {
+        // Waste the ra scratch
+        (void)scratch();
+    }
+    biscuit::GPR host_address = use_ra ? x1 : scratch();
+    biscuit::GPR temp = scratch();
+    biscuit::GPR temp2 = scratch();
+    biscuit::Label not_equal;
+    i32 lo12 = 0;
+    if (relocatable) {
+        as.LD(temp, offsetof(ThreadState, recompiler), threadStatePointer());
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winvalid-offsetof"
+        as.LD(temp, offsetof(Recompiler, address_cache), temp);
+#pragma GCC diagnostic pop
+    } else {
+        u64 offset = (u64)address_cache - (u64)as.GetCursorPointer();
+        const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
+        lo12 = static_cast<int32_t>(offset << 20) >> 20;
+        const bool lo12overflow = lo12 + 8 > 2047;
+        as.AUIPC(temp, hi20);
+        if (lo12overflow) {
+            as.ADDI(temp, temp, lo12);
+            lo12 = 0;
+        }
+    }
+    const i32 offset_guest = lo12 + 8;
+    const i32 offset_host = lo12;
+    as.SLLI(temp2, guest_address, 64 - address_cache_bits);
+    // Multiply by 16, which is size of each address cache entry
+    as.SRLI(temp2, temp2, 64 - address_cache_bits - 4);
+    as.ADD(temp, temp, temp2);
+    // Load even if branch fails is slightly better for fusion
+    as.LD(host_address, offset_host, temp);
+    as.LD(temp2, offset_guest, temp);
+    as.BNE(temp2, guest_address, &not_equal);
+    as.MV(t5, x0); // zero out t5, see invalidate_caller_thunk
+    on_hit(as, host_address);
+    as.Bind(&not_equal);
+    popScratch();
+    popScratch();
+    if (!use_ra) {
+        popScratch();
+        popScratch();
+    }
 }
