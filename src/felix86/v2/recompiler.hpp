@@ -8,6 +8,7 @@
 #include "Zydis/Decoder.h"
 #include "biscuit/assembler.hpp"
 #include "biscuit/registers.hpp"
+#include "felix86/common/config.hpp"
 #include "felix86/common/frame.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
@@ -256,7 +257,7 @@ struct Recompiler {
     }
 
     bool canEmitRetStub() const {
-        return g_config.address_cache && g_config.link && !relocatable && !isSingleStepping();
+        return g_config.address_cache && g_config.return_address_hint && g_config.link && !relocatable && !isSingleStepping();
     }
 
     // TODO: move these elsewhere

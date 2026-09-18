@@ -2021,7 +2021,7 @@ FAST_HANDLE(RET) {
     // Don't need to zero extend here as it's loaded as a DWORD
     as.MV(ripreg, scratch);
 
-    bool inline_lookup = g_config.address_cache && !rec.isSingleStepping();
+    bool inline_lookup = rec.canEmitRetStub();
     if (inline_lookup) {
         // If the guest address exists inside of the guest address cache lookup table then we may assume a block is compiled for that address.
         rec.addressCacheLookup(scratch, [](Assembler& as, biscuit::GPR ret) { as.JALR(x0, 0, ret); }, true);
