@@ -454,6 +454,8 @@ static long VForkMe(CloneArgs& args) {
         int pid = getpid();
         SIGLOG("%d vforked to %d", parent_pid, pid);
         ThreadState* state = ThreadState::Get();
+        g_process_globals.initialize();
+        g_process_globals.states.push_back(state);
         g_process_globals.vfork_rootfs = shared_rootfs;
         state->ptrace_data.constants.parent_tid = parent_tid;
         if (!trace_vfork) {
