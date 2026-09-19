@@ -1555,6 +1555,10 @@ static bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, uco
             return false;
         }
 
+        if (current_state->force_defer_synchronous) {
+            return false;
+        }
+
         // Check if signal handler is SIG_DFL or SIG_IGN
         RegisteredSignal* handler = SignalHandlerTable::getRegisteredSignal(current_state->signal_table, SIGSEGV);
         if (handler->func == (u64)SIG_DFL) {
