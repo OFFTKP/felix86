@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include "felix86/common/config.hpp"
+#include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
@@ -194,6 +195,18 @@ bool Config::initialize(bool ignore_envs) {
         }
     }
 
+    if (!is_privileged && euid != 0) {
+        // Scan this directory for user created files that contain configurations
+        // We install one of our own here with the name `00-installation-profiles.toml` which
+        // contains some useful profiles for programs. Users can add their own as well.
+        // See https://felix86.com/docs/users/usage-guide#profiles for more info.
+        const std::filesystem::path executables_dir = getProfilesDir() / "executables";
+        std::string program_name = getProgramName();
+        if (!program_name.empty()) {
+            Config::loadExecutableProfiles(g_config, executables_dir, program_name);
+        }
+    }
+
     const char* profile = secure_getenv("FELIX86_PROFILE");
     if (profile && euid != 0) {
         std::filesystem::path path;
@@ -248,8 +261,8 @@ static u64 get_int(const char* str) {
 }
 
 template <typename Type>
-static bool loadFromToml(const toml_result_t& toml, const char* group, const char* name, Type& value) {
-    toml_datum_t table = toml_get(toml.toptab, group);
+static bool loadFromToml(const toml_datum_t& root, const char* group, const char* name, Type& value) {
+    toml_datum_t table = toml_get(root, group);
     if (table.type != TOML_UNKNOWN) {
         if (table.type != TOML_TABLE) {
             WARN("Expected %s to be table when opening toml file", group);
@@ -339,7 +352,7 @@ Config Config::load(const std::filesystem::path& path, bool ignore_envs) {
             if (loaded)                                                                                                                              \
                 config.src.name = ConfigSource::Env;                                                                                                 \
         } else if (!no_config_path) {                                                                                                                \
-            loaded = loadFromToml<type>(result, #group, #name, config.name);                                                                         \
+            loaded = loadFromToml<type>(result.toptab, #group, #name, config.name);                                                                  \
             if (loaded)                                                                                                                              \
                 config.src.name = ConfigSource::File;                                                                                                \
         }                                                                                                                                            \
@@ -353,6 +366,19 @@ Config Config::load(const std::filesystem::path& path, bool ignore_envs) {
     return config;
 }
 
+void Config::loadProfileTable(Config& config, const toml_datum_t& root, const std::filesystem::path& source) {
+    config.profile_path = source;
+
+#define X(group, type, name, default_value, env_name, description)                                                                                   \
+    {                                                                                                                                                \
+        bool loaded = loadFromToml<type>(root, #group, #name, config.name);                                                                          \
+        if (loaded)                                                                                                                                  \
+            config.src.name = ConfigSource::Profile;                                                                                                 \
+    }
+#include "config.inc"
+#undef X
+}
+
 bool Config::loadProfile(Config& config, const std::filesystem::path& profile) {
     ASSERT(!profile.empty());
     toml_result_t result = toml_parse_file_ex(profile.c_str());
@@ -361,17 +387,81 @@ bool Config::loadProfile(Config& config, const std::filesystem::path& profile) {
         return false;
     }
 
-    config.profile_path = profile;
-
-#define X(group, type, name, default_value, env_name, description)                                                                                   \
-    {                                                                                                                                                \
-        bool loaded = loadFromToml<type>(result, #group, #name, config.name);                                                                        \
-        if (loaded)                                                                                                                                  \
-            config.src.name = ConfigSource::Profile;                                                                                                 \
-    }
-#include "config.inc"
-#undef X
+    loadProfileTable(config, result.toptab, profile);
+    toml_free(result);
     return true;
+}
+
+std::string Config::getProgramName() {
+    if (g_params.argv.empty()) {
+        return "";
+    }
+
+    bool wine = false;
+    for (size_t i = 0; i < g_params.argv.size(); i++) {
+        std::string name = std::filesystem::path(i == 0 ? g_params.executable_path.string() : g_params.argv[i]).filename();
+        if (name == "wine-preloader" || name == "wine64-preloader") {
+            i++;
+            wine = true;
+        } else if (name == "wine" || name == "wine64") {
+            wine = true;
+        } else {
+            if (wine) {
+                size_t separator = name.find_last_of('\\');
+                if (separator != std::string::npos) {
+                    name = name.substr(separator + 1);
+                }
+            }
+            return name;
+        }
+    }
+
+    return "";
+}
+
+bool Config::loadExecutableProfiles(Config& config, const std::filesystem::path& dir, const std::string& program_name) {
+    std::error_code ec;
+    if (!std::filesystem::is_directory(dir, ec)) {
+        return false;
+    }
+
+    std::vector<std::filesystem::path> files;
+    for (const auto& entry : std::filesystem::directory_iterator(dir, ec)) {
+        if (entry.is_regular_file(ec) && entry.path().extension() == ".toml") {
+            files.push_back(entry.path());
+        }
+    }
+    std::sort(files.begin(), files.end());
+
+    bool any = false;
+    for (const auto& file : files) {
+        toml_result_t result = toml_parse_file_ex(file.c_str());
+        if (!result.ok) {
+            WARN("Failed to parse toml file %s with error: %s", file.c_str(), result.errmsg);
+            continue;
+        }
+
+        for (int i = 0; i < result.toptab.u.tab.size; i++) {
+            std::string key(result.toptab.u.tab.key[i], result.toptab.u.tab.len[i]);
+            if (key != program_name) {
+                continue;
+            }
+
+            const toml_datum_t& table = result.toptab.u.tab.value[i];
+            if (table.type != TOML_TABLE) {
+                WARN("%s in %s is not a table?", key.c_str(), file.c_str());
+                continue;
+            }
+
+            VERBOSE("Loading executable profile %s from %s", key.c_str(), file.c_str());
+            loadProfileTable(config, table, file);
+            any = true;
+        }
+
+        toml_free(result);
+    }
+
+    return any;
 }
 
 template <typename T>

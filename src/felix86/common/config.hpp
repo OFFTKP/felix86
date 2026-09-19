@@ -7,7 +7,10 @@
 
 #include <filesystem>
 #include <optional>
+#include <string>
 #include "felix86/common/types.hpp"
+
+struct toml_datum_t;
 
 /// Represents where the configuration was sourced from.
 enum class ConfigSource {
@@ -40,6 +43,8 @@ struct Config {
 
     [[nodiscard]] static Config load(const std::filesystem::path& path, bool ignore_envs = false);
     static bool loadProfile(Config& config, const std::filesystem::path& profile);
+    static bool loadExecutableProfiles(Config& config, const std::filesystem::path& dir, const std::string& program_name);
+    static std::string getProgramName();
     static void save(const std::filesystem::path& path, const Config& config, bool only_non_default = false);
 
     static std::filesystem::path getConfigFilePath();
@@ -51,6 +56,7 @@ private:
     std::filesystem::path profile_path;
 
     friend void addToEnvironment(Config& config, const char* env_name, const char* env);
+    static void loadProfileTable(Config& config, const toml_datum_t& root, const std::filesystem::path& source);
 
     struct {
 #define X(group, type, name, value, ...) ConfigSource name = ConfigSource::Default;
