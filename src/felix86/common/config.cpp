@@ -197,7 +197,7 @@ bool Config::initialize(bool ignore_envs) {
 
     if (!is_privileged && euid != 0) {
         // Scan this directory for user created files that contain configurations
-        // We install one of our own here with the name `installation.toml` which
+        // We install one of our own here with the name `00-installation-profiles.toml` which
         // contains some useful profiles for programs. Users can add their own as well.
         // See https://felix86.com/docs/users/usage-guide#profiles for more info.
         const std::filesystem::path executables_dir = getProfilesDir() / "executables";
