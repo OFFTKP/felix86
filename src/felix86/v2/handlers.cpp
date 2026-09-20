@@ -4692,7 +4692,9 @@ FAST_HANDLE(MOVZX) {
             } else if (size_src == X86_SIZE_BYTE) {
                 as.ANDI(result, src, 0xFF);
             } else {
-                UNREACHABLE();
+                // Weird, but seen in Monster Hunter Rise
+                ASSERT(size_src == X86_SIZE_WORD);
+                as.ZEXTH(result, src);
             }
             as.SRLI(dst, dst, 16);
             as.SLLI(dst, dst, 16);
