@@ -792,9 +792,10 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
         flushX87();
         biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
         u64 offset = rip - getCurrentRipregValue();
-        ASSERT(offset != 0);
-        setCurrentRipregValue(getCurrentRipregValue() + offset);
-        addi(ripreg, ripreg, offset);
+        if (offset != 0) {
+            setCurrentRipregValue(getCurrentRipregValue() + offset);
+            addi(ripreg, ripreg, offset);
+        }
         as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
         jumpAndLink(rip);
     }
@@ -998,7 +999,8 @@ void Recompiler::compileInstruction(ZydisDecodedInstruction& instruction, ZydisD
 }
 
 biscuit::GPR Recompiler::scratch() {
-    ASSERT(scratch_index != (int)scratch_gprs.size());
+    ASSERT_MSG(scratch_index != (int)scratch_gprs.size(), "Out of scratch registers while compiling %s",
+               disassemble_one(current_mode32, current_rip).c_str());
     return scratch_gprs[scratch_index++];
 }
 
