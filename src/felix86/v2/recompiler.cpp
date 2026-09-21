@@ -658,7 +658,8 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
             ran_mmx_once = false; // if we run another mmx instruction, set tag to valid again
         }
 
-        u64 start_pc = (u64)as.GetCursorPointer();
+        // Make sure we factor in the safepoint for the first instruction
+        u64 start_pc = current_instruction_index == 0 ? block_meta.host_address : (u64)as.GetCursorPointer();
 
         if (g_breakpoints.find(rip) != g_breakpoints.end()) {
             u64 current_address = (u64)as.GetCursorPointer();
@@ -775,7 +776,11 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
         current_instruction_index += 1;
 
         if (skip_next) {
-            rip += instructions[current_instruction_index].first.length;
+            u8 skipped_length = instructions[current_instruction_index].first.length;
+            ASSERT(skipped_length <= 15);
+            block_meta.translation_sizes[current_instruction_index].x86_instruction_size = skipped_length;
+            block_meta.translation_sizes[current_instruction_index].riscv_instructions_size = 0;
+            rip += skipped_length;
             current_instruction_index += 1;
             skip_next = false;
         }
