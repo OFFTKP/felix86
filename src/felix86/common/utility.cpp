@@ -1109,7 +1109,7 @@ void felix86_set_segment(ThreadState* state, u64 value, int segment) {
         state->ctx.csbase = base;
         u8 new_cs = state->ctx.cs;
         if (new_cs != 0x33 && new_cs != 0x23) {
-            WARN("Invalid cs %x during %lx", state->ctx.cs, state->ctx.rip);
+            WARN("Invalid cs %lx during %lx", state->ctx.cs, state->ctx.rip);
         }
 
         if (old_cs != new_cs) {

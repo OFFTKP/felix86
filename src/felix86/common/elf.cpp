@@ -536,7 +536,7 @@ void Elf::Load(const std::filesystem::path& path) {
         Elf_Phdr& phdr = phdrtable[i];
         switch (phdr.type()) {
         case PT_LOAD: {
-            VERBOSE("Segment %d: %lx-%lx", i, phdr.vaddr(), phdr.vaddr() + phdr.memsz());
+            VERBOSE("Segment %lu: %lx-%lx", i, phdr.vaddr(), phdr.vaddr() + phdr.memsz());
 
             u8* segment_base = base_ptr + PAGE_START(phdr.vaddr());
             u64 segment_size = phdr.filesz() + PAGE_OFFSET(phdr.vaddr());

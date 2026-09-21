@@ -92,7 +92,7 @@ int ipc32(u32 call, u32 first, u64 second, u64 third, void* ptr, u64 fifth) {
             return ::syscall(SYS_semctl, semid, semnum, semcmd, nullptr);
         }
         default: {
-            ERROR("Unknown SEMCTL operation: %d", semcmd);
+            ERROR("Unknown SEMCTL operation: %lu", semcmd);
             return -ENOSYS;
         }
         }

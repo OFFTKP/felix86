@@ -1001,7 +1001,7 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
 
         if (!felix86_address_check((void*)path)) {
             ASSERT(path != nullptr);
-            WARN("Tried to resolve bad path pointer: %lx", path);
+            WARN("Tried to resolve bad path pointer: %p", path);
             return FdPath::error(EFAULT);
         }
 
@@ -1063,7 +1063,7 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
         struct statx current_statx;
         result = statx(current_fd, current_relative_path.c_str(), AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &current_statx);
         if (result != 0) {
-            VERBOSE("Error while resolving statx %d %s, error: %s", current_fd, current_relative_path.c_str());
+            VERBOSE("Error while resolving statx %d %s, error: %s", current_fd, current_relative_path.c_str(), strerror(errno));
             return FdPath::error(errno);
         }
 
@@ -1076,7 +1076,7 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
                 // Need to recalculate statx for ".." check
                 result = statx(current_fd, current_relative_path.c_str(), AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &current_statx);
                 if (result != 0) {
-                    VERBOSE("Error while resolving statx (for fake mount) %d %s, error: %s", current_fd, current_relative_path.c_str());
+                    VERBOSE("Error while resolving statx (for fake mount) %d %s, error: %s", current_fd, current_relative_path.c_str(), strerror(errno));
                     return FdPath::error(errno);
                 }
                 break;

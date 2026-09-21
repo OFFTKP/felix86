@@ -54,7 +54,7 @@ void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offse
         }
 
         void* mapping = freelist.allocate((u64)result, size);
-        ASSERT_MSG(mapping == result, "Failed with mmap(%lx, %lx, %x, %x, %d, %lx)", addr, size, prot, flags, fd, offset);
+        ASSERT_MSG(mapping == result, "Failed with mmap(%p, %lx, %x, %x, %d, %lx)", addr, size, prot, flags, fd, offset);
         add_tracked_region((u64)result, size, prot, stat.st_dev, stat.st_ino, offset, (flags & MAP_SHARED) != 0, -1, (flags & MAP_ANONYMOUS) != 0);
         return result;
     } else {
@@ -310,7 +310,7 @@ int Mapper::shmat(bool mode32, int shmid, void* address, int flags, u64* result_
             if (mode32) {
                 our_mem = freelist.allocate((u64)shm_mem, size);
                 if ((i64)our_mem < 0) {
-                    ERROR("shmat succeeded, but freelistAllocate failed for address: %lx", address);
+                    ERROR("shmat succeeded, but freelistAllocate failed for address: %p", address);
                     return (i64)our_mem;
                 }
             }
@@ -345,7 +345,7 @@ int Mapper::shmdt(bool mode32, void* address) {
 
     auto it = page_to_shmid.find((u64)address & ~0xFFFull);
     if (it == page_to_shmid.end()) {
-        IMPORTANT("Could not find page during shmdt: %lx", (u64)address & ~0xFFFull);
+        IMPORTANT("Could not find page during shmdt: %lx", (u64)address & ~0xFFFul);
         return ::shmdt(address);
     }
 

@@ -90,7 +90,7 @@ void ThreadState::Destroy(ThreadState* state) {
     if (it != g_process_globals.states.end()) {
         g_process_globals.states.erase(it);
     } else {
-        WARN("Thread state %ld not found in global list", gettid());
+        WARN("Thread state %d not found in global list", gettid());
     }
     munmap(state->riscv_trampoline_storage_start, trampoline_storage_size);
     munmap(state->x86_trampoline_storage_start, trampoline_storage_size);

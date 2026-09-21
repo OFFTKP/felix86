@@ -110,7 +110,7 @@ static void pthread_handler_impl(void* args, void* host_stack) {
     std::atomic_signal_fence(std::memory_order_seq_cst); // Don't let the compiler reorder the copy after this fence
     __atomic_store_n(finished, tid, __ATOMIC_SEQ_CST);
 
-    LOG("Thread %ld started", tid);
+    LOG("Thread %d started", tid);
     if (Ptrace::is_traced(state) && trace_clone) {
         int sig = SIGSTOP;
         siginfo_t info;
@@ -555,7 +555,7 @@ static long VForkMe(CloneArgs& args) {
 
 long Threads::Clone(ThreadState* current_state, CloneArgs* args) {
     std::string sflags = flags_to_string(args->guest_flags);
-    STRACE("clone({%s}, stack: %llx, parid: %llx, ctid: %llx, tls: %llx)", sflags.c_str(), args->new_rsp, args->parent_tid, args->child_tid,
+    STRACE("clone({%s}, stack: %lx, parid: %p, ctid: %p, tls: %lx)", sflags.c_str(), args->new_rsp, args->parent_tid, args->child_tid,
            args->new_tls);
 
     bool clone_fs = args->guest_flags & CLONE_FS;
@@ -671,7 +671,7 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
     stack_pointer += stack_size;
     VERBOSE("Stack pointer at %p", stack_pointer);
 
-    SMCLOG("Allocated stack: %lx-%lx", stack_pointer, stack_pointer + max_stack_size);
+    SMCLOG("Allocated stack: %p-%p", stack_pointer, stack_pointer + max_stack_size);
     return {stack_pointer, max_stack_size};
 }
 

@@ -428,9 +428,9 @@ void GuestToHostMarshaller::emitEpilogue(biscuit::Assembler& as) {
 
 static void enter_dispatcher_for_callback(ThreadState* state) {
     u64 rip = state->ctx.rip;
-    VERBOSE("Entering dispatcher for callback at %p", rip);
+    VERBOSE("Entering dispatcher for callback at %lx", rip);
     state->recompiler->enterDispatcher(state);
-    VERBOSE("Finished callback %p", rip);
+    VERBOSE("Finished callback %lx", rip);
 }
 
 void* ABIMadness::hostToGuestTrampoline(const char* signature, const void* guest_function) {
