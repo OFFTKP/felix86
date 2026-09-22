@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <sys/mman.h>
+#include "felix86/common/lua.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/hle/fd.hpp"
 #include "felix86/hle/ptrace.hpp"
@@ -29,6 +30,14 @@ ThreadState* ThreadState::Create(ThreadState* copy_state) {
     u8* state_location = state_memory + 4096;
     ThreadState* state = new (state_location) ThreadState;
     state->recompiler = new Recompiler;
+#ifdef FELIX86_BUILD_LUA_SCRIPTING
+    state->lua_state = luaL_newstate();
+    if (!state->lua_state) {
+        WARN("Failed to open Lua state for %d", gettid());
+    } else {
+        luaL_openlibs(state->lua_state);
+    }
+#endif
     state->deferred_fault_page = state_memory;
     u32 tid = gettid();
     VERBOSE("ThreadState* for %d is %lx", tid, (u64)state);

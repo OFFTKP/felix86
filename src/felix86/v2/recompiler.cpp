@@ -980,6 +980,38 @@ void Recompiler::compileInstruction(ZydisDecodedInstruction& instruction, ZydisD
         }
     }
 
+#ifdef FELIX86_BUILD_LUA_SCRIPTING
+    for (const LuaHook& hook : g_process_globals.lua_hooks) {
+        switch (hook.type) {
+        case LuaHookType::Compile: {
+            if (current_rip >= hook.data.compile_or_run.start && current_rip < hook.data.compile_or_run.end) {
+                Lua::callHook(hook, current_rip);
+            }
+            break;
+        }
+        case LuaHookType::Run: {
+            if (current_rip >= hook.data.compile_or_run.start && current_rip < hook.data.compile_or_run.end) {
+                writebackState();
+                as.LI(a0, hook.func_ref);
+                as.LI(a1, current_rip);
+                call((u64)Lua::callHookDirect);
+                restoreState();
+            }
+            break;
+        }
+        case LuaHookType::Mnemonic: {
+            if (current_instruction->mnemonic == hook.data.mnemonic.mnemonic) {
+                Lua::callHook(hook, current_rip);
+            }
+            break;
+        }
+        default: {
+            break;
+        }
+        }
+    }
+#endif
+
     lock_handled = false;
     switch (mnemonic) {
 #define X(name)                                                                                                                                      \

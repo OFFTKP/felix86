@@ -5,6 +5,7 @@
 #include "biscuit/isa.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/common/lua.hpp"
 #include "felix86/common/shm_stats.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
@@ -395,6 +396,10 @@ struct ThreadState {
     PtraceData ptrace_data;
 
     FEXCore::SHMStats::ThreadStats* thread_stats = nullptr;
+
+#ifdef FELIX86_BUILD_LUA_SCRIPTING
+    lua_State* lua_state = nullptr;
+#endif
 
     u64 GetGpr(x86_ref_e ref) const {
         if (ref < X86_REF_RAX || ref > X86_REF_R15) {

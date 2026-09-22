@@ -6,6 +6,7 @@
 #include <vector>
 #include <linux/stat.h>
 #include <unistd.h>
+#include "felix86/common/lua.hpp"
 #include "felix86/common/process_lock.hpp"
 #include "felix86/common/shm_stats.hpp"
 #include "felix86/common/start_params.hpp"
@@ -59,6 +60,10 @@ struct ProcessGlobals {
     char* vfork_rootfs = nullptr;
 
     SHMManager shm_manager;
+
+#ifdef FELIX86_BUILD_LUA_SCRIPTING
+    std::vector<LuaHook> lua_hooks{};
+#endif
 };
 
 struct Mapper;

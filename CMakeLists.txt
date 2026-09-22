@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 option(FELIX86_BUILD_THUNKING "Build with thunking support" ON)
+option(FELIX86_BUILD_LUA_SCRIPTING "Build with Lua scripting support" OFF)
 option(FELIX86_MONTHLY_RELEASE "Build as a monthly release" OFF)
 option(FELIX86_VALIDATE_BINFMT_MISC "Warn if felix86 binary is not the one installed in binfmt_misc" ON)
 set(FELIX86_CONFIG_PATH "/etc/opt/felix86/config.toml" CACHE STRING "Path to the system-wide configuration file")
@@ -148,6 +149,7 @@ set(FELIX86_COMMON_SOURCES
     src/felix86/common/global.cpp
     src/felix86/common/info.cpp
     src/felix86/common/log.cpp
+    src/felix86/common/lua.cpp
     src/felix86/common/overlay.cpp
     src/felix86/common/print.cpp
     src/felix86/common/process_lock.cpp
@@ -247,6 +249,14 @@ endif()
 
 if (FELIX86_VALIDATE_BINFMT_MISC)
     target_compile_definitions(felix86_core PUBLIC FELIX86_VALIDATE_BINFMT_MISC)
+endif()
+
+if (FELIX86_BUILD_LUA_SCRIPTING)
+    find_package(Lua 5.3 REQUIRED)
+    message(STATUS "Building with Lua scripting support (Lua ${LUA_VERSION_STRING})")
+    target_compile_definitions(felix86_core PUBLIC FELIX86_BUILD_LUA_SCRIPTING)
+    target_include_directories(felix86_core PUBLIC ${LUA_INCLUDE_DIR})
+    target_link_libraries(felix86_core PUBLIC ${LUA_LIBRARIES})
 endif()
 
 add_executable(felix86)

@@ -114,6 +114,10 @@ void ProcessGlobals::initialize() {
 
     shm_manager.initialize();
 
+#ifdef FELIX86_BUILD_LUA_SCRIPTING
+    lua_hooks.clear();
+#endif
+
     // Don't reset the /proc/self/maps mapped regions, we can reuse the ones from parent process
 }
 
