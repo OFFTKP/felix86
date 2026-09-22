@@ -2247,7 +2247,10 @@ void Recompiler::scanAhead(u64 rip) {
         for (int i = 0; i < std::min((int)instruction.operand_count, 2); i++) {
             if (operands[i].type == ZYDIS_OPERAND_TYPE_MEMORY && (operands[i].actions & ZYDIS_OPERAND_ACTION_MASK_WRITE) &&
                 operands[i].mem.base == ZYDIS_REGISTER_RIP) {
-                lowest_rip_write = std::min(lowest_rip_write, rip + instruction.length + operands[i].mem.disp.value);
+                u64 target = rip + instruction.length + operands[i].mem.disp.value;
+                if (target >= rip + instruction.length) {
+                    lowest_rip_write = std::min(lowest_rip_write, target);
+                }
             }
         }
 
