@@ -2210,6 +2210,7 @@ void Recompiler::scanAhead(u64 rip) {
     current_block_big = false;
     bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
     u64 initial_rip = rip;
+    u64 lowest_rip_write = UINT64_MAX;
     instructions.clear();
     std::vector<FlagAccessData::ScanAccess> scan_entries;
     while (true) {
@@ -2235,6 +2236,20 @@ void Recompiler::scanAhead(u64 rip) {
                           mnemonic == ZYDIS_MNEMONIC_INSD || mnemonic == ZYDIS_MNEMONIC_IN || mnemonic == ZYDIS_MNEMONIC_OUT;
         bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
         bool is_int3 = mnemonic == ZYDIS_MNEMONIC_INT3;
+
+        if (instructions.size() > 1 && rip + instruction.length > lowest_rip_write) {
+            IMPORTANT("Inline SMC detected, block at %lx writes to %lx", initial_rip, lowest_rip_write);
+            current_block_big = true;
+            instructions.pop_back();
+            break;
+        }
+
+        for (int i = 0; i < std::min((int)instruction.operand_count, 2); i++) {
+            if (operands[i].type == ZYDIS_OPERAND_TYPE_MEMORY && (operands[i].actions & ZYDIS_OPERAND_ACTION_MASK_WRITE) &&
+                operands[i].mem.base == ZYDIS_REGISTER_RIP) {
+                lowest_rip_write = std::min(lowest_rip_write, rip + instruction.length + operands[i].mem.disp.value);
+            }
+        }
 
         if (g_config.unsafe_flags && !g_config.paranoid) {
             if (is_call || is_ret) {
