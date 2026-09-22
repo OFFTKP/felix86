@@ -32,8 +32,8 @@ struct Perf {
     void addToFile(unsigned long address, unsigned long size, const std::string& symbol) {
         if (f) {
             std::string full = fmt::format("{:x} {:x} {}\n", address, size, symbol);
-            int written = syscall(SYS_write, fd, full.data(), full.size());
-            ASSERT_MSG(written == (int)full.size(), "%lx != %lx (errno: %d)", written, full.size(), errno);
+            ssize_t written = syscall(SYS_write, fd, full.data(), full.size());
+            ASSERT_MSG(written == full.size(), "%zu != %zu (errno: %d)", written, full.size(), errno);
         }
     }
 

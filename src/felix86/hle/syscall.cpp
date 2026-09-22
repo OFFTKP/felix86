@@ -752,7 +752,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             dump_states();
         }
         g_process_globals.shm_manager.unlink();
-        LOG("Process %d called exit_group(%d)", gettid(), arg1);
+        LOG("Process %d called exit_group(%d)", gettid(), (int)arg1);
         SYSCALL(exit_group, arg1);
         UNREACHABLE();
         break;
@@ -844,28 +844,28 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
     case felix86_riscv64_openat2: {
         open_how* how = (open_how*)arg3;
         if (how->resolve) {
-            IMPORTANT("Ignored how->resolve flags: %x", how->resolve);
+            IMPORTANT("Ignored how->resolve flags: %llx", how->resolve);
         }
         result = g_fs->OpenAt(mode32, (int)arg1, (char*)arg2, how->flags, how->mode);
         break;
     }
     case felix86_riscv64_tgkill: {
         if (arg3 != 0) { // sig==0 is used to check if process exists
-            SIGLOG("%d is calling tgkill with sig: %d for TGID: %d and TID: %d", gettid(), arg3, arg1, arg2);
+            SIGLOG("%d is calling tgkill with sig: %d for TGID: %d and TID: %d", gettid(), (int)arg3, (int)arg1, (int)arg2);
         }
         result = SYSCALL(tgkill, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_tkill: {
         if (arg2 != 0) {
-            SIGLOG("%d is calling tkill with sig: %d for TID: %d", gettid(), arg2, arg1);
+            SIGLOG("%d is calling tkill with sig: %d for TID: %d", gettid(), (int)arg2, (int)arg1);
         }
         result = SYSCALL(tkill, arg1, arg2);
         break;
     }
     case felix86_riscv64_kill: {
         if (arg2 != 0) {
-            SIGLOG("%d is calling kill with sig: %d and PID: %d", gettid(), arg2, arg1);
+            SIGLOG("%d is calling kill with sig: %d and PID: %d", gettid(), (int)arg2, (int)arg1);
         }
         result = SYSCALL(kill, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
@@ -1000,7 +1000,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             break;
         }
         default: {
-            WARN("seccomp(%x)", arg1);
+            WARN("seccomp(%lx)", arg1);
             result = -EINVAL;
             break;
         }
@@ -1134,7 +1134,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             dump_states();
         }
         g_process_globals.shm_manager.removeThread(state->thread_stats);
-        LOG("Thread %ld exited with SYS_exit(%d)", gettid(), arg1);
+        LOG("Thread %d exited with SYS_exit(%d)", gettid(), (int)arg1);
         if (state->clear_tid_address) {
             __atomic_store_n(state->clear_tid_address, 0, __ATOMIC_SEQ_CST);
             syscall(SYS_futex, state->clear_tid_address, FUTEX_WAKE, ~0ULL, 0, 0, 0);
@@ -1341,7 +1341,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
                     result = 0;
                 }
             } else {
-                WARN("prctl(SECCOMP, %d) not implemented", arg2);
+                WARN("prctl(SECCOMP, %lu) not implemented", arg2);
                 result = -EINVAL;
             }
             break;
@@ -2231,7 +2231,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
     bool mode32 = state->ctx.Mode32();
     u64 syscall_number = state->GetGpr(X86_REF_RAX);
     if (!mode32) {
-        WARN("Executing 32-bit syscall %d on 64-bit process", syscall_number);
+        WARN("Executing 32-bit syscall %lu on 64-bit process", syscall_number);
     }
     state->should_restart_syscall = false;
     state->ctx.orig_rax = syscall_number;
@@ -2825,7 +2825,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                 udesc->seg_not_present = 1;
             }
 
-            LOG("Getting thread area %d which is %lx", index, udesc->base_addr);
+            LOG("Getting thread area %d which is %x", index, udesc->base_addr);
 
             result = 0;
             break;
@@ -2949,7 +2949,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                 break;
             }
             default: {
-                WARN("Unknown fcntl: %d", arg2);
+                WARN("Unknown fcntl: %lu", arg2);
                 result = ::fcntl(arg1, arg2, arg3);
                 break;
             }
@@ -3545,7 +3545,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                 break;
             }
             default: {
-                ERROR("Unimplemented socketcall command: %d", arg1);
+                ERROR("Unimplemented socketcall command: %lu", arg1);
                 result = -EINVAL;
                 break;
             }

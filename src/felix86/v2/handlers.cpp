@@ -9525,7 +9525,7 @@ FAST_HANDLE(MOVDQ2Q) {
 }
 
 static void bad_getbv(u64 xcr) {
-    ERROR("Bad XCR: %d", xcr);
+    ERROR("Bad XCR: %lu", xcr);
 }
 
 FAST_HANDLE(XGETBV) {
@@ -13370,7 +13370,7 @@ FAST_HANDLE(INT) {
     } else if (operands[0].imm.value.u == 3) {
         fast_INT3(rec, rip, as, instruction, operands);
     } else {
-        WARN("INT encountered with unknown immediate: %d", operands[0].imm.value.u);
+        WARN("INT encountered with unknown immediate: %lx", operands[0].imm.value.u);
         as.SD(x0, 0, x0);
         // This hint will tell the handle_synchronous signal handler to change si_code from SEGV_MAPERR to SI_KERNEL
         // which is the behavior on x86

@@ -39,11 +39,11 @@ constexpr static u64 code_cache_sizes_count = std::size(code_cache_sizes);
 constexpr static u64 max_code_cache_size = code_cache_sizes[code_cache_sizes_count - 1];
 
 static void incorrect_magic(void* sp) {
-    ERROR("Incorrect magic in frame (sp: %lx)", sp);
+    ERROR("Incorrect magic in frame (sp: %p)", sp);
 }
 
 static void incorrect_stack(void* sp_expected, void* sp_actual) {
-    ERROR("Incorrect stack in frame, expected %lx, but got %lx", sp_expected, sp_actual);
+    ERROR("Incorrect stack in frame, expected %p, but got %p", sp_expected, sp_actual);
 }
 
 struct OptimizationGuard {
@@ -101,7 +101,7 @@ static bool flag_passthrough(const ZydisDecodedInstruction& instruction) {
 }
 
 static void alignment_check_failed(void* rip) {
-    WARN("Unaligned atomic access at %lx", rip);
+    WARN("Unaligned atomic access at %p", rip);
 }
 
 Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
@@ -376,7 +376,7 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_
         // The link location should be an instruction after the AUIPC...
         u8* link_location = linked_block + sizeof(u32);
         u8* cursor = state->recompiler->as.GetCursorPointer();
-        ASSERT_MSG(linked_block >= state->recompiler->start_of_code_cache && linked_block < cursor, "%lx <= %lx < %lx",
+        ASSERT_MSG(linked_block >= state->recompiler->start_of_code_cache && linked_block < cursor, "%p <= %p < %p",
                    state->recompiler->start_of_code_cache, linked_block, cursor);
 
         // And here we need to mark the block for linking again. This will either link if the block is already compiled
@@ -412,7 +412,7 @@ void Recompiler::resizeOrClearCodeCache(ThreadState* state) {
             // TODO: investigate
             // Unsure what causes this to happen, but it does. In that case, clear code cache and carry on
             // Perhaps PR_MDWE_REFUSE_EXEC_GAIN
-            WARN("Couldn't increment code cache because mmap returned %lx (errno: %s), clearing code cache", address, strerror(errno));
+            WARN("Couldn't increment code cache because mmap returned %p (errno: %s), clearing code cache", address, strerror(errno));
             clearCodeCache(state);
 
             // Undo the size increment
