@@ -11248,7 +11248,7 @@ static void PCMPXSTRX(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstr
         rec.setVectorState(sew, lanes);
         as.VMV(v0, -1);
         as.VMSEQ(haystack_null, haystack, 0);
-        as.VMSBF(haystack_mask, haystack_null);
+        as.VMSBF(haystack_mask, haystack_null); // keep only elements before null
         as.VMSEQ(broadcast_needle, needle, 0);
         as.VFIRST(count, broadcast_needle);
         as.LI(lanes_temp, lanes);
@@ -11259,6 +11259,10 @@ static void PCMPXSTRX(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstr
         }
         as.BEQZ(count, &skip);
 
+        // Loop backwards, broadcast needle element, slide haystack, compare
+        // The elements are compared and masked by v0 on each iteration
+        // We do it backwards rather than forwards because mask operations treat
+        // tail elements as always agnostic which means they could be set to ones as VL shrinks.
         as.Bind(&loop);
         as.ADDI(count, count, -1);
         as.SUB(sub_count, lanes_temp, count);
