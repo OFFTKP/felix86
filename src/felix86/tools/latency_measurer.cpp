@@ -58,7 +58,7 @@ void compile_sequence(u64 rip) {
     for (auto instr : metadata.translation_sizes) {
         end += instr.riscv_instructions_size;
     }
-    u64 spans_end = end + 4;
+    u64 spans_end = end;
     u64 code_end = (u64)g_rec->getEndOfCodeCache();
     if (spans_end == code_end) {
         // Remove compiled UNDEF instructions off the end, if any
