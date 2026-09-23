@@ -11234,7 +11234,9 @@ static void PCMPXSTRX(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstr
         bool words = control & 1;
         SEW sew = words ? SEW::E16 : SEW::E8;
         int lanes = words ? 8 : 16;
-        biscuit::Label loop, skip;
+        // Around 25% faster to use MF2 on K3
+        LMUL grouping = Extensions::VLEN >= 256 ? LMUL::MF2 : LMUL::M1;
+        biscuit::Label loop, loop_done, skip, done;
         biscuit::Vec needle = rec.getVec(&operands[0]);
         biscuit::Vec haystack = rec.getVec(&operands[1]);
         biscuit::Vec haystack_mask = rec.scratchVec();
@@ -11245,7 +11247,7 @@ static void PCMPXSTRX(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstr
         biscuit::GPR count = rec.scratch();
         biscuit::GPR result = rec.scratch();
         biscuit::GPR sub_count = rec.scratch();
-        rec.setVectorState(sew, lanes);
+        rec.setVectorState(sew, lanes, grouping);
         as.VMV(v0, -1);
         as.VMSEQ(haystack_null, haystack, 0);
         as.VMSBF(haystack_mask, haystack_null); // keep only elements before null
@@ -11259,24 +11261,37 @@ static void PCMPXSTRX(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstr
         }
         as.BEQZ(count, &skip);
 
+        // Check for an early out, if nothing matches with the first element of the needle
+        as.VRGATHER(broadcast_needle, needle, 0);
+        as.VMSEQ(slide_haystack, broadcast_needle, haystack);
+        as.VMAND(haystack_mask, slide_haystack, haystack_mask);
+        as.VFIRST(result, haystack_mask);
+        as.BLTZ(result, &done);
+        as.VMAND(v0, haystack_mask, haystack_mask);
+
+        as.ADDI(count, count, -1);
+        as.BEQZ(count, &loop_done);
+
         // Loop backwards, broadcast needle element, slide haystack, compare
         // The elements are compared and masked by v0 on each iteration
         // We do it backwards rather than forwards because mask operations treat
         // tail elements as always agnostic which means they could be set to ones as VL shrinks.
         as.Bind(&loop);
-        as.ADDI(count, count, -1);
         as.SUB(sub_count, lanes_temp, count);
-        as.VSETVLI(x0, sub_count, words ? SEW::E16 : SEW::E8);
+        as.VSETVLI(x0, sub_count, sew, grouping);
         as.VSLIDEDOWN(slide_haystack, haystack, count);
         as.VRGATHER(broadcast_needle, needle, count);
         as.VMSEQ(v0, broadcast_needle, slide_haystack, VecMask::Yes);
+        as.ADDI(count, count, -1);
         as.BNEZ(count, &loop);
+        as.Bind(&loop_done);
 
         rec.resetVectorState();
-        rec.setVectorState(sew, lanes);
+        rec.setVectorState(sew, lanes, grouping);
         as.VMAND(v0, v0, haystack_mask);
         as.Bind(&skip); // In the case needle is empty, jump here and vfirst will set result to 0 as v0 is all ones
         as.VFIRST(result, v0);
+        as.Bind(&done);
         as.MINU(result, result, lanes_temp); // clamp if vfirst produced -1 to what x86 expects
         rec.v0Modified();
 
