@@ -93,6 +93,8 @@ struct BlockMetadata {
     u64 ret_stub{};
 };
 
+using InterruptibleSyscallFunc = u64 (*)(u64* effective_deferred_signals, u64 nr, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5, u64 arg6);
+
 // WARN: don't allocate this struct on the stack as it's quite big due to address_cache and can lead to stack overflow
 struct Recompiler {
     // Relocatable means only emit position independent code
@@ -858,10 +860,25 @@ struct Recompiler {
 
     void addressCacheLookup(biscuit::GPR guest_address, void on_hit(Assembler&, biscuit::GPR), bool use_ra = false);
 
+    i64 interruptibleSyscall(u64* signals, u64 nr, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5, u64 arg6) {
+        ASSERT(interruptible_syscall_func);
+        return interruptible_syscall_func(signals, nr, arg1, arg2, arg3, arg4, arg5, arg6);
+    }
+
+    bool isInInterruptibleSyscall(u64 pc) {
+        return pc >= (u64)interruptible_syscall_func && pc <= (u64)interruptible_syscall_func_ecall;
+    }
+
+    u64 getInterruptibleSyscallEintrAddress() {
+        return (u64)interruptible_syscall_func_eintr;
+    }
+
 private:
     void emitNecessaryStuff();
 
     void emitDispatcher();
+
+    void emitInterruptibleSyscallFunction();
 
     [[nodiscard]] u8* emitInvalidateCallerThunk();
 
@@ -965,6 +982,10 @@ private:
     bool relocatable = false;
 
     bool v0_has_mask = false;
+
+    InterruptibleSyscallFunc interruptible_syscall_func = nullptr;
+    void* interruptible_syscall_func_ecall = nullptr;
+    void* interruptible_syscall_func_eintr = nullptr;
 
     SingleStepMode single_step = SingleStepMode::None;
 

@@ -85,6 +85,16 @@ private:
 
 #define SYSCALL(name, ...) (syscall(x64_to_riscv(felix86_x86_64_##name), ##__VA_ARGS__))
 
+static i64 interruptible_syscall(ThreadState* state, u64 nr, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5, u64 arg6) {
+    i64 result = state->recompiler->interruptibleSyscall(&state->effective_deferred_signals, nr, arg1, arg2, arg3, arg4, arg5, arg6);
+    if (result == -1) {
+        errno = EPERM;
+    }
+    return result;
+}
+
+#define INTERRUPTIBLE_SYSCALL(name, ...) (interruptible_syscall(state, x64_to_riscv(felix86_x86_64_##name), ##__VA_ARGS__))
+
 // TODO: move me elsewhere
 static bool try_strace_ioctl(int rdi, u64 rsi, u64 rdx, u64 result) {
     if (!g_config.strace) {
@@ -271,7 +281,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_futex_waitv: {
-        result = SYSCALL(futex_waitv, arg1, arg2, arg3, arg4, arg5);
+        result = INTERRUPTIBLE_SYSCALL(futex_waitv, arg1, arg2, arg3, arg4, arg5, 0);
         break;
     }
     case felix86_riscv64_personality: {
@@ -1360,7 +1370,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_futex: {
-        result = SYSCALL(futex, arg1, arg2, arg3, arg4, arg5, arg6);
+        result = INTERRUPTIBLE_SYSCALL(futex, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_inotify_init1: {
@@ -3156,9 +3166,9 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                 cmd == FUTEX_WAIT || cmd == FUTEX_LOCK_PI || cmd == FUTEX_WAIT_BITSET || cmd == FUTEX_WAIT_REQUEUE_PI || cmd == FUTEX_LOCK_PI2;
             if (guest_spec && is_timespec) {
                 const timespec host_spec = *guest_spec;
-                result = SYSCALL(futex, arg1, arg2, arg3, &host_spec, arg5, arg6);
+                result = INTERRUPTIBLE_SYSCALL(futex, arg1, arg2, arg3, (u64)&host_spec, arg5, arg6);
             } else {
-                result = SYSCALL(futex, arg1, arg2, arg3, arg4, arg5, arg6);
+                result = INTERRUPTIBLE_SYSCALL(futex, arg1, arg2, arg3, arg4, arg5, arg6);
             }
             break;
         }
