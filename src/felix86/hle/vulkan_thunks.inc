@@ -414,6 +414,10 @@ EXT("libvulkan.so", vkGetMemoryHostPointerProperties, d_qdqq)
 KHR("libvulkan.so", vkCmdSetFragmentShadingRateKHR, v_qqq)
 KHR("libvulkan.so", vkGetPhysicalDeviceFragmentShadingRates, d_qqq)
 
+// VK_AMD_buffer_marker
+X("libvulkan.so", vkCmdWriteBufferMarkerAMD, v_qdqqd)
+X("libvulkan.so", vkCmdWriteBufferMarker2AMD, v_qqqqd)
+
 #undef KHR
 #undef EXT
 #undef KHR_EXT
