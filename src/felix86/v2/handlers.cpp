@@ -13054,8 +13054,8 @@ using x87_one_operand_t = void (*)(ThreadState*, extFloat80_t*, int);
 using x87_two_operand_t = void (*)(ThreadState*, extFloat80_t*, extFloat80_t*, int);
 
 template <class Func>
-inline static void x87_Operation(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, Func operation,
-                                 int offset) {
+inline static void x87_Operation(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands,
+                                 Func operation, int offset) {
     if (true) {
         // TODO: only writeback if we didn't already in the previous instr
         rec.writebackState();
@@ -13110,12 +13110,18 @@ inline static void x87_Operation(Recompiler& rec, Assembler& as, ZydisDecodedIns
         rec.restoreState();
     }
 
+    u64 ripreg_offset = rip + instruction.length - rec.getCurrentRipregValue();
+    if (ripreg_offset != 0) {
+        biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+        rec.setCurrentRipregValue(rec.getCurrentRipregValue() + ripreg_offset);
+        rec.addi(ripreg, ripreg, ripreg_offset);
+    }
     rec.insertSafepoint();
 }
 
 #define X87_HANDLE(name)                                                                                                                             \
     FAST_HANDLE(name##_80) {                                                                                                                         \
-        x87_Operation(rec, as, instruction, operands, felix86_x87_##name, offsetof(ThreadState, felix86_x87_##name));                                \
+        x87_Operation(rec, rip, as, instruction, operands, felix86_x87_##name, offsetof(ThreadState, felix86_x87_##name));                           \
     }
 
 FAST_HANDLE(FNSTCW_80) {
