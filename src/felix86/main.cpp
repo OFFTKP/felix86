@@ -634,11 +634,20 @@ int main(int argc, char* argv[]) {
     // TODO: These "hacky" environment variables are bandaid solutions to problems that we need to eventually fix
     // They are enabled by default
     if (g_config.hacky_envs) {
+        auto add_env_if_missing = [](const std::string& key, const std::string& value) {
+            std::string prefix = key + "=";
+            for (const auto& env : g_params.envp) {
+                if (env.rfind(prefix, 0) == 0) {
+                    return;
+                }
+            }
+            g_params.envp.push_back(prefix + value);
+        };
         // DOTNET tries to allocate too much heap memory, and many RISC-V boards currently come with 39-bit address space
         // To counteract this by default, we'll limit the heap memory dotnet allocates
-        g_params.envp.push_back("DOTNET_GCHeapHardLimit=1C0000000");
+        add_env_if_missing("DOTNET_GCHeapHardLimit", "1C0000000");
         // Some DOTNET games will use W^X mappings which will break our current SMC detection, disable it for now
-        g_params.envp.push_back("DOTNET_EnableWriteXorExecute=0");
+        add_env_if_missing("DOTNET_EnableWriteXorExecute", "0");
     }
 
     auto it = g_params.envp.begin();
