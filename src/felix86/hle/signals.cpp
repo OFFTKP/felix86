@@ -1255,6 +1255,15 @@ static void defer_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx
         get_regs(ctx)[biscuit::a0.Index()] == (u64)-EINTR) {
         state->should_restart_syscall = true;
     }
+
+    bool signal_masked = state->signal_mask.__val[0] & (1ull << index);
+    if (!signal_masked && state->recompiler->isInInterruptibleSyscall(pc)) {
+        set_pc(ctx, (u64)state->recompiler->getInterruptibleSyscallEintrAddress());
+        if (state->in_restartable_syscall && (signal->flags & SA_RESTART)) {
+            state->should_restart_syscall = true;
+        }
+    }
+
     state->deferred_signals |= 1ull << index;
     if (index <= 30) {
         state->deferred_standard_info[index] = *info;

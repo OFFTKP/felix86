@@ -196,6 +196,7 @@ void Recompiler::emitNecessaryStuff() {
 
     u64 start = (u64)as.GetCursorPointer();
     u8* replace_me = emitInvalidateCallerThunk();
+    emitInterruptibleSyscallFunction();
     emitDispatcher();
     u8* ptr = as.GetCursorPointer();
     as.SetCursorPointer(replace_me);
@@ -205,6 +206,36 @@ void Recompiler::emitNecessaryStuff() {
     start_of_code_cache = as.GetCursorPointer();
 
     flush_icache((u64)start, (u64)start_of_code_cache);
+}
+
+void Recompiler::emitInterruptibleSyscallFunction() {
+    while ((u64)as.GetCursorPointer() & 0xF) {
+        as.C_NOP();
+    }
+
+    // This function is used to have a straight line sequence of code that first checks if any signals are deferred, then
+    // loads the arguments and calls ECALL. Even if a signal happens *after* the check and before the ECALL,
+    // it is able to verify it is between these two points and jump to the -EINTR return from the signal handler.
+    interruptible_syscall_func = (decltype(interruptible_syscall_func))as.GetCursorPointer();
+    biscuit::Label eintr;
+    as.LD(t0, 0, a0);
+    as.MV(t1, a1);
+    as.MV(a0, a2);
+    as.MV(a1, a3);
+    as.MV(a2, a4);
+    as.MV(a3, a5);
+    as.MV(a4, a6);
+    as.MV(a5, a7);
+    as.MV(a7, t1);
+    as.BNEZ(t0, &eintr);
+    interruptible_syscall_func_ecall = as.GetCursorPointer();
+    as.ECALL();
+    as.RET();
+    as.Bind(&eintr);
+
+    interruptible_syscall_func_eintr = as.GetCursorPointer();
+    as.LI(a0, -EINTR);
+    as.RET();
 }
 
 void Recompiler::emitDispatcher() {
