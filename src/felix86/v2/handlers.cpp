@@ -11228,29 +11228,119 @@ FAST_HANDLE(SHRD) {
 }
 
 static void PCMPXSTRX(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, pcmpxstrx type) {
-    rec.writebackState();
-    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-        as.ADDI(a3, rec.threadStatePointer(), offsetof(ThreadState, ctx.xmm) + (sizeof(XmmReg) * (operands[1].reg.value - ZYDIS_REGISTER_XMM0)));
+    u8 control = operands[2].imm.value.u;
+    if (type == pcmpxstrx::ImplicitIndex && (control & 0x7c) == 0x0c) {
+        // Equal ordered, used in MSVC strstr, seen in Monster Hunter World
+        bool words = control & 1;
+        SEW sew = words ? SEW::E16 : SEW::E8;
+        int lanes = words ? 8 : 16;
+        // Around 25% faster to use MF2 on K3
+        LMUL grouping = Extensions::VLEN >= 256 ? LMUL::MF2 : LMUL::M1;
+        biscuit::Label loop, loop_done, skip, done;
+        biscuit::Vec needle = rec.getVec(&operands[0]);
+        biscuit::Vec haystack = rec.getVec(&operands[1]);
+        biscuit::Vec haystack_mask = rec.scratchVec();
+        biscuit::Vec slide_haystack = rec.scratchVec();
+        biscuit::Vec broadcast_needle = rec.scratchVec();
+        biscuit::Vec haystack_null = rec.scratchVec();
+        biscuit::GPR lanes_temp = rec.scratch();
+        biscuit::GPR count = rec.scratch();
+        biscuit::GPR result = rec.scratch();
+        biscuit::GPR sub_count = rec.scratch();
+        rec.setVectorState(sew, lanes, grouping);
+        as.VMV(v0, -1);
+        as.VMSEQ(haystack_null, haystack, 0);
+        as.VMSBF(haystack_mask, haystack_null); // keep only elements before null
+        as.VMSEQ(broadcast_needle, needle, 0);
+        as.VFIRST(count, broadcast_needle);
+        as.LI(lanes_temp, lanes);
+        as.MINU(count, count, lanes_temp); // clamp if vfirst produced -1
+        if (rec.shouldEmitFlag(rip, X86_REF_SF)) {
+            biscuit::GPR sf = rec.flag(X86_REF_SF);
+            as.SLTU(sf, count, lanes_temp);
+        }
+        as.BEQZ(count, &skip);
+
+        // Check for an early out, if nothing matches with the first element of the needle
+        as.VRGATHER(broadcast_needle, needle, 0);
+        as.VMSEQ(slide_haystack, broadcast_needle, haystack);
+        as.VMAND(haystack_mask, slide_haystack, haystack_mask);
+        as.VFIRST(result, haystack_mask);
+        as.BLTZ(result, &done);
+        as.VMAND(v0, haystack_mask, haystack_mask);
+
+        as.ADDI(count, count, -1);
+        as.BEQZ(count, &loop_done);
+
+        // Loop backwards, broadcast needle element, slide haystack, compare
+        // The elements are compared and masked by v0 on each iteration
+        // We do it backwards rather than forwards because mask operations treat
+        // tail elements as always agnostic which means they could be set to ones as VL shrinks.
+        as.Bind(&loop);
+        as.SUB(sub_count, lanes_temp, count);
+        as.VSETVLI(x0, sub_count, sew, grouping);
+        as.VSLIDEDOWN(slide_haystack, haystack, count);
+        as.VRGATHER(broadcast_needle, needle, count);
+        as.VMSEQ(v0, broadcast_needle, slide_haystack, VecMask::Yes);
+        as.ADDI(count, count, -1);
+        as.BNEZ(count, &loop);
+        as.Bind(&loop_done);
+
+        rec.resetVectorState();
+        rec.setVectorState(sew, lanes, grouping);
+        as.VMAND(v0, v0, haystack_mask);
+        as.Bind(&skip); // In the case needle is empty, jump here and vfirst will set result to 0 as v0 is all ones
+        as.VFIRST(result, v0);
+        as.Bind(&done);
+        as.MINU(result, result, lanes_temp); // clamp if vfirst produced -1 to what x86 expects
+        rec.v0Modified();
+
+        if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
+            biscuit::GPR cf = rec.flag(X86_REF_CF);
+            as.SLTU(cf, result, lanes_temp); // if result == lanes_temp then vfirst dealt with zero
+        }
+        if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
+            biscuit::GPR of = rec.flag(X86_REF_OF);
+            as.SEQZ(of, result);
+        }
+        if (rec.shouldEmitFlag(rip, X86_REF_ZF)) {
+            biscuit::GPR zf = rec.flag(X86_REF_ZF);
+            as.VPOPC(zf, haystack_null);
+            as.SNEZ(zf, zf);
+        }
+        if (rec.shouldEmitFlag(rip, X86_REF_AF)) {
+            rec.clearFlag(X86_REF_AF);
+        }
+        if (rec.shouldEmitFlag(rip, X86_REF_PF)) {
+            rec.clearFlag(X86_REF_PF);
+        }
+
+        rec.setGPR(X86_REF_RCX, X86_SIZE_QWORD, result);
     } else {
-        biscuit::GPR scratch = rec.lea(&operands[1]);
-        ASSERT(scratch != a0 && scratch != a1 && scratch != a2);
-        as.MV(a3, scratch);
+        rec.writebackState();
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+            as.ADDI(a3, rec.threadStatePointer(), offsetof(ThreadState, ctx.xmm) + (sizeof(XmmReg) * (operands[1].reg.value - ZYDIS_REGISTER_XMM0)));
+        } else {
+            biscuit::GPR scratch = rec.lea(&operands[1]);
+            ASSERT(scratch != a0 && scratch != a1 && scratch != a2);
+            as.MV(a3, scratch);
+        }
+        as.MV(a0, rec.threadStatePointer());
+        as.LI(a1, (int)type);
+        ASSERT(operands[0].reg.value >= ZYDIS_REGISTER_XMM0 && operands[0].reg.value <= ZYDIS_REGISTER_XMM15);
+        as.ADDI(a2, rec.threadStatePointer(), offsetof(ThreadState, ctx.xmm) + (sizeof(XmmReg) * (operands[0].reg.value - ZYDIS_REGISTER_XMM0)));
+        as.LI(a4, control);
+        as.LI(a5, instruction.operand_width == 64);
+
+        rec.callPointer(offsetof(ThreadState, felix86_pcmpxstrx));
+
+        if (((u8)type & 1) && instruction.encoding == ZYDIS_INSTRUCTION_ENCODING_VEX) {
+            as.SD(x0, offsetof(ThreadState, ctx.xmm) + 16, rec.threadStatePointer());
+            as.SD(x0, offsetof(ThreadState, ctx.xmm) + 24, rec.threadStatePointer());
+        }
+
+        rec.restoreState();
     }
-    as.MV(a0, rec.threadStatePointer());
-    as.LI(a1, (int)type);
-    ASSERT(operands[0].reg.value >= ZYDIS_REGISTER_XMM0 && operands[0].reg.value <= ZYDIS_REGISTER_XMM15);
-    as.ADDI(a2, rec.threadStatePointer(), offsetof(ThreadState, ctx.xmm) + (sizeof(XmmReg) * (operands[0].reg.value - ZYDIS_REGISTER_XMM0)));
-    as.LI(a4, operands[2].imm.value.u);
-    as.LI(a5, instruction.operand_width == 64);
-
-    rec.callPointer(offsetof(ThreadState, felix86_pcmpxstrx));
-
-    if (((u8)type & 1) && instruction.encoding == ZYDIS_INSTRUCTION_ENCODING_VEX) {
-        as.SD(x0, offsetof(ThreadState, ctx.xmm) + 16, rec.threadStatePointer());
-        as.SD(x0, offsetof(ThreadState, ctx.xmm) + 24, rec.threadStatePointer());
-    }
-
-    rec.restoreState();
 }
 
 FAST_HANDLE(PCMPISTRI) {
