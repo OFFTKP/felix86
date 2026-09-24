@@ -838,7 +838,7 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
 
     resetScratch();
 
-    if (g_config.always_tso && !g_is_single_thread && !Extensions::TSO) {
+    if (g_config.optimization_pass && g_config.always_tso && !g_is_single_thread && !Extensions::TSO) {
         Optimizer::native_pass((u8*)block_meta.host_address, (u64)as.GetCursorPointer() - block_meta.host_address);
     }
 
@@ -2243,6 +2243,7 @@ void Recompiler::scanAhead(u64 rip) {
     u64 initial_rip = rip;
     u64 lowest_rip_write = UINT64_MAX;
     instructions.clear();
+    ZydisBookkeeping zydis_state{};
     std::vector<FlagAccessData::ScanAccess> scan_entries;
     while (true) {
         instructions.push_back({});
@@ -2273,6 +2274,10 @@ void Recompiler::scanAhead(u64 rip) {
             current_block_big = true;
             instructions.pop_back();
             break;
+        }
+
+        if (g_config.optimization_pass) {
+            Optimizer::zydis_instruction_pass(zydis_state, instruction, operands);
         }
 
         for (int i = 0; i < std::min((int)instruction.operand_count, 2); i++) {
