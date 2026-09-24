@@ -29,6 +29,14 @@ struct SHMManager {
     // Called from exit_group, termination signal, or when all threads have exited
     void unlink();
 
+    void lock_before_fork() {
+        lock.lock_before_fork();
+    }
+
+    void unlock_after_fork() {
+        lock.unlock_after_fork();
+    }
+
 private:
     std::atomic_uint64_t thread_count = {0};
     std::string name{};

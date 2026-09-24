@@ -26,6 +26,9 @@ struct Semaphore {
         return SemaphoreGuard(&inner);
     }
 
+    void lock_before_fork();
+    void unlock_after_fork();
+
 private:
     sem_t inner;
 };

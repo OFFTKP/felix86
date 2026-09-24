@@ -1646,6 +1646,71 @@ CATCH_TEST_CASE("MergeLeadingFileMappingKeepsOffset", "[mmap]") {
     SUCCESS_MESSAGE();
 }
 
+static u64 fileOffsetAt(Mapper& mapper, u64 address) {
+    for (const auto& region : mapper.get_guest_regions()) {
+        if (region.start <= address && address < region.end) {
+            return region.offset + (address - region.start);
+        }
+    }
+    CATCH_FAIL("No guest region contains the address");
+    return 0;
+}
+
+CATCH_TEST_CASE("MprotectMiddleOfFileMappingKeepsOffset", "[mmap]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = false;
+
+    char path[] = "/tmp/felix86_mmap_testXXXXXX";
+    int fd = mkstemp(path);
+    CATCH_REQUIRE(fd != -1);
+    CATCH_REQUIRE(ftruncate(fd, 0x10000) == 0);
+    unlink(path);
+
+    int flags = MAP_PRIVATE | MAP_FIXED;
+    CATCH_REQUIRE(mapper.map(g_mode32, (void*)0x30000, 0x3000, PROT_READ, flags, fd, 0) == (void*)0x30000);
+    unmap_me.push_back({0x30000, 0x3000});
+
+    CATCH_REQUIRE(mapper.protect((void*)0x31000, 0x1000, PROT_NONE) == 0);
+
+    CATCH_REQUIRE(fileOffsetAt(mapper, 0x30000) == 0);
+    CATCH_REQUIRE(fileOffsetAt(mapper, 0x31000) == 0x1000);
+    CATCH_REQUIRE(fileOffsetAt(mapper, 0x32000) == 0x2000);
+
+    close(fd);
+    MUNMAP_ALL();
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("MremapAcrossTrackedSplitKeepsFileOffset", "[mmap]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = false;
+
+    char path[] = "/tmp/felix86_mmap_testXXXXXX";
+    int fd = mkstemp(path);
+    CATCH_REQUIRE(fd != -1);
+    CATCH_REQUIRE(ftruncate(fd, 0x10000) == 0);
+    unlink(path);
+
+    int flags = MAP_PRIVATE | MAP_FIXED;
+    CATCH_REQUIRE(mapper.map(g_mode32, (void*)0x30000, 0x3000, PROT_READ, flags, fd, 0) == (void*)0x30000);
+    unmap_me.push_back({0x30000, 0x3000});
+
+    CATCH_REQUIRE(mapper.protect((void*)0x31000, 0x1000, PROT_NONE) == 0);
+    CATCH_REQUIRE(mapper.protect((void*)0x31000, 0x1000, PROT_READ) == 0);
+
+    MREMAP_AT(0x30000, 0x2000, 0x50000, 0x2000, MREMAP_FIXED | MREMAP_MAYMOVE);
+
+    CATCH_REQUIRE(fileOffsetAt(mapper, 0x50000) == 0);
+    CATCH_REQUIRE(fileOffsetAt(mapper, 0x51000) == 0x1000);
+    CATCH_REQUIRE(fileOffsetAt(mapper, 0x32000) == 0x2000);
+
+    close(fd);
+    MUNMAP_ALL();
+    SUCCESS_MESSAGE();
+}
+
 CATCH_TEST_CASE("MProtect1", "[mmap]") {
     std::vector<std::pair<u32, u32>> unmap_me;
     Mapper mapper;

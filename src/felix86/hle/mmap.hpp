@@ -63,6 +63,18 @@ struct Mapper {
         freelist.reinitialize_lock();
     }
 
+    void before_fork() {
+        freelist.before_fork();
+    }
+
+    void after_fork_parent() {
+        freelist.after_fork_parent();
+    }
+
+    void after_fork_child() {
+        freelist.after_fork_child();
+    }
+
 private:
     Freelist freelist;
     std::unordered_map<u64, int> page_to_shmid{};
