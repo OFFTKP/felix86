@@ -2386,7 +2386,7 @@ void Recompiler::scanAhead(u64 rip) {
                                 operands_ahead = instructions[i].second;
                                 mnemonic = instruction_ahead.mnemonic;
                             } else {
-                                mnemonic = decode(rip_ahead, instruction_ahead, operands_ahead, true);
+                                mnemonic = decode(rip_ahead, instruction_ahead, nullptr, true);
                                 if (mnemonic == ZYDIS_MNEMONIC_INVALID) {
                                     // If this path is hit the instructions will be invalid
                                     // One may assume this means that we can assume flags won't be used in this path
@@ -2434,7 +2434,12 @@ void Recompiler::scanAhead(u64 rip) {
 
                             if (is_jump || is_illegal || is_hlt || is_int3) {
                                 // Check if we can follow the jump trivially
-                                if (is_jump && mnemonic == ZYDIS_MNEMONIC_JMP && operands_ahead[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+                                if (mnemonic == ZYDIS_MNEMONIC_JMP && !jump_to_self) {
+                                    operands_ahead = operands_ahead_storage;
+                                    decode(rip_ahead, instruction_ahead, operands_ahead);
+                                }
+
+                                if (mnemonic == ZYDIS_MNEMONIC_JMP && operands_ahead[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
                                     u64 displacement = sextImmediate(getImmediate(&operands_ahead[0]), operands_ahead[0].imm.size);
                                     rip_ahead += instruction_ahead.length + displacement;
                                     jump_to_self = false; // stop using our cached instructions

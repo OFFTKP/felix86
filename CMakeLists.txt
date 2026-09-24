@@ -41,13 +41,13 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
             " https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115789")
 
         # Don't use vector extension to avoid this bug
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=rv64gc_zicsr_zifencei -mno-relax")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gc_zicsr_zifencei -mno-relax")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=rv64gc_zba_zbb_zbs_zicsr_zifencei -mno-relax")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gc_zba_zbb_zbs_zicsr_zifencei -mno-relax")
     else()
         # Since felix86 needs RVV, specify the ISA here to get some free wins in the C++ side
         # Also use --no-relax so that the `gp` register is free to do as we please
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=rv64gcv_zicsr_zifencei -mno-relax")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gcv_zicsr_zifencei -mno-relax")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=rv64gcv_zba_zbb_zbs_zicsr_zifencei -mno-relax")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gcv_zba_zbb_zbs_zicsr_zifencei -mno-relax")
     endif()
 
     # Just an extra layer of making sure the compiler doesn't decide to use GP as an allocatable reg
@@ -115,6 +115,9 @@ set(BUILD_TESTING OFF)
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fno-rtti> $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>)
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-include${CMAKE_SOURCE_DIR}/src/felix86/common/assert_override.hpp>)
 add_subdirectory(external/biscuit)
+set(ZYDIS_FEATURE_ENCODER OFF CACHE BOOL "" FORCE)
+set(ZYDIS_FEATURE_AVX512 OFF CACHE BOOL "" FORCE)
+set(ZYDIS_FEATURE_KNC OFF CACHE BOOL "" FORCE)
 add_subdirectory(external/zydis)
 add_subdirectory(external/fmt)
 add_subdirectory(external/berkeley-softfloat-3)
