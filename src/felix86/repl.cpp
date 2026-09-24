@@ -135,9 +135,8 @@ static void compile(const std::string& input) {
         end += instr.riscv_instructions_size;
     }
 
-    u64 spans_end = end + 4;
     u64 code_end = (u64)rec->getEndOfCodeCache();
-    if (spans_end == code_end) {
+    if (end == code_end) {
         // Remove compiled UNDEF instructions off the end, if any
         u16* fin = (u16*)(end - 2);
         while (*fin == 0) {
@@ -157,6 +156,9 @@ static void compile(const std::string& input) {
     u64 address = start;
     for (int i = 0; i < end - start;) {
         u64 riscv_size = metadata.translation_sizes[span_index].riscv_instructions_size;
+        if (span_index == 0) {
+            riscv_size -= 4;
+        }
         for (int j = 0; j < riscv_size; j += 4) {
             u32 data = 0;
             memcpy(&data, (void*)(address + j), 4);
