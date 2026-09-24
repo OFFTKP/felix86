@@ -354,13 +354,18 @@ static long ForkMe(CloneArgs& host_clone_args) {
     // By setting ThreadState to null temporarily the tracer will know to skip the SIGSTOP the child starts with which will be re-raised
     // with raise_stop later after everything is initialized
     state->ptrace_data.stop_info.in_clone = true;
+    // We don't need to block signals here, as nothing in signal handlers will lock (won't run malloc or lock these)
+    // when we aren't in JIT code
+    g_process_globals.before_fork();
     je_jemalloc_prefork();
     long ret = syscall(SYS_clone, host_clone_args.guest_flags, nullptr, host_clone_args.parent_tid, host_clone_args.child_tid,
                        nullptr); // args are flipped in syscall
     if (ret == 0) {
         je_jemalloc_postfork_child();
+        g_process_globals.after_fork_child();
     } else {
         je_jemalloc_postfork_parent();
+        g_process_globals.after_fork_parent();
     }
     state->ptrace_data.stop_info.in_clone = false;
     ASSERT(ret >= 0);
@@ -443,7 +448,15 @@ static long VForkMe(CloneArgs& args) {
 
     // Similar to fork handler, we need to signal to the tracer that the child SIGSTOP is to be skipped
     state->ptrace_data.stop_info.in_clone = true;
-    long result = fork();
+    // We don't need to block signals here, as nothing in signal handlers will lock (won't run malloc or lock these)
+    // when we aren't in JIT code
+    g_process_globals.before_fork();
+    long result = fork(); // calls jemalloc prefork/postfork itself
+    if (result == 0) {
+        g_process_globals.after_fork_child();
+    } else {
+        g_process_globals.after_fork_parent();
+    }
     state->ptrace_data.stop_info.in_clone = false;
     ASSERT(result >= 0);
 
@@ -555,8 +568,7 @@ static long VForkMe(CloneArgs& args) {
 
 long Threads::Clone(ThreadState* current_state, CloneArgs* args) {
     std::string sflags = flags_to_string(args->guest_flags);
-    STRACE("clone({%s}, stack: %lx, parid: %p, ctid: %p, tls: %lx)", sflags.c_str(), args->new_rsp, args->parent_tid, args->child_tid,
-           args->new_tls);
+    STRACE("clone({%s}, stack: %lx, parid: %p, ctid: %p, tls: %lx)", sflags.c_str(), args->new_rsp, args->parent_tid, args->child_tid, args->new_tls);
 
     bool clone_fs = args->guest_flags & CLONE_FS;
     bool clone_vm = args->guest_flags & CLONE_VM;

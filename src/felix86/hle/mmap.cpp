@@ -503,15 +503,13 @@ void Mapper::move_tracked_region(u64 old_address, u64 old_len, u64 new_address, 
         if (old_address >= r.start && old_end <= r.end) {
             n.start = new_address;
             n.end = can_grow ? new_address + new_len : new_address + old_len;
-            if (can_grow)
-                n.offset += old_address - r.start;
+            n.offset += old_address - r.start;
             to_add.push_back(n);
             it++;
             continue;
         }
 
-        if (can_grow)
-            n.offset += (old_address - r.offset);
+        n.offset += std::max(r.start, old_address) - r.start;
         n.start = new_address + std::min((std::max(r.start, old_address) - old_address), new_len);
         n.end = new_address + (is_increase && can_grow ? new_len : std::min((std::min(r.end, old_end) - old_address), new_len));
         to_add.push_back(n);

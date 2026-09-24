@@ -59,6 +59,10 @@ struct ProcessGlobals {
     char* vfork_rootfs = nullptr;
 
     SHMManager shm_manager;
+
+    void before_fork();
+    void after_fork_child();
+    void after_fork_parent();
 };
 
 struct Mapper;

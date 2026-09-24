@@ -33,6 +33,18 @@ struct Freelist {
         sem = {};
     }
 
+    void before_fork() {
+        sem.lock_before_fork();
+    }
+
+    void after_fork_parent() {
+        sem.unlock_after_fork();
+    }
+
+    void after_fork_child() {
+        sem.unlock_after_fork();
+    }
+
 private:
     struct Node {
         u32 start;
