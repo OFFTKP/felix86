@@ -3,6 +3,7 @@
 #include <cassert>
 #include <pthread.h>
 #include <semaphore.h>
+#include "felix86/common/decent_rwlock.hpp"
 
 struct SemaphoreGuard {
     explicit SemaphoreGuard(sem_t* sem);
@@ -35,7 +36,7 @@ private:
 };
 
 struct RWLockReadGuard {
-    explicit RWLockReadGuard(pthread_rwlock_t* lock);
+    explicit RWLockReadGuard(decent_rwlock_t* lock);
     ~RWLockReadGuard();
 
     RWLockReadGuard(const RWLockReadGuard&) = delete;
@@ -44,11 +45,11 @@ struct RWLockReadGuard {
     RWLockReadGuard& operator=(RWLockReadGuard&&) = delete;
 
 private:
-    pthread_rwlock_t* lock;
+    decent_rwlock_t* lock;
 };
 
 struct RWLockWriteGuard {
-    explicit RWLockWriteGuard(pthread_rwlock_t* lock);
+    explicit RWLockWriteGuard(decent_rwlock_t* lock);
     ~RWLockWriteGuard();
 
     RWLockWriteGuard(const RWLockWriteGuard&) = delete;
@@ -57,7 +58,7 @@ struct RWLockWriteGuard {
     RWLockWriteGuard& operator=(RWLockWriteGuard&&) = delete;
 
 private:
-    pthread_rwlock_t* lock;
+    decent_rwlock_t* lock;
 };
 
 struct RWLock {
@@ -70,18 +71,17 @@ struct RWLock {
     }
 
     void before_fork() {
-        pthread_rwlock_rdlock(&inner);
+        inner.read_lock();
     }
 
     void after_fork_parent() {
-        pthread_rwlock_unlock(&inner);
+        inner.read_unlock();
     }
 
     void after_fork_child() {
-        inner = PTHREAD_RWLOCK_INITIALIZER;
+        inner = {};
     }
 
 private:
-    // We don't need pshared, this lock is only shared across CLONE_VM processes
-    pthread_rwlock_t inner = PTHREAD_RWLOCK_INITIALIZER;
+    decent_rwlock_t inner{};
 };
