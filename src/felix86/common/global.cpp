@@ -51,6 +51,7 @@ std::vector<FakeMountNode> g_fake_mounts{};
 bool g_testing = false;
 bool g_emit_stats = false;
 bool g_is_single_thread = true;
+int g_gnu_stack = 0;
 
 // g_output_fd should be replaced upon connecting to the server, however if an error occurs before then we should at least log it
 int g_output_fd = STDERR_FILENO;

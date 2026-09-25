@@ -248,8 +248,15 @@ int Mapper::protect(void* addr, u64 size, int prot) {
     auto guard = rwlock.lock_write();
     int res = ::mprotect(addr, size, prot);
     if (res != -1) {
-        move_tracked_region((u64)addr, size, (u64)addr, size, true, prot & (PROT_READ | PROT_WRITE | PROT_EXEC | PROT_GROWSDOWN | PROT_GROWSUP),
-                            false);
+        u64 start = (u64)addr;
+        if (prot & PROT_GROWSDOWN) {
+            auto it = first_region_ending_after(start);
+            if (it != allocated_regions.end() && it->start <= start) {
+                size += start - it->start;
+                start = it->start;
+            }
+        }
+        move_tracked_region((u64)start, size, (u64)start, size, true, prot & (PROT_READ | PROT_WRITE | PROT_EXEC), false);
     }
 
     return res;
@@ -649,7 +656,7 @@ std::vector<GuestRegion> Mapper::get_guest_regions() {
     return regions;
 }
 
-int Mapper::get_region_protections(void* address) {
+std::optional<int> Mapper::get_region_protections(void* address) {
     auto guard = rwlock.lock_read();
 
     u64 a = (u64)address;
@@ -658,5 +665,5 @@ int Mapper::get_region_protections(void* address) {
         return it->prot;
     }
 
-    return -1; // not mapped
+    return std::nullopt; // not mapped
 }

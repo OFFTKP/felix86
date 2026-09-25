@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <unordered_map>
 #include <vector>
 #include <sys/types.h>
@@ -58,7 +59,7 @@ struct Mapper {
     /// Return the tracked allocated regions.
     std::vector<GuestRegion> get_guest_regions();
 
-    int get_region_protections(void* address);
+    std::optional<int> get_region_protections(void* address);
 
     void before_fork() {
         rwlock.before_fork();

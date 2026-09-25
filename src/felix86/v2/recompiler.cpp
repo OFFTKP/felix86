@@ -1,7 +1,9 @@
 #include <algorithm>
 #include <cstdint>
+#include <linux/fs.h>
 #include <sys/file.h>
 #include <sys/mman.h>
+#include <sys/personality.h>
 #include <unistd.h>
 #include "Zycore/Status.h"
 #include "Zydis/Disassembler.h"
@@ -204,8 +206,35 @@ void Recompiler::emitNecessaryStuff() {
     as.SetCursorPointer(ptr);
 
     start_of_code_cache = as.GetCursorPointer();
+    emitBadAddressThunks(); // after start_of_code_cache so is_in_jit_code triggers
 
     flush_icache((u64)start, (u64)start_of_code_cache);
+}
+
+void Recompiler::emitBadAddressThunks() {
+    while ((u64)as.GetCursorPointer() & 0xF) {
+        as.C_NOP();
+    }
+
+    // The signal handler will find the RIP via the allocated ripreg as it tried
+    // to compile a block there
+    not_mapped_thunk = (u64)as.GetCursorPointer();
+    as.SD(x0, 0, x0);
+    as.SLTIU(x0, x0, FELIX86_HINT_NOT_MAPPED);
+    as.C_UNDEF();
+    as.C_UNDEF();
+
+    not_read_thunk = (u64)as.GetCursorPointer();
+    as.SD(x0, 0, x0);
+    as.SLTIU(x0, x0, FELIX86_HINT_NOT_READ);
+    as.C_UNDEF();
+    as.C_UNDEF();
+
+    not_exec_thunk = (u64)as.GetCursorPointer();
+    as.SD(x0, 0, x0);
+    as.SLTIU(x0, x0, FELIX86_HINT_NOT_EXEC);
+    as.C_UNDEF();
+    as.C_UNDEF();
 }
 
 void Recompiler::emitInterruptibleSyscallFunction() {
@@ -473,6 +502,47 @@ void Recompiler::clearCodeCache(ThreadState* state) {
 
 u64 Recompiler::compile(ThreadState* state, u64 rip) {
     FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedJITCount, 1);
+    if (g_config.guest_memory_tracking_enabled) {
+        // If memory region isn't mapped or doesn't have the correct protections
+        // return a thunk that is in JIT code that will fault and get handled as
+        // a guest signal. This way we don't have to jump from here to JIT code
+        // and no block gets registered either.
+        // TODO: Currently this only checks the landing page and not further pages that the block
+        // might extend to, which is a known inaccuracy
+        const std::optional<int> prot = g_mapper->get_region_protections((void*)rip);
+        const bool mapped = prot.has_value();
+        const bool readable = mapped && *prot & PROT_READ;
+        const bool executable = mapped && ((*prot & PROT_EXEC) || ((state->persona & READ_IMPLIES_EXEC) && readable));
+        if (mapped) {
+            if (executable) {
+                // Continue compiling...
+            } else {
+                return (*prot & (PROT_READ | PROT_WRITE)) ? not_exec_thunk : not_read_thunk;
+            }
+        } else {
+            int maps_fd = open("/proc/self/maps", O_RDONLY | O_CLOEXEC);
+            procmap_query q{};
+            q.size = sizeof(q);
+            q.query_addr = rip;
+            q.query_flags = 0;
+            bool unmapped = false;
+            if (maps_fd >= 0) {
+                if (ioctl(maps_fd, PROCMAP_QUERY, &q) == 0) {
+                    unmapped = !(q.vma_flags & PROCMAP_QUERY_VMA_READABLE);
+                } else if (errno == ENOENT) {
+                    unmapped = true;
+                }
+                close(maps_fd);
+            }
+
+            if (!unmapped) {
+                // Continue compiling, may be one of our thunk trampolines
+            } else {
+                return not_mapped_thunk;
+            }
+        }
+    }
+
     u64 size = code_cache_sizes[code_cache_size_index];
     size_t remaining_size = size - as.GetCodeBuffer().GetCursorOffset();
     // TODO: restrict max x86 instruction count per block
@@ -599,22 +669,6 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
     const u64 start_rip = rip;
     const bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
     compiling = true;
-    u8* bytes = (u8*)rip;
-    bool all_zeroes = true;
-    if (bytes[0] == 0x00) {
-        for (int i = 0; i < 16; i++) {
-            if (bytes[i + 1] != 0x00) {
-                all_zeroes = false;
-                break;
-            }
-        }
-    } else {
-        all_zeroes = false;
-    }
-
-    if (all_zeroes) {
-        VERBOSE("Jumped to address %lx which has a sequence of zeroes -- probably a bad jump?", rip);
-    }
 
     // When invalidating from other threads we need to do it in a single atomic instruction, thus block starts
     // need to be aligned to 4 bytes

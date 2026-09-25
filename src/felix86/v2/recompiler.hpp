@@ -22,6 +22,9 @@
 #define FELIX86_HINT_INT1 0xf1
 #define FELIX86_HINT_UD2 0xd2
 #define FELIX86_HINT_TF 0x7f
+#define FELIX86_HINT_NOT_MAPPED 0x4e
+#define FELIX86_HINT_NOT_READ 0x15
+#define FELIX86_HINT_NOT_EXEC 0xec
 
 constexpr int scan_ahead_count = 64;
 constexpr int address_cache_bits = 17;
@@ -873,10 +876,20 @@ struct Recompiler {
         return (u64)interruptible_syscall_func_eintr;
     }
 
+    bool isInNotMappedOrNotReadThunk(u64 pc) {
+        return pc == not_mapped_thunk || pc == not_read_thunk;
+    }
+
+    bool isInNotExecThunk(u64 pc) {
+        return pc == not_exec_thunk;
+    }
+
 private:
     void emitNecessaryStuff();
 
     void emitDispatcher();
+
+    void emitBadAddressThunks();
 
     void emitInterruptibleSyscallFunction();
 
@@ -909,6 +922,8 @@ private:
     u64 restore_state_handler{};
 
     u64 invalidate_caller_thunk{};
+
+    u64 not_mapped_thunk{}, not_read_thunk{}, not_exec_thunk{};
 
     void* start_of_code_cache{};
 
