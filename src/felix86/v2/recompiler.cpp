@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <linux/fs.h>
 #include <sys/file.h>
+#include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/personality.h>
 #include <unistd.h>
