@@ -35,3 +35,19 @@ void Semaphore::lock_before_fork() {
 void Semaphore::unlock_after_fork() {
     sem_post(&inner);
 }
+
+RWLockReadGuard::RWLockReadGuard(pthread_rwlock_t* lock) : lock(lock) {
+    ASSERT_MSG(pthread_rwlock_rdlock(lock) == 0, "Failed to rdlock");
+}
+
+RWLockReadGuard::~RWLockReadGuard() {
+    ASSERT(pthread_rwlock_unlock(lock) == 0);
+}
+
+RWLockWriteGuard::RWLockWriteGuard(pthread_rwlock_t* lock) : lock(lock) {
+    ASSERT_MSG(pthread_rwlock_wrlock(lock) == 0, "Failed to wrlock");
+}
+
+RWLockWriteGuard::~RWLockWriteGuard() {
+    ASSERT(pthread_rwlock_unlock(lock) == 0);
+}

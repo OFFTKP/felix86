@@ -17,7 +17,7 @@
 
 void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offset) {
     size = (size + 0xFFFull) & ~0xFFFull;
-    auto guard = freelist.lock();
+    auto guard = rwlock.lock_write();
 
     struct stat64 stat{0};
     stat.st_ino = ino_anon_ctr++;
@@ -79,12 +79,12 @@ void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offse
 }
 
 int Mapper::unmap32(void* addr, u64 size) {
+    auto guard = rwlock.lock_write();
     size = (size + 0xFFFull) & ~0xFFFull;
     ASSERT((u64)addr <= UINT32_MAX);
     int result = munmap(addr, size);
     if (result != -1) {
         // unmap it from our freelist as well
-        auto guard = freelist.lock();
         freelist.deallocate((u64)addr, size);
         // also unmap it from the allocation tracker.
         remove_tracked_region((u64)addr, size, false);
@@ -103,7 +103,7 @@ void* Mapper::remap32(void* old_address, u64 old_size, u64 new_size, int flags, 
     old_size = (old_size + 0xFFFull) & ~0xFFFull;
     new_size = (new_size + 0xFFFull) & ~0xFFFull;
 
-    auto guard = freelist.lock();
+    auto guard = rwlock.lock_write();
 
     if ((flags & MREMAP_FIXED) || !(flags & MREMAP_MAYMOVE)) {
 
@@ -160,7 +160,7 @@ void* Mapper::map(bool mode32, void* addr, u64 size, int prot, int flags, int fd
     if (mode32) {
         return map32(addr, size, prot, flags, fd, offset);
     } else {
-        auto guard = freelist.lock();
+        auto guard = rwlock.lock_write();
 
         size = (size + 0xFFFull) & ~0xFFFull;
         void* result = mmap(addr, size, prot, flags, fd, offset);
@@ -191,7 +191,7 @@ int Mapper::unmap(bool mode32, void* addr, u64 size) {
     if (mode32) {
         return unmap32(addr, size);
     } else {
-        auto guard = freelist.lock();
+        auto guard = rwlock.lock_write();
 
         size = (size + 0xFFFull) & ~0xFFFull;
         int result = munmap(addr, size);
@@ -216,7 +216,7 @@ void* Mapper::remap(bool mode32, void* old_address, u64 old_size, u64 new_size, 
         return remap32(old_address, old_size, new_size, flags, new_address);
     } else {
         // Lock access to 'allocated_regions'.
-        auto guard = freelist.lock();
+        auto guard = rwlock.lock_write();
 
         old_size = (old_size + 0xFFFull) & ~0xFFFull;
         new_size = (new_size + 0xFFFull) & ~0xFFFull;
@@ -245,23 +245,23 @@ void* Mapper::remap(bool mode32, void* old_address, u64 old_size, u64 new_size, 
 }
 
 int Mapper::protect(void* addr, u64 size, int prot) {
-    auto guard = freelist.lock();
-
+    auto guard = rwlock.lock_write();
     int res = ::mprotect(addr, size, prot);
-    if (res != -1)
+    if (res != -1) {
         move_tracked_region((u64)addr, size, (u64)addr, size, true, prot & (PROT_READ | PROT_WRITE | PROT_EXEC | PROT_GROWSDOWN | PROT_GROWSUP),
                             false);
+    }
 
     return res;
 }
 
 std::vector<std::pair<u32, u32>> Mapper::getRegions() {
-    auto guard = freelist.lock();
+    auto guard = rwlock.lock_read();
     return freelist.getRegions();
 }
 
 int Mapper::shmat(bool mode32, int shmid, void* address, int flags, u64* result_address) {
-    auto guard = freelist.lock();
+    auto guard = rwlock.lock_write();
 
     struct shmid_ds ds;
     int result = shmctl(shmid, IPC_STAT, &ds);
@@ -341,7 +341,7 @@ int Mapper::shmat(bool mode32, int shmid, void* address, int flags, u64* result_
 }
 
 int Mapper::shmdt(bool mode32, void* address) {
-    auto guard = freelist.lock();
+    auto guard = rwlock.lock_write();
 
     auto it = page_to_shmid.find((u64)address & ~0xFFFull);
     if (it == page_to_shmid.end()) {
@@ -412,6 +412,10 @@ int Mapper::shmdt(bool mode32, void* address) {
     return result;
 }
 
+std::vector<GuestRegion>::iterator Mapper::first_region_ending_after(u64 address) {
+    return std::upper_bound(allocated_regions.begin(), allocated_regions.end(), address, [](u64 a, const GuestRegion& r) { return a < r.end; });
+}
+
 static bool can_guest_regions_merge(GuestRegion& l, GuestRegion& h) {
     return
         // Mappings must share protection.
@@ -440,7 +444,8 @@ void Mapper::add_tracked_region(u64 address, u64 len, int prot, dev_t dev, ino_t
     GuestRegion v = GuestRegion{address, end, prot, dev, ino, offset, shmid, shmem, anon};
 
     remove_tracked_region(address, len, false);
-    for (auto it = allocated_regions.begin(); it != allocated_regions.end(); it++) {
+    auto first = std::lower_bound(allocated_regions.begin(), allocated_regions.end(), address, [](const GuestRegion& r, u64 a) { return r.end < a; });
+    for (auto it = first; it != allocated_regions.end(); it++) {
         auto& r = *it;
 
         // Region extends another leading.
@@ -487,7 +492,7 @@ void Mapper::move_tracked_region(u64 old_address, u64 old_len, u64 new_address, 
     bool is_increase = new_len > old_len;
     u64 old_end = old_address + old_len;
 
-    for (auto it = allocated_regions.begin(); it != allocated_regions.end();) {
+    for (auto it = first_region_ending_after(old_address); it != allocated_regions.end();) {
         auto& r = *it;
         if (r.end <= old_address) {
             it++;
@@ -542,7 +547,7 @@ void Mapper::remove_tracked_region(u64 address, u64 len, bool only_shmat) {
     u64 end = address + len;
     end = (end + 0xfff) & ~0xfff;
 
-    for (auto it = allocated_regions.begin(); it != allocated_regions.end();) {
+    for (auto it = first_region_ending_after(address); it != allocated_regions.end();) {
         auto& r = *it;
 
         // If shmid is -1, the memory was not allocated by a call to shmat.
@@ -612,7 +617,7 @@ void Mapper::remove_tracked_region(u64 address, u64 len, bool only_shmat) {
 
 uint64_t Mapper::total_mapped_memory() {
     // Ensure no race conditions.
-    auto guard = freelist.lock();
+    auto guard = rwlock.lock_read();
 
     uint64_t total_bytes = 0;
     for (auto r : allocated_regions) {
@@ -624,23 +629,18 @@ uint64_t Mapper::total_mapped_memory() {
 
 bool Mapper::is_guest_address(void* address) {
     // Ensure no race conditions.
-    auto guard = freelist.lock();
+    auto guard = rwlock.lock_read();
 
     // TODO: could maybe be done faster using caching?
     // Optionally, an ordered map could maybe be iterated faster?
     u64 a = (u64)address;
-    for (auto r : allocated_regions) {
-        if (r.start <= a && a < r.end) {
-            return true;
-        }
-    }
-
-    return false;
+    auto it = first_region_ending_after(a);
+    return it != allocated_regions.end() && it->start <= a;
 }
 
 std::vector<GuestRegion> Mapper::get_guest_regions() {
     // Ensure no race conditions.
-    auto guard = freelist.lock();
+    auto guard = rwlock.lock_read();
 
     std::vector<GuestRegion> regions;
     for (auto region : allocated_regions) {
@@ -650,14 +650,13 @@ std::vector<GuestRegion> Mapper::get_guest_regions() {
 }
 
 int Mapper::get_region_protections(void* address) {
-    auto guard = freelist.lock();
+    auto guard = rwlock.lock_read();
 
     u64 a = (u64)address;
-    for (auto r : allocated_regions) {
-        if (r.start <= a && a < r.end) {
-            return r.prot;
-        }
+    auto it = first_region_ending_after(a);
+    if (it != allocated_regions.end() && it->start <= a) {
+        return it->prot;
     }
 
-    return 0;
+    return -1; // not mapped
 }
