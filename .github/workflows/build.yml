@@ -16,13 +16,22 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container: ubuntu:26.04
+    defaults:
+      run:
+        shell: bash
     steps:
+      - name: Install container prerequisites
+        run: |
+          apt update
+          apt install -y sudo git ca-certificates
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Check out repository code
         uses: actions/checkout@v4
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y ccache gcc-riscv64-linux-gnu g++-riscv64-linux-gnu libglx-dev libgl-dev libvulkan-dev libwayland-dev libx11-dev nasm
+          sudo apt install -y ccache gcc-riscv64-linux-gnu g++-riscv64-linux-gnu libglx-dev libgl-dev libvulkan-dev libwayland-dev libx11-dev nasm curl cmake build-essential xxd pkg-config autoconf
           sudo cp -r /usr/include/GL /usr/local/include/GL
           sudo cp -r /usr/include/vulkan /usr/local/include/vulkan
           sudo cp -r /usr/include/X11 /usr/local/include/X11
@@ -34,59 +43,68 @@ jobs:
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             EXTRA_FLAGS="-DFELIX86_MONTHLY_RELEASE=1"
           fi
-          cmake -B ${{ github.workspace }}/build -DBUILD_TESTS=1 -DBUILD_LATENCY_MEASURER=1 -DCMAKE_TOOLCHAIN_FILE=riscv.cmake -DFELIX86_BUILD_THUNKING=1 -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Release $EXTRA_FLAGS
+          cmake -B $GITHUB_WORKSPACE/build -DBUILD_TESTS=1 -DBUILD_LATENCY_MEASURER=1 -DCMAKE_TOOLCHAIN_FILE=riscv.cmake -DFELIX86_BUILD_THUNKING=1 -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Release $EXTRA_FLAGS
       - name: Build
         run: |
-          cmake --build ${{ github.workspace }}/build -j$(nproc)
+          cmake --build $GITHUB_WORKSPACE/build -j$(nproc)
       - name: Configure thunk libs
         run: |
-          cmake -S ${{ github.workspace }}/src/felix86/hle/guest_libs -B ${{ github.workspace }}/src/felix86/hle/guest_libs/build
+          cmake -S $GITHUB_WORKSPACE/src/felix86/hle/guest_libs -B $GITHUB_WORKSPACE/src/felix86/hle/guest_libs/build
       - name: Build thunk libs
         run: |
-          cmake --build ${{ github.workspace }}/src/felix86/hle/guest_libs/build -j$(nproc)
+          cmake --build $GITHUB_WORKSPACE/src/felix86/hle/guest_libs/build -j$(nproc)
       - name: Prepare artifact
         run: |
-          mkdir -p ${{ github.workspace }}/artifact
-          mkdir -p ${{ github.workspace }}/artifact/lib
-          cp ${{ github.workspace }}/build/felix86 ${{ github.workspace }}/artifact/
+          mkdir -p $GITHUB_WORKSPACE/artifact
+          mkdir -p $GITHUB_WORKSPACE/artifact/lib
+          cp $GITHUB_WORKSPACE/build/felix86 $GITHUB_WORKSPACE/artifact/
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            curl -fsSL -o ${{ github.workspace }}/artifact/felix86.png https://cdn.felix86.com/images/felix86.png
-            echo "a35e3508794644729aee70bfd7ee3a6e041eb63da7c2724d920e6fe5756d29a0  ${{ github.workspace }}/artifact/felix86.png" | sha256sum -c -
+            curl -fsSL -o $GITHUB_WORKSPACE/artifact/felix86.png https://cdn.felix86.com/images/felix86.png
+            echo "a35e3508794644729aee70bfd7ee3a6e041eb63da7c2724d920e6fe5756d29a0  $GITHUB_WORKSPACE/artifact/felix86.png" | sha256sum -c -
           fi
-          mv ${{ github.workspace }}/src/felix86/hle/guest_libs/build/x86_64-linux-gnu ${{ github.workspace }}/artifact/lib
-          mkdir -p ${{ github.workspace }}/test
-          cp ${{ github.workspace }}/build/felix86_test ${{ github.workspace }}/test/
-          cp ${{ github.workspace }}/build/felix86_latency_measurer ${{ github.workspace }}/test/
-          cp ${{ github.workspace }}/build/felix86 ${{ github.workspace }}/test/
-          cp -r ${{ github.workspace }}/build/ASM ${{ github.workspace }}/test/
-          cp -r ${{ github.workspace }}/build/32Bit_ASM ${{ github.workspace }}/test/
-          cp -r ${{ github.workspace }}/build/Binaries ${{ github.workspace }}/test/
+          mv $GITHUB_WORKSPACE/src/felix86/hle/guest_libs/build/x86_64-linux-gnu $GITHUB_WORKSPACE/artifact/lib
+          mkdir -p $GITHUB_WORKSPACE/test
+          cp $GITHUB_WORKSPACE/build/felix86_test $GITHUB_WORKSPACE/test/
+          cp $GITHUB_WORKSPACE/build/felix86_latency_measurer $GITHUB_WORKSPACE/test/
+          cp $GITHUB_WORKSPACE/build/felix86 $GITHUB_WORKSPACE/test/
+          cp -r $GITHUB_WORKSPACE/build/ASM $GITHUB_WORKSPACE/test/
+          cp -r $GITHUB_WORKSPACE/build/32Bit_ASM $GITHUB_WORKSPACE/test/
+          cp -r $GITHUB_WORKSPACE/build/Binaries $GITHUB_WORKSPACE/test/
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: linux_artifact
-          path: ${{ github.workspace }}/artifact
+          path: artifact
       - name: Upload test binary
         uses: actions/upload-artifact@v4
         with:
           name: test_artifact
-          path: ${{ github.workspace }}/test
+          path: test
           retention-days: 1
   instruction_counter:
     runs-on: ubuntu-latest
+    container: ubuntu:26.04
+    defaults:
+      run:
+        shell: bash
     steps:
+      - name: Install container prerequisites
+        run: |
+          apt update
+          apt install -y sudo git ca-certificates
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Check out repository code
         uses: actions/checkout@v4
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y build-essential cmake libxbyak-dev nasm
+          sudo apt install -y build-essential cmake libxbyak-dev nasm xxd autoconf
       - name: Configure
-        run: cmake -B ${{ github.workspace }}/build_counter -DBUILD_INSTRUCTION_COUNTER=ON -DFELIX86_BUILD_THUNKING=OFF -DCMAKE_BUILD_TYPE=Release
+        run: cmake -B $GITHUB_WORKSPACE/build_counter -DBUILD_INSTRUCTION_COUNTER=ON -DFELIX86_BUILD_THUNKING=OFF -DCMAKE_BUILD_TYPE=Release
       - name: Build
-        run: cmake --build ${{ github.workspace }}/build_counter --target felix86_instruction_counter -j$(nproc)
+        run: cmake --build $GITHUB_WORKSPACE/build_counter --target felix86_instruction_counter -j$(nproc)
       - name: Run instruction counter
-        run: ${{ github.workspace }}/build_counter/felix86_instruction_counter
+        run: $GITHUB_WORKSPACE/build_counter/felix86_instruction_counter
       - name: Check for differences
         run: git diff --exit-code counts/
   test:

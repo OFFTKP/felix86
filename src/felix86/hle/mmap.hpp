@@ -1,9 +1,11 @@
 #pragma once
 
-#include <list>
+#include <optional>
 #include <unordered_map>
+#include <vector>
 #include <sys/types.h>
 #include "felix86/common/freelist.hpp"
+#include "felix86/common/process_lock.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
 
@@ -57,22 +59,18 @@ struct Mapper {
     /// Return the tracked allocated regions.
     std::vector<GuestRegion> get_guest_regions();
 
-    int get_region_protections(void* address);
-
-    void reinitialize_lock() {
-        freelist.reinitialize_lock();
-    }
+    std::optional<int> get_region_protections(void* address);
 
     void before_fork() {
-        freelist.before_fork();
+        rwlock.before_fork();
     }
 
     void after_fork_parent() {
-        freelist.after_fork_parent();
+        rwlock.after_fork_parent();
     }
 
     void after_fork_child() {
-        freelist.after_fork_child();
+        rwlock.after_fork_child();
     }
 
 private:
@@ -80,8 +78,9 @@ private:
     std::unordered_map<u64, int> page_to_shmid{};
     /// Tracks the amount of currently mapped regions in memory.
     /// This will merge multiple mappings together.
-    std::list<GuestRegion> allocated_regions;
+    std::vector<GuestRegion> allocated_regions;
     ino_t ino_anon_ctr{0};
+    RWLock rwlock{};
 
     std::vector<std::pair<u32, u32>> getRegions();
 
@@ -90,4 +89,5 @@ private:
     void add_tracked_region(u64 address, u64 len, int prot, dev_t dev, ino_t ino, u64 offset, bool shmem, int shmid, bool anon);
     void move_tracked_region(u64 old_address, u64 old_len, u64 new_address, u64 new_len, bool remove_source, int new_prot = -1, bool can_grow = true);
     void remove_tracked_region(u64 address, u64 len, bool only_shmat);
+    std::vector<GuestRegion>::iterator first_region_ending_after(u64 address);
 };

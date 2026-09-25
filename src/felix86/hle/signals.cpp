@@ -509,10 +509,18 @@ static u32 get_reg_err(int sig, siginfo_t* info, ucontext_t* uctx) {
     }
 
     VERBOSE("Preparing REG_ERR for signal");
+    u64 pc = get_pc(uctx);
+    ThreadState* state = ThreadState::Get();
+    if (state->recompiler->isInNotExecThunk(pc)) {
+        return 0x15;
+    } else if (state->recompiler->isInNotMappedOrNotReadThunk(pc)) {
+        return 0x14;
+    }
+
     u32 err = 0;
     err |= 1 << 2; // user error
 
-    if ((u64)info->si_addr == get_pc(uctx)) {
+    if ((u64)info->si_addr == pc) {
         // Faulting address is the PC, can't read instruction there...
         VERBOSE("Couldn't fetch instruction to create REG_ERR");
         return err;
@@ -520,7 +528,7 @@ static u32 get_reg_err(int sig, siginfo_t* info, ucontext_t* uctx) {
 
     // TODO: This only covers SB/SH/SW/SD... Unfortunately unlike ARM/x86 we don't get any info
     // to tell us if this was a faulting write
-    u32 faulting_instruction = *(u32*)get_pc(uctx);
+    u32 faulting_instruction = *(u32*)pc;
     if ((faulting_instruction & 0x7F) == 0x23) {
         err |= 1 << 1; // is write
     }
@@ -1463,8 +1471,8 @@ static bool handle_smc(ThreadState* current_state, siginfo_t* info, ucontext_t* 
     }
 
     if (g_config.guest_memory_tracking_enabled) {
-        int prot = g_mapper->get_region_protections(info->si_addr);
-        if (prot & PROT_WRITE) {
+        std::optional<int> prot = g_mapper->get_region_protections(info->si_addr);
+        if (prot.has_value() && (*prot & PROT_WRITE)) {
             // If a fault happens on store but the guest protections allow writing it must mean that it is SMC
             // as we modified the host protections to read-only when we recompiled the block
         } else {
@@ -1643,6 +1651,7 @@ static bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucon
     u32 next_instruction = *(((u32*)pc) + 1);
 
     u32 expected_divzero, expected_int3, expected_int1, expected_ud2, expected_gp, expected_tf;
+    u32 expected_not_mapped, expected_not_read, expected_not_exec;
     {
         Assembler tas2((u8*)&expected_divzero, sizeof(u32));
         tas2.SLTIU(x0, x0, FELIX86_HINT_DIVZERO);
@@ -1667,9 +1676,24 @@ static bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucon
         Assembler tas2((u8*)&expected_tf, sizeof(u32));
         tas2.SLTIU(x0, x0, FELIX86_HINT_TF);
     }
+    {
+        Assembler tas2((u8*)&expected_not_mapped, sizeof(u32));
+        tas2.SLTIU(x0, x0, FELIX86_HINT_NOT_MAPPED);
+    }
+    {
+        Assembler tas2((u8*)&expected_not_read, sizeof(u32));
+        tas2.SLTIU(x0, x0, FELIX86_HINT_NOT_READ);
+    }
+    {
+        Assembler tas2((u8*)&expected_not_exec, sizeof(u32));
+        tas2.SLTIU(x0, x0, FELIX86_HINT_NOT_EXEC);
+    }
 
     u64 actual_rip;
-    if (next_instruction == expected_tf) {
+    if (next_instruction == expected_not_mapped || next_instruction == expected_not_read || next_instruction == expected_not_exec) {
+        // In these scenarios there's no block, we are at the bad address thunks and we need to get the RIP from the allocated reg
+        actual_rip = get_regs(context)[Recompiler::allocatedGPR(X86_REF_RIP).Index()];
+    } else if (next_instruction == expected_tf) {
         // In trap flag scenarios code cache is often cleared, so get_block_metadata won't work
         // However, since single stepping is enabled and ripreg is updated on every instruction
         // the actual rip is whatever the ripreg holds and points to the next instruction
@@ -1709,6 +1733,18 @@ static bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucon
     } else if (next_instruction == expected_tf) {
         sig = SIGTRAP;
         info->si_code = TRAP_TRACE;
+        info->si_addr = (void*)actual_rip;
+    } else if (next_instruction == expected_not_mapped) {
+        sig = SIGSEGV;
+        info->si_code = SEGV_MAPERR;
+        info->si_addr = (void*)actual_rip;
+    } else if (next_instruction == expected_not_read) {
+        sig = SIGSEGV;
+        info->si_code = SEGV_ACCERR;
+        info->si_addr = (void*)actual_rip;
+    } else if (next_instruction == expected_not_exec) {
+        sig = SIGSEGV;
+        info->si_code = SEGV_ACCERR;
         info->si_addr = (void*)actual_rip;
     } else {
         return false;

@@ -126,7 +126,15 @@ static void setupMainStack(ThreadState* state) {
     std::shared_ptr<Elf> interpreter = g_fs->GetInterpreter();
 
     // Initial process stack according to System V AMD64 ABI
-    auto pair = Threads::AllocateStack(mode32);
+    bool exec = false;
+    if (mode32 && g_gnu_stack == 0) {
+        state->persona |= READ_IMPLIES_EXEC;
+        exec = true;
+    }
+    if (g_gnu_stack & PF_X) {
+        exec = true;
+    }
+    auto pair = Threads::AllocateStack(mode32, exec);
     u64 rsp = (u64)pair.first;
 
     // Happens on x86 kernel during arch_align_stack
@@ -208,7 +216,7 @@ static void setupMainStack(ThreadState* state) {
         // Since we include it as part of the felix86 binary we can just
         // point there directly in 64-bit mode
         std::span<u8> vdso_object = VDSO::getObject64();
-        void* mem = mmap(nullptr, vdso_object.size(), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+        void* mem = g_mapper->map(false, nullptr, vdso_object.size(), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
         ASSERT(mem != MAP_FAILED);
         memcpy(mem, vdso_object.data(), vdso_object.size());
         g_mapper->protect(mem, vdso_object.size(), PROT_READ | PROT_EXEC);

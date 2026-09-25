@@ -1,10 +1,10 @@
 #pragma once
 
 #include <vector>
-#include "felix86/common/process_lock.hpp"
 #include "felix86/common/types.hpp"
 
 // A freelist allocator implementation that matches our needs
+// Must be externally synchronized (handled by mapper)
 struct Freelist {
     Freelist();
     ~Freelist();
@@ -14,10 +14,6 @@ struct Freelist {
 
     // Free a region of memory
     void deallocate(u32 addr, u64 size);
-
-    SemaphoreGuard lock() {
-        return sem.lock();
-    }
 
     std::vector<std::pair<u32, u32>> getRegions() {
         std::vector<std::pair<u32, u32>> ret;
@@ -29,22 +25,6 @@ struct Freelist {
         return ret;
     }
 
-    void reinitialize_lock() {
-        sem = {};
-    }
-
-    void before_fork() {
-        sem.lock_before_fork();
-    }
-
-    void after_fork_parent() {
-        sem.unlock_after_fork();
-    }
-
-    void after_fork_child() {
-        sem.unlock_after_fork();
-    }
-
 private:
     struct Node {
         u32 start;
@@ -53,7 +33,6 @@ private:
     };
 
     Node* list = nullptr;
-    Semaphore sem{};
 
     void consolidate();
 

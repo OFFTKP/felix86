@@ -462,8 +462,12 @@ void Elf::Load(const std::filesystem::path& path) {
             break;
         }
         case PT_GNU_STACK: {
-            if (phdr.flags() & PF_X) {
-                WARN("Executable stack");
+            if (!is_interpreter) {
+                g_gnu_stack = PF_R | PF_W;
+                if (phdr.flags() & PF_X) {
+                    WARN("Executable stack");
+                    g_gnu_stack |= PF_X;
+                }
             }
             break;
         }

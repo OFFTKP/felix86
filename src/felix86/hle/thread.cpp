@@ -623,7 +623,7 @@ long Threads::Clone(ThreadState* current_state, CloneArgs* args) {
     return result;
 }
 
-std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
+std::pair<u8*, size_t> Threads::AllocateStack(bool mode32, bool exec) {
     struct rlimit stack_limit = {0};
     if (getrlimit(RLIMIT_STACK, &stack_limit) == -1) {
         ERROR("Failed to get stack size limit");
@@ -653,6 +653,7 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
     u8* base;
     int attempts = 0;
     int max_attempts = 14;
+    const int stack_protections = PROT_READ | PROT_WRITE | (exec ? PROT_EXEC : 0);
 
     while (true) {
         VERBOSE("Attempting to allocate stack on %p", (void*)stack_hint);
@@ -669,7 +670,7 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
         }
     }
 
-    u8* stack_pointer = (u8*)g_mapper->map(mode32, base + max_stack_size - stack_size, stack_size, PROT_READ | PROT_WRITE,
+    u8* stack_pointer = (u8*)g_mapper->map(mode32, base + max_stack_size - stack_size, stack_size, stack_protections,
                                            MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS | MAP_GROWSDOWN, -1, 0);
     if (stack_pointer == MAP_FAILED) {
         ERROR("Failed to allocate stack");

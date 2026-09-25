@@ -35,3 +35,19 @@ void Semaphore::lock_before_fork() {
 void Semaphore::unlock_after_fork() {
     sem_post(&inner);
 }
+
+RWLockReadGuard::RWLockReadGuard(decent_rwlock_t* lock) : lock(lock) {
+    lock->read_lock();
+}
+
+RWLockReadGuard::~RWLockReadGuard() {
+    lock->read_unlock();
+}
+
+RWLockWriteGuard::RWLockWriteGuard(decent_rwlock_t* lock) : lock(lock) {
+    lock->write_lock();
+}
+
+RWLockWriteGuard::~RWLockWriteGuard() {
+    lock->write_unlock();
+}
