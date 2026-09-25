@@ -107,6 +107,23 @@ static void alignment_check_failed(void* rip) {
     WARN("Unaligned atomic access at %p", rip);
 }
 
+static bool is_register(const ZydisDecodedOperand& operand, ZydisRegister first, ZydisRegister last) {
+    return operand.type == ZYDIS_OPERAND_TYPE_REGISTER && operand.reg.value >= first && operand.reg.value <= last;
+}
+
+static bool is_mmx_operand(const ZydisDecodedOperand& operand) {
+    return is_register(operand, ZYDIS_REGISTER_MM0, ZYDIS_REGISTER_MM7);
+}
+
+static bool is_sse_or_avx_operand(const ZydisDecodedOperand& operand) {
+    return is_register(operand, ZYDIS_REGISTER_XMM0, ZYDIS_REGISTER_XMM15) || is_register(operand, ZYDIS_REGISTER_YMM0, ZYDIS_REGISTER_YMM15);
+}
+
+static bool is_stack_operand(const ZydisDecodedOperand& operand) {
+    return operand.type == ZYDIS_OPERAND_TYPE_MEMORY && operand.mem.base != ZYDIS_REGISTER_NONE &&
+           Recompiler::zydisToRef(operand.mem.base) == X86_REF_RSP;
+}
+
 Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
     // Placing address cache near code cache allows us to access address cache with AUIPC+ADDI combo
     constexpr size_t address_cache_size = (1 << address_cache_bits) * sizeof(AddressCacheEntry);
@@ -666,6 +683,13 @@ void Recompiler::markPagesAsReadOnly(u64 start, u64 end) {
     }
 }
 
+void Recompiler::loadRoundingMode(bool sse) {
+    biscuit::GPR rm = scratch();
+    as.LBU(rm, sse ? offsetof(ThreadState, ctx.rmode_sse) : offsetof(ThreadState, ctx.rmode_x87), threadStatePointer());
+    as.FSRM(x0, rm);
+    popScratch();
+}
+
 u64 Recompiler::compileSequence(bool mode32, u64 rip) {
     const u64 start_rip = rip;
     const bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
@@ -692,19 +716,9 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
     block_meta.host_address = (u64)as.GetCursorPointer();
     block_meta.guest_address = start_rip;
     block_meta.translation_sizes.resize(instructions.size());
-
-    // TODO: Put all this resetting functionality in a function
-    resetX87();
-    pushed_this_block = 0;
     current_block_metadata = &block_meta;
-    resetVectorState();
-    local_x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
-    fsrm_sse = true;                     // dispatcher loads SSE rounding mode as a default
-    v0_has_mask = false;
 
-    current_ripreg_value = rip; // may change in a syscall to check for safepoints, or after a set amount of instructions in the future
-    current_instruction_index = 0;
-    current_pushpop_offset = 0;
+    resetBlockState(rip);
 
     bool ran_mmx_once = false;
 
@@ -716,29 +730,14 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
     while (compiling) {
         auto& [instruction, operands] = instructions[current_instruction_index];
 
-        bool is_mmx = (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].reg.value >= ZYDIS_REGISTER_MM0 &&
-                       operands[0].reg.value <= ZYDIS_REGISTER_MM7) ||
-                      (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].reg.value >= ZYDIS_REGISTER_MM0 &&
-                       operands[1].reg.value <= ZYDIS_REGISTER_MM7);
+        bool is_mmx = is_mmx_operand(operands[0]) || is_mmx_operand(operands[1]);
         bool is_x87 = instruction.meta.isa_ext == ZYDIS_ISA_EXT_X87;
-        bool is_sse = (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].reg.value >= ZYDIS_REGISTER_XMM0 &&
-                       operands[0].reg.value <= ZYDIS_REGISTER_XMM15) ||
-                      (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].reg.value >= ZYDIS_REGISTER_XMM0 &&
-                       operands[1].reg.value <= ZYDIS_REGISTER_XMM15) ||
-                      (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].reg.value >= ZYDIS_REGISTER_YMM0 &&
-                       operands[0].reg.value <= ZYDIS_REGISTER_YMM15) ||
-                      (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].reg.value >= ZYDIS_REGISTER_YMM0 &&
-                       operands[1].reg.value <= ZYDIS_REGISTER_YMM15);
+        bool is_sse = is_sse_or_avx_operand(operands[0]) || is_sse_or_avx_operand(operands[1]);
 
         bool push_pop_reg = (instruction.mnemonic == ZYDIS_MNEMONIC_PUSH || instruction.mnemonic == ZYDIS_MNEMONIC_POP) &&
                             operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
-        bool op1_on_stack = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[0].mem.base != ZYDIS_REGISTER_NONE &&
-                            zydisToRef(operands[0].mem.base) == X86_REF_RSP;
-        bool op2_on_stack = operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[1].mem.base != ZYDIS_REGISTER_NONE &&
-                            zydisToRef(operands[1].mem.base) == X86_REF_RSP;
-        bool op3_on_stack = operands[2].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[2].mem.base != ZYDIS_REGISTER_NONE &&
-                            zydisToRef(operands[2].mem.base) == X86_REF_RSP;
-        current_instruction_on_stack = push_pop_reg || op1_on_stack || op2_on_stack || op3_on_stack;
+        current_instruction_on_stack =
+            push_pop_reg || is_stack_operand(operands[0]) || is_stack_operand(operands[1]) || is_stack_operand(operands[2]);
 
         if (instruction.mnemonic == ZYDIS_MNEMONIC_EMMS) {
             ran_mmx_once = false; // if we run another mmx instruction, set tag to valid again
@@ -776,9 +775,7 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
                 switchToMMX();
             }
 
-            bool is_op0_mmx = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].reg.value >= ZYDIS_REGISTER_MM0 &&
-                              operands[0].reg.value <= ZYDIS_REGISTER_MM7;
-            if (is_op0_mmx && operands[0].actions & ZYDIS_OPERAND_ACTION_WRITE) {
+            if (is_mmx_operand(operands[0]) && operands[0].actions & ZYDIS_OPERAND_ACTION_WRITE) {
                 int index = operands[0].reg.value - ZYDIS_REGISTER_MM0;
                 mmx_reg_cache[index].dirty = true;
             }
@@ -800,16 +797,10 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
 
         if (is_x87 && isFsrmSSE() && g_config.reduced_precision) {
             // An x87 instruction, load the x87 rounding mode
-            biscuit::GPR rm = scratch();
-            as.LBU(rm, offsetof(ThreadState, ctx.rmode_x87), threadStatePointer());
-            as.FSRM(x0, rm);
-            popScratch();
+            loadRoundingMode(false);
             setFsrmSSE(false);
         } else if (is_sse && !isFsrmSSE()) {
-            biscuit::GPR rm = scratch();
-            as.LBU(rm, offsetof(ThreadState, ctx.rmode_sse), threadStatePointer());
-            as.FSRM(x0, rm);
-            popScratch();
+            loadRoundingMode(true);
             setFsrmSSE(true);
         }
 
@@ -829,13 +820,7 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
         rip += instruction.length;
 
         if (is_single_step && compiling) {
-            resetScratch();
-            flushPushpop();
-            flushX87();
-            biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
-            u64 offset = rip - getCurrentRipregValue();
-            setCurrentRipregValue(getCurrentRipregValue() + offset);
-            addi(ripreg, ripreg, offset);
+            flushBlockState(rip);
             if (single_step != SingleStepMode::None) {
                 as.SD(x0, 0, x0);
                 as.SLTIU(x0, x0, FELIX86_HINT_TF);
@@ -878,15 +863,7 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
 
     if (current_block_big) {
         VERBOSE("Block at %lx exceeded max instruction count", start_rip);
-        resetScratch();
-        flushPushpop(); // should be redundant here but w/e
-        flushX87();
-        biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
-        u64 offset = rip - getCurrentRipregValue();
-        if (offset != 0) {
-            setCurrentRipregValue(getCurrentRipregValue() + offset);
-            addi(ripreg, ripreg, offset);
-        }
+        flushBlockState(rip);
         as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
         jumpAndLink(rip);
     }
@@ -1135,6 +1112,29 @@ void Recompiler::popScratch() {
 void Recompiler::popScratchFPR() {
     fpu_scratch_index--;
     ASSERT(fpu_scratch_index >= 0);
+}
+
+void Recompiler::resetBlockState(u64 rip) {
+    resetScratch();
+    resetX87();
+    resetVectorState();
+    local_x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
+    fsrm_sse = true;                     // dispatcher loads SSE rounding mode as a default
+    v0_has_mask = false;
+
+    current_ripreg_value = rip; // may change in a syscall to check for safepoints, or after a set amount of instructions in the future
+    current_instruction_index = 0;
+    current_pushpop_offset = 0;
+}
+
+void Recompiler::flushBlockState(u64 rip) {
+    resetScratch();
+    flushPushpop();
+    flushX87();
+    biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
+    u64 offset = rip - getCurrentRipregValue();
+    setCurrentRipregValue(rip);
+    addi(ripreg, ripreg, offset);
 }
 
 void Recompiler::resetScratch() {
@@ -2225,17 +2225,7 @@ void Recompiler::restoreState() {
     as.LBU(of, offsetof(ThreadState, ctx.of), threadStatePointer());
 
     // Restore the rounding mode
-    if (fsrm_sse) {
-        biscuit::GPR rm = scratch();
-        as.LBU(rm, offsetof(ThreadState, ctx.rmode_sse), threadStatePointer());
-        as.FSRM(x0, rm);
-        popScratch();
-    } else {
-        biscuit::GPR rm = scratch();
-        as.LBU(rm, offsetof(ThreadState, ctx.rmode_x87), threadStatePointer());
-        as.FSRM(x0, rm);
-        popScratch();
-    }
+    loadRoundingMode(fsrm_sse);
 
     as.FENCETSO();
 

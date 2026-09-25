@@ -142,6 +142,12 @@ struct Recompiler {
 
     void resetScratch();
 
+    void resetBlockState(u64 rip);
+
+    void flushBlockState(u64 rip);
+
+    void loadRoundingMode(bool sse);
+
     biscuit::GPR getTOP();
 
     void setTOP(biscuit::GPR top);
