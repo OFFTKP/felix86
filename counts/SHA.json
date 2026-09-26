@@ -1,0 +1,119 @@
+{
+    "0f38ccdc": {
+        "instruction_count": 9,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, mf2, tu, mu",
+            "VSLIDEDOWN.VI   v3, xmm3, 0x1(1), none",
+            "VSLIDEUP.VI     v3, xmm4, 0x3(3), none",
+            "VROR.VI         v4, v3, 0x7(7), none",
+            "VROR.VI         v5, v3, 0x12(18), none",
+            "VSRL.VI         v6, v3, 0x3(3), none",
+            "VXOR.VV         v2, v4, v5, none",
+            "VXOR.VV         v2, v2, v6, none",
+            "VADD.VV         xmm3, xmm3, v2, none"
+        ],
+        "disassembly": "sha256msg1 xmm3, xmm4"
+    },
+    "0f38ccd2": {
+        "instruction_count": 9,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, mf2, tu, mu",
+            "VSLIDEDOWN.VI   v3, xmm2, 0x1(1), none",
+            "VSLIDEUP.VI     v3, xmm2, 0x3(3), none",
+            "VROR.VI         v4, v3, 0x7(7), none",
+            "VROR.VI         v5, v3, 0x12(18), none",
+            "VSRL.VI         v6, v3, 0x3(3), none",
+            "VXOR.VV         v2, v4, v5, none",
+            "VXOR.VV         v2, v2, v6, none",
+            "VADD.VV         xmm2, xmm2, v2, none"
+        ],
+        "disassembly": "sha256msg1 xmm2, xmm2"
+    },
+    "0f38cc0f": {
+        "instruction_count": 11,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VLE8.V          v2, rdi, none, 1",
+            "VSETIVLI        zero, 4, e32, mf2, tu, mu",
+            "VSLIDEDOWN.VI   v4, xmm1, 0x1(1), none",
+            "VSLIDEUP.VI     v4, v2, 0x3(3), none",
+            "VROR.VI         v5, v4, 0x7(7), none",
+            "VROR.VI         v6, v4, 0x12(18), none",
+            "VSRL.VI         v7, v4, 0x3(3), none",
+            "VXOR.VV         v3, v5, v6, none",
+            "VXOR.VV         v3, v3, v7, none",
+            "VADD.VV         xmm1, xmm1, v3, none"
+        ],
+        "disassembly": "sha256msg1 xmm1, [rdi]"
+    },
+    "0f38cddc": {
+        "instruction_count": 8,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, mf2, tu, mu",
+            "VMV.V.I         vmask, 0x1(1)",
+            "VSLIDEDOWN.VI   v3, xmm3, 0x3(3), none",
+            "VMV.V.I         v4, 0x0(0)",
+            "VSLIDE1UP.VX    v5, xmm3, zero, none",
+            "VMERGE.VVM      v2, xmm4, v3",
+            "VSHA2MS.VV      v4, v5, v2",
+            "VMV.V.V         xmm3, v4"
+        ],
+        "disassembly": "sha256msg2 xmm3, xmm4"
+    },
+    "0f38cdd2": {
+        "instruction_count": 8,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, mf2, tu, mu",
+            "VMV.V.I         vmask, 0x1(1)",
+            "VSLIDEDOWN.VI   v3, xmm2, 0x3(3), none",
+            "VMV.V.I         v4, 0x0(0)",
+            "VSLIDE1UP.VX    v5, xmm2, zero, none",
+            "VMERGE.VVM      v2, xmm2, v3",
+            "VSHA2MS.VV      v4, v5, v2",
+            "VMV.V.V         xmm2, v4"
+        ],
+        "disassembly": "sha256msg2 xmm2, xmm2"
+    },
+    "0f38cd0f": {
+        "instruction_count": 10,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VLE8.V          v2, rdi, none, 1",
+            "VSETIVLI        zero, 4, e32, mf2, tu, mu",
+            "VMV.V.I         vmask, 0x1(1)",
+            "VSLIDEDOWN.VI   v4, xmm1, 0x3(3), none",
+            "VMV.V.I         v5, 0x0(0)",
+            "VSLIDE1UP.VX    v6, xmm1, zero, none",
+            "VMERGE.VVM      v3, v2, v4",
+            "VSHA2MS.VV      v5, v6, v3",
+            "VMV.V.V         xmm1, v5"
+        ],
+        "disassembly": "sha256msg2 xmm1, [rdi]"
+    },
+    "0f38cbdc": {
+        "instruction_count": 2,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VSHA2CL.VV      xmm3, xmm4, xmm0"
+        ],
+        "disassembly": "sha256rnds2 xmm3, xmm4"
+    },
+    "0f38cbd2": {
+        "instruction_count": 2,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VSHA2CL.VV      xmm2, xmm2, xmm0"
+        ],
+        "disassembly": "sha256rnds2 xmm2, xmm2"
+    },
+    "0f38cb0f": {
+        "instruction_count": 4,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VLE8.V          v2, rdi, none, 1",
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VSHA2CL.VV      xmm1, v2, xmm0"
+        ],
+        "disassembly": "sha256rnds2 xmm1, [rdi]"
+    }
+}

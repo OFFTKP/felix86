@@ -6723,23 +6723,21 @@
         "disassembly": "movdq2q mm1, xmm2"
     },
     "f30fe6d3": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
             "VSETIVLI        zero, 4, e32, mf2, tu, mu",
             "VFWCVT.F.X.V    v2, xmm3, none",
-            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VMV.V.V         xmm2, v2"
         ],
         "disassembly": "cvtdq2pd xmm2, xmm3"
     },
     "f30fe60f": {
-        "instruction_count": 6,
+        "instruction_count": 5,
         "expected_asm": [
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
             "VLE8.V          v3, rdi, none, 1",
             "VSETIVLI        zero, 4, e32, mf2, tu, mu",
             "VFWCVT.F.X.V    v2, v3, none",
-            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VMV.V.V         xmm1, v2"
         ],
         "disassembly": "cvtdq2pd xmm1, qword ptr [rdi]"

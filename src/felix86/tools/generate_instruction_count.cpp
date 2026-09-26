@@ -167,6 +167,7 @@ int main() {
     Extensions::Zicond = true;
     Extensions::Zvkned = true;
     Extensions::Zicclsm = true;
+    Extensions::Zvknha = true;
     Handlers::initialize();
 
     std::unique_ptr<Recompiler> rec_storage = std::make_unique<Recompiler>(true /* relocatable code */);
@@ -1380,6 +1381,14 @@ int main() {
 
     std::ofstream aes("counts/AES.json");
     aes << json.dump(4);
+    json.clear();
+
+    GEN_SSE(sha256msg1);
+    GEN_SSE(sha256msg2);
+    GEN_SSE(sha256rnds2);
+
+    std::ofstream sha("counts/SHA.json");
+    sha << json.dump(4);
     json.clear();
 
     GEN_AVX_XMM3(vaddss);

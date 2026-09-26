@@ -495,6 +495,7 @@ const std::vector<Test>& tests() {
         // {"pcmpestri x, x, imm", XMM, [](Ctx& c) { c.x.pcmpestri(c.xdst(), c.xsrc(), c.imm(7)); }, true},
         // {"pcmpestrm x, x, imm", XMM, [](Ctx& c) { c.x.pcmpestrm(c.xdst(), c.xsrc(), c.imm(7)); }, true},
         X2(aesenc), X2(aesenclast), X2(aesdec), X2(aesdeclast), XU(aesimc), X2I(pclmulqdq, 8),
+        X2(sha256rnds2), X2(sha256msg1), X2(sha256msg2),
 
         V3(vmovss, XMM), V3(vmovsd, XMM), V2(vmovaps, VEC), V2(vmovapd, VEC), V2(vmovups, VEC), V2(vmovupd, VEC), V2(vmovdqa, VEC), V2(vmovdqu, VEC),
         V3(vmovhlps, XMM), V3(vmovlhps, XMM), V2(vmovsldup, VEC), V2(vmovshdup, VEC), V2(vmovddup, VEC),

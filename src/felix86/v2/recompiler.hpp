@@ -694,8 +694,19 @@ struct Recompiler {
 
     // return true if SEW and VL add up to 128 bits
     bool isCurrentLength128() {
-        if (current_grouping != LMUL::M1) {
+        switch (current_grouping) {
+        case LMUL::M1: {
+            break;
+        }
+        case LMUL::MF2: {
+            if (Extensions::VLEN / 2 < 128) {
+                return false;
+            }
+            break;
+        }
+        default: {
             return false;
+        }
         }
 
         switch (current_sew) {
