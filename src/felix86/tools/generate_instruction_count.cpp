@@ -1383,6 +1383,9 @@ int main() {
     aes << json.dump(4);
     json.clear();
 
+    GEN_SSE(sha1msg1);
+    GEN_SSE(sha1msg2);
+    GEN_SSE(sha1nexte);
     GEN_SSE(sha256msg1);
     GEN_SSE(sha256msg2);
     GEN_SSE(sha256rnds2);

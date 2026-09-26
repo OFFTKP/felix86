@@ -1521,6 +1521,46 @@ void felix86_aeskeygenassist(u32* dst, u32* src, u32 imm) {
     *(dst + 3) = x3_sub_rotate ^ imm;
 }
 
+void felix86_sha1rnds4(u32* dst, u32* src, u8 imm) {
+    constexpr u32 ks[] = {0x5A827999, 0x6ED9EBA1, 0x8F1BBCDC, 0xCA62C1D6};
+    u32 k = ks[imm & 0b11];
+    u32 (*F)(u32, u32, u32) = nullptr;
+    switch (imm & 0b11) {
+    case 0: {
+        F = [](u32 b, u32 c, u32 d) -> u32 { return (b & c) ^ (~b & d); };
+        break;
+    }
+    case 1:
+    case 3: {
+        F = [](u32 b, u32 c, u32 d) -> u32 { return b ^ c ^ d; };
+        break;
+    }
+    case 2: {
+        F = [](u32 b, u32 c, u32 d) -> u32 { return (b & c) ^ (b & d) ^ (c & d); };
+        break;
+    }
+    }
+    auto rol32 = [](u32 val, int shift) -> u32 { return val >> (32 - shift) | val << shift; };
+    u32 a = dst[3];
+    u32 b = dst[2];
+    u32 c = dst[1];
+    u32 d = dst[0];
+    u32 e = 0, t = 0;
+    for (int i = 0; i < 4; i++) {
+        u32 w = src[3 - i];
+        t = F(b, c, d) + rol32(a, 5) + w + k + e;
+        e = d;
+        d = c;
+        c = rol32(b, 30);
+        b = a;
+        a = t;
+    }
+    dst[3] = a;
+    dst[2] = b;
+    dst[1] = c;
+    dst[0] = d;
+}
+
 void felix86_tf_changed(ThreadState* state, bool tf) {
     if (tf) {
         WARN("This program sets the trap flag");

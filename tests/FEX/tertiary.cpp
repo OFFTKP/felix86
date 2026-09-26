@@ -12,6 +12,10 @@
 
 H0F38_TEST(adcx)
 H0F38_TEST(adox)
+H0F38_TEST(sha1msg1)
+H0F38_TEST(sha1msg2)
+H0F38_TEST(sha1nexte)
+H0F38_TEST(sha1rnds4)
 H0F38_TEST(sha256msg1)
 H0F38_TEST(sha256msg2)
 H0F38_TEST(sha256rnds2)

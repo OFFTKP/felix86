@@ -11959,6 +11959,24 @@ FAST_HANDLE(SHA1NEXTE) {
     rec.v0Modified();
 }
 
+// Horrible instruction to have no hardware support for
+FAST_HANDLE(SHA1RNDS4) {
+    u8 imm = rec.getImmediate(&operands[2]);
+    x86_ref_e reg = rec.zydisToRef(operands[0].reg.value);
+    rec.writebackState();
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        x86_ref_e src = rec.zydisToRef(operands[1].reg.value);
+        as.ADDI(a1, Recompiler::threadStatePointer(), offsetof(ThreadState, ctx.xmm) + (src - X86_REF_XMM0) * sizeof(XmmReg));
+    } else {
+        biscuit::GPR address = rec.lea(&operands[1]);
+        as.MV(a1, address);
+    }
+    as.ADDI(a0, Recompiler::threadStatePointer(), offsetof(ThreadState, ctx.xmm) + (reg - X86_REF_XMM0) * sizeof(XmmReg));
+    as.LI(a2, imm);
+    rec.callPointer(offsetof(ThreadState, felix86_sha1rnds4));
+    rec.restoreState();
+}
+
 FAST_HANDLE(SHA256RNDS2) {
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
