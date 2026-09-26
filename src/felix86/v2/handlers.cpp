@@ -11893,6 +11893,108 @@ FAST_HANDLE(AESKEYGENASSIST) {
     rec.restoreState();
 }
 
+FAST_HANDLE(SHA1MSG1) {
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1]);
+    biscuit::Vec temp = rec.scratchVec();
+    rec.setVectorState(SEW::E32, 4, Extensions::VLEN >= 256 ? LMUL::MF2 : LMUL::M1);
+    as.VSLIDEDOWN(temp, dst, 2);
+    as.VSLIDEUP(temp, src, 2);
+    as.VXOR(dst, dst, temp);
+    rec.setVec(&operands[0], dst);
+}
+
+FAST_HANDLE(SHA1MSG2) {
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1]);
+    biscuit::Vec temp1 = rec.scratchVec();
+    biscuit::Vec temp2 = rec.scratchVec();
+    if (Extensions::VLEN < 512) {
+        rec.setVectorState(SEW::E32, 4, Extensions::VLEN == 256 ? LMUL::MF2 : LMUL::M1);
+        as.VSLIDE1UP(temp1, src, x0);
+        as.VXOR(temp1, dst, temp1);
+        // Will insert zeroes for > VLMAX
+        as.VSLIDEDOWN(temp2, temp1, 3);
+        as.VROR(temp2, temp2, 31);
+        as.VXOR(dst, temp1, temp2);
+        as.VROR(dst, dst, 31);
+    } else {
+        rec.setVectorState(SEW::E32, 4, LMUL::MF2);
+        as.VSLIDEDOWN(temp1, dst, 3);
+        as.VSLIDEDOWN(temp2, src, 2);
+        as.VXOR(temp1, temp1, temp2);
+        as.VROR(temp1, temp1, 31);
+        as.VSLIDEUP(temp1, src, 1);
+        as.VXOR(dst, temp1, dst);
+        as.VROR(dst, dst, 31);
+    }
+    rec.setVec(&operands[0], dst);
+}
+
+FAST_HANDLE(SHA1NEXTE) {
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1]);
+    biscuit::Vec temp = rec.scratchVec();
+    rec.setVectorState(SEW::E32, 4, Extensions::VLEN >= 256 ? LMUL::MF2 : LMUL::M1);
+    as.VMV(v0, 0b1000);
+    as.VROR(temp, dst, 2);
+    as.VMV(dst, src);
+    as.VADD(dst, temp, src, VecMask::Yes);
+    rec.setVec(&operands[0], dst);
+    rec.v0Modified();
+}
+
+FAST_HANDLE(SHA256RNDS2) {
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1]);
+    biscuit::Vec xmm0 = rec.getVec(X86_REF_XMM0);
+    rec.setVectorState(SEW::E32, 4);
+    as.VSHA2CL(dst, src, xmm0);
+    rec.setVec(&operands[0], dst);
+}
+
+FAST_HANDLE(SHA256MSG1) {
+    // We can't use VSHA2MS for this one as cleanly, because w18 and w19 add σ1(w16) and σ1(w17)
+    // We would need to calculate -σ1(w16) and -σ1(w17) which is more work than the naive solution
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1]);
+    biscuit::Vec sigma = rec.scratchVec();
+    biscuit::Vec w = rec.scratchVec();
+    biscuit::Vec temp1 = rec.scratchVec();
+    biscuit::Vec temp2 = rec.scratchVec();
+    biscuit::Vec temp3 = rec.scratchVec();
+    rec.setVectorState(SEW::E32, 4, Extensions::VLEN >= 256 ? LMUL::MF2 : LMUL::M1);
+    as.VSLIDEDOWN(w, dst, 1);
+    as.VSLIDEUP(w, src, 3);
+    as.VROR(temp1, w, 7);
+    as.VROR(temp2, w, 18);
+    as.VSRL(temp3, w, 3);
+    as.VXOR(sigma, temp1, temp2);
+    as.VXOR(sigma, sigma, temp3);
+    as.VADD(dst, dst, sigma);
+    rec.setVec(&operands[0], dst);
+}
+
+FAST_HANDLE(SHA256MSG2) {
+    // VSHA2MS performs the operations of both SHA256MSG1 and SHA256MSG2, but we only want the second part here
+    // so we zero the elements that aren't necessary
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1]);
+    biscuit::Vec src_modified = rec.scratchVec();
+    biscuit::Vec dst_slide = rec.scratchVec();
+    biscuit::Vec vzero = rec.scratchVec();
+    biscuit::Vec w = rec.scratchVec();
+    rec.setVectorState(SEW::E32, 4, Extensions::VLEN >= 256 ? LMUL::MF2 : LMUL::M1);
+    as.VMV(v0, 0b0001);
+    as.VSLIDEDOWN(dst_slide, dst, 3);
+    as.VMV(vzero, 0);
+    as.VSLIDE1UP(w, dst, x0);
+    as.VMERGE(src_modified, src, dst_slide);
+    as.VSHA2MS(vzero, w, src_modified);
+    rec.setVec(&operands[0], vzero);
+    rec.v0Modified();
+}
+
 FAST_HANDLE(CMPXCHG16B) {
     biscuit::GPR address = rec.lea(&operands[0]);
     {

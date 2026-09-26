@@ -144,6 +144,7 @@ struct Extensions {
     X(Zvkned)                                                                                                                                        \
     X(Zknd)                                                                                                                                          \
     X(Zicclsm)                                                                                                                                       \
+    X(Zvknha)                                                                                                                                        \
     X(Xtheadcondmov)                                                                                                                                 \
     X(Xtheadvector)                                                                                                                                  \
     X(Xtheadba)                                                                                                                                      \
