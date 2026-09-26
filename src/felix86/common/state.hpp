@@ -375,6 +375,7 @@ struct ThreadState {
     void* deferred_fault_page = nullptr;
     bool in_restartable_syscall = false;
     bool should_restart_syscall = false;
+    bool in_rmw_function = false;
 
     bool force_defer_synchronous = false;
     sigjmp_buf force_defer_buffer{};

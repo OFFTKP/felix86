@@ -1433,7 +1433,10 @@ static bool handle_safepoint(ThreadState* current_state, siginfo_t* info, uconte
 }
 
 static bool handle_smc(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
-    if (!is_in_jit_code(current_state, (u8*)pc)) {
+    // Some functions, like felix86_bts may modify guest memory so SMC may happen during them
+    // This behavior is seen in Mortal Kombat 1
+    bool in_rmw = current_state->in_rmw_function;
+    if (!is_in_jit_code(current_state, (u8*)pc) && !in_rmw) {
         WARN("We hit a SIGSEGV ACCERR but PC is not in JIT code...");
         return false;
     }

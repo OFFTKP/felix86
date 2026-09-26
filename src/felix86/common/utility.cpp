@@ -690,26 +690,35 @@ bool felix86_bt(u64 address, i64 offset) {
 }
 
 bool felix86_bts(u64 address, i64 offset) {
+    ThreadState* state = ThreadState::Get();
     u64 byte_offset = offset >> 3;
     u64 bit_offset = offset & 7;
     u8* ptr = (u8*)address + byte_offset;
+    state->in_rmw_function = true; // Possible SMC, lock bts seen in MK1
     u8 old = __atomic_fetch_or(ptr, 1 << bit_offset, __ATOMIC_SEQ_CST);
+    state->in_rmw_function = false;
     return (old >> bit_offset) & 1;
 }
 
 bool felix86_btr(u64 address, i64 offset) {
+    ThreadState* state = ThreadState::Get();
     u64 byte_offset = offset >> 3;
     u64 bit_offset = offset & 7;
     u8* ptr = (u8*)address + byte_offset;
+    state->in_rmw_function = true;
     u8 old = __atomic_fetch_and(ptr, ~(1 << bit_offset), __ATOMIC_SEQ_CST);
+    state->in_rmw_function = false;
     return (old >> bit_offset) & 1;
 }
 
 bool felix86_btc(u64 address, i64 offset) {
+    ThreadState* state = ThreadState::Get();
     u64 byte_offset = offset >> 3;
     u64 bit_offset = offset & 7;
     u8* ptr = (u8*)address + byte_offset;
+    state->in_rmw_function = true;
     u8 old = __atomic_fetch_xor(ptr, 1 << bit_offset, __ATOMIC_SEQ_CST);
+    state->in_rmw_function = false;
     return (old >> bit_offset) & 1;
 }
 
