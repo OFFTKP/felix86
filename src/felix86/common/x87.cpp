@@ -96,13 +96,16 @@ static void pop(ThreadState* state) {
     state->force_defer_synchronous = true;
     int ret = sigsetjmp(state->force_defer_buffer, 1);
     if (ret == 0) {
+        state->in_rmw_function = true;
         memcpy(dst, src, size);
         asm volatile("" ::: "memory");
+        state->in_rmw_function = false;
         state->force_defer_synchronous = false;
         return true;
     } else {
         // A signal happened during the memcpy and it was deferred, return false to return out of the function
         WARN("Signal %d happened during x87 function", ret);
+        state->in_rmw_function = false;
         state->force_defer_synchronous = false;
         return false;
     }
