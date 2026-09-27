@@ -1854,6 +1854,21 @@ FAST_HANDLE(UD2) {
     EmitUD(rec, as);
 }
 
+FAST_HANDLE(VMCALL) {
+    WARN_ONCE("VMCALL instruction being compiled");
+    EmitUD(rec, as);
+}
+
+FAST_HANDLE(VMMCALL) {
+    WARN_ONCE("VMMCALL instruction being compiled");
+    EmitUD(rec, as);
+}
+
+FAST_HANDLE(VMFUNC) {
+    WARN_ONCE("VMFUNC instruction being compiled");
+    EmitUD(rec, as);
+}
+
 FAST_HANDLE(CALL) {
     rec.pushCalltrace();
 
