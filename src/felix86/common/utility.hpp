@@ -156,6 +156,8 @@ void felix86_fxam(ThreadState* state);
 
 void felix86_aeskeygenassist(u32* dst, u32* src, u32 imm);
 
+void felix86_sha1rnds4(u32* dst, u32* src, u8 imm);
+
 std::string felix86_maps();
 const std::string& felix86_cpuinfo();
 

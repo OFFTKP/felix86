@@ -201,6 +201,7 @@ void __attribute__((noreturn)) enter_repl() {
     Extensions::V = true;
     Extensions::VLEN = 256;
     Extensions::Zicond = true;
+    Extensions::Zvknha = true;
     Extensions::Zicclsm = true;
     Handlers::initialize();
     using_history();
