@@ -133,9 +133,11 @@ THUNK wl_display_create_queue_with_name
 THUNK wl_display_dispatch_timeout
 THUNK wl_display_dispatch_queue_timeout
 THUNK wl_display_set_max_buffer_size
+THUNK wl_display_get_protocol_error
 THUNK wl_event_queue_destroy
 THUNK wl_event_queue_get_name
 THUNK wl_proxy_add_listener
+THUNK wl_proxy_add_dispatcher
 THUNK wl_proxy_create
 THUNK wl_proxy_destroy
 THUNK wl_proxy_create_wrapper
