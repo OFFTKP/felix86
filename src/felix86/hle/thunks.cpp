@@ -161,6 +161,8 @@ struct wl_message {
     const struct wl_interface** types;
 };
 
+typedef int (*wl_dispatcher_func_t)(const void* user_data, void* target, uint32_t opcode, const struct wl_message* msg, union wl_argument* args);
+
 static std::mutex display_map_mutex;
 static std::unordered_map<void*, void*> host_to_guest;
 static std::unordered_map<void*, void*> guest_to_host;
@@ -657,6 +659,16 @@ static int felix86_thunk_wl_proxy_add_listener(struct wl_proxy* proxy, void** ca
     return host_wl_proxy_add_listener(proxy, host_callable, data);
 }
 
+static int felix86_thunk_wl_proxy_add_dispatcher(struct wl_proxy* proxy, wl_dispatcher_func_t func, const void* impl, void* data) {
+    wl_dispatcher_func_t host_func = nullptr;
+    if (func) {
+        host_func = (wl_dispatcher_func_t)ABIMadness::hostToGuestTrampoline("d_qqdqq", (void*)func);
+    }
+    static auto host_wl_proxy_add_dispatcher =
+        (int (*)(struct wl_proxy*, wl_dispatcher_func_t, const void*, void*))dlsym(libwayland, "wl_proxy_add_dispatcher");
+    return host_wl_proxy_add_dispatcher(proxy, host_func, impl, data);
+}
+
 #define PRINTME VERBOSE("Calling thunked %s", __PRETTY_FUNCTION__)
 
 static XVisualInfo64* felix86_thunk_glXChooseVisual(void* guest_display, int screen, int* attribList) {
@@ -931,6 +943,8 @@ void* get_custom_egl_thunk(const std::string& name) {
 void* get_custom_wl_thunk(const std::string& name) {
     if (name == "wl_proxy_add_listener") {
         return (void*)felix86_thunk_wl_proxy_add_listener;
+    } else if (name == "wl_proxy_add_dispatcher") {
+        return (void*)felix86_thunk_wl_proxy_add_dispatcher;
     } else {
         return nullptr;
     }
