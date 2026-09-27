@@ -128,7 +128,6 @@ jobs:
           chmod +x ${{ github.workspace }}/test/felix86_test
           chmod +x ${{ github.workspace }}/test/felix86
           ${{ github.workspace }}/test/felix86_test
-          ${{ github.workspace }}/test/felix86 -k
           FELIX86PATH="${{ github.workspace }}/test/felix86"
           ROOTFSPATH=$($FELIX86PATH --get-config general.rootfs_path)
           git clone https://github.com/felix86-emu/binary_tests $RUNNER_TEMP/tests
