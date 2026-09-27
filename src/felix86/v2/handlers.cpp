@@ -3360,22 +3360,63 @@ FAST_HANDLE(INC) {
     bool too_small_for_atomic = operands[0].size == 8 || operands[0].size == 16;
     bool writeback = true;
     if (needs_atomic && !too_small_for_atomic) {
-        biscuit::GPR address = rec.lea(&operands[0]);
-        biscuit::GPR one = rec.scratch();
         dst = rec.scratch();
-        as.LI(one, 1);
+        biscuit::GPR address = rec.lea(&operands[0]);
+        biscuit::GPR mask = rec.scratch();
+        biscuit::GPR shift = rec.scratch();
+        biscuit::GPR masked_address = rec.scratch();
+        as.LI(mask, 1);
         if (operands[0].size == 32) {
-            as.AMOADD_W(Ordering::AQRL, dst, one, address);
+            biscuit::Label unaligned, crosses_dword, loop, loop_crossing, end;
+            as.ANDI(shift, address, 0b11);
+            as.BNEZ(shift, &unaligned);
+            as.AMOADD_W(Ordering::AQRL, dst, mask, address);
+            as.J(&end);
+            as.Bind(&unaligned);
+            as.ANDI(shift, address, 0b111);
+            as.ANDI(masked_address, address, ~0b111);
+            as.LI(mask, 4);
+            as.BGT(shift, mask, &crosses_dword);
+            as.SLLI(shift, shift, 3);
+            as.LI(mask, 0xFFFFFFFF);
+            as.SLL(mask, mask, shift);
+            as.Bind(&loop);
+            as.LR_D(Ordering::AQRL, dst, masked_address);
+            as.NEG(res, mask);
+            as.AND(res, res, mask);
+            as.ADD(res, dst, res);
+            as.XOR(res, res, dst);
+            as.AND(res, res, mask);
+            as.XOR(res, res, dst);
+            as.SC_D(Ordering::AQRL, res, res, masked_address);
+            as.BNEZ(res, &loop);
+            as.SRL(dst, dst, shift);
+            as.J(&end);
+            as.Bind(&crosses_dword);
+            as.Bind(&loop_crossing);
+            as.LR_D(Ordering::AQRL, shift, masked_address);
+            as.LWU(dst, 0, address);
+            as.ADDIW(res, dst, 1);
+            as.SC_D(Ordering::AQRL, shift, shift, masked_address);
+            as.BNEZ(shift, &loop_crossing);
+            as.SW(res, 0, address);
+            as.ADDI(masked_address, rec.threadStatePointer(), offsetof(ThreadState, unaligned_atomics_counter));
+            as.LI(shift, 1);
+            as.AMOADD_D(Ordering::AQRL, x0, shift, masked_address);
+            as.Bind(&end);
             rec.zext(dst, dst, X86_SIZE_DWORD);
             rec.setLockHandled();
         } else if (operands[0].size == 64) {
-            as.AMOADD_D(Ordering::AQRL, dst, one, address);
+            as.AMOADD_D(Ordering::AQRL, dst, mask, address);
             rec.setLockHandled();
         } else {
             UNREACHABLE();
         }
         as.ADDI(res, dst, 1); // Do the operation in the register as well to calculate the flags
         writeback = false;
+        rec.popScratch();
+        rec.popScratch();
+        rec.popScratch();
     } else {
         if (needs_atomic) {
             WARN("Atomic INC with 8 or 16 bit operands encountered");
@@ -3445,22 +3486,63 @@ FAST_HANDLE(DEC) {
     bool too_small_for_atomic = operands[0].size == 8 || operands[0].size == 16;
     bool writeback = true;
     if (needs_atomic && !too_small_for_atomic) {
-        biscuit::GPR address = rec.lea(&operands[0]);
-        biscuit::GPR one = rec.scratch();
         dst = rec.scratch();
-        as.LI(one, -1);
+        biscuit::GPR address = rec.lea(&operands[0]);
+        biscuit::GPR mask = rec.scratch();
+        biscuit::GPR shift = rec.scratch();
+        biscuit::GPR masked_address = rec.scratch();
+        as.LI(mask, -1);
         if (operands[0].size == 32) {
-            as.AMOADD_W(Ordering::AQRL, dst, one, address);
+            biscuit::Label unaligned, crosses_dword, loop, loop_crossing, end;
+            as.ANDI(shift, address, 0b11);
+            as.BNEZ(shift, &unaligned);
+            as.AMOADD_W(Ordering::AQRL, dst, mask, address);
+            as.J(&end);
+            as.Bind(&unaligned);
+            as.ANDI(shift, address, 0b111);
+            as.ANDI(masked_address, address, ~0b111);
+            as.LI(mask, 4);
+            as.BGT(shift, mask, &crosses_dword);
+            as.SLLI(shift, shift, 3);
+            as.LI(mask, 0xFFFFFFFF);
+            as.SLL(mask, mask, shift);
+            as.Bind(&loop);
+            as.LR_D(Ordering::AQRL, dst, masked_address);
+            as.NEG(res, mask);
+            as.AND(res, res, mask);
+            as.SUB(res, dst, res);
+            as.XOR(res, res, dst);
+            as.AND(res, res, mask);
+            as.XOR(res, res, dst);
+            as.SC_D(Ordering::AQRL, res, res, masked_address);
+            as.BNEZ(res, &loop);
+            as.SRL(dst, dst, shift);
+            as.J(&end);
+            as.Bind(&crosses_dword);
+            as.Bind(&loop_crossing);
+            as.LR_D(Ordering::AQRL, shift, masked_address);
+            as.LWU(dst, 0, address);
+            as.ADDIW(res, dst, -1);
+            as.SC_D(Ordering::AQRL, shift, shift, masked_address);
+            as.BNEZ(shift, &loop_crossing);
+            as.SW(res, 0, address);
+            as.ADDI(masked_address, rec.threadStatePointer(), offsetof(ThreadState, unaligned_atomics_counter));
+            as.LI(shift, 1);
+            as.AMOADD_D(Ordering::AQRL, x0, shift, masked_address);
+            as.Bind(&end);
             rec.zext(dst, dst, X86_SIZE_DWORD);
             rec.setLockHandled();
         } else if (operands[0].size == 64) {
-            as.AMOADD_D(Ordering::AQRL, dst, one, address);
+            as.AMOADD_D(Ordering::AQRL, dst, mask, address);
             rec.setLockHandled();
         } else {
             UNREACHABLE();
         }
         as.ADDI(res, dst, -1); // Do the operation in the register as well to calculate the flags
         writeback = false;
+        rec.popScratch();
+        rec.popScratch();
+        rec.popScratch();
     } else {
         if (needs_atomic) {
             WARN("Atomic DEC with 8 or 16 bit operands encountered");
