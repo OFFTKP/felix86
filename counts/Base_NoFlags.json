@@ -5872,7 +5872,7 @@
             "ANDI            t4, ra, 0x7(7)",
             "ADDIW           t5, zero, 0x7(7)",
             "BNE             t4, t5, 0x10(16)",
-            "LD              t4, state, 0x4c8(1224)",
+            "LD              t4, state, 0x4d0(1232)",
             "JALR            ra, t4, 0x0(0)",
             "00000000 ???",
             "ANDI            t4, ra, 0xfffffff8(-8)",
