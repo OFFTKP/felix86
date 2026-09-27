@@ -3,8 +3,8 @@
         "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 4, e32, mf2, tu, mu",
-            "VSLIDEDOWN.VI   v2, xmm3, 0x2(2), none",
-            "VSLIDEUP.VI     v2, xmm4, 0x2(2), none",
+            "VSLIDEDOWN.VI   v2, xmm4, 0x2(2), none",
+            "VSLIDEUP.VI     v2, xmm3, 0x2(2), none",
             "VXOR.VV         xmm3, xmm3, v2, none"
         ],
         "disassembly": "sha1msg1 xmm3, xmm4"
@@ -25,8 +25,8 @@
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VLE8.V          v2, rdi, none, 1",
             "VSETIVLI        zero, 4, e32, mf2, tu, mu",
-            "VSLIDEDOWN.VI   v3, xmm1, 0x2(2), none",
-            "VSLIDEUP.VI     v3, v2, 0x2(2), none",
+            "VSLIDEDOWN.VI   v3, v2, 0x2(2), none",
+            "VSLIDEUP.VI     v3, xmm1, 0x2(2), none",
             "VXOR.VV         xmm1, xmm1, v3, none"
         ],
         "disassembly": "sha1msg1 xmm1, [rdi]"
