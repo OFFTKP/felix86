@@ -11913,8 +11913,8 @@ FAST_HANDLE(SHA1MSG1) {
     biscuit::Vec src = rec.getVec(&operands[1]);
     biscuit::Vec temp = rec.scratchVec();
     rec.setVectorState(SEW::E32, 4, Extensions::VLEN >= 256 ? LMUL::MF2 : LMUL::M1);
-    as.VSLIDEDOWN(temp, dst, 2);
-    as.VSLIDEUP(temp, src, 2);
+    as.VSLIDEDOWN(temp, src, 2);
+    as.VSLIDEUP(temp, dst, 2);
     as.VXOR(dst, dst, temp);
     rec.setVec(&operands[0], dst);
 }
