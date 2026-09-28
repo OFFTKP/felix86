@@ -1,8 +1,10 @@
 #include <algorithm>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <system_error>
 #include <fcntl.h>
+#include <sched.h>
 #include <linux/limits.h>
 #include <linux/openat2.h>
 #include <sys/inotify.h>
@@ -91,6 +93,29 @@ void Filesystem::initializeEmulatedNodes() {
             int fd = generate_memfd("/proc/self/mountinfo", flags);
             ASSERT_MSG(fd >= 0, "/proc/self/mountinfo fd is negative: %d %s", fd, strerror(errno));
             ASSERT(write(fd, maps.data(), maps.size()) == (ssize_t)maps.size());
+            lseek(fd, 0, SEEK_SET);
+            seal_memfd(fd);
+            return fd;
+        }
+    };
+
+    emulated_nodes[SYS_CPU_ONLINE] = EmulatedNode{
+        .path = "/sys/devices/system/cpu/online",
+        .open_func = [](const char* path, int flags) {
+            cpu_set_t set;
+            CPU_ZERO(&set);
+            std::string online;
+            if (sched_getaffinity(0, sizeof(set), &set) == -1) {
+                std::ifstream ifs("/sys/devices/system/cpu/online");
+                std::getline(ifs, online);
+                online += "\n";
+            } else {
+                int count = CPU_COUNT(&set);
+                online = count > 1 ? "0-" + std::to_string(count - 1) + "\n" : "0\n";
+            }
+            int fd = generate_memfd("/sys/devices/system/cpu/online", flags);
+            ASSERT_MSG(fd >= 0, "/sys/devices/system/cpu/online fd is negative: %d %s", fd, strerror(errno));
+            ASSERT(write(fd, online.data(), online.size()) == (ssize_t)online.size());
             lseek(fd, 0, SEEK_SET);
             seal_memfd(fd);
             return fd;
