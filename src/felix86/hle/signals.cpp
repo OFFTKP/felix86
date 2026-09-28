@@ -504,6 +504,21 @@ static u32 get_reg_err(int sig, siginfo_t* info, ucontext_t* uctx) {
         return 0;
     }
 
+    if (info->si_code == SI_KERNEL) {
+        u32 expected_int_gp;
+        {
+            Assembler tas2((u8*)&expected_int_gp, sizeof(u32));
+            tas2.SLTIU(x0, x0, FELIX86_HINT_INT_GP);
+        }
+
+        u32* host_pc = (u32*)get_pc(uctx);
+        if (host_pc[1] == expected_int_gp) {
+            u32 vector = host_pc[2] >> 20;
+            return (vector << 3) | 2;
+        }
+        return 0;
+    }
+
     if (info->si_code != SEGV_MAPERR && info->si_code != SEGV_ACCERR) {
         return 0;
     }
@@ -552,14 +567,18 @@ static u32 get_reg_trapno(u64 host_pc, int sig, siginfo_t* info, ucontext_t* uct
     }
 
     if (info->si_code == SI_KERNEL) {
-        u32 expected_gp;
+        u32 expected_gp, expected_int_gp;
         {
             Assembler tas2((u8*)&expected_gp, sizeof(u32));
             tas2.SLTIU(x0, x0, FELIX86_HINT_GP);
         }
+        {
+            Assembler tas2((u8*)&expected_int_gp, sizeof(u32));
+            tas2.SLTIU(x0, x0, FELIX86_HINT_INT_GP);
+        }
 
         u32 next_instruction = *(((u32*)host_pc) + 1);
-        if (next_instruction == expected_gp) {
+        if (next_instruction == expected_gp || next_instruction == expected_int_gp) {
             return 13; // General protection
         } else {
             WARN("SI_KERNEL but pc != hint_gp?");
@@ -1653,7 +1672,7 @@ static bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucon
     // Check the hint right after to make sure this is a hlt
     u32 next_instruction = *(((u32*)pc) + 1);
 
-    u32 expected_divzero, expected_int3, expected_int1, expected_ud2, expected_gp, expected_tf;
+    u32 expected_divzero, expected_int3, expected_int1, expected_ud2, expected_gp, expected_int_gp, expected_tf;
     u32 expected_not_mapped, expected_not_read, expected_not_exec;
     {
         Assembler tas2((u8*)&expected_divzero, sizeof(u32));
@@ -1674,6 +1693,10 @@ static bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucon
     {
         Assembler tas2((u8*)&expected_gp, sizeof(u32));
         tas2.SLTIU(x0, x0, FELIX86_HINT_GP);
+    }
+    {
+        Assembler tas2((u8*)&expected_int_gp, sizeof(u32));
+        tas2.SLTIU(x0, x0, FELIX86_HINT_INT_GP);
     }
     {
         Assembler tas2((u8*)&expected_tf, sizeof(u32));
@@ -1729,7 +1752,7 @@ static bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucon
         sig = SIGILL;
         info->si_code = ILL_ILLOPN;
         info->si_addr = (void*)actual_rip;
-    } else if (next_instruction == expected_gp) {
+    } else if (next_instruction == expected_gp || next_instruction == expected_int_gp) {
         sig = SIGSEGV;
         info->si_code = SI_KERNEL;
         info->si_addr = nullptr;
