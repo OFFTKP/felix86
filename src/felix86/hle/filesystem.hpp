@@ -320,6 +320,7 @@ private:
         PROC_CPUINFO,
         // PROC_SELF_MAPS,
         PROC_SELF_MOUNTINFO,
+        SYS_CPU_ONLINE,
         EMULATED_NODE_COUNT,
     };
 
