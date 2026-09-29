@@ -589,10 +589,6 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    if (getenv("__FELIX86_QUIET")) {
-        g_config.quiet = true;
-    }
-
     const char* pipe = secure_getenv("__FELIX86_PIPE"); // don't inherit pipe from different uid
     if (!pipe || !*pipe) {
         Logger::openTerminal();

@@ -269,7 +269,7 @@ struct Recompiler {
     }
 
     bool canEmitRetStub() const {
-        return g_config.address_cache && g_config.return_address_hint && g_config.link && !relocatable && !isSingleStepping();
+        return g_config.address_cache && g_config.return_address_hint && !relocatable && !isSingleStepping();
     }
 
     // TODO: move these elsewhere

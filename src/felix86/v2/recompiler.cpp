@@ -2853,7 +2853,7 @@ void Recompiler::updateSign(biscuit::GPR result, x86_size_e size) {
 void Recompiler::jumpAndLink(u64 rip, bool return_link, bool skip_lookup) {
     OptimizationGuard guard(as, optimization_guard_counter);
     const bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
-    if (!g_config.link || is_single_step || relocatable) {
+    if (is_single_step || relocatable) {
         // Just emit jump to dispatcher
         backToDispatcher(return_link, skip_lookup);
         return;
@@ -2966,7 +2966,7 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
 }
 
 void Recompiler::expirePendingLinks(u64 rip) {
-    if (!g_config.link || relocatable) {
+    if (relocatable) {
         return;
     }
 
