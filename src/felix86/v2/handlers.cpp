@@ -683,7 +683,7 @@ FAST_HANDLE(ADD) {
     bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf || needs_af;
     bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
-    if (g_config.noflag_opts && !needs_any_flag && dst_reg) {
+    if (!needs_any_flag && dst_reg) {
         // We can do it faster if we don't need to calculate flags
         return OP_noflags_destreg(rec, rip, as, instruction, operands, &Assembler::ADD, &Assembler::ADDW);
     }
@@ -826,7 +826,7 @@ FAST_HANDLE(ADD) {
         }
         }
 
-        if (needs_any_flag || !g_config.noflag_opts) {
+        if (needs_any_flag) {
             as.ADD(result, dst, src);
         }
 
@@ -880,7 +880,7 @@ FAST_HANDLE(SUB) {
     bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf || needs_af;
     bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
-    if (g_config.noflag_opts && !needs_any_flag && dst_reg) {
+    if (!needs_any_flag && dst_reg) {
         // We can do it faster if we don't need to calculate flags
         return OP_noflags_destreg(rec, rip, as, instruction, operands, &Assembler::SUB, &Assembler::SUBW);
     }
@@ -1483,7 +1483,7 @@ FAST_HANDLE(XOR) {
     bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf;
     bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
-    if (g_config.noflag_opts && !needs_any_flag && dst_reg) {
+    if (!needs_any_flag && dst_reg) {
         // We can do it faster if we don't need to calculate flags
         return OP_noflags_destreg(rec, rip, as, instruction, operands, &Assembler::XOR, &Assembler::XOR);
     }
@@ -1508,7 +1508,7 @@ FAST_HANDLE(XOR) {
             UNREACHABLE();
         }
 
-        if (needs_any_flag || !g_config.noflag_opts) {
+        if (needs_any_flag) {
             as.XOR(result, dst, src);
         }
 
@@ -2502,7 +2502,7 @@ FAST_HANDLE(SHL_imm) {
     bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF) && shift == 1;
     bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_CF) || needs_of;
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf;
-    if (!needs_any_flag && operands[0].size == 64 && g_config.noflag_opts) {
+    if (!needs_any_flag && operands[0].size == 64) {
         result = dst; // shift the allocated register directly
     }
 
@@ -2676,7 +2676,7 @@ FAST_HANDLE(SHL) {
     bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_CF) || needs_of;
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf;
 
-    if (g_config.noflag_opts && !needs_any_flag) {
+    if (!needs_any_flag) {
         return SHIFT_noflags(rec, rip, as, instruction, operands, &Assembler::SLL, &Assembler::SLLW);
     }
 
@@ -2742,7 +2742,7 @@ FAST_HANDLE(SHR) {
     bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf;
 
-    if (g_config.noflag_opts && !needs_any_flag) {
+    if (!needs_any_flag) {
         return SHIFT_noflags(rec, rip, as, instruction, operands, &Assembler::SRL, &Assembler::SRLW);
     }
 
@@ -3336,7 +3336,7 @@ FAST_HANDLE(INC) {
     bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
     bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
     bool needs_any_flag = needs_of || needs_pf || needs_sf || needs_zf || needs_af;
-    if (!needs_any_flag && g_config.noflag_opts && operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+    if (!needs_any_flag && operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
         if (size == X86_SIZE_BYTE) {
             // We can do 4 instructions rather than 5 that OP_noflags_destreg_srcimm does
             biscuit::GPR temp1 = rec.scratch();
@@ -3462,7 +3462,7 @@ FAST_HANDLE(DEC) {
     bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
     bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
     bool needs_any_flag = needs_of || needs_pf || needs_sf || needs_zf || needs_af;
-    if (!needs_any_flag && g_config.noflag_opts && operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+    if (!needs_any_flag && operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
         if (size == X86_SIZE_BYTE) {
             // We can do 4 instructions rather than 5 that OP_noflags_destreg_srcimm does
             biscuit::GPR temp1 = rec.scratch();
@@ -6143,7 +6143,7 @@ FAST_HANDLE(NEG) {
     bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
     bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
     bool needs_any_flag = needs_zf || needs_cf || needs_of || needs_af || needs_pf || needs_sf;
-    if (!needs_any_flag && operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && !needs_atomic && g_config.noflag_opts) {
+    if (!needs_any_flag && operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && !needs_atomic) {
         biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
         biscuit::GPR temp = rec.scratch();
         switch (size) {
@@ -8064,7 +8064,7 @@ FAST_HANDLE(ROL) {
     }
 
     bool needs_flags = rec.shouldEmitFlag(rip, X86_REF_CF) || rec.shouldEmitFlag(rip, X86_REF_OF);
-    if ((operands[0].size == 32 || operands[0].size == 64) && g_config.noflag_opts && !needs_flags) {
+    if ((operands[0].size == 32 || operands[0].size == 64) && !needs_flags) {
         biscuit::GPR dst;
         if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
             dst = rec.getGPR(&operands[0], X86_SIZE_QWORD); // don't zext
@@ -8136,7 +8136,7 @@ FAST_HANDLE(ROR) {
     }
 
     bool needs_flags = rec.shouldEmitFlag(rip, X86_REF_CF) || rec.shouldEmitFlag(rip, X86_REF_OF);
-    if ((operands[0].size == 32 || operands[0].size == 64) && g_config.noflag_opts && !needs_flags) {
+    if ((operands[0].size == 32 || operands[0].size == 64) && !needs_flags) {
         biscuit::GPR dst;
         if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
             dst = rec.getGPR(&operands[0], X86_SIZE_QWORD); // don't zext
@@ -10335,7 +10335,7 @@ FAST_HANDLE(XADD_lock_8) {
     rec.popScratch();
     rec.popScratch();
 
-    if (!g_config.noflag_opts || update_any) {
+    if (update_any) {
         biscuit::GPR result = rec.scratch();
         as.ADD(result, dst, src);
 
@@ -10428,7 +10428,7 @@ FAST_HANDLE(XADD_lock_16) {
     rec.popScratch();
 
     as.Bind(&after);
-    if (!g_config.noflag_opts || update_any) {
+    if (update_any) {
         biscuit::GPR result = rec.scratch();
         as.ADD(result, dst, src);
 
@@ -10505,7 +10505,7 @@ FAST_HANDLE(XADD_lock_32) {
 
     as.Bind(&after);
     rec.zext(dst, dst, X86_SIZE_DWORD); // amoadd sign extends
-    if (!g_config.noflag_opts || update_any) {
+    if (update_any) {
         biscuit::GPR result = rec.scratch();
         as.ADD(result, dst, src);
 
@@ -10577,7 +10577,7 @@ FAST_HANDLE(XADD_lock_64) {
     rec.setLockHandled();
 
     as.Bind(&after);
-    if (!g_config.noflag_opts || update_any) {
+    if (update_any) {
         as.ADD(result, dst, src);
 
         x86_size_e size = rec.getSize(&operands[0]);

@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <optional>
+#include <string_view>
 #include <system_error>
 #include <elf.h>
 #include <pwd.h>
@@ -76,16 +77,20 @@ static bool is_truthy(const char* str) {
     return lower == "true" || lower == "1" || lower == "yes" || lower == "on" || lower == "y" || lower == "enable";
 }
 
-bool Config::initialize(bool ignore_envs) {
-    bool is_privileged = getauxval(AT_SECURE) != 0;
-    if (is_privileged) {
-        ignore_envs = true;
-    }
+static bool is_secure_process() {
+    return getauxval(AT_SECURE) != 0 || geteuid() == 0;
+}
 
+static bool is_allowed_when_secure(std::string_view env_name) {
+    return env_name == "FELIX86_QUIET" || env_name == "FELIX86_LOG_FILE";
+}
+
+bool Config::initialize(bool ignore_envs) {
     std::filesystem::path config_path;
     std::filesystem::path profiles_path;
     pid_t euid = geteuid();
-    bool no_config_file = is_truthy(secure_getenv("FELIX86_NO_CONFIG_FILE"));
+    bool is_secure = is_secure_process();
+    bool no_config_file = !is_secure && is_truthy(getenv("FELIX86_NO_CONFIG_FILE"));
     if (!no_config_file) {
         config_path = getConfigFilePath();
 
@@ -111,7 +116,6 @@ bool Config::initialize(bool ignore_envs) {
 
                 if (!std::filesystem::exists(profiles_path / "extreme.toml", ec)) {
                     Config extreme_config{};
-                    extreme_config.link = true;
                     extreme_config.address_cache = true;
                     extreme_config.unsafe_flags = true;
                     extreme_config.opcode_fusing = true;
@@ -119,7 +123,6 @@ bool Config::initialize(bool ignore_envs) {
                     extreme_config.inaccurate_minmax = true;
                     extreme_config.always_tso = false;
                     extreme_config.protect_pages = true;
-                    extreme_config.noflag_opts = true;
                     extreme_config.auto_compress = false;
                     extreme_config.scan_ahead_multi = true;
                     extreme_config.no_address_overflow = true;
@@ -129,7 +132,6 @@ bool Config::initialize(bool ignore_envs) {
 
                 if (!std::filesystem::exists(profiles_path / "safe.toml", ec)) {
                     Config safe_config{};
-                    safe_config.link = true;
                     safe_config.address_cache = true;
                     safe_config.unsafe_flags = false;
                     safe_config.opcode_fusing = false;
@@ -137,7 +139,6 @@ bool Config::initialize(bool ignore_envs) {
                     safe_config.inaccurate_minmax = false;
                     safe_config.always_tso = true;
                     safe_config.protect_pages = true;
-                    safe_config.noflag_opts = true;
                     safe_config.auto_compress = false;
                     safe_config.scan_ahead_multi = false;
                     safe_config.no_address_overflow = false;
@@ -150,7 +151,6 @@ bool Config::initialize(bool ignore_envs) {
                     paranoid_config.paranoid = true;
                     paranoid_config.alignment_check = true;
                     paranoid_config.always_flags = true;
-                    paranoid_config.link = true;
                     paranoid_config.address_cache = false;
                     paranoid_config.unsafe_flags = false;
                     paranoid_config.opcode_fusing = false;
@@ -158,7 +158,6 @@ bool Config::initialize(bool ignore_envs) {
                     paranoid_config.inaccurate_minmax = false;
                     paranoid_config.always_tso = true;
                     paranoid_config.protect_pages = true;
-                    paranoid_config.noflag_opts = false;
                     paranoid_config.auto_compress = false;
                     paranoid_config.scan_ahead_multi = false;
                     paranoid_config.no_address_overflow = false;
@@ -180,7 +179,7 @@ bool Config::initialize(bool ignore_envs) {
     g_config = load(config_path, ignore_envs);
     g_config.config_path = config_path;
 
-    const char* steam_appid = is_privileged ? nullptr : guest_getenv("SteamAppId");
+    const char* steam_appid = is_secure ? nullptr : guest_getenv("SteamAppId");
     if (steam_appid && euid != 0) {
         const std::filesystem::path steam_dir = getProfilesDir() / "steam";
         const std::string toml_file = std::string(steam_appid) + ".toml";
@@ -195,7 +194,7 @@ bool Config::initialize(bool ignore_envs) {
         }
     }
 
-    if (!is_privileged && euid != 0) {
+    if (!is_secure) {
         // Scan this directory for user created files that contain configurations
         // We install one of our own here with the name `00-installation-profiles.toml` which
         // contains some useful profiles for programs. Users can add their own as well.
@@ -207,7 +206,7 @@ bool Config::initialize(bool ignore_envs) {
         }
     }
 
-    const char* profile = secure_getenv("FELIX86_PROFILE");
+    const char* profile = is_secure ? nullptr : getenv("FELIX86_PROFILE");
     if (profile && euid != 0) {
         std::filesystem::path path;
 
@@ -234,14 +233,14 @@ bool Config::initialize(bool ignore_envs) {
         }
     }
 
-    g_initial_config = g_config;
-
 #define X(group, type, name, default_value, env_name, description)                                                                                   \
     if (g_config.name != type{default_value}) {                                                                                                      \
         addToEnvironment(g_config, #env_name, namify(g_config.name).c_str());                                                                        \
     }
 #include "config.inc"
 #undef X
+
+    g_initial_config = g_config;
 
     return true;
 }
@@ -343,10 +342,12 @@ Config Config::load(const std::filesystem::path& path, bool ignore_envs) {
         return config;
     }
 
+    bool is_secure = is_secure_process();
+
 #define X(group, type, name, default_value, env_name, description)                                                                                   \
     {                                                                                                                                                \
         [[maybe_unused]] bool loaded = false;                                                                                                        \
-        const char* env = secure_getenv(#env_name);                                                                                                  \
+        const char* env = (is_secure && !is_allowed_when_secure(#env_name)) ? nullptr : getenv(#env_name);                                           \
         if (env && !ignore_envs) {                                                                                                                   \
             loaded = setFromString<type>(config, config.name, env);                                                                                  \
             if (loaded)                                                                                                                              \

@@ -475,10 +475,6 @@ void initialize_globals() {
         g_config.calltrace = true;
     }
 
-    if (g_config.single_step) {
-        g_config.link = false;
-    }
-
     std::string extensions = get_extensions();
     if (extensions.empty()) {
         ASSERT(!g_execve_process);

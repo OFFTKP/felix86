@@ -1713,9 +1713,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         // We need to tell the new process where the server is
         std::string log_env;
         envp.push_back("__FELIX86_EXECVE=1");
-        if (g_config.quiet) {
-            log_env = "__FELIX86_QUIET=1";
-        } else if (*Logger::getPipeName()) {
+        if (*Logger::getPipeName()) {
             log_env = std::string("__FELIX86_PIPE=") + Logger::getPipeName();
         }
         if (!log_env.empty()) {

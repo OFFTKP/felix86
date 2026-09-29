@@ -67,7 +67,6 @@ X(Debugging, bool, stats_enabled, false, FELIX86_STATS_ENABLED, "Enable JIT stat
 X(Debugging, bool, proc_self_auxv, true, FELIX86_PROC_SELF_AUXV, "Enable /proc/self/auxv emulation, breaks host gdb attaching to felix86, disable if you need to attach")
 X(Debugging, bool, guest_memory_tracking_enabled, false, FELIX86_GUEST_MEMORY_TRACKING_ENABLED, "Enable guest memory tracking")
 
-X(Performance, bool, link, true, FELIX86_LINK, "Enable basic block linking, important for performance")
 X(Performance, u64, max_block_size, 300, FELIX86_MAX_BLOCK_SIZE, "Maximum x86 instructions per block")
 X(Performance, bool, address_cache, true, FELIX86_ADDRESS_CACHE, "Use lower address bits to speed up block lookup")
 X(Performance, bool, return_address_hint, true, FELIX86_RETURN_ADDRESS_HINT, "Use return address hints for faster branch predictions. Requires the address cache to be enabled")
@@ -79,7 +78,6 @@ X(Performance, bool, divzero_check, true, FELIX86_DIVZERO_CHECK, "Check for divi
 X(Performance, bool, always_tso, false, FELIX86_ALWAYS_TSO, "Use fences to emulate TSO on every memory read/write -- Will cause slowdown but may fix some games")
 X(Performance, bool, no_tso_stack, true, FELIX86_NO_TSO_STACK, "Don't emulate TSO on stack accesses")
 X(Performance, bool, protect_pages, true, FELIX86_PROTECT_PAGES, "Protect pages to catch self-modifying code, disabling may perform better in some games but break others")
-X(Performance, bool, noflag_opts, true, FELIX86_NOFLAG_OPTS, "Optimize some instructions when the flag calculations aren't necessary")
 X(Performance, bool, auto_compress, false, FELIX86_AUTO_COMPRESS, "Automatically compress instructions whenever possible which may slightly improve performance")
 X(Performance, bool, scan_ahead_multi, true, FELIX86_SCAN_AHEAD_MULTI, "Scan ahead to multiple blocks when possible, avoiding even more flag calculations")
 X(Performance, bool, no_address_overflow, true, FELIX86_NO_ADDRESS_OVERFLOW, "Assume addresses won't overflow in 32-bit apps, which allows for some optimizations")
