@@ -4,9 +4,9 @@
 #include <fstream>
 #include <system_error>
 #include <fcntl.h>
-#include <sched.h>
 #include <linux/limits.h>
 #include <linux/openat2.h>
+#include <sched.h>
 #include <sys/inotify.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
@@ -102,16 +102,13 @@ void Filesystem::initializeEmulatedNodes() {
     emulated_nodes[SYS_CPU_ONLINE] = EmulatedNode{
         .path = "/sys/devices/system/cpu/online",
         .open_func = [](const char* path, int flags) {
-            cpu_set_t set;
-            CPU_ZERO(&set);
             std::string online;
-            if (sched_getaffinity(0, sizeof(set), &set) == -1) {
+            if (g_online_cpu_string.empty()) {
                 std::ifstream ifs("/sys/devices/system/cpu/online");
                 std::getline(ifs, online);
                 online += "\n";
             } else {
-                int count = CPU_COUNT(&set);
-                online = count > 1 ? "0-" + std::to_string(count - 1) + "\n" : "0\n";
+                online = g_online_cpu_string + "\n";
             }
             int fd = generate_memfd("/sys/devices/system/cpu/online", flags);
             ASSERT_MSG(fd >= 0, "/sys/devices/system/cpu/online fd is negative: %d %s", fd, strerror(errno));
@@ -1101,7 +1098,8 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
                 // Need to recalculate statx for ".." check
                 result = statx(current_fd, current_relative_path.c_str(), AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &current_statx);
                 if (result != 0) {
-                    VERBOSE("Error while resolving statx (for fake mount) %d %s, error: %s", current_fd, current_relative_path.c_str(), strerror(errno));
+                    VERBOSE("Error while resolving statx (for fake mount) %d %s, error: %s", current_fd, current_relative_path.c_str(),
+                            strerror(errno));
                     return FdPath::error(errno);
                 }
                 break;
