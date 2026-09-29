@@ -52,6 +52,7 @@ bool g_testing = false;
 bool g_emit_stats = false;
 bool g_is_single_thread = true;
 int g_gnu_stack = 0;
+std::string g_online_cpu_string{};
 
 // g_output_fd should be replaced upon connecting to the server, however if an error occurs before then we should at least log it
 int g_output_fd = STDERR_FILENO;
@@ -527,6 +528,120 @@ void initialize_globals() {
     g_fs = std::make_unique<Filesystem>();
     g_mapper = std::make_unique<Mapper>();
     g_emit_stats = felix86_shm_stats_enabled();
+
+    if (!g_execve_process) {
+        {
+            std::ifstream ifs("/sys/devices/system/cpu/online");
+            if (ifs.is_open()) {
+                ifs >> g_online_cpu_string;
+            }
+        }
+        cpu_set_t old;
+        if (sched_getaffinity(0, sizeof(old), &old) == 0) {
+            bool ok = true;
+            cpu_set_t set;
+            CPU_ZERO(&set);
+            u64 index = 0;
+            u64 highest = 0;
+            while (index < g_online_cpu_string.size()) {
+                const char* start = g_online_cpu_string.c_str() + index;
+                char* end;
+                u64 first = strtoull(start, &end, 10);
+                u64 last = first;
+                if (end == start) {
+                    ok = false;
+                    break;
+                }
+                if (*end == '-') {
+                    const char* start = end + 1;
+                    last = strtoull(start, &end, 10);
+                    if (start == end) {
+                        ok = false;
+                        break;
+                    }
+                }
+                if (last < first || last >= CPU_SETSIZE || first >= CPU_SETSIZE) {
+                    ok = false;
+                    break;
+                }
+                for (u64 j = first; j <= last; j++) {
+                    CPU_SET(j, &set);
+                }
+                if (last > highest) {
+                    highest = last;
+                }
+                if (*end == ',') {
+                    end++;
+                }
+                index = end - g_online_cpu_string.c_str();
+            }
+            if (ok) {
+                bool rewrite_online = false;
+                int result = sched_setaffinity(0, sizeof(set), &set);
+                if (result == -1 && errno == EINVAL) {
+                    cpu_set_t one_cpu;
+                    CPU_ZERO(&one_cpu);
+                    for (int i = 0; i <= highest; i++) {
+                        if (CPU_ISSET(i, &set)) {
+                            CPU_SET(i, &one_cpu);
+                            int result = sched_setaffinity(0, sizeof(one_cpu), &one_cpu);
+                            if (result == -1) {
+                                CPU_CLR(i, &set);
+                            }
+                            CPU_CLR(i, &one_cpu);
+                        }
+                    }
+                    rewrite_online = true;
+                }
+                if (sched_setaffinity(0, sizeof(old), &old) == -1) {
+                    ERROR("Failed to restore CPU affinity?");
+                }
+                if (rewrite_online) {
+                    int first = -1;
+                    std::string rewrite{};
+                    for (int i = 0; i <= highest; i++) {
+                        if (CPU_ISSET(i, &set)) {
+                            if (first == -1) {
+                                first = i;
+                            }
+                        } else {
+                            if (first != -1) {
+                                if (!rewrite.empty()) {
+                                    rewrite += ",";
+                                }
+                                if (i == first + 1) {
+                                    rewrite += std::to_string(first);
+                                } else {
+                                    rewrite += std::to_string(first) + "-" + std::to_string(i - 1);
+                                }
+                                first = -1;
+                            }
+                        }
+                    }
+                    if (first != -1) {
+                        if (!rewrite.empty()) {
+                            rewrite += ",";
+                        }
+                        if (first == highest) {
+                            rewrite += std::to_string(first);
+                        } else {
+                            rewrite += std::to_string(first) + "-" + std::to_string(highest);
+                        }
+                    }
+                    if (!rewrite.empty()) {
+                        g_online_cpu_string = rewrite;
+                    } else {
+                        IMPORTANT("Our CPU online rewrite failed");
+                    }
+                }
+            }
+        }
+    } else {
+        const char* online_str = getenv("__FELIX86_ONLINE_CPUS");
+        if (online_str) {
+            g_online_cpu_string = online_str;
+        }
+    }
 }
 
 bool parse_extensions(const char* arg) {

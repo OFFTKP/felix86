@@ -1719,6 +1719,11 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         if (!log_env.empty()) {
             envp.push_back(log_env.c_str());
         }
+        std::string online_env = std::string("__FELIX86_ONLINE_CPUS=");
+        if (!g_online_cpu_string.empty()) {
+            online_env += g_online_cpu_string;
+            envp.push_back(online_env.c_str());
+        }
         std::string rootfs_env = std::string("__FELIX86_ROOTFS=") + g_config.rootfs_path.string();
         envp.push_back(rootfs_env.c_str());
         std::string extensions_env = "__FELIX86_EXTENSIONS=" + get_extensions();
