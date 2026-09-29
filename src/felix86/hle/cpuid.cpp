@@ -15,55 +15,23 @@
 #endif
 
 constexpr static u32 NO_SUBLEAF = 0xFFFFFFFF;
+constexpr static u32 CPUID_ICACHE = 2;
+constexpr static u32 CPUID_DCACHE = 1;
+constexpr static u32 CPUID_UNIFIED_CACHE = 3;
 
 static inline void bit_set(u32& data, int position, bool value) {
     data &= ~(1u << position);
     data |= value << position;
 }
 
-// Generated using generate_cpuid.cpp
-[[maybe_unused]] constexpr static std::array p4_mappings = {
-    // Pentium 4 CPU
-    (Cpuid){0x00000000, NO_SUBLEAF, 0x00000002, 0x756E6547, 0x6C65746E, 0x49656E69},
-    (Cpuid){0x00000001, NO_SUBLEAF, 0x00000F29, 0x00020809, 0x00004400, 0xBFEBFBFF},
-    (Cpuid){0x00000002, NO_SUBLEAF, 0x665B5001, 0x00000000, 0x00000000, 0x007B7040},
-    (Cpuid){0x80000000, NO_SUBLEAF, 0x80000004, 0x00000000, 0x00000000, 0x00000000},
-    (Cpuid){0x80000001, NO_SUBLEAF, 0x00000000, 0x00000000, 0x00000000, 0x00000000},
-    (Cpuid){0x80000002, NO_SUBLEAF, 0x20202020, 0x20202020, 0x20202020, 0x6E492020},
-    (Cpuid){0x80000003, NO_SUBLEAF, 0x286C6574, 0x50202952, 0x69746E65, 0x52286D75},
-    (Cpuid){0x80000004, NO_SUBLEAF, 0x20342029, 0x20555043, 0x30382E32, 0x007A4847},
-};
-
-[[maybe_unused]] constexpr static std::array p4_mappings_sse3 = {
-    (Cpuid){0x00000000, NO_SUBLEAF, 0x00000005, 0x756E6547, 0x6C65746E, 0x49656E69},
-    (Cpuid){0x00000001, NO_SUBLEAF, 0x00000F41, 0x00010800, 0x0000651D, 0xBFEBFBFF},
-    (Cpuid){0x00000002, NO_SUBLEAF, 0x605B5101, 0x00000000, 0x00000000, 0x003C7040},
-    (Cpuid){0x00000003, NO_SUBLEAF, 0x00000000, 0x00000000, 0x00000000, 0x00000000},
-    (Cpuid){0x00000004, 0x00000000, 0x00000121, 0x01C0003F, 0x0000001F, 0x00000000},
-    (Cpuid){0x00000004, 0x00000001, 0x00000143, 0x00C0103F, 0x000001FF, 0x00000000},
-    (Cpuid){0x00000005, NO_SUBLEAF, 0x00000040, 0x00000040, 0x00000000, 0x00000000},
-    (Cpuid){0x80000000, NO_SUBLEAF, 0x80000008, 0x00000000, 0x00000000, 0x00000000},
-    (Cpuid){0x80000001, NO_SUBLEAF, 0x00000000, 0x00000000, 0x00000000, 0x20100000},
-    (Cpuid){0x80000002, NO_SUBLEAF, 0x20202020, 0x20202020, 0x20202020, 0x20202020},
-    (Cpuid){0x80000003, NO_SUBLEAF, 0x65746E49, 0x2952286C, 0x6C654320, 0x6E6F7265},
-    (Cpuid){0x80000004, NO_SUBLEAF, 0x20295228, 0x20555043, 0x33352E32, 0x007A4847},
-    (Cpuid){0x80000005, NO_SUBLEAF, 0x00000000, 0x00000000, 0x00000000, 0x00000000},
-    (Cpuid){0x80000006, NO_SUBLEAF, 0x00000000, 0x00000000, 0x01004040, 0x00000000},
-    (Cpuid){0x80000007, NO_SUBLEAF, 0x00000000, 0x00000000, 0x00000000, 0x00000000},
-    (Cpuid){0x80000008, NO_SUBLEAF, 0x00003024, 0x00000000, 0x00000000, 0x00000000},
-};
-
-[[maybe_unused]] constexpr static std::array p4_mappings_32 = {
-    // Pentium 4 CPU, no x86-64
-    (Cpuid){0x00000000, NO_SUBLEAF, 0x00000002, 0x756E6547, 0x6C65746E, 0x49656E69},
-    (Cpuid){0x00000001, NO_SUBLEAF, 0x00000F29, 0x00020809, 0x00004400, 0xBFEBFBFF},
-    (Cpuid){0x00000002, NO_SUBLEAF, 0x665B5001, 0x00000000, 0x00000000, 0x007B7040},
-    (Cpuid){0x80000000, NO_SUBLEAF, 0x80000004, 0x00000000, 0x00000000, 0x00000000},
-    (Cpuid){0x80000001, NO_SUBLEAF, 0x00000000, 0x00000000, 0x00000000, 0x00000000},
-    (Cpuid){0x80000002, NO_SUBLEAF, 0x20202020, 0x20202020, 0x20202020, 0x6E492020},
-    (Cpuid){0x80000003, NO_SUBLEAF, 0x286C6574, 0x50202952, 0x69746E65, 0x52286D75},
-    (Cpuid){0x80000004, NO_SUBLEAF, 0x20342029, 0x20555043, 0x30382E32, 0x007A4847},
-};
+static i64 sysconf_or_previous(int name, i64 previous) {
+    auto val = sysconf(name);
+    if (val > 0) {
+        return val;
+    } else {
+        return previous;
+    }
+}
 
 [[maybe_unused]] constexpr static std::array nehalem_mappings = {
     // http://users.atw.hu/instlatx64/GenuineIntel/GenuineIntel00106A2_Nehalem-EP_CPUID.txt
@@ -92,7 +60,6 @@ static inline void bit_set(u32& data, int position, bool value) {
 };
 
 static std::span<const Cpuid> selected_mappings = nehalem_mappings;
-static std::span<const Cpuid> selected_mappings_32 = p4_mappings_sse3;
 static bool cpu_name_tried = false;
 static bool cpu_name_set = false;
 static char cpu_name[48];
@@ -133,7 +100,7 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
     bool found = false;
 
     bool mode32 = ThreadState::Get()->ctx.Mode32();
-    auto& mappings = mode32 ? selected_mappings_32 : selected_mappings;
+    auto& mappings = selected_mappings;
     for (const Cpuid& cpuid : mappings) {
         if (cpuid.leaf == leaf && (cpuid.subleaf == subleaf || cpuid.subleaf == NO_SUBLEAF)) {
             result = cpuid;
@@ -170,6 +137,91 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
         bit_set(result.ecx, 27, is_feature_enabled(x86_feature::OSXSAVE));
         bit_set(result.ecx, 28, is_feature_enabled(x86_feature::AVX));
         bit_set(result.ecx, 29, is_feature_enabled(x86_feature::F16C));
+    }
+
+    if (leaf == 0x0000'0002) {
+        result.ecx = 0;
+        result.edx = 0;
+        // 64-byte prefetch, TLB stuff
+        result.ebx = 0xCAF0B255;
+        result.eax = 0x01;       // Bit required to be set
+        result.eax |= 0xFF << 8; // Look at leaf 4 for cache info
+        // more TLB stuff
+        result.eax |= 0x035A << 16;
+    }
+
+    if (leaf == 0x0000'0004) {
+        struct CacheInfo {
+            u64 size = 0;
+            u16 line_size = 0;
+            u16 assoc = 0;
+            u8 level = 0;
+            u8 type = 0;
+        };
+        static std::array<CacheInfo, 5> caches = []() {
+            std::array<CacheInfo, 5> ret;
+            // Fill with some data in case we fail
+            ret[0].level = 1;
+            ret[0].type = CPUID_ICACHE;
+            ret[0].line_size = 64;
+            ret[0].size = 64 * 1024;
+            ret[0].assoc = 4;
+            ret[1].level = 1;
+            ret[1].type = CPUID_DCACHE;
+            ret[1].line_size = 64;
+            ret[1].size = 64 * 1024;
+            ret[1].assoc = 4;
+            ret[2].level = 2;
+            ret[2].type = CPUID_UNIFIED_CACHE;
+            ret[2].line_size = 64;
+            ret[2].size = 4096 * 1024;
+            ret[2].assoc = 16;
+            ret[3].level = 3;
+            ret[3].type = CPUID_UNIFIED_CACHE;
+            ret[3].line_size = 64;
+            ret[3].assoc = 16;
+            ret[4].level = 4; // Doesn't exist but whatever
+            ret[4].type = CPUID_UNIFIED_CACHE;
+            ret[4].line_size = 64;
+            ret[4].assoc = 16;
+            for (int i = 0; i < 5; i++) {
+                ret[i].size = sysconf_or_previous(_SC_LEVEL1_ICACHE_SIZE + i * 3, ret[i].size);
+                ret[i].line_size = sysconf_or_previous(_SC_LEVEL1_ICACHE_LINESIZE + i * 3, ret[i].line_size);
+                ret[i].assoc = sysconf_or_previous(_SC_LEVEL1_ICACHE_ASSOC + i * 3, ret[i].assoc);
+            }
+            return ret;
+        }();
+
+        if (subleaf > 4 || caches[subleaf].size == 0) {
+            result.eax = 0;
+            result.ebx = 0;
+            result.ecx = 0;
+            result.edx = 0;
+        } else {
+            u32 eax = caches[subleaf].type;
+            eax |= caches[subleaf].level << 5;
+            eax |= 1 << 8; // self-initializing
+            eax |= 0 << 9; // fully associative
+            int cpu_count = get_cpu_count();
+            if (subleaf >= 2 && cpu_count != -1) {
+                // Assume cache is shared with all processors
+                eax |= (cpu_count - 1) << 14;
+            } else {
+                // Assume L1 is not shared (i.e. hyperthreading)
+            }
+            result.eax = eax;
+
+            u32 ebx = caches[subleaf].line_size - 1;
+            ebx |= 0 << 12; // 1 partition, no bits give this info on RISC-V
+            ebx |= (caches[subleaf].assoc - 1) << 22;
+            result.ebx = ebx;
+
+            const u64 size = caches[subleaf].size;
+            const u64 assoc = caches[subleaf].assoc;
+            const u64 line_size = caches[subleaf].line_size;
+            result.ecx = size / (assoc * line_size) - 1; // set count
+            result.edx = 0;
+        }
     }
 
     if (found && leaf == 0x0000'0007) {
@@ -217,6 +269,7 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
         bit_set(result.ecx, 0, true); // LAHF/SAHF
         bit_set(result.ecx, 5, is_feature_enabled(x86_feature::LZCNT_POPCNT));
         bit_set(result.edx, 27, is_feature_enabled(x86_feature::RDTSCP));
+        bit_set(result.edx, 11, !mode32); // Clear SYSCALL bit in 32-bit mode, similar to HW
     }
 
     if (found && leaf == 0x8000'0002 && cpu_name_set) {

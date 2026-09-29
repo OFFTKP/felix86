@@ -158,6 +158,8 @@ void felix86_aeskeygenassist(u32* dst, u32* src, u32 imm);
 
 void felix86_sha1rnds4(u32* dst, u32* src, u8 imm);
 
+int get_cpu_count();
+
 std::string felix86_maps();
 const std::string& felix86_cpuinfo();
 

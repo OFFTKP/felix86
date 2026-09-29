@@ -1427,6 +1427,20 @@ bool check_if_privileged_executable(const std::filesystem::path& path) {
     return false;
 }
 
+int get_cpu_count() {
+    static int count = []() {
+        cpu_set_t set;
+        CPU_ZERO(&set);
+        if (sched_getaffinity(0, sizeof(set), &set) == -1) {
+            IMPORTANT("Failed to get CPU count?");
+            return -1;
+        } else {
+            return CPU_COUNT(&set);
+        }
+    }();
+    return count;
+}
+
 void felix86_crash_and_burn() {
     fprintf(stderr, "Reached felix86_crash_and_burn, this shouldn't happen\n");
     ERROR("Reached felix86_crash_and_burn, this shouldn't happen");
