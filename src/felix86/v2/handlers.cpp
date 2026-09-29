@@ -6312,35 +6312,43 @@ static void ROUND(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstructi
     }
 
     biscuit::GPR max = rec.scratch();
-    if (sew == SEW::E32) {
-        as.LI(max, 0x4B000000);
-        as.FMV_W_X(max_f, max);
-        as.FNEG_S(min_f, max_f);
-    } else {
-        as.LI(max, 0x4330'0000'0000'0000);
-        as.FMV_D_X(max_f, max);
-        as.FNEG_D(min_f, max_f);
+    bool inaccurate = g_config.inaccurate_conversions && !g_config.paranoid;
+    if (!inaccurate) {
+        if (sew == SEW::E32) {
+            as.LI(max, 0x4B000000);
+            as.FMV_W_X(max_f, max);
+            as.FNEG_S(min_f, max_f);
+        } else {
+            as.LI(max, 0x4330'0000'0000'0000);
+            as.FMV_D_X(max_f, max);
+            as.FNEG_D(min_f, max_f);
+        }
     }
     rec.popScratch();
 
     rec.setVectorState(sew, vlen);
     RMode rmode = rounding_mode(x86RoundingMode(imm & 0b11));
-    as.LI(new_rounding, (int)rmode);
     if (!dyn_round) {
+        as.LI(new_rounding, (int)rmode);
         as.FSRM(old_rounding, new_rounding);
     }
-    biscuit::Vec result = rec.scratchVec();
-    // If the values are bigger than the maximum integer or smaller than the minimum, the VFCVT_X_F would overflow
-    // Since at this point floats can't have a fractional part, they are already integers and thus should preserve the original value
-    // We don't have a VFROUND.VV in RISC-V so we gotta do this instead
-    as.VMFLT(v0, src, max_f);
-    as.VMFGT(temp_mask, src, min_f);
-    as.VMAND(v0, v0, temp_mask);
-    rec.v0Modified();
-    as.VMV1R(result, src);
-    as.VFCVT_X_F(result, result, VecMask::Yes);
-    as.VFCVT_F_X(result, result, VecMask::Yes);
 
+    biscuit::Vec result = rec.scratchVec();
+    if (inaccurate) {
+        as.VFCVT_X_F(result, src);
+        as.VFCVT_F_X(result, result);
+    } else {
+        // If the values are bigger than the maximum integer or smaller than the minimum, the VFCVT_X_F would overflow
+        // Since at this point floats can't have a fractional part, they are already integers and thus should preserve the original value
+        // We don't have a VFROUND.VV in RISC-V so we gotta do this instead
+        as.VMFLT(v0, src, max_f);
+        as.VMFGT(temp_mask, src, min_f);
+        as.VMAND(v0, v0, temp_mask);
+        rec.v0Modified();
+        as.VMV1R(result, src);
+        as.VFCVT_X_F(result, result, VecMask::Yes);
+        as.VFCVT_F_X(result, result, VecMask::Yes);
+    }
     // There's sign differences when rounding towards zero. For example, round(-0.5) becomes -0.0 in x86, 0.0 in RISC-V
     // So we restore the sign bit after rounding
     as.VFSGNJ(dst, result, src);
