@@ -58,6 +58,7 @@ jobs:
           mkdir -p $GITHUB_WORKSPACE/artifact
           mkdir -p $GITHUB_WORKSPACE/artifact/lib
           cp $GITHUB_WORKSPACE/build/felix86 $GITHUB_WORKSPACE/artifact/
+          riscv64-linux-gnu-strip --strip-debug $GITHUB_WORKSPACE/artifact/felix86
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             curl -fsSL -o $GITHUB_WORKSPACE/artifact/felix86.png https://cdn.felix86.com/images/felix86.png
             echo "a35e3508794644729aee70bfd7ee3a6e041eb63da7c2724d920e6fe5756d29a0  $GITHUB_WORKSPACE/artifact/felix86.png" | sha256sum -c -
