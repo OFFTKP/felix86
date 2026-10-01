@@ -245,6 +245,11 @@ std::string get_extensions() {
             extensions += ",";
         extensions += "zicclsm";
     }
+    if (Extensions::Zvknha) {
+        if (!extensions.empty())
+            extensions += ",";
+        extensions += "Zvknha";
+    }
 
     return extensions;
 }

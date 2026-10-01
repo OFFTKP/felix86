@@ -12072,29 +12072,28 @@ FAST_HANDLE(SHA256RNDS2) {
     biscuit::Vec src = rec.getVec(&operands[1]);
     biscuit::Vec xmm0 = rec.getVec(X86_REF_XMM0);
     rec.setVectorState(SEW::E32, 4);
+    if (dst == src || dst == xmm0) {
+        biscuit::Vec tmp = rec.scratchVec();
+        as.VMV1R(tmp, dst);
+        dst = tmp;
+    }
     as.VSHA2CL(dst, src, xmm0);
     rec.setVec(&operands[0], dst);
 }
 
 FAST_HANDLE(SHA256MSG1) {
-    // We can't use VSHA2MS for this one as cleanly, because w18 and w19 add σ1(w16) and σ1(w17)
-    // We would need to calculate -σ1(w16) and -σ1(w17) which is more work than the naive solution
+    // Squeeze some yummy cycles out of VSHA2MS
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
-    biscuit::Vec sigma = rec.scratchVec();
-    biscuit::Vec w = rec.scratchVec();
-    biscuit::Vec temp1 = rec.scratchVec();
-    biscuit::Vec temp2 = rec.scratchVec();
-    biscuit::Vec temp3 = rec.scratchVec();
+    biscuit::Vec temp = rec.scratchVec();
+    biscuit::Vec vzero = rec.scratchVec();
     rec.setVectorState(SEW::E32, 4, Extensions::VLEN >= 256 ? LMUL::MF2 : LMUL::M1);
-    as.VSLIDEDOWN(w, dst, 1);
-    as.VSLIDEUP(w, src, 3);
-    as.VROR(temp1, w, 7);
-    as.VROR(temp2, w, 18);
-    as.VSRL(temp3, w, 3);
-    as.VXOR(sigma, temp1, temp2);
-    as.VXOR(sigma, sigma, temp3);
-    as.VADD(dst, dst, sigma);
+    as.VMV(vzero, 0);
+    as.VSLIDEDOWN(temp, dst, 2);
+    as.VSLIDEUP(temp, src, 2);
+    as.VSHA2MS(dst, vzero, vzero);
+    as.VSHA2MS(temp, vzero, vzero);
+    as.VSLIDEUP(dst, temp, 2);
     rec.setVec(&operands[0], dst);
 }
 
