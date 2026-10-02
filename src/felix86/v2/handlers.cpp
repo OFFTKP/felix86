@@ -6721,10 +6721,14 @@ static void PCMPEQ(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruct
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
     rec.setVectorState(sew, vlen);
-    as.VMV(zero, 0);
-    as.VMSEQ(v0, dst, src);
-    as.VMERGE(dst, zero, -1ll);
-    rec.v0Modified();
+    if (dst == src) {
+        as.VMV(dst, -1);
+    } else {
+        as.VMV(zero, 0);
+        as.VMSEQ(v0, dst, src);
+        as.VMERGE(dst, zero, -1ll);
+        rec.v0Modified();
+    }
     rec.setVec(&operands[0], dst);
 }
 
@@ -15030,10 +15034,14 @@ static void VPCMPEQ(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruc
     biscuit::Vec src1 = rec.getVec(&operands[1]);
     biscuit::Vec src2 = rec.getVec(&operands[2]);
     rec.setVectorState(sew, vlen);
-    as.VMV(zero, 0);
-    as.VMSEQ(v0, src1, src2);
-    as.VMERGE(dst, zero, -1ll);
-    rec.v0Modified();
+    if (src1 == src2) {
+        as.VMV(dst, -1);
+    } else {
+        as.VMV(zero, 0);
+        as.VMSEQ(v0, src1, src2);
+        as.VMERGE(dst, zero, -1ll);
+        rec.v0Modified();
+    }
     rec.setVec(&operands[0], dst);
 }
 
