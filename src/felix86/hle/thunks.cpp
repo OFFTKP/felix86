@@ -488,7 +488,7 @@ static void* felix86_thunk_vkGetInstanceProcAddr(VkInstance instance, const char
     if (strcmp(name, "vkGetPhysicalDeviceXlibPresentationSupportKHR") == 0) {
         host_vkGetPhysicalDeviceXlibPresentationSupportKHR =
             (decltype(host_vkGetPhysicalDeviceXlibPresentationSupportKHR))host_vkGetInstanceProcAddr(instance, name);
-    } else if (strcmp(name, "vkGetPhysicalDeviceXcbPresentationSupportKHR")) {
+    } else if (strcmp(name, "vkGetPhysicalDeviceXcbPresentationSupportKHR") == 0) {
         host_vkGetPhysicalDeviceXcbPresentationSupportKHR =
             (decltype(host_vkGetPhysicalDeviceXcbPresentationSupportKHR))host_vkGetInstanceProcAddr(instance, name);
     }
