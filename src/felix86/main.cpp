@@ -103,16 +103,14 @@ static int print_system_info() {
     int ok = posix_spawnp(&pid, "fastfetch", nullptr, nullptr, (char**)args.data(), environ);
     if (ok != 0) {
         printf("Please install fastfetch for more information\n");
-        return ok;
-    } else {
-        int result = waitpid(pid, &status, 0);
-        if (!(result == 0 && WIFEXITED(status) && WEXITSTATUS(status) == 0)) {
-            return 0;
-        } else {
-            printf("Failed to get info from fastfetch\n");
-            return 1;
-        }
+        return 0;
     }
+
+    if (waitpid(pid, &status, 0) == -1 || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+        printf("Failed to get info from fastfetch\n");
+        return 1;
+    }
+    return 0;
 }
 
 static void kill_all() {
@@ -123,13 +121,14 @@ static void kill_all() {
     proc_dir = opendir("/proc");
     if (!proc_dir) {
         perror("opendir /proc");
+        return;
     }
 
     std::string our_name;
     char self[PATH_MAX];
     ssize_t len = readlink("/proc/self/exe", self, PATH_MAX - 1);
     if (len == -1) {
-        printf("Failed to read /proc/self/exe? Using `felix86` as search name");
+        printf("Failed to read /proc/self/exe? Using `felix86` as search name\n");
         our_name = "felix86";
     } else {
         self[len] = 0;
@@ -170,7 +169,7 @@ static void kill_all() {
             if (kill(pid, SIGKILL) == 0) {
                 printf("Killed process %d\n", pid);
             } else {
-                printf("Failed to kill process %d", pid);
+                printf("Failed to kill process %d: %s\n", pid, strerror(errno));
             }
         }
     }
@@ -670,8 +669,11 @@ int main(int argc, char* argv[]) {
             std::error_code ec;
             bool found = false;
             std::filesystem::path canonical_path = std::filesystem::canonical(unmodified_executable_path, ec);
-            if (ec) {
-                ERROR("Executable not inside rootfs, couldn't canonicalize path");
+            if (ec == std::errc::no_such_file_or_directory) {
+                ERROR("Executable %s does not exist", unmodified_executable_path.c_str());
+            } else if (ec) {
+                ERROR("Executable not inside rootfs, couldn't canonicalize path %s: %s", unmodified_executable_path.c_str(),
+                      ec.message().c_str());
             }
 
             for (const auto& fake_mount : g_fake_mounts) {
