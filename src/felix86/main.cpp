@@ -32,11 +32,11 @@
 #endif
 
 static void rootfs_not_set_error() {
-    printf("Rootfs path not set in %s\n", g_config.path().c_str());
-    printf("Set it using `sudo felix86 --set-config general.rootfs_path=/path/to/rootfs`.\n");
-    printf("Consult the installation guide: https://felix86.com/docs/users/installation-guide/\n\n");
-    printf("If you don't have an x86 rootfs, you can use the rootfs installer script to download and install one:\n");
-    printf("    bash <(curl -s https://install.felix86.com/rootfs.sh)\n");
+    fprintf(stderr, "Rootfs path not set in %s\n", g_config.path().c_str());
+    fprintf(stderr, "Set it using `sudo felix86 --set-config general.rootfs_path=/path/to/rootfs`.\n");
+    fprintf(stderr, "Consult the installation guide: https://felix86.com/docs/users/installation-guide/\n\n");
+    fprintf(stderr, "If you don't have an x86 rootfs, you can use the rootfs installer script to download and install one:\n");
+    fprintf(stderr, "    bash <(curl -s https://install.felix86.com/rootfs.sh)\n");
     exit(1);
 }
 
@@ -211,13 +211,13 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
 
         bool rootfs_exists = std::filesystem::exists(g_config.rootfs_path, ec);
         if (!rootfs_exists || ec) {
-            printf("Rootfs path %s does not exist\n", g_config.rootfs_path.c_str());
+            fprintf(stderr, "Rootfs path %s does not exist\n", g_config.rootfs_path.c_str());
             exit(1);
         }
 
         bool rootfs_dir = std::filesystem::is_directory(g_config.rootfs_path, ec);
         if (!rootfs_dir || ec) {
-            printf("Rootfs path %s is not a directory\n", g_config.rootfs_path.c_str());
+            fprintf(stderr, "Rootfs path %s is not a directory\n", g_config.rootfs_path.c_str());
             exit(1);
         }
 
@@ -238,13 +238,13 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         }
 
         if (!std::filesystem::exists(shell_path, ec) || !std::filesystem::is_regular_file(shell_path, ec)) {
-            printf("Couldn't find a shell inside the rootfs\n");
+            fprintf(stderr, "Couldn't find a shell inside the rootfs\n");
             exit(1);
         }
 
         struct passwd* pw = getpwuid(geteuid());
         if (!pw || !pw->pw_dir) {
-            printf("Could not determine home directory\n");
+            fprintf(stderr, "Could not determine home directory\n");
             exit(1);
         }
 
@@ -256,20 +256,20 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             // chdir to root instead
             int result = chdir(g_config.rootfs_path.c_str());
             if (result != 0) {
-                printf("Failed to chdir to %s\n", g_config.rootfs_path.c_str());
+                fprintf(stderr, "Failed to chdir to %s\n", g_config.rootfs_path.c_str());
                 exit(1);
             }
         } else {
             if (g_config.mount_home) {
                 int result = chdir(home.c_str());
                 if (result != 0) {
-                    printf("Failed to chdir to %s\n", home_inside_rootfs.c_str());
+                    fprintf(stderr, "Failed to chdir to %s\n", home_inside_rootfs.c_str());
                     exit(1);
                 }
             } else {
                 int result = chdir(home_inside_rootfs.c_str());
                 if (result != 0) {
-                    printf("Failed to chdir to %s\n", home_inside_rootfs.c_str());
+                    fprintf(stderr, "Failed to chdir to %s\n", home_inside_rootfs.c_str());
                     exit(1);
                 }
             }
@@ -332,7 +332,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         envp.push_back(nullptr);
 
         (void)execve(self.c_str(), argv.data(), envp.data());
-        printf("Failed to start %s, error: %s\n", path_string.c_str(), strerror(errno));
+        fprintf(stderr, "Failed to start %s, error: %s\n", path_string.c_str(), strerror(errno));
         exit(1);
         break;
     }
@@ -362,7 +362,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             printf("%s\n", get.value().c_str());
             exit(0);
         } else {
-            ERROR("%s.%s is not a valid config tuple\n", group.c_str(), field.c_str());
+            ERROR("%s.%s is not a valid config tuple", group.c_str(), field.c_str());
         }
 
         break;
@@ -370,7 +370,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     case -4: {
         // set-config
         if (geteuid() != 0) {
-            printf("Setting config requires root permissions. Please re-run with sudo.\n");
+            fprintf(stderr, "Setting config requires root permissions. Please re-run with sudo.\n");
             exit(1);
         }
         ASSERT(Config::initialize(true));
@@ -402,7 +402,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             Config::save(g_config.path(), g_config);
             exit(0);
         } else {
-            ERROR("%s.%s is not a valid config tuple, or %s is not a valid value for the configuration\n", group.c_str(), field.c_str(),
+            ERROR("%s.%s is not a valid config tuple, or %s is not a valid value for the configuration", group.c_str(), field.c_str(),
                   value.c_str());
         }
 
