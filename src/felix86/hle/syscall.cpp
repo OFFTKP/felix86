@@ -3413,7 +3413,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             result = ftruncate(fd, offset);
             break;
         }
-        case felix86_x86_32_socketcall: { // Funny syscall before the functions were seperated
+        case felix86_x86_32_socketcall: { // Funny syscall before the functions were separated
             enum {
                 SYS_SOCKET = 1,
                 SYS_BIND = 2,
