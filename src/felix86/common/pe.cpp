@@ -1,3 +1,5 @@
+#include <cerrno>
+#include <cstring>
 #include "felix86/common/log.hpp"
 #include "felix86/common/pe.hpp"
 
@@ -20,7 +22,7 @@ PE::PeekResult PE::Peek(const std::filesystem::path& path) {
     FILE* file = fopen(path.c_str(), "r");
 
     if (!file) {
-        ERROR("Failed to open file %s", path.c_str());
+        ERROR("Failed to open file %s: %s", path.c_str(), strerror(errno));
         return PeekResult::NotPE;
     }
 
