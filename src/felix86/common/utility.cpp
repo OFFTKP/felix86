@@ -1056,7 +1056,7 @@ u64 mmap_min_addr() {
         FILE* file = fopen("/proc/sys/vm/mmap_min_addr", "r");
         u64 ret;
         if (!file) {
-            WARN("Failed to open /proc/sys/vm/mmap_min_addr");
+            WARN("Failed to open /proc/sys/vm/mmap_min_addr: %s", strerror(errno));
             ret = 0x10000;
         } else {
             u64 mmap_min_addr;
