@@ -230,7 +230,7 @@ void binfmt_misc(bool is_register, bool is_credentials) {
         }
 
         if (!registered) {
-            printf("Failed to find a binfmt.d directory to put felix86.conf in\n");
+            printf("Failed to find a binfmt.d directory to put felix86.conf in, the registration will not persist after a reboot\n");
         }
 
         unregister_binfmt_misc("qemu-x86_64");
