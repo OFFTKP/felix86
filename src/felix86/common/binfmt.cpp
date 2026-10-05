@@ -163,7 +163,7 @@ void binfmt_misc(bool is_register, bool is_credentials) {
         FILE* fp = fdopen(fd, "w");
 
         if (!fp) {
-            ERROR("Failed to open /proc/sys/fs/binfmt_misc/register");
+            ERROR("Failed to open /proc/sys/fs/binfmt_misc/register: %s", strerror(errno));
         }
 
         if (fwrite(registration_string_x64.c_str(), 1, registration_string_x64.size(), fp) != registration_string_x64.size()) {
@@ -179,6 +179,10 @@ void binfmt_misc(bool is_register, bool is_credentials) {
             exit(1);
         }
         fp = fdopen(fd, "w");
+
+        if (!fp) {
+            ERROR("Failed to open /proc/sys/fs/binfmt_misc/register: %s", strerror(errno));
+        }
 
         if (fwrite(registration_string_i386.c_str(), 1, registration_string_i386.size(), fp) != registration_string_i386.size()) {
             fclose(fp);
@@ -203,7 +207,7 @@ void binfmt_misc(bool is_register, bool is_credentials) {
                     std::filesystem::path x64path = dir / "felix86-x86_64.conf";
                     FILE* fp = fopen(x64path.c_str(), "w");
                     if (!fp) {
-                        ERROR("Failed to open %s", x64path.c_str());
+                        ERROR("Failed to open %s: %s", x64path.c_str(), strerror(errno));
                     }
                     if (fwrite(registration_string_x64.c_str(), 1, registration_string_x64.size(), fp) != registration_string_x64.size()) {
                         fclose(fp);
@@ -215,7 +219,7 @@ void binfmt_misc(bool is_register, bool is_credentials) {
                     std::filesystem::path i386path = dir / "felix86-i386.conf";
                     FILE* fp = fopen(i386path.c_str(), "w");
                     if (!fp) {
-                        ERROR("Failed to open %s", i386path.c_str());
+                        ERROR("Failed to open %s: %s", i386path.c_str(), strerror(errno));
                     }
                     if (fwrite(registration_string_i386.c_str(), 1, registration_string_i386.size(), fp) != registration_string_i386.size()) {
                         fclose(fp);
