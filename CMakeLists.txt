@@ -89,6 +89,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(FELIX86_COMMON_SOURCES
     src/felix86/common/config.cpp
     src/felix86/common/elf.cpp
+    src/felix86/common/pe.cpp
+    src/felix86/common/volatile.cpp
     src/felix86/common/exit.cpp
     src/felix86/common/feature.cpp
     src/felix86/common/freelist.cpp

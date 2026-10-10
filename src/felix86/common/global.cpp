@@ -16,6 +16,7 @@
 #include "felix86/common/info.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/perf.hpp"
+#include "felix86/common/volatile.hpp"
 #include "felix86/hle/fd.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/mmap.hpp"
@@ -34,6 +35,7 @@ u64 g_dispatcher_exit_count = 0;
 std::unordered_map<u64, std::vector<u64>> g_breakpoints{};
 ProcessGlobals g_process_globals{};
 std::unique_ptr<Mapper> g_mapper{};
+std::unique_ptr<VolatimeMemory> g_volatile{};
 std::unique_ptr<GDBJIT> g_gdbjit;
 u64 g_program_end = 0;
 u64 g_guest_auxv{};

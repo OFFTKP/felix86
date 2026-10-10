@@ -1,4 +1,5 @@
 #include <csignal>
+#include <filesystem>
 #include <span>
 #include <vector>
 #include <elf.h>
@@ -12,8 +13,10 @@
 #include <sys/prctl.h>
 #include <sys/random.h>
 #include <sys/ucontext.h>
+#include "felix86/common/config.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/common/pe.hpp"
 #include "felix86/common/script.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
@@ -296,6 +299,30 @@ void Emulator::Start() {
         Script::PeekResult peek = Script::Peek(path);
         if (peek == Script::PeekResult::Script) {
             ERROR("You are trying to run a script file\nPlease start emulated bash and use it to run the script instead");
+        } else if (auto result = PE::Peek(path); result != PE::PeekResult::NotPE) {
+            switch (result) {
+            case PE::PeekResult::PE_i386:
+                ERROR("Does not support running 32-bit PE executables yet");
+            case PE::PeekResult::PE_x64: {
+                auto wine64_path = g_config.rootfs_path / "usr/lib/x86_64-linux-gnu/wine/wine";
+                LOG("Attempting to boot 64-bit PE executable usine Wine: %s", wine64_path.c_str());
+                if (!std::filesystem::exists(wine64_path)) {
+                    ERROR("tried to launch 64-bit PE '%s', but 64-bit Wine is not installed", path.c_str());
+                }
+
+                // Register volatile memory regions from the PE.
+                if (g_config.volatile_meta)
+                    PE::RegisterVolatileMemory(path);
+
+                path = wine64_path;
+                g_executable_path_absolute = path;
+                g_executable_path_guest_override = path;
+                g_params.executable_path = path;
+                g_params.argv.insert(g_params.argv.begin(), path);
+            } break;
+            case PE::PeekResult::NotPE:
+                ERROR("unreachable");
+            }
         } else {
             if (std::filesystem::exists(path)) {
                 FILE* f = fopen(path.c_str(), "r");

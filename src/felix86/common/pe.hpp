@@ -10,4 +10,5 @@ struct PE {
     };
 
     static PeekResult Peek(const std::filesystem::path& path);
+    static void RegisterVolatileMemory(const std::filesystem::path& path);
 };
