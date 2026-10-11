@@ -51,9 +51,9 @@ X("Executable path not specified", "未指定可执行文件路径")
 X("Executable %s does not exist", "可执行文件 %s 不存在")
 X("Executable not inside rootfs, couldn't canonicalize path %s: %s", "可执行文件不在 rootfs 中，且无法解析路径 %s：%s")
 X("Executable not inside rootfs", "可执行文件不在 rootfs 中")
-X("This is a privileged executable but the emulator isn't installed in binfmt_misc, might run into problems. Run `felix86 -b` to install it, "
+X("This is a privileged executable but the emulator isn't installed in binfmt_misc, might run into problems. Run `sudo felix86 -B` to install it, "
   "make sure to remove other x86/x86-64 emulators from binfmt_misc",
-  "这是一个需要特权的程序，但模拟器尚未注册到 binfmt_misc，运行时可能会出现问题。请运行 `felix86 -b` 进行注册，"
+  "这是一个需要特权的程序，但模拟器尚未注册到 binfmt_misc，运行时可能会出现问题。请运行 `sudo felix86 -B` 进行注册，"
   "并确保已从 binfmt_misc 中移除其他 x86/x86-64 模拟器")
 
 X("Config file %s does not exist and cannot be created without root permissions. "

@@ -1210,7 +1210,11 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
                 } else {
                     dirfd = openat(current_fd, current_relative_path.c_str(), O_PATH | O_DIRECTORY);
                 }
-                ASSERT_MSG(dirfd == AT_FDCWD || dirfd >= 0, "Dirfd: %d %s", dirfd, strerror(errno));
+                if (dirfd != AT_FDCWD && dirfd < 0) {
+                    int dirfd_error = errno;
+                    VERBOSE("Failed to open dirfd during magic-link detection for %d %s: %s", fd, path, strerror(dirfd_error));
+                    return FdPath::error(dirfd_error);
+                }
 
                 int result1 = openat(dirfd, current_component.c_str(), O_PATH);
 
@@ -1224,31 +1228,31 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
 
                 // TODO: maybe optimize some cases using close_range
                 ::close(dirfd);
-                if (result1 > 0) {
+                if (result1 >= 0) {
                     ::close(result1);
                 }
-                if (result2 > 0) {
+                if (result2 >= 0) {
                     ::close(result2);
                 }
 
-                if (result1 > 0 && result2 > 0) {
+                if (result1 >= 0 && result2 >= 0) {
                     // Both succeeded... that's fine
                 } else if (result1 < 0 && result2 < 0) {
                     // Both failed... that's fine
                 } else {
                     // One succeeded and one failed
-                    if (result2 > 0 && result1 < 0) {
+                    if (result2 >= 0 && result1 < 0) {
                         // Shouldn't be possible
-                        WARN("openat2 succeeded and openat failed during magic-link detection... what?");
-                    } else {
-                        ASSERT(result2 < 0 && result1 > 0);
-
+                        IMPORTANT("openat2 succeeded and openat failed during magic-link detection for %d %s", fd, path);
+                    } else if (result2_error == ELOOP) { // this is how openat2 should fail when a component is a magic-link
                         // So this is a magic-link. Append it to the path without resolving it and continue to the next component
-                        ASSERT(result2_error == ELOOP); // this is how openat2 should fail when a component is a magic-link
 
                         // Finally do what we need, don't resolve and append it to the path
                         current_relative_path = current_relative_path / current_component;
                         continue;
+                    } else {
+                        IMPORTANT("openat succeeded and openat2 failed with %s during magic-link detection for %d %s", strerror(result2_error), fd,
+                                  path);
                     }
                 }
             }

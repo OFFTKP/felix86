@@ -729,9 +729,10 @@ int main(int argc, char* argv[]) {
 
     if (!g_config.binfmt_misc_installed && !g_execve_process && check_if_privileged_executable(g_params.executable_path)) {
         // Privileged executable but no binfmt_misc support, warn the user
-        WARN("%s", TR("This is a privileged executable but the emulator isn't installed in binfmt_misc, might run into problems. Run `felix86 -b` to "
-                      "install "
-                      "it, make sure to remove other x86/x86-64 emulators from binfmt_misc"));
+        WARN("%s",
+             TR("This is a privileged executable but the emulator isn't installed in binfmt_misc, might run into problems. Run `sudo felix86 -B` to "
+                "install "
+                "it, make sure to remove other x86/x86-64 emulators from binfmt_misc"));
     }
 
     const char* execfn_original = getenv("__FELIX86_EXECFN");
