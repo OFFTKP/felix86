@@ -12,6 +12,7 @@
 #include "felix86/common/config.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/common/translate.hpp"
 
 bool unregister_binfmt_misc(const std::string& name) {
     ASSERT(!name.empty());
@@ -117,7 +118,14 @@ bool detect_binfmt_misc() {
 
 void binfmt_misc(bool is_register, bool is_credentials) {
     if (geteuid() != 0) {
-        printf("I need root permissions to register felix86 in binfmt_misc, please re-run with root permissions as `sudo -E felix86 -b`\n");
+        if (is_register && is_credentials) {
+            printf(TR("I need root permissions to register felix86 in binfmt_misc, please re-run with root permissions as `sudo -E felix86 -B`\n"));
+        } else if (is_register) {
+            printf(TR("I need root permissions to register felix86 in binfmt_misc, please re-run with root permissions as `sudo -E felix86 -b`\n"));
+        } else {
+            printf(
+                TR("I need root permissions to unregister felix86 from binfmt_misc, please re-run with root permissions as `sudo -E felix86 -u`\n"));
+        }
         exit(1);
     }
 
@@ -139,17 +147,17 @@ void binfmt_misc(bool is_register, bool is_credentials) {
 
     if (!is_register) {
         if (unregister_binfmt_misc("felix86-x86_64")) {
-            printf("Unregistered felix86 from binfmt_misc for x86-64 apps\n");
+            printf(TR("Unregistered felix86 from binfmt_misc for x86-64 apps\n"));
         }
 
         if (unregister_binfmt_misc("felix86-i386")) {
-            printf("Unregistered felix86 from binfmt_misc for i386 apps\n");
+            printf(TR("Unregistered felix86 from binfmt_misc for i386 apps\n"));
         }
 
         g_config.binfmt_misc_installed = false;
         Config::save(g_config.path(), g_config);
 
-        printf("felix86 successfully unregistered from binfmt_misc\n");
+        printf(TR("felix86 successfully unregistered from binfmt_misc\n"));
     } else {
         // Unregister if already registered
         unregister_binfmt_misc("felix86-x86_64");
@@ -234,7 +242,7 @@ void binfmt_misc(bool is_register, bool is_credentials) {
         }
 
         if (!registered) {
-            printf("Failed to find a binfmt.d directory to put felix86.conf in, the registration will not persist after a reboot\n");
+            printf(TR("Failed to find a binfmt.d directory to put felix86.conf in, the registration will not persist after a reboot\n"));
         }
 
         unregister_binfmt_misc("qemu-x86_64");
@@ -243,7 +251,7 @@ void binfmt_misc(bool is_register, bool is_credentials) {
         g_config.binfmt_misc_installed = true;
         Config::save(g_config.path(), g_config);
 
-        printf("felix86 successfully registered to binfmt_misc\n");
+        printf(TR("felix86 successfully registered to binfmt_misc\n"));
     }
 }
 

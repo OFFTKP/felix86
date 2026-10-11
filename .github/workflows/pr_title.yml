@@ -13,7 +13,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          VALID_SCOPES="Recompiler Linux Thunks Tests CI Chore Tools Common Meta"
+          VALID_SCOPES="Recompiler Linux Thunks Tests CI Chore Tools Common Meta Translation"
 
           if echo "$PR_TITLE" | grep -qE '^[[:space:]]'; then
             echo "PR title has a leading space: '$PR_TITLE'"

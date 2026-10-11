@@ -11,6 +11,7 @@
 #include "felix86/common/config.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/common/translate.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
 #include "fmt/format.h"
@@ -103,9 +104,9 @@ bool Config::initialize(bool ignore_envs) {
                 chmod(config_path.c_str(), 0644);
                 LOG("Created configuration file: %s", config_path.c_str());
             } else {
-                ERROR("Config file %s does not exist and cannot be created without root permissions. "
-                      "Run `sudo felix86 --set-config general.rootfs_path=<path>` to create it.",
-                      config_path.c_str());
+                ERROR("%s", TRF("Config file %s does not exist and cannot be created without root permissions. "
+                                "Run `sudo felix86 --set-config general.rootfs_path=<path>` to create it.",
+                                config_path.c_str()));
             }
         }
 
@@ -592,16 +593,16 @@ std::optional<std::string> Config::getConfigSourceString(const char* group, cons
         std::string s;
         switch (src.value()) {
         case ConfigSource::Default:
-            s = "Default value";
+            s = TR("Default value");
             break;
         case ConfigSource::Env:
-            s = "Environment variable";
+            s = TR("Environment variable");
             break;
         case ConfigSource::File:
-            s = std::string("Configuration file ") + config_path.string();
+            s = std::string(TR("Configuration file ")) + config_path.string();
             break;
         case ConfigSource::Profile:
-            s = std::string("Profile ") + profile_path.string();
+            s = std::string(TR("Profile ")) + profile_path.string();
             break;
         }
         return std::optional<std::string>(s);
