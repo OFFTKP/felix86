@@ -8,5 +8,6 @@
 struct StartParameters {
     std::filesystem::path executable_path;
     std::deque<std::string> argv;
+    std::string execfn;
     std::vector<std::string> envp;
 };

@@ -685,7 +685,9 @@ int main(int argc, char* argv[]) {
                     }
                     // Point /proc/self/exe & co to the fake mount guest path
                     g_executable_path_guest_override = executable;
-                    g_params.argv[0] = g_executable_path_guest_override;
+                    if (!argv0_original) {
+                        g_params.argv[0] = g_executable_path_guest_override;
+                    }
                     g_params.executable_path = canonical_path;
                     found = true;
                     break;
@@ -711,6 +713,9 @@ int main(int argc, char* argv[]) {
              "install "
              "it, make sure to remove other x86/x86-64 emulators from binfmt_misc");
     }
+
+    const char* execfn_original = getenv("__FELIX86_EXECFN");
+    g_params.execfn = execfn_original ? execfn_original : g_params.argv[0];
 
     g_params.envp.push_back("__FELIX86_EXE=" + std::filesystem::absolute(g_params.executable_path).string());
 

@@ -120,8 +120,6 @@ static void setupMainStack(ThreadState* state) {
         }
     }
 
-    const char* path = g_params.argv[0].c_str();
-
     std::shared_ptr<Elf> elf = g_fs->GetExecutable();
     std::shared_ptr<Elf> interpreter = g_fs->GetInterpreter();
 
@@ -150,7 +148,7 @@ static void setupMainStack(ThreadState* state) {
     // To hold the addresses of the arguments for later pushing
     u64* argv_addresses = (u64*)alloca(argc * sizeof(u64));
 
-    rsp = stack_push_string(rsp, path);
+    rsp = stack_push_string(rsp, g_params.execfn.c_str());
     const char* program_name = (const char*)rsp;
 
     rsp = stack_push_string(rsp, mode32 ? x86_string : x86_64_string);

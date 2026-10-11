@@ -1596,6 +1596,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             Script script(path);
             const std::string& args = script.GetArgs();
             script_interpreter = script.GetInterpreter();
+            argv0_original = std::string("__FELIX86_ARGV0=") + script_interpreter;
             FdPath interpreter_fd_path = Filesystem::resolve(script_interpreter.c_str(), true);
             if (interpreter_fd_path.is_error() || !interpreter_fd_path.full_path()) {
                 WARN("Interpreter not found during execve: %s", script_interpreter.c_str());
@@ -1627,7 +1628,6 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
                 path = path.string().substr(g_config.rootfs_path.string().size());
             }
 
-            argv0_original = std::string("__FELIX86_ARGV0=") + (char*)interpreter_fd_path.full_path();
             envp.push_back(argv0_original.c_str());
 
             // Pass the unresolved path to the interpreter. The interpreter will do path resolving by itself,
@@ -1637,10 +1637,17 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             argv.push_back((char*)arg1);
         } else {
             // Change the emulated argv0 to be what we got in the execve, but pass the resolved path to the emulator
-            argv0_original = std::string("__FELIX86_ARGV0=") + (char*)arg1;
+            u64 guest_argv0 = 0;
+            if (arg2) {
+                memcpy(&guest_argv0, (u8*)arg2, mode32 ? 4 : 8);
+            }
+            argv0_original = std::string("__FELIX86_ARGV0=") + (guest_argv0 ? (const char*)guest_argv0 : "");
             envp.push_back(argv0_original.c_str());
             argv.push_back(path.c_str());
         }
+
+        std::string execfn_original = std::string("__FELIX86_EXECFN=") + (char*)arg1;
+        envp.push_back(execfn_original.c_str());
 
         if (arg2) {
             u8* guest_argv = (u8*)arg2;
