@@ -158,6 +158,7 @@ set(FELIX86_COMMON_SOURCES
     src/felix86/common/shm_stats.cpp
     src/felix86/common/state.cpp
     src/felix86/common/strace.cpp
+    src/felix86/common/translate.cpp
     src/felix86/common/utility.cpp
     src/felix86/common/binfmt.cpp
     src/felix86/common/x87.cpp
