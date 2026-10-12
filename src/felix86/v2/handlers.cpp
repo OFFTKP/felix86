@@ -4758,6 +4758,7 @@ FAST_HANDLE(SYSCALL) {
     // This tells us we need to check state->restart_syscall so that we can restart the syscall
     as.SLTIU(x0, x0, FELIX86_HINT_SAFEPOINT_SYSCALL);
     rec.insertSafepoint();
+    rec.exitIfPendingCacheClear();
 
     if (MODE32) {
         ASSERT(rec.getCurrentRipregValue() <= UINT32_MAX);
@@ -13691,6 +13692,7 @@ FAST_HANDLE(INT) {
         rec.addi(ripreg, ripreg, instruction.length);
         as.SLTIU(x0, x0, FELIX86_HINT_SAFEPOINT_SYSCALL); // See SYSCALL handler
         rec.insertSafepoint();
+        rec.exitIfPendingCacheClear();
     } else if (operands[0].imm.value.u == 3) {
         fast_INT3(rec, rip, as, instruction, operands);
     } else {

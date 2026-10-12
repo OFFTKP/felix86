@@ -268,6 +268,13 @@ struct Recompiler {
         return g_config.single_step || single_step != SingleStepMode::None;
     }
 
+    void setPendingCacheClear(ThreadState* state) {
+        state->pending_cache_clear = true;
+        clearAddressCache();
+    }
+
+    void exitIfPendingCacheClear();
+
     bool canEmitRetStub() const {
         return g_config.address_cache && g_config.return_address_hint && !relocatable && !isSingleStepping();
     }
@@ -539,6 +546,10 @@ struct Recompiler {
     }
 
     u64 getCompiledBlock(ThreadState* state, u64 rip) {
+        if (state->pending_cache_clear) {
+            clearCodeCache(state);
+        }
+
         if (g_config.address_cache) {
             BlockMetadata& meta = getBlockMetadata(rip);
             if (meta.host_address != 0) {
@@ -614,6 +625,8 @@ struct Recompiler {
     void resizeOrClearCodeCache(ThreadState* state);
 
     void clearCodeCache(ThreadState* state);
+
+    void clearAddressCache();
 
     void resetVectorState() {
         current_sew = SEW::E1024;

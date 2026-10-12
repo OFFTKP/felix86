@@ -348,6 +348,7 @@ struct ThreadState {
     bool cpuid_bit{}; // stupid rflags bit that is modifiable when cpuid is present, so we need to store its state here. SDL2 modifies it to
                       // check presence of cpuid... on x86-64 processors... lol...
     bool ac_bit{};    // this is checked by Java to see if it's i386 or not
+    bool pending_cache_clear{};
 
     u32 robust_list{};
 

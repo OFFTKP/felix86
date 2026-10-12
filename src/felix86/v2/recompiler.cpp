@@ -505,17 +505,31 @@ void Recompiler::resizeOrClearCodeCache(ThreadState* state) {
 
 void Recompiler::clearCodeCache(ThreadState* state) {
     WARN("Clearing cache on thread %u", gettid());
+    state->pending_cache_clear = false;
     auto guard = page_map_lock.lock();
     block_metadata.clear();
     host_pc_map.clear();
     page_map.clear();
+    clearAddressCache();
+    as.RewindBuffer();
+    emitNecessaryStuff();
+}
+
+void Recompiler::clearAddressCache() {
     for (size_t i = 0; i < (1 << address_cache_bits); i++) {
         address_cache[i] = AddressCacheEntry{};
     }
     address_cache[0].guest = -1ull;
+}
 
-    as.RewindBuffer();
-    emitNecessaryStuff();
+void Recompiler::exitIfPendingCacheClear() {
+    biscuit::Label no_pending;
+    biscuit::GPR pending = scratch();
+    as.LBU(pending, offsetof(ThreadState, pending_cache_clear), threadStatePointer());
+    as.BEQZ(pending, &no_pending);
+    popScratch();
+    backToDispatcher(false, true);
+    as.Bind(&no_pending);
 }
 
 u64 Recompiler::compile(ThreadState* state, u64 rip) {

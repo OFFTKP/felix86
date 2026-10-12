@@ -1392,7 +1392,7 @@ void raise_stop(StopType stop, int& sig, siginfo_t* guest_info, int event, u64 e
     }
     case PTRACE_SINGLESTEP: {
         local_state->recompiler->setSingleStepMode(SingleStepMode::PtraceSinglestep);
-        local_state->recompiler->clearCodeCache(local_state);
+        local_state->recompiler->setPendingCacheClear(local_state);
         break;
     }
     default: {
