@@ -300,13 +300,6 @@ static void setupMainStack(ThreadState* state) {
     state->SetGpr(X86_REF_RSP, rsp_guest);
 }
 
-void* Emulator::CompileNext(ThreadState* thread_state) {
-    FELIX86_PROFILE_ACCUMULATION(thread_state->thread_stats, AccumulatedJITTime);
-    u64 next_block = thread_state->recompiler->getCompiledBlock(thread_state, thread_state->GetRip());
-    ASSERT_MSG(next_block != 0, "getCompiledBlock returned null?");
-    return (void*)next_block;
-}
-
 void Emulator::Start() {
     g_process_globals.initialize();
 
@@ -341,17 +334,6 @@ void Emulator::Start() {
     }
 
     bool mode32 = false;
-    if (peek == Elf::PeekResult::Elf32) {
-        mode32 = true;
-        // Allocate a 2GiB guard right after to catch bad addresses (that may need to loop around the address space?)
-        void* guard = mmap((void*)(4 * GB), 2 * GB, PROT_NONE, MAP_FIXED_NOREPLACE | MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
-        if (guard == MAP_FAILED) {
-            ERROR("I failed to allocate the 32-bit guard");
-        }
-
-        prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, 4 * GB, 2 * GB, "felix86-guard");
-    }
-
     ThreadState* main_state = ThreadState::Create();
     const char* parent_tid_env = getenv("__FELIX86_PARENT_TID");
     main_state->ptrace_data.constants.parent_tid = parent_tid_env ? std::atoi(parent_tid_env) : getppid();

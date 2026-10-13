@@ -321,7 +321,7 @@ void Recompiler::emitDispatcher() {
 
     writebackState();
     as.MV(a0, threadStatePointer());
-    call((u64)Emulator::CompileNext);
+    call((u64)Recompiler::compileNext);
 
     biscuit::GPR retval = scratch();
     as.MV(retval, a0);
@@ -1911,7 +1911,7 @@ bool Recompiler::setVectorState(SEW sew, int vlen, LMUL grouping) {
     // TODO: One day when we have chips that perform better with VTA::Yes, enable it
     // TODO: If we don't enable AVX, or if vectors only go up to 128, enable tail/mask agnostic for most cases
     // WARN: If changed, change the isCurrentLength128 & similar functions to make sure VTA/VMA are No
-    if (!Extensions::Xtheadvector && vlen <= 31) {
+    if (vlen <= 31) {
         as.VSETIVLI(x0, vlen, sew, grouping, VTA::No, VMA::No);
     } else {
         biscuit::GPR vl = scratch();
