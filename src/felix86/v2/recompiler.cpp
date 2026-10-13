@@ -27,10 +27,6 @@
 #include "felix86/v2/recompiler.hpp"
 #include "fmt/format.h"
 
-// TODO: benchmark to find best arrangement?
-constexpr static u64 MB = 1024 * 1024;
-constexpr static u64 GB = 1024 * 1024 * 1024;
-
 constexpr static u64 code_cache_sizes[] = {
     4 * MB,
     8 * MB,
@@ -125,9 +121,7 @@ static bool is_stack_operand(const ZydisDecodedOperand& operand) {
 }
 
 Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
-    // Placing address cache near code cache allows us to access address cache with AUIPC+ADDI combo
-    constexpr size_t address_cache_size = (1 << address_cache_bits) * sizeof(AddressCacheEntry);
-    constexpr size_t total_size = max_code_cache_size + address_cache_size;
+    constexpr size_t total_size = max_code_cache_size;
     // Try allocating code cache near program so that rip-relative immediates can be made in fewer instructions
     u64 min = std::min(g_executable_start, g_interpreter_start);
     void* address = MAP_FAILED;
@@ -162,17 +156,14 @@ Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
         }
     }
     ASSERT_MSG(address != MAP_FAILED, "Failed to reserve code cache for thread %d?", gettid());
-    u8* first_chunk = (u8*)::mmap((u8*)address + address_cache_size, code_cache_sizes[0], PROT_READ | PROT_WRITE | PROT_EXEC,
-                                  MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
-    ASSERT(first_chunk == (u8*)address + address_cache_size);
+    u8* first_chunk =
+        (u8*)::mmap((u8*)address, code_cache_sizes[0], PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+    ASSERT(first_chunk == (u8*)address);
     as = Assembler(first_chunk, max_code_cache_size);
-
-    address_cache = (AddressCacheEntry*)::mmap(address, address_cache_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
-    ASSERT(address_cache == address);
 
     int result = madvise(address, total_size, MADV_HUGEPAGE);
     if (result != 0) {
-        WARN("Failed to set MADV_HUGEPAGE for code cache and address cache");
+        WARN("Failed to set MADV_HUGEPAGE for code cache");
     }
 
     if (g_config.auto_compress) {
@@ -194,11 +185,6 @@ Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
     if (g_config.perf_global) {
         g_process_globals.perf->addToFile((u64)start_of_code_cache, max_code_cache_size - ((u64)start_of_code_cache - (u64)as.GetBufferPointer(0)),
                                           "felix86 code cache");
-    }
-
-    if (g_config.address_cache) {
-        // Ensure nullptr doesn't match
-        address_cache[0].guest = -1ull;
     }
 
     for (int i = 0; i < 8; i++) {
@@ -437,7 +423,7 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_
     if (metadata.host_address == (u64)invalid_block) {
         ASSERT(invalid_block);
         metadata.host_address = 0;
-        AddressCacheEntry& entry = state->recompiler->getAddressCacheEntry(rip);
+        AddressCacheEntry& entry = state->getAddressCacheEntry(rip);
         entry.guest = ~rip;
         entry.host = -1ull;
     }
@@ -516,10 +502,7 @@ void Recompiler::clearCodeCache(ThreadState* state) {
 }
 
 void Recompiler::clearAddressCache() {
-    for (size_t i = 0; i < (1 << address_cache_bits); i++) {
-        address_cache[i] = AddressCacheEntry{};
-    }
-    address_cache[0].guest = -1ull;
+    ThreadState::Get()->clearAddressCache();
 }
 
 void Recompiler::exitIfPendingCacheClear() {
@@ -610,7 +593,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
     }
 
     if (g_config.address_cache) {
-        AddressCacheEntry& entry = getAddressCacheEntry(start_rip);
+        AddressCacheEntry& entry = state->getAddressCacheEntry(start_rip);
         entry.host = block_meta.ret_stub ? block_meta.ret_stub : block_meta.host_address;
         entry.guest = start_rip;
     }
@@ -3933,23 +3916,16 @@ void Recompiler::addressCacheLookup(biscuit::GPR guest_address, void on_hit(Asse
     biscuit::GPR temp2 = scratch();
     biscuit::Label not_equal;
     i32 lo12 = 0;
-    if (relocatable) {
-        as.LD(temp, offsetof(ThreadState, recompiler), threadStatePointer());
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winvalid-offsetof"
-        as.LD(temp, offsetof(Recompiler, address_cache), temp);
-#pragma GCC diagnostic pop
-    } else {
-        u64 offset = (u64)address_cache - (u64)as.GetCursorPointer();
-        const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
-        lo12 = static_cast<int32_t>(offset << 20) >> 20;
-        const bool lo12overflow = lo12 + 8 > 2047;
-        as.AUIPC(temp, hi20);
-        if (lo12overflow) {
-            as.ADDI(temp, temp, lo12);
-            lo12 = 0;
-        }
+    u64 offset = -address_cache_offset;
+    const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
+    lo12 = static_cast<int32_t>(offset << 20) >> 20;
+    const bool lo12overflow = lo12 + 8 > 2047;
+    as.LUI(temp, hi20);
+    if (lo12overflow) {
+        as.ADDI(temp, temp, lo12);
+        lo12 = 0;
     }
+    as.ADD(temp, temp, Recompiler::threadStatePointer());
     const i32 offset_guest = lo12 + 8;
     const i32 offset_host = lo12;
     as.SLLI(temp2, guest_address, 64 - address_cache_bits);

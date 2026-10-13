@@ -1326,7 +1326,7 @@ static void defer_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx
     // Make our safepoints fault
     u64 effective_deferred_signals = state->deferred_signals & ~state->signal_mask.__val[0];
     if (effective_deferred_signals != 0) {
-        ASSERT(::mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
+        ASSERT(::mprotect(state->getDeferredFaultPage(), 4096, PROT_NONE) == 0);
     }
     state->effective_deferred_signals = effective_deferred_signals;
     SIGLOG("Deferring signal %s (%d) during RIP=%lx", sigdescr_np(sig), sig, state->GetRip());
@@ -1546,7 +1546,7 @@ static bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, uco
             WARN("Jump to bad address: %lx", pc);
             WARN("RIP: %lx", current_state->ctx.rip);
             BlockMetadata& meta = current_state->recompiler->getBlockMetadata(current_state->ctx.rip);
-            AddressCacheEntry& entry = current_state->recompiler->getAddressCacheEntry(current_state->ctx.rip);
+            AddressCacheEntry& entry = current_state->getAddressCacheEntry(current_state->ctx.rip);
             WARN("BlockMetadata: [%lx, %lx], address_cache: [%lx, %lx]", meta.guest_address, meta.host_address, entry.guest, entry.host);
         }
 
@@ -1890,7 +1890,7 @@ static void signal_handler(int sig, siginfo_t* info, void* ctx) {
             VERBOSE("Synchronous signal block: %lx, actual rip: %lx", current_block->guest_address, actual_rip);
             return prepare_synchronous_signal(state, sig, info, ctx, actual_rip);
         } else {
-            AddressCacheEntry entry = state->recompiler->getAddressCacheEntry(state->ctx.rip);
+            AddressCacheEntry entry = state->getAddressCacheEntry(state->ctx.rip);
             if (!state->force_defer_synchronous) {
                 ERROR("Synchronous signal %s with code %d but not in JIT code during RIP=%lx, PC=%lx, RA=%lx, address_cache entry: [%lx, %lx]",
                       sigdescr_np(sig), info->si_code, state->ctx.rip, pc, get_regs(ctx)[1], entry.guest, entry.host);
@@ -1997,9 +1997,9 @@ int Signals::sigprocmask(ThreadState* state, int how, sigset_t* set, sigset_t* o
         // Otherwise, make it read/write
         state->effective_deferred_signals = state->deferred_signals & ~state->signal_mask.__val[0];
         if (state->effective_deferred_signals != 0) {
-            ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
+            ASSERT(mprotect(state->getDeferredFaultPage(), 4096, PROT_NONE) == 0);
         } else {
-            ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_READ | PROT_WRITE) == 0);
+            ASSERT(mprotect(state->getDeferredFaultPage(), 4096, PROT_READ | PROT_WRITE) == 0);
         }
 
         // Finally, set our new host mask

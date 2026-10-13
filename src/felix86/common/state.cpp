@@ -23,18 +23,29 @@ void ThreadState::Set(ThreadState* state) {
 }
 
 ThreadState* ThreadState::Create(ThreadState* copy_state) {
+    // Allocating the address cache near the ThreadState allows us to access it with a LUI+ADDI+ADD
     // Allocate an extra page before ThreadState which will be used for signal deferring
-    u8* state_memory = (u8*)mmap(nullptr, sizeof(ThreadState) + 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    ASSERT(state_memory != MAP_FAILED);
-    u8* state_location = state_memory + 4096;
+    const u64 total_size = address_cache_size + sizeof(ThreadState) + deferred_fault_page_offset;
+    // Reserve an extra 2MB of virtual address space and skip it so our mapping is 2MB aligned
+    void* reservation_base = mmap(nullptr, 2 * MB + total_size, PROT_NONE, MAP_NORESERVE | MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    ASSERT(reservation_base != MAP_FAILED);
+    void* real_base = (void*)(((u64)reservation_base + 2 * MB - 1) & ~(2 * MB - 1));
+    void* real_memory = mmap(real_base, total_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+    ASSERT(real_memory != MAP_FAILED);
+    u8* state_location = (u8*)real_memory + address_cache_offset;
     ThreadState* state = new (state_location) ThreadState;
     state->recompiler = new Recompiler;
-    state->deferred_fault_page = state_memory;
     u32 tid = gettid();
     VERBOSE("ThreadState* for %d is %lx", tid, (u64)state);
     memset(&state->ptrace_data, 0, sizeof(state->ptrace_data));
     state->ptrace_data.constants.my_tid = tid;
     state->ptrace_data.constants.my_tgid = getpid();
+    state->reservation_base = reservation_base;
+
+    madvise(state->getAddressCache(), address_cache_size, MADV_HUGEPAGE);
+    if (g_config.address_cache) {
+        state->getAddressCache()[0].guest = -1ull;
+    }
 
     if (g_emit_stats) {
         state->thread_stats = g_process_globals.shm_manager.addThread(tid);
@@ -95,6 +106,6 @@ void ThreadState::Destroy(ThreadState* state) {
     munmap(state->riscv_trampoline_storage_start, trampoline_storage_size);
     munmap(state->x86_trampoline_storage_start, trampoline_storage_size);
     delete state->recompiler;
-    u8* ptr = (u8*)state;
-    munmap(ptr - 4096, 4096 + sizeof(ThreadState));
+    const u64 total_size = address_cache_size + sizeof(ThreadState) + deferred_fault_page_offset;
+    munmap(state->reservation_base, 2 * MB + total_size);
 }
