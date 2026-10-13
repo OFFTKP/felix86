@@ -532,6 +532,13 @@ struct Recompiler {
         return restore_state_handler;
     }
 
+    static void* compileNext(ThreadState* state) {
+        FELIX86_PROFILE_ACCUMULATION(state->thread_stats, AccumulatedJITTime);
+        u64 next_block = state->recompiler->getCompiledBlock(state, state->GetRip());
+        ASSERT_MSG(next_block != 0, "getCompiledBlock returned null?");
+        return (void*)next_block;
+    }
+
     u64 getCompileNext() {
         return compile_next_handler;
     }

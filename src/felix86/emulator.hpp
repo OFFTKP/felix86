@@ -1,8 +1,7 @@
 #pragma once
 
 #include <sys/mman.h>
-#include "felix86/common/frame.hpp"
-#include "felix86/common/state.hpp"
+#include "felix86/common/types.hpp"
 
 struct TestConfig {
     u64 entrypoint;
@@ -12,8 +11,6 @@ struct TestConfig {
 };
 
 struct Emulator {
-    static void* CompileNext(ThreadState* state);
-
     [[noreturn]] static void Start();
 
     static void StartTest(const TestConfig& config, u64 stack);

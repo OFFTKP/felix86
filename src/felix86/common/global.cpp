@@ -151,15 +151,6 @@ void Extensions::Clear() {
     VLEN = 0;
 }
 
-static void set_xtheadvector(int sig, siginfo_t* info, void* ctx) {
-    Extensions::Xtheadvector = true;
-
-#ifdef __riscv
-    // Skip the illegal instruction
-    ((ucontext_t*)ctx)->uc_mcontext.__gregs[REG_PC] += 4;
-#endif
-}
-
 std::string get_extensions() {
     std::string extensions;
     if (Extensions::G) {
@@ -492,29 +483,6 @@ void initialize_globals() {
     biscuit::CPUInfo cpuinfo;
     Extensions::VLEN = cpuinfo.GetVlenb() * 8;
 
-#ifdef __riscv
-    if (Extensions::V) {
-        struct sigaction old_act;
-        struct sigaction new_act;
-        new_act.sa_sigaction = set_xtheadvector;
-        new_act.sa_flags = SA_SIGINFO;
-        sigemptyset(&new_act.sa_mask);
-
-        sigaction(SIGILL, &new_act, &old_act);
-
-        // VCSR doesn't exist in Xtheadvector, so this will hit an illegal instruction
-        // So we can detect Xtheadvector in a cross platform way that works in older kernels too
-        biscuit::CSRReader<CSR::VCSR> vcsr_reader;
-        (vcsr_reader.GetCode<u32 (*)()>())();
-
-        sigaction(SIGILL, &old_act, nullptr);
-
-        if (Extensions::Xtheadvector) {
-            ERROR("This board has xtheadvector, but felix86 only works with RVV 1.0");
-        }
-    }
-#endif
-
     ASSERT_MSG(Extensions::G && Extensions::V && Extensions::Zba && Extensions::Zbb && Extensions::Zbs,
                "felix86 requires at minimum rv64gv_zba_zbb_zbs to work");
 
@@ -678,16 +646,6 @@ bool parse_extensions(const char* arg) {
     }
         FELIX86_EXTENSIONS_TOTAL
 #undef X
-
-        {
-            std::string lower = "xthead";
-            std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
-            if (extension == lower) {
-                Extensions::Xtheadcondmov = true;
-                Extensions::Xtheadba = true;
-                continue;
-            }
-        }
     }
 
     return true;
