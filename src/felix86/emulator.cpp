@@ -333,7 +333,16 @@ void Emulator::Start() {
         }
     }
 
-    bool mode32 = false;
+    bool mode32 = peek == Elf::PeekResult::Elf32;
+    if (mode32) {
+        void* guard = mmap((void*)(4 * GB), 4096, PROT_NONE, MAP_FIXED_NOREPLACE | MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+        if (guard == MAP_FAILED) {
+            ERROR("Failed to allocate the 32-bit guard");
+        }
+
+        prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, 4 * GB, 4096, "felix86-guard");
+    }
+
     ThreadState* main_state = ThreadState::Create();
     const char* parent_tid_env = getenv("__FELIX86_PARENT_TID");
     main_state->ptrace_data.constants.parent_tid = parent_tid_env ? std::atoi(parent_tid_env) : getppid();
