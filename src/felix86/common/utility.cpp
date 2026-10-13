@@ -12,7 +12,6 @@
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
-#include "felix86/emulator.hpp"
 #include "felix86/hle/cpuid.hpp"
 #include "felix86/hle/ptrace.hpp"
 #include "felix86/v2/recompiler.hpp"

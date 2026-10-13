@@ -20,6 +20,7 @@
 #include "felix86/common/utility.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/brk.hpp"
+#include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/mmap.hpp"
 #include "felix86/hle/signals.hpp"
 #include "felix86/hle/thread.hpp"

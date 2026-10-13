@@ -2,9 +2,7 @@
 
 #include <sys/mman.h>
 #include "felix86/common/frame.hpp"
-#include "felix86/common/start_params.hpp"
 #include "felix86/common/state.hpp"
-#include "felix86/hle/filesystem.hpp"
 
 struct TestConfig {
     u64 entrypoint;
@@ -14,16 +12,9 @@ struct TestConfig {
 };
 
 struct Emulator {
-    Filesystem& GetFilesystem() {
-        return fs;
-    }
-
     static void* CompileNext(ThreadState* state);
 
     [[noreturn]] static void Start();
 
     static void StartTest(const TestConfig& config, u64 stack);
-
-private:
-    Filesystem fs;
 };
