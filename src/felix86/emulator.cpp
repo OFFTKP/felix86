@@ -343,7 +343,6 @@ void Emulator::Start() {
     if (peek == Elf::PeekResult::Elf32) {
         mode32 = true;
         // Allocate a 2GiB guard right after to catch bad addresses (that may need to loop around the address space?)
-        constexpr u64 GB = 1024 * 1024 * 1024;
         void* guard = mmap((void*)(4 * GB), 2 * GB, PROT_NONE, MAP_FIXED_NOREPLACE | MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
         if (guard == MAP_FAILED) {
             ERROR("I failed to allocate the 32-bit guard");

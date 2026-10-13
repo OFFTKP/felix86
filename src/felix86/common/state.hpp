@@ -14,6 +14,15 @@
 #include "felix86/hle/ptrace.hpp"
 #include "felix86/hle/syscall.hpp"
 
+struct AddressCacheEntry {
+    u64 host{}, guest{};
+};
+
+constexpr int address_cache_bits = 17;
+constexpr u64 address_cache_size = (1 << address_cache_bits) * sizeof(AddressCacheEntry);
+constexpr u64 deferred_fault_page_offset = 4096;
+constexpr u64 address_cache_offset = address_cache_size + deferred_fault_page_offset;
+
 // We statically allocate 8 FPRs and 8 Vecs for x87 and MMX. But in x86 they share the same registers.
 // For this reason we need to have a way to communicate to signal handlers which registers hold the correct values.
 // For now, the dispatcher will always assume FPRs hold the correct values so blocks must restore state to x87 when finished.
@@ -374,7 +383,6 @@ struct ThreadState {
     u64 effective_deferred_signals = 0;
     std::array<siginfo_t, 31> deferred_standard_info{};
     std::array<SignalQueueNode*, 33> deferred_realtime_info{};
-    void* deferred_fault_page = nullptr;
     bool in_restartable_syscall = false;
     bool should_restart_syscall = false;
     bool in_rmw_function = false;
@@ -398,6 +406,8 @@ struct ThreadState {
     PtraceData ptrace_data;
 
     FEXCore::SHMStats::ThreadStats* thread_stats = nullptr;
+
+    void* reservation_base = nullptr;
 
     u64 GetGpr(x86_ref_e ref) const {
         if (ref < X86_REF_RAX || ref > X86_REF_R15) {
@@ -572,6 +582,26 @@ struct ThreadState {
     static ThreadState* Get();
 
     static void Destroy(ThreadState* state);
+
+    void* getDeferredFaultPage() {
+        return ((u8*)this - deferred_fault_page_offset);
+    }
+
+    AddressCacheEntry* getAddressCache() {
+        return (AddressCacheEntry*)((u64)this - address_cache_offset);
+    }
+
+    AddressCacheEntry& getAddressCacheEntry(u64 rip) {
+        return getAddressCache()[rip & ((1 << address_cache_bits) - 1)];
+    }
+
+    void clearAddressCache() {
+        AddressCacheEntry* address_cache = getAddressCache();
+        for (size_t i = 0; i < (1 << address_cache_bits); i++) {
+            address_cache[i] = AddressCacheEntry{};
+        }
+        address_cache[0].guest = -1ull;
+    }
 };
 
 static_assert(offsetof(ThreadState, unaligned_atomics_counter) < 2048);

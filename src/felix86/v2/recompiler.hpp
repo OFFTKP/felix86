@@ -28,11 +28,6 @@
 #define FELIX86_HINT_NOT_EXEC 0xec
 
 constexpr int scan_ahead_count = 64;
-constexpr int address_cache_bits = 17;
-
-struct AddressCacheEntry {
-    u64 host{}, guest{};
-};
 
 struct AllocatedX87Reg {
     biscuit::FPR reg;
@@ -553,7 +548,7 @@ struct Recompiler {
         if (g_config.address_cache) {
             BlockMetadata& meta = getBlockMetadata(rip);
             if (meta.host_address != 0) {
-                AddressCacheEntry& entry = getAddressCacheEntry(rip);
+                AddressCacheEntry& entry = state->getAddressCacheEntry(rip);
                 entry.guest = rip;
                 entry.host = meta.ret_stub ? meta.ret_stub : meta.host_address;
                 return meta.host_address;
@@ -590,10 +585,6 @@ struct Recompiler {
 
     bool isMode32() {
         return current_mode32;
-    }
-
-    AddressCacheEntry& getAddressCacheEntry(u64 rip) {
-        return address_cache[rip & ((1 << address_cache_bits) - 1)];
     }
 
     void updateOverflowAdd(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size);
@@ -1005,8 +996,6 @@ private:
     bool lock_handled = false;
 
     bool skip_next = false;
-
-    AddressCacheEntry* address_cache = nullptr;
 
     void* reservation_base = nullptr;
     size_t reservation_size = 0;

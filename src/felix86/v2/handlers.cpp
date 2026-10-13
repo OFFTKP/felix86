@@ -1972,7 +1972,8 @@ FAST_HANDLE(CALL) {
         // Don't make the ret stub jump go to address cache, as it would jump to itself
         rec.jumpAndLink(return_rip, false, true);
         rec.getBlockMetadata(return_rip).ret_stub = stub;
-        AddressCacheEntry& entry = rec.getAddressCacheEntry(return_rip);
+        ThreadState* state = ThreadState::Get();
+        AddressCacheEntry& entry = state->getAddressCacheEntry(return_rip);
         entry.guest = return_rip;
         entry.host = stub;
     }
