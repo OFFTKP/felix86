@@ -21,6 +21,12 @@ X("Unregister the emulator from binfmt_misc", "从 binfmt_misc 中注销模拟�
 X("Start just the log server in the background", "仅在后台启动日志服务器")
 
 X("Rootfs path not set in %s\n", "%s 中尚未设置 rootfs 路径\n")
+X("Rootfs path not set in %s and the default rootfs %s does not exist\n", "%s 中尚未设置 rootfs 路径，且默认 rootfs %s 不存在\n")
+X("Install the felix86-rootfs package using your package manager, or set a rootfs path using `sudo felix86 --set-config "
+  "general.rootfs_path=/path/to/rootfs`.\n",
+  "请使用软件包管理器安装 felix86-rootfs 软件包，或使用 `sudo felix86 --set-config general.rootfs_path=/path/to/rootfs` 设置 rootfs 路径。\n")
+X("This build of felix86 has its binfmt_misc registration managed by your package manager\n",
+  "此版本 felix86 的 binfmt_misc 注册由软件包管理器负责\n")
 X("Set it using `sudo felix86 --set-config general.rootfs_path=/path/to/rootfs`.\n",
   "请使用 `sudo felix86 --set-config general.rootfs_path=/path/to/rootfs` 进行设置。\n")
 X("Consult the installation guide: https://felix86.com/docs/users/installation-guide/\n\n",

@@ -117,6 +117,11 @@ bool detect_binfmt_misc() {
 }
 
 void binfmt_misc(bool is_register, bool is_credentials) {
+#ifdef FELIX86_PACKAGE_MANAGED
+    printf(TR("This build of felix86 has its binfmt_misc registration managed by your package manager\n"));
+    exit(1);
+#endif
+
     if (geteuid() != 0) {
         if (is_register && is_credentials) {
             printf(TR("I need root permissions to register felix86 in binfmt_misc, please re-run with root permissions as `sudo -E felix86 -B`\n"));

@@ -49,6 +49,7 @@ struct Config {
 
     static std::filesystem::path getConfigFilePath();
     static std::filesystem::path getProfilesDir();
+    static std::filesystem::path getSystemProfilesDir();
 
 private:
     std::string __environment;
