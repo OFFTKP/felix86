@@ -201,7 +201,6 @@ bool Config::initialize(bool ignore_envs) {
         // See https://felix86.com/docs/users/usage-guide#profiles for more info.
         const std::filesystem::path executables_dir = getProfilesDir() / "executables";
         std::string program_name = getProgramName();
-        printf("name: %s\n", program_name);
         if (!program_name.empty()) {
             Config::loadExecutableProfiles(g_config, executables_dir, program_name);
         }
@@ -392,6 +391,29 @@ bool Config::loadProfile(Config& config, const std::filesystem::path& profile) {
     loadProfileTable(config, result.toptab, profile);
     toml_free(result);
     return true;
+}
+
+bool Config::isWine() {
+    std::string name = std::filesystem::path(g_params.executable_path.string()).filename();
+    return name == "wine-preloader" || name == "wine64-preloader" || name == "wine" || name == "wine64";
+}
+
+std::filesystem::path Config::getProgramPath() {
+    if (g_params.argv.empty()) {
+        return "";
+    }
+
+    for (size_t i = 0; i < g_params.argv.size(); i++) {
+        auto path = std::filesystem::path(i == 0 ? g_params.executable_path.string() : g_params.argv[i]);
+        std::string name = path.filename();
+        if (name == "wine-preloader" || name == "wine64-preloader") {
+            i++;
+        } else if (name != "wine" && name != "wine64") {
+            return path;
+        }
+    }
+
+    return "";
 }
 
 std::string Config::getProgramName() {

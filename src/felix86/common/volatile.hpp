@@ -12,8 +12,10 @@ struct VolatileMemory {
     void RegisterInstruction(u64 adr);
     bool AdrIsVolatile(u64 adr);
 
+    void Clear();
+
 private:
     /// Keeps track of loaded DLLs and executable properties.
-    std::vector<std::pair<u32, u32>> regions;
-    std::unordered_set<u64> instructions;
+    std::vector<std::pair<u32, u32>> regions{};
+    std::unordered_set<u64> instructions{};
 };

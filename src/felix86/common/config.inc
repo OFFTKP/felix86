@@ -77,7 +77,7 @@ X(Performance, bool, inaccurate_minmax, false, FELIX86_INACCURATE_MINMAX, "Don't
 X(Performance, bool, inaccurate_conversions, false, FELIX86_INACCURATE_CONVERSIONS, "Don't accurately calculate round/cvtx2x instructions when it comes to overflows/NaNs/infinities")
 X(Performance, bool, divzero_check, true, FELIX86_DIVZERO_CHECK, "Check for division by zero for every div instruction to raise a signal if necessary")
 X(Performance, bool, always_tso, false, FELIX86_ALWAYS_TSO, "Use fences to emulate TSO on every memory read/write -- Will cause slowdown but may fix some games")
-X(Performance, bool, volatile_meta, true, FELIX86_VOLATILE_META, "Use fences to emulate TSO on every memory read/write that is inside of a volatile memory region (currently only works when executing a PE directly)")
+X(Performance, bool, volatile_metadata, false, FELIX86_VOLATILE_METADATA, "Use fences to emulate TSO on memory read/write based on volatile metadata (currently only works when executing a PE directly)")
 X(Performance, bool, no_tso_stack, true, FELIX86_NO_TSO_STACK, "Don't emulate TSO on stack accesses")
 X(Performance, bool, protect_pages, true, FELIX86_PROTECT_PAGES, "Protect pages to catch self-modifying code, disabling may perform better in some games but break others")
 X(Performance, bool, auto_compress, false, FELIX86_AUTO_COMPRESS, "Automatically compress instructions whenever possible which may slightly improve performance")

@@ -35,7 +35,7 @@ u64 g_current_brk_size = 0;
 std::unordered_map<u64, std::vector<u64>> g_breakpoints{};
 ProcessGlobals g_process_globals{};
 std::unique_ptr<Mapper> g_mapper{};
-std::unique_ptr<VolatimeMemory> g_volatile{};
+VolatileMemory g_volatile{};
 std::unique_ptr<GDBJIT> g_gdbjit;
 u64 g_program_end = 0;
 u64 g_guest_auxv{};

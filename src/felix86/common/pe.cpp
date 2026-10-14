@@ -122,6 +122,29 @@ struct LoadConfig32 {
     u32 LockPrefixTable;
     u32 MaximumAllocationSize;
     u32 VirtualMemoryThreshold;
+    u32 ProcessHeapFlags;
+    u32 ProcessAffinityMask;
+    u16 CSDVersion;
+    u16 DependentLoadFlags;
+    u32 EditList;
+    u32 SecurityCookie;
+    u32 SEHandlerTable;
+    u32 SEHandlerCount;
+    u32 GuardCFCheckFunctionPointer;
+    u32 GuardCFDispatchFunctionPointer;
+    u32 GuardCFFunctionTable;
+    u32 GuardCFFunctionCount;
+    u32 GuardFlags;
+    struct {
+        u16 Flags;
+        u16 Catalog;
+        u32 CatalogOffset;
+        u32 Reserved;
+    } CodeIntegrity;
+    u32 GuardAddressTakenIatEntryTable;
+    u32 GuardAddressTakenIatEntryCount;
+    u32 GuardLongJumpTargetTable;
+    u32 GuardLongJumpTargetCount;
     u32 DynamicValueRelocTable;
     u32 CHPEMetadataPointer;
     u32 GuardRFFailureRoutine;
@@ -134,6 +157,14 @@ struct LoadConfig32 {
     u32 Reserved3;
     u32 EnclaveConfigurationPointer;
     u32 VolatileMetadataPointer;
+    u32 GuardEHContinuationTable;
+    u32 GuardEHContinuationCount;
+    u32 GuardXFGCheckFunctionPointer;
+    u32 GuardXFGDispatchFunctionPointer;
+    u32 GuardXFGTableDispatchFunctionPointer;
+    u32 CastGuardOsDeterminedFailureMode;
+    u32 GuardMemcpyFunctionPointer;
+    u32 UmaFunctionPointers;
 };
 
 // The minimum amount of size necessary for volatime metadata pointer.
@@ -151,6 +182,29 @@ struct LoadConfig64 {
     u64 LockPrefixTable;
     u64 MaximumAllocationSize;
     u64 VirtualMemoryThreshold;
+    u64 ProcessAffinityMask;
+    u32 ProcessHeapFlags;
+    u16 CSDVersion;
+    u16 DependentLoadFlags;
+    u64 EditList;
+    u64 SecurityCookie;
+    u64 SEHandlerTable;
+    u64 SEHandlerCount;
+    u64 GuardCFCheckFunctionPointer;
+    u64 GuardCFDispatchFunctionPointer;
+    u64 GuardCFFunctionTable;
+    u64 GuardCFFunctionCount;
+    u32 GuardFlags;
+    struct {
+        u16 Flags;
+        u16 Catalog;
+        u32 CatalogOffset;
+        u32 Reserved;
+    } CodeIntegrity;
+    u64 GuardAddressTakenIatEntryTable;
+    u64 GuardAddressTakenIatEntryCount;
+    u64 GuardLongJumpTargetTable;
+    u64 GuardLongJumpTargetCount;
     u64 DynamicValueRelocTable;
     u64 CHPEMetadataPointer;
     u64 GuardRFFailureRoutine;
@@ -163,6 +217,14 @@ struct LoadConfig64 {
     u32 Reserved3;
     u64 EnclaveConfigurationPointer;
     u64 VolatileMetadataPointer;
+    u64 GuardEHContinuationTable;
+    u64 GuardEHContinuationCount;
+    u64 GuardXFGCheckFunctionPointer;
+    u64 GuardXFGDispatchFunctionPointer;
+    u64 GuardXFGTableDispatchFunctionPointer;
+    u64 CastGuardOsDeterminedFailureMode;
+    u64 GuardMemcpyFunctionPointer;
+    u64 UmaFunctionPointers;
 };
 
 struct VolatileData {
@@ -262,6 +324,8 @@ PE::PeekResult PE::Peek(const std::filesystem::path& path) {
 }
 
 void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
+    g_volatile.Clear();
+
     CoffHeader coff;
     FILE* file = CheckedOpenPE(path, coff);
     if (!file)
@@ -276,8 +340,8 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
     fseek(file, cursor, SEEK_SET);
 
     u64 image_base = 0;
-    u64 adr = 0;
-    u64 end = 0;
+    u64 config_adr = 0;
+    u64 config_end = 0;
 
     bool is32 = false;
 
@@ -290,8 +354,8 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
         }
 
         image_base = header.ImageBase;
-        adr = header.Directory[IMAGE_OPTIONAL_LOAD_CONFIG].VirtualAddress;
-        end = adr + header.Directory[IMAGE_OPTIONAL_LOAD_CONFIG].Size;
+        config_adr = header.Directory[IMAGE_OPTIONAL_LOAD_CONFIG].VirtualAddress;
+        config_end = config_adr + header.Directory[IMAGE_OPTIONAL_LOAD_CONFIG].Size;
         is32 = true;
     } break;
     case IMAGE_OPTIONAL_MAGIC_AMD64: {
@@ -302,8 +366,8 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
         }
 
         image_base = header.ImageBase;
-        adr = header.Directory[IMAGE_OPTIONAL_LOAD_CONFIG].VirtualAddress;
-        end = adr + header.Directory[IMAGE_OPTIONAL_LOAD_CONFIG].Size;
+        config_adr = header.Directory[IMAGE_OPTIONAL_LOAD_CONFIG].VirtualAddress;
+        config_end = config_adr + header.Directory[IMAGE_OPTIONAL_LOAD_CONFIG].Size;
     } break;
     default: {
         fclose(file);
@@ -320,8 +384,9 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
     bool found = false;
     u64 volatile_virt_adr = 0;
     for (int s = 0; s < coff.NumberOfSections && !found; ++s) {
-        if (adr >= sections[s].VirtualAddress && end <= sections[s].VirtualAddress + sections[s].SizeOfRawData) {
-            u64 offset = adr - sections[s].VirtualAddress;
+
+        if (config_adr >= sections[s].VirtualAddress && config_end <= sections[s].VirtualAddress + sections[s].SizeOfRawData) {
+            u64 offset = config_adr - sections[s].VirtualAddress;
             offset += sections[s].PointerToRawData;
 
             fseek(file, offset, SEEK_SET);
@@ -334,33 +399,23 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
             fseek(file, cursor, SEEK_SET);
 
             if (is32) {
-                if (size >= sizeof(LoadConfig32)) {
-                    LoadConfig32 config;
-                    if (fread(&config, sizeof(LoadConfig32), 1, file) != 1) {
-                        fclose(file);
-                        return;
-                    }
-
-                    found = true;
-                    volatile_virt_adr = config.VolatileMetadataPointer;
-                } else {
+                LoadConfig32 config{};
+                if (fread(&config, size, 1, file) != 1) {
                     fclose(file);
                     return;
                 }
+
+                found = true;
+                volatile_virt_adr = config.VolatileMetadataPointer;
             } else {
-                if (size >= sizeof(LoadConfig64)) {
-                    LoadConfig64 config;
-                    if (fread(&config, sizeof(LoadConfig64), 1, file) != 1) {
-                        fclose(file);
-                        return;
-                    }
-
-                    found = true;
-                    volatile_virt_adr = config.VolatileMetadataPointer;
-                } else {
+                LoadConfig64 config{};
+                if (fread(&config, size, 1, file) != 1) {
                     fclose(file);
                     return;
                 }
+
+                found = true;
+                volatile_virt_adr = config.VolatileMetadataPointer;
             }
         }
     }
@@ -373,9 +428,9 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
     // Volatime metadata is not stored as RVA. Subtract image base.
     volatile_virt_adr -= image_base;
 
-    for (int s = 0; s < coff.NumberOfSections && !found; ++s) {
-        if (volatile_virt_adr >= sections[s].VirtualAddress && volatile_virt_adr < sections[s].VirtualAddress + sections[s].VirtualSize) {
-            u64 offset = adr - sections[s].VirtualAddress;
+    for (int s = 0; s < coff.NumberOfSections; ++s) {
+        if (volatile_virt_adr >= sections[s].VirtualAddress && volatile_virt_adr < sections[s].VirtualAddress + sections[s].SizeOfRawData) {
+            u64 offset = volatile_virt_adr - sections[s].VirtualAddress;
             offset += sections[s].PointerToRawData;
 
             fseek(file, offset, SEEK_SET);
@@ -392,22 +447,35 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
                 return;
             }
 
-            bool found = false;
+            bool found_access = false;
+            bool found_range = false;
+            u64 offset_range = 0;
+            u64 offset_access = 0;
             for (int s = 0; s < coff.NumberOfSections; ++s) {
                 if (data.VolatileInfoRangeTable >= sections[s].VirtualAddress &&
-                    data.VolatileInfoRangeTable < sections[s].VirtualAddress + sections[s].SizeOfRawData) {
-                    offset = data.VolatileInfoRangeTable - sections[s].VirtualAddress;
-                    offset += sections[s].PointerToRawData;
-                    found = true;
+                    data.VolatileInfoRangeTable + data.VolatileInfoRangeTableSize <= sections[s].VirtualAddress + sections[s].SizeOfRawData) {
+                    offset_range = data.VolatileInfoRangeTable - sections[s].VirtualAddress;
+                    offset_range += sections[s].PointerToRawData;
+                    found_range = true;
+                    break;
+                }
+            }
+            for (int s = 0; s < coff.NumberOfSections; ++s) {
+                if (data.VolatileAccessTable >= sections[s].VirtualAddress &&
+                    data.VolatileAccessTable + data.VolatileAccessTableSize <= sections[s].VirtualAddress + sections[s].SizeOfRawData) {
+                    offset_access = data.VolatileAccessTable - sections[s].VirtualAddress;
+                    offset_access += sections[s].PointerToRawData;
+                    found_access = true;
+                    break;
                 }
             }
 
-            if (!found) {
+            if (!found_range || !found_access) {
                 fclose(file);
                 return;
             }
 
-            fseek(file, offset, SEEK_SET);
+            fseek(file, offset_range, SEEK_SET);
             for (u32 i = 0; i < data.VolatileInfoRangeTableSize / sizeof(Range); ++i) {
                 Range range;
                 if (fread(&range, sizeof(Range), 1, file) != 1) {
@@ -415,7 +483,18 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
                     return;
                 }
 
-                g_volatile->RegisterRegion(image_base + range.Rva, range.Size);
+                g_volatile.RegisterRegion(image_base + range.Rva, range.Size);
+            }
+
+            fseek(file, offset_access, SEEK_SET);
+            for (u32 i = 0; i < data.VolatileAccessTableSize / sizeof(u32); ++i) {
+                u32 rva = 0;
+                if (fread(&rva, sizeof(rva), 1, file) != 1) {
+                    fclose(file);
+                    return;
+                }
+
+                g_volatile.RegisterInstruction(image_base + rva);
             }
 
             fclose(file);

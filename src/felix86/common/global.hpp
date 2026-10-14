@@ -70,7 +70,7 @@ struct VolatileMemory;
 
 extern ProcessGlobals g_process_globals;
 extern std::unique_ptr<Mapper> g_mapper;
-extern std::unique_ptr<VolatileMemory> g_volatile;
+extern VolatileMemory g_volatile;
 
 extern bool g_extensions_manually_specified;
 extern bool g_print_all_calls;

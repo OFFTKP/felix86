@@ -22,3 +22,8 @@ bool VolatileMemory::AdrIsVolatile(u64 adr) {
     // If the access is not within the known volatile range, then assume volatility.
     return true;
 }
+
+void VolatileMemory::Clear() {
+    regions.clear();
+    instructions.clear();
+}
