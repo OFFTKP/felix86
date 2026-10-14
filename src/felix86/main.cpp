@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <fstream>
 #include <optional>
+#include <string_view>
 #include <argp.h>
 #include <dirent.h>
 #include <fcntl.h>
@@ -33,12 +34,34 @@
 #endif
 
 static void rootfs_not_set_error() {
-    fprintf(stderr, TR("Rootfs path not set in %s\n"), g_config.path().c_str());
+    if (std::string_view(FELIX86_DEFAULT_ROOTFS_PATH).empty()) {
+        fprintf(stderr, TR("Rootfs path not set in %s\n"), g_config.path().c_str());
+    } else {
+        fprintf(stderr, TR("Rootfs path not set in %s and the default rootfs %s does not exist\n"), g_config.path().c_str(),
+                FELIX86_DEFAULT_ROOTFS_PATH);
+    }
+#ifdef FELIX86_PACKAGE_MANAGED
+    fprintf(stderr, TR("Install the felix86-rootfs package using your package manager, or set a rootfs path using `sudo felix86 --set-config "
+                       "general.rootfs_path=/path/to/rootfs`.\n"));
+    exit(1);
+#endif
     fprintf(stderr, TR("Set it using `sudo felix86 --set-config general.rootfs_path=/path/to/rootfs`.\n"));
     fprintf(stderr, TR("Consult the installation guide: https://felix86.com/docs/users/installation-guide/\n\n"));
     fprintf(stderr, TR("If you don't have an x86 rootfs, you can use the rootfs installer script to download and install one:\n"));
     fprintf(stderr, "    bash <(curl -s https://install.felix86.com/rootfs.sh)\n");
     exit(1);
+}
+
+static void use_default_rootfs_if_unset() {
+    if (g_config.no_rootfs || !g_config.rootfs_path.empty()) {
+        return;
+    }
+
+    std::error_code ec;
+    std::filesystem::path default_path = FELIX86_DEFAULT_ROOTFS_PATH;
+    if (!default_path.empty() && std::filesystem::is_directory(default_path, ec)) {
+        g_config.rootfs_path = default_path;
+    }
 }
 
 void __attribute__((noreturn)) enter_repl();
@@ -218,6 +241,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         unset_argp_help_fmt();
         std::error_code ec;
         Config::initialize();
+        use_default_rootfs_if_unset();
         if (!g_config.no_rootfs) {
             if (g_config.rootfs_path.empty()) {
                 rootfs_not_set_error();
@@ -447,6 +471,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     }
     case 'd': {
         Config::initialize();
+        use_default_rootfs_if_unset();
         bool ok = detect_binfmt_misc();
         exit(!ok);
         break;
@@ -623,6 +648,7 @@ int main(int argc, char* argv[]) {
     }
 #endif
 
+    use_default_rootfs_if_unset();
     if (!g_config.no_rootfs && g_config.rootfs_path.empty()) {
         rootfs_not_set_error();
     }

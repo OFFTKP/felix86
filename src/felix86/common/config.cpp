@@ -24,6 +24,10 @@ std::filesystem::path Config::getConfigFilePath() {
     return FELIX86_CONFIG_PATH;
 }
 
+std::filesystem::path Config::getSystemProfilesDir() {
+    return FELIX86_SYSTEM_PROFILES_PATH;
+}
+
 std::filesystem::path Config::getProfilesDir() {
     struct passwd* pw = getpwuid(geteuid());
     if (!pw || !pw->pw_dir) {
@@ -182,28 +186,36 @@ bool Config::initialize(bool ignore_envs) {
 
     const char* steam_appid = is_secure ? nullptr : guest_getenv("SteamAppId");
     if (steam_appid && euid != 0) {
-        const std::filesystem::path steam_dir = getProfilesDir() / "steam";
         const std::string toml_file = std::string(steam_appid) + ".toml";
-        const std::filesystem::path toml_path = steam_dir / toml_file;
-        std::error_code ec;
-        bool exists = std::filesystem::exists(toml_path, ec);
-        if (exists) {
-            bool loaded = Config::loadProfile(g_config, toml_path);
-            if (!loaded) {
-                WARN("Failed to load SteamAppId profile at %s", toml_path.c_str());
+        for (const std::filesystem::path& dir : {getSystemProfilesDir(), getProfilesDir()}) {
+            if (dir.empty()) {
+                continue;
+            }
+
+            const std::filesystem::path toml_path = dir / "steam" / toml_file;
+            std::error_code ec;
+            bool exists = std::filesystem::exists(toml_path, ec);
+            if (exists) {
+                bool loaded = Config::loadProfile(g_config, toml_path);
+                if (!loaded) {
+                    WARN("Failed to load SteamAppId profile at %s", toml_path.c_str());
+                }
             }
         }
     }
 
     if (!is_secure) {
-        // Scan this directory for user created files that contain configurations
-        // We install one of our own here with the name `00-installation-profiles.toml` which
+        // Scan these directories for user created files that contain configurations
+        // We install one of our own with the name `00-installation-profiles.toml` which
         // contains some useful profiles for programs. Users can add their own as well.
         // See https://felix86.com/docs/users/usage-guide#profiles for more info.
-        const std::filesystem::path executables_dir = getProfilesDir() / "executables";
         std::string program_name = getProgramName();
         if (!program_name.empty()) {
-            Config::loadExecutableProfiles(g_config, executables_dir, program_name);
+            for (const std::filesystem::path& dir : {getSystemProfilesDir(), getProfilesDir()}) {
+                if (!dir.empty()) {
+                    Config::loadExecutableProfiles(g_config, dir / "executables", program_name);
+                }
+            }
         }
     }
 
@@ -215,6 +227,14 @@ bool Config::initialize(bool ignore_envs) {
             std::string sprofile = profile;
             std::transform(sprofile.begin(), sprofile.end(), sprofile.begin(), [](unsigned char c) { return std::tolower(c); });
             path = profiles_path / (sprofile + ".toml");
+            const std::filesystem::path system_dir = getSystemProfilesDir();
+            std::error_code ec;
+            if (!system_dir.empty() && !std::filesystem::exists(path, ec)) {
+                const std::filesystem::path system_path = system_dir / (sprofile + ".toml");
+                if (std::filesystem::exists(system_path, ec)) {
+                    path = system_path;
+                }
+            }
         } else {
             path = profile;
         }
