@@ -9,6 +9,7 @@ X(General, std::string, host_environment, "", FELIX86_HOST_ENVIRONMENT, "Environ
 X(General, bool, binfmt_misc_installed, false, FELIX86_BINFMT_MISC_INSTALLED, "Whether binfmt_misc is installed, do NOT change this manually unless if you know what you're doing -- install with `felix86 --binfmt-misc` instead")
 X(General, bool, no_rootfs, false, FELIX86_NO_ROOTFS, "Do not use a rootfs, passthrough all filesystem syscalls to the host")
 X(General, bool, mount_home, true, FELIX86_MOUNT_HOME, "Fakemount the host /home directory inside the rootfs")
+X(General, bool, xdg_open_passthrough, true, FELIX86_XDG_OPEN_PASSTHROUGH, "Passthrough xdg-open calls to host xdg-open, allowing running the host browser when opening URLs for example")
 
 X(Logging, bool, verbose, false, FELIX86_VERBOSE, "Enable verbose logging")
 X(Logging, bool, quiet, false, FELIX86_QUIET, "Disable all logging")
@@ -18,9 +19,11 @@ X(Logging, bool, print_signals, false, FELIX86_PRINT_SIGNALS, "Print on every gu
 X(Logging, bool, print_all_signals, false, FELIX86_PRINT_ALL_SIGNALS, "Print all signals, even ones that are caused by the emulator");
 X(Logging, bool, print_invalidations, false, FELIX86_PRINT_INVALIDATIONS, "Print amount of blocks invalidated");
 X(Logging, bool, print_smc, false, FELIX86_PRINT_SMC, "Print on every SMC detection");
+X(Logging, bool, print_cpuid, false, FELIX86_PRINT_CPUID, "Print on every CPUID instruction");
 X(Logging, bool, print_thunks, false, FELIX86_PRINT_THUNKS, "Print on every thunk function call");
 X(Logging, bool, print_guest_ptrace, false, FELIX86_PRINT_GUEST_PTRACE, "Print guest-side ptrace information");
 X(Logging, bool, print_host_ptrace, false, FELIX86_PRINT_HOST_PTRACE, "Print host-side ptrace information");
+X(Logging, bool, log_file, false, FELIX86_LOG_FILE, "Write logs to a file in /tmp");
 
 X(CPUID, bool, no_sse2, false, FELIX86_NO_SSE2, "Disable SSE2 instructions")
 X(CPUID, bool, no_sse3, false, FELIX86_NO_SSE3, "Disable SSE3 instructions")
@@ -60,22 +63,27 @@ X(Debugging, bool, enable_io_uring, false, FELIX86_ENABLE_IO_URING, "Enable io_u
 X(Debugging, bool, dump_seccomp, false, FELIX86_DUMP_SECCOMP, "Dump installed seccomp programs")
 X(Debugging, bool, seccomp_always_allow, false, FELIX86_SECCOMP_ALWAYS_ALLOW, "Don't run seccomp programs at all, allow all syscalls")
 X(Debugging, bool, ptrace_enabled, true, FELIX86_PTRACE_ENABLED, "Enable ptrace(), allowing programs to debug other programs")
+X(Debugging, bool, stats_enabled, false, FELIX86_STATS_ENABLED, "Enable JIT stats")
+X(Debugging, bool, proc_self_auxv, true, FELIX86_PROC_SELF_AUXV, "Enable /proc/self/auxv emulation, breaks host gdb attaching to felix86, disable if you need to attach")
+X(Debugging, bool, guest_memory_tracking_enabled, false, FELIX86_GUEST_MEMORY_TRACKING_ENABLED, "Enable guest memory tracking")
 
-X(Performance, bool, link, true, FELIX86_LINK, "Enable basic block linking, important for performance")
 X(Performance, u64, max_block_size, 300, FELIX86_MAX_BLOCK_SIZE, "Maximum x86 instructions per block")
 X(Performance, bool, address_cache, true, FELIX86_ADDRESS_CACHE, "Use lower address bits to speed up block lookup")
+X(Performance, bool, return_address_hint, true, FELIX86_RETURN_ADDRESS_HINT, "Use return address hints for faster branch predictions. Requires the address cache to be enabled")
 X(Performance, bool, unsafe_flags, false, FELIX86_UNSAFE_FLAGS, "Assume flags are thrashed on every call/ret to avoid some calculations")
 X(Performance, bool, opcode_fusing, false, FELIX86_FUSE_OPCODES, "Try to fuse some x86 opcodes together if possible")
 X(Performance, bool, inline_syscalls, true, FELIX86_INLINE_SYSCALLS, "Use ECALL directly instead of a function for some syscalls")
 X(Performance, bool, inaccurate_minmax, false, FELIX86_INACCURATE_MINMAX, "Don't accurately calculate minps/minpd/maxps/maxpd instructions when it comes to NaNs")
+X(Performance, bool, inaccurate_conversions, false, FELIX86_INACCURATE_CONVERSIONS, "Don't accurately calculate round/cvtx2x instructions when it comes to overflows/NaNs/infinities")
 X(Performance, bool, divzero_check, true, FELIX86_DIVZERO_CHECK, "Check for division by zero for every div instruction to raise a signal if necessary")
 X(Performance, bool, always_tso, false, FELIX86_ALWAYS_TSO, "Use fences to emulate TSO on every memory read/write -- Will cause slowdown but may fix some games")
 X(Performance, bool, volatile_meta, true, FELIX86_VOLATILE_META, "Use fences to emulate TSO on every memory read/write that is inside of a volatile memory region (currently only works when executing a PE directly)")
 X(Performance, bool, no_tso_stack, true, FELIX86_NO_TSO_STACK, "Don't emulate TSO on stack accesses")
 X(Performance, bool, protect_pages, true, FELIX86_PROTECT_PAGES, "Protect pages to catch self-modifying code, disabling may perform better in some games but break others")
-X(Performance, bool, noflag_opts, true, FELIX86_NOFLAG_OPTS, "Optimize some instructions when the flag calculations aren't necessary")
 X(Performance, bool, auto_compress, false, FELIX86_AUTO_COMPRESS, "Automatically compress instructions whenever possible which may slightly improve performance")
 X(Performance, bool, scan_ahead_multi, true, FELIX86_SCAN_AHEAD_MULTI, "Scan ahead to multiple blocks when possible, avoiding even more flag calculations")
 X(Performance, bool, no_address_overflow, true, FELIX86_NO_ADDRESS_OVERFLOW, "Assume addresses won't overflow in 32-bit apps, which allows for some optimizations")
 X(Performance, bool, group_loadstore, true, FELIX86_GROUP_LOADSTORE, "Load/store SIMD state in groups of eight, may improve performance")
-X(Performance, bool, reduced_precision, false, FELIX86_REDUCED_PRECISION, "Use 64-bit floats for x87, may improve performance but cause issues in some games")
+X(Performance, u64, reduced_precision, 0, FELIX86_REDUCED_PRECISION, "Set to 1 to use 64-bit floats for x86's 80-bit floats. Set to 2 to use 32-bit or 64-bit floats. May improve performance dramatically in older or 32-bit games.")
+X(Performance, bool, rdtsc_scaling, true, FELIX86_RDTSC_SCALING, "Scale RDTIME frequency to plausible x86 frequencies")
+X(Performance, bool, optimization_pass, true, FELIX86_OPTIMIZATION_PASS, "Run the Optimizer over the decoded instructions and the native code")

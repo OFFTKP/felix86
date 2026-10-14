@@ -92,6 +92,9 @@ bool is_feature_enabled(x86_feature feature) {
     case x86_feature::ADX: {
         return is_feature_enabled(x86_feature::AVX2);
     }
+    case x86_feature::SHA: {
+        return is_feature_enabled(x86_feature::SSE) && Extensions::Zvbb && Extensions::Zvknha;
+    }
     }
     UNREACHABLE();
     return false;

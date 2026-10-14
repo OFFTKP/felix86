@@ -1,8 +1,10 @@
 #include <cstring>
 #include <set>
 #include <fcntl.h>
+#include <sys/syscall.h>
 #include "felix86/common/log.hpp"
 #include "felix86/hle/fd.hpp"
+#include "felix86/hle/guest_types.hpp"
 
 static std::set<int> g_protected_fds{};
 
@@ -37,6 +39,47 @@ int FD::close(int fd) {
     } else {
         return ::close(fd);
     }
+}
+
+static bool is_proc_fd_directory(int fd) {
+    char buffer[4096];
+    std::string link = "/proc/self/fd/" + std::to_string(fd);
+    ssize_t size = ::readlink(link.c_str(), buffer, sizeof(buffer) - 1);
+    if (size <= 0) {
+        return false;
+    }
+    std::string_view path(buffer, size);
+    if (!path.starts_with("/proc/")) {
+        return false;
+    }
+    return path.ends_with("/fd") || path.ends_with("/fdinfo");
+}
+
+long FD::getdents64(int fd, u64 dirp, u32 count) {
+    long result = ::syscall(SYS_getdents64, fd, dirp, count);
+    if (result <= 0) {
+        return result;
+    }
+
+    auto guard = g_process_globals.states_lock.lock();
+    if (g_protected_fds.empty() || !is_proc_fd_directory(fd)) {
+        return result;
+    }
+
+    long out = 0;
+    for (long i = 0; i < result;) {
+        x86_linux_dirent64* current = (x86_linux_dirent64*)(dirp + i);
+        u16 reclen = current->d_reclen;
+        if (!g_protected_fds.contains(atoi(current->d_name))) {
+            if (out != i) {
+                memmove((void*)(dirp + out), (void*)(dirp + i), reclen);
+            }
+            out += reclen;
+        }
+        i += reclen;
+    }
+
+    return out;
 }
 
 int FD::close_range(u32 start, u32 end, int flags) {

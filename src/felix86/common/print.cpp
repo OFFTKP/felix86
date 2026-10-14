@@ -53,6 +53,8 @@ const char* print_guest_register(x86_ref_e guest) {
         return "of";
     case X86_REF_TF:
         return "tf";
+    case X86_REF_RF:
+        return "rf";
     case X86_REF_RIP:
         return "rip";
     case X86_REF_FS:

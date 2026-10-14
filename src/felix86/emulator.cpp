@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <sys/auxv.h>
 #include <sys/mman.h>
+#include <sys/personality.h>
 #include <sys/prctl.h>
 #include <sys/random.h>
 #include <sys/ucontext.h>
@@ -22,6 +23,7 @@
 #include "felix86/common/utility.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/brk.hpp"
+#include "felix86/hle/mmap.hpp"
 #include "felix86/hle/signals.hpp"
 #include "felix86/hle/thread.hpp"
 #include "felix86/hle/thunks.hpp"
@@ -127,8 +129,26 @@ static void setupMainStack(ThreadState* state) {
     std::shared_ptr<Elf> interpreter = g_fs->GetInterpreter();
 
     // Initial process stack according to System V AMD64 ABI
-    auto pair = Threads::AllocateStack(mode32);
+    bool exec = false;
+    if (mode32 && g_gnu_stack == 0) {
+        state->persona |= READ_IMPLIES_EXEC;
+        exec = true;
+    }
+    if (g_gnu_stack & PF_X) {
+        exec = true;
+    }
+    auto pair = Threads::AllocateStack(mode32, exec);
     u64 rsp = (u64)pair.first;
+
+    // Happens on x86 kernel during arch_align_stack
+    int persona = personality(0xFFFFFFFF);
+    if (persona != -1 && !(persona & ADDR_NO_RANDOMIZE)) {
+        u32 random = 0;
+        if (getrandom(&random, sizeof(random), 0) == sizeof(random)) {
+            rsp -= random % 8192;
+        }
+        rsp &= ~0xF;
+    }
 
     // To hold the addresses of the arguments for later pushing
     u64* argv_addresses = (u64*)alloca(argc * sizeof(u64));
@@ -199,10 +219,10 @@ static void setupMainStack(ThreadState* state) {
         // Since we include it as part of the felix86 binary we can just
         // point there directly in 64-bit mode
         std::span<u8> vdso_object = VDSO::getObject64();
-        void* mem = mmap(nullptr, vdso_object.size(), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+        void* mem = g_mapper->map(false, nullptr, vdso_object.size(), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
         ASSERT(mem != MAP_FAILED);
         memcpy(mem, vdso_object.data(), vdso_object.size());
-        mprotect(mem, vdso_object.size(), PROT_READ | PROT_EXEC);
+        g_mapper->protect(mem, vdso_object.size(), PROT_READ | PROT_EXEC);
         auxv_entries.push_back({AT_SYSINFO_EHDR, {(u64)mem}});
     }
 
@@ -265,6 +285,13 @@ static void setupMainStack(ThreadState* state) {
         map.arg_end = arg_end;
         map.env_start = env_start;
         map.env_end = env_end;
+        if (g_config.proc_self_auxv) {
+            // Breaks gdb, so we make this configurable
+            // TODO: if we ever emulate proc self exe to outside felix86 processes correctly, we could
+            // reuse that code to emulate proc self auxv and leave the host visible /proc/self/auxv untouched
+            map.auxv = (__u64*)g_guest_auxv;
+            map.auxv_size = g_guest_auxv_size;
+        }
         int result = prctl(PR_SET_MM, PR_SET_MM_MAP, &map, sizeof(prctl_mm_map), 0L);
         if (result != 0) {
             WARN("Failed to run PR_SET_MM_MAP");
@@ -278,7 +305,7 @@ static void setupMainStack(ThreadState* state) {
 }
 
 void* Emulator::CompileNext(ThreadState* thread_state) {
-    g_dispatcher_exit_count++;
+    FELIX86_PROFILE_ACCUMULATION(thread_state->thread_stats, AccumulatedJITTime);
     u64 next_block = thread_state->recompiler->getCompiledBlock(thread_state, thread_state->GetRip());
     ASSERT_MSG(next_block != 0, "getCompiledBlock returned null?");
     return (void*)next_block;
@@ -355,7 +382,10 @@ void Emulator::Start() {
     }
 
     ThreadState* main_state = ThreadState::Create();
+    const char* parent_tid_env = getenv("__FELIX86_PARENT_TID");
+    main_state->ptrace_data.constants.parent_tid = parent_tid_env ? std::atoi(parent_tid_env) : getppid();
     main_state->ctx.cs = mode32 ? 0x23 : 0x33;
+    main_state->ctx.ds = main_state->ctx.es = mode32 ? 0x2b : 0x00;
 
     if (!mode32 && !g_config.thunks_path.empty()) {
         Thunks::initialize();
@@ -496,10 +526,8 @@ void Emulator::StartTest(const TestConfig& config, u64 stack) {
         }
     }
 
-    if (config.reduced_precision) {
-        g_config.reduced_precision = true;
-        Handlers::initialize();
-    }
+    g_config.reduced_precision = config.reduced_precision;
+    Handlers::initialize();
 
     g_testing = true;
     Threads::StartThread(main_state);

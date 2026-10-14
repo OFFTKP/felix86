@@ -263,6 +263,10 @@
 #define RISCV_HWPROBE_KEY_HIGHEST_VIRT_ADDRESS 7
 #endif
 
+#ifndef RISCV_HWPROBE_KEY_TIME_CSR_FREQ
+#define RISCV_HWPROBE_KEY_TIME_CSR_FREQ 8
+#endif
+
 namespace {
 
 #if defined(__linux__) && defined(__riscv)
@@ -597,7 +601,6 @@ void EmitInstruction(biscuit::Assembler& as, biscuit::RISCVExtension extension) 
     }
     case RISCVExtension::Zicclsm: {
         // Unaligned scalar and vector memory accesses
-        as.LW(t1, 1, t0);
         as.SW(x0, 1, t0);
         as.VSETIVLI(x0, 1, SEW::E32);
         as.ADDI(t1, t0, 1);
@@ -802,8 +805,6 @@ bool CheckExtensionSyscall(biscuit::RISCVExtension extension) {
         return (features0 & RISCV_HWPROBE_EXT_ZAAMO) != 0;
     case RISCVExtension::Zalrsc:
         return (features0 & RISCV_HWPROBE_EXT_ZALRSC) != 0;
-    case RISCVExtension::Zicclsm:
-        BISCUIT_ASSERT(false);
     }
 
     return false;
@@ -845,6 +846,23 @@ uint64_t CPUInfo::GetHighestVirtualAddress() const {
     long result = syscall(SYS_riscv_hwprobe, pairs, std::size(pairs), 0, nullptr, 0);
     if (result == 0) {
         return pairs[0].value - 1;
+    } else {
+        return 0;
+    }
+#else
+    return 0;
+#endif
+}
+
+uint64_t CPUInfo::GetTimeFrequency() const {
+#if defined(__riscv) && defined(__linux__)
+    riscv_hwprobe pairs[] = {
+        {RISCV_HWPROBE_KEY_TIME_CSR_FREQ, 0},
+    };
+
+    long result = syscall(SYS_riscv_hwprobe, pairs, std::size(pairs), 0, nullptr, 0);
+    if (result == 0) {
+        return pairs[0].value;
     } else {
         return 0;
     }

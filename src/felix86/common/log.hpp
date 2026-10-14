@@ -19,6 +19,7 @@
 #define ANSI_COLOR_BLACK_ON_GREEN "\x1b[30;42m"
 #define ANSI_COLOR_BLACK_ON_ORANGE "\x1b[30;43m"
 #define ANSI_COLOR_BLACK_ON_RED "\x1b[30;41m"
+#define ANSI_COLOR_BLACK_ON_BLUE "\x1b[30;44m"
 #define ANSI_COLOR_BLACK_ON_PINK "\x1b[30;45m"
 #define ANSI_COLOR_BLACK_ON_WHITE "\x1b[30;47m"
 
@@ -30,11 +31,15 @@
 #endif
 
 struct Logger {
-    static void log(const char* format, ...);
+    __attribute__((format(printf, 1, 2))) static void log(const char* format, ...);
 
     static const char* getPipeName();
 
-    static void startServer(bool detach = false);
+    static void openTerminal();
+
+    static void openLogFile();
+
+    static void startServer();
 
     static void joinServer();
 
@@ -60,6 +65,13 @@ private:
     do {                                                                                                                                             \
         if (!g_config.quiet && g_config.print_smc) {                                                                                                 \
             Logger::log(ANSI_COLOR_BLACK_ON_GREEN format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                      \
+        }                                                                                                                                            \
+    } while (0)
+
+#define CPUIDLOG(format, ...)                                                                                                                        \
+    do {                                                                                                                                             \
+        if (!g_config.quiet && g_config.print_cpuid) {                                                                                               \
+            Logger::log(ANSI_COLOR_BLACK_ON_BLUE format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                       \
         }                                                                                                                                            \
     } while (0)
 
@@ -93,7 +105,7 @@ private:
 #define IMPORTANT(format, ...)                                                                                                                       \
     do {                                                                                                                                             \
         if (!g_config.quiet) {                                                                                                                       \
-            Logger::log(ANSI_COLOR_RED format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                                \
+            Logger::log(ANSI_COLOR_RED format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                                 \
         }                                                                                                                                            \
     } while (0)
 

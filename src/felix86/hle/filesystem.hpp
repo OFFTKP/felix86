@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <functional>
+#include <optional>
 #include <fcntl.h>
 #include <linux/limits.h>
 #include <linux/stat.h>
@@ -184,6 +185,8 @@ struct Filesystem {
 
     static bool FakeMount(const std::filesystem::path& mount_me, const std::filesystem::path& dst);
 
+    static void SetRootfs(const std::filesystem::path& path);
+
     // Emulated syscall functions
     int OpenAt(bool mode32, int fd, const char* filename, int flags, u64 mode);
 
@@ -296,7 +299,7 @@ private:
 
     static int rmdirInternal(const char* path);
 
-    static bool isProcSelfExe(const char* path);
+    static std::optional<std::string> getProcSelfExe(int fd, const char* path);
 
     static FdPath resolveImpl(int fd, const char* path, bool resolve_final);
 
@@ -317,6 +320,7 @@ private:
         PROC_CPUINFO,
         // PROC_SELF_MAPS,
         PROC_SELF_MOUNTINFO,
+        SYS_CPU_ONLINE,
         EMULATED_NODE_COUNT,
     };
 

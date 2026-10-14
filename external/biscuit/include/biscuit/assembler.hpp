@@ -769,6 +769,48 @@ public:
     void FCVT_BF16_S(FPR rd, FPR rs, RMode rmode = RMode::DYN) noexcept;
     void FCVT_S_BF16(FPR rd, FPR rs, RMode rmode = RMode::DYN) noexcept;
 
+    // Generic form of floating-point instructions
+
+    void FADD(FPR rd, FPR rs1, FPR rs2, Precision prec, RMode rmode = RMode::DYN) noexcept;
+    void FSUB(FPR rd, FPR rs1, FPR rs2, Precision prec, RMode rmode = RMode::DYN) noexcept;
+    void FMUL(FPR rd, FPR rs1, FPR rs2, Precision prec, RMode rmode = RMode::DYN) noexcept;
+    void FDIV(FPR rd, FPR rs1, FPR rs2, Precision prec, RMode rmode = RMode::DYN) noexcept;
+    void FSQRT(FPR rd, FPR rs1, Precision prec, RMode rmode = RMode::DYN) noexcept;
+
+    void FMADD(FPR rd, FPR rs1, FPR rs2, FPR rs3, Precision prec, RMode rmode = RMode::DYN) noexcept;
+    void FMSUB(FPR rd, FPR rs1, FPR rs2, FPR rs3, Precision prec, RMode rmode = RMode::DYN) noexcept;
+    void FNMADD(FPR rd, FPR rs1, FPR rs2, FPR rs3, Precision prec, RMode rmode = RMode::DYN) noexcept;
+    void FNMSUB(FPR rd, FPR rs1, FPR rs2, FPR rs3, Precision prec, RMode rmode = RMode::DYN) noexcept;
+
+    void FSGNJ(FPR rd, FPR rs1, FPR rs2, Precision prec) noexcept;
+    void FSGNJN(FPR rd, FPR rs1, FPR rs2, Precision prec) noexcept;
+    void FSGNJX(FPR rd, FPR rs1, FPR rs2, Precision prec) noexcept;
+
+    void FMIN(FPR rd, FPR rs1, FPR rs2, Precision prec) noexcept;
+    void FMAX(FPR rd, FPR rs1, FPR rs2, Precision prec) noexcept;
+    void FMINM(FPR rd, FPR rs1, FPR rs2, Precision prec) noexcept;
+    void FMAXM(FPR rd, FPR rs1, FPR rs2, Precision prec) noexcept;
+
+    void FLE(GPR rd, FPR rs1, FPR rs2, Precision prec) noexcept;
+    void FLT(GPR rd, FPR rs1, FPR rs2, Precision prec) noexcept;
+    void FEQ(GPR rd, FPR rs1, FPR rs2, Precision prec) noexcept;
+    void FLEQ(GPR rd, FPR rs1, FPR rs2, Precision prec) noexcept;
+    void FLTQ(GPR rd, FPR rs1, FPR rs2, Precision prec) noexcept;
+
+    void FCLASS(GPR rd, FPR rs1, Precision prec) noexcept;
+
+    void FROUND(FPR rd, FPR rs1, Precision prec, RMode rmode = RMode::DYN) noexcept;
+    void FROUNDNX(FPR rd, FPR rs1, Precision prec, RMode rmode = RMode::DYN) noexcept;
+
+    void FLI(FPR rd, double value, Precision prec) noexcept;
+
+    void FL(FPR rd, int32_t offset, GPR rs, Precision prec) noexcept;
+    void FS(FPR rs2, int32_t offset, GPR rs1, Precision prec) noexcept;
+
+    void FABS(FPR rd, FPR rs, Precision prec) noexcept;
+    void FMV(FPR rd, FPR rs, Precision prec) noexcept;
+    void FNEG(FPR rd, FPR rs, Precision prec) noexcept;
+
     // RVB Extension Instructions (plus scalar crypto bit operations)
 
     void ADDUW(GPR rd, GPR rs1, GPR rs2) noexcept;

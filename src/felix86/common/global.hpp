@@ -7,6 +7,7 @@
 #include <linux/stat.h>
 #include <unistd.h>
 #include "felix86/common/process_lock.hpp"
+#include "felix86/common/shm_stats.hpp"
 #include "felix86/common/start_params.hpp"
 #include "felix86/common/types.hpp"
 
@@ -55,8 +56,13 @@ struct ProcessGlobals {
     // But we don't care for now
     std::vector<std::filesystem::path> mount_paths;
 
-private:
-    constexpr static size_t shared_memory_size = 0x10000;
+    char* vfork_rootfs = nullptr;
+
+    SHMManager shm_manager;
+
+    void before_fork();
+    void after_fork_child();
+    void after_fork_parent();
 };
 
 struct Mapper;
@@ -72,7 +78,6 @@ extern std::atomic_bool g_symbols_cached;
 extern u64 g_initial_brk;
 extern u64 g_current_brk;
 extern u64 g_current_brk_size;
-extern u64 g_dispatcher_exit_count;
 extern u64 g_program_end;
 extern int g_output_fd;
 extern std::string g_emulator_path;
@@ -95,6 +100,10 @@ extern std::filesystem::path g_executable_path_absolute;
 extern std::filesystem::path g_executable_path_guest_override;
 extern std::filesystem::path g_mounts_path;
 extern bool g_testing;
+extern bool g_emit_stats;
+extern bool g_is_single_thread;
+extern int g_gnu_stack;
+extern std::string g_online_cpu_string;
 
 struct FakeMountNode {
     std::filesystem::path src_path;
@@ -138,6 +147,7 @@ struct Extensions {
     X(Zvkned)                                                                                                                                        \
     X(Zknd)                                                                                                                                          \
     X(Zicclsm)                                                                                                                                       \
+    X(Zvknha)                                                                                                                                        \
     X(Xtheadcondmov)                                                                                                                                 \
     X(Xtheadvector)                                                                                                                                  \
     X(Xtheadba)                                                                                                                                      \

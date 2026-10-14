@@ -11,12 +11,16 @@
 #include "felix86/common/types.hpp"
 #include "felix86/common/xsave.hpp"
 
+[[nodiscard]] constexpr bool IsValidBTypeImm(ptrdiff_t value) {
+    return value >= -4096 && value <= 4095;
+}
+
 [[nodiscard]] constexpr bool IsValidJTypeImm(ptrdiff_t value) {
     return value >= -0x80000 && value <= 0x7FFFF;
 }
 
 [[nodiscard]] constexpr bool IsValid2GBImm(i64 value) {
-    return (i64)value >= (i64)INT_MIN && (i64)value <= (i64)INT_MAX;
+    return (i64)value >= (i64)INT_MIN - 2048 && (i64)value <= (i64)INT_MAX - 2048;
 }
 
 [[nodiscard]] constexpr bool IsValidSigned12BitImm(ptrdiff_t value) {
@@ -33,7 +37,7 @@ u64 sext_if_64(u64 value, u8 size_e);
 
 std::string get_perf_symbol(u64 address);
 
-void flush_icache();
+void flush_icache(u64 start, u64 end);
 
 void flush_icache_global(u64 start, u64 end);
 
@@ -52,8 +56,6 @@ void felix86_fstenv_16(struct ThreadState* state, u64 address);
 void felix86_fstenv_32(struct ThreadState* state, u64 address);
 void felix86_fldenv_16(struct ThreadState* state, u64 address);
 void felix86_fldenv_32(struct ThreadState* state, u64 address);
-
-void felix86_pmaddwd(i16* dst, i16* src);
 
 void push_calltrace(ThreadState* state, u64 address);
 
@@ -87,13 +89,7 @@ void f64_to_80_mem(double value, u64 address);
 bool felix86_bts(u64 address, i64 offset);
 bool felix86_btr(u64 address, i64 offset);
 bool felix86_btc(u64 address, i64 offset);
-bool felix86_bt(u64 address, i64 offset);
-void felix86_psadbw(u8* dst, u8* src);
-void felix86_vpsadbw(u8* dst, u8* src1, u8* src2);
-void felix86_vpsadbw256(u8* dst, u8* src1, u8* src2);
 void felix86_mpsadbw(u8* dst, u8* src, u8 imm);
-void felix86_vmpsadbw_128(u8* dst, u8* src1, u8* src2, u8 imm);
-void felix86_vmpsadbw_256(u8* dst, u8* src1, u8* src2, u8 imm);
 
 void felix86_fsin(ThreadState* state);
 void felix86_fcos(ThreadState* state);
@@ -135,7 +131,7 @@ inline void replace_all(std::string& str, const std::string& from, const std::st
 
 enum class pcmpxstrx { ImplicitIndex = 0b00, ImplicitMask = 0b01, ExplicitIndex = 0b10, ExplicitMask = 0b11 };
 
-void felix86_pcmpxstrx(ThreadState* state, pcmpxstrx type, u8* dst, u8* src, u8 control);
+void felix86_pcmpxstrx(ThreadState* state, pcmpxstrx type, u8* dst, u8* src, u8 control, bool rexw);
 
 inline bool is_subpath(const std::filesystem::path& path, const std::filesystem::path& base) {
     const auto mismatch_pair = std::mismatch(path.begin(), path.end(), base.begin(), base.end());
@@ -145,6 +141,10 @@ inline bool is_subpath(const std::filesystem::path& path, const std::filesystem:
 u64 mmap_min_addr();
 
 u64 mmap_max_addr();
+
+u64 rdtime_frequency();
+
+int rdtime_frequency_shift();
 
 pid_t get_tracer_pid();
 
@@ -156,6 +156,8 @@ void felix86_fxam(ThreadState* state);
 
 void felix86_aeskeygenassist(u32* dst, u32* src, u32 imm);
 
+void felix86_sha1rnds4(u32* dst, u32* src, u8 imm);
+
 std::string felix86_maps();
 const std::string& felix86_cpuinfo();
 
@@ -164,6 +166,8 @@ bool check_if_privileged_executable(const std::filesystem::path& path);
 std::string disassemble_one(bool mode32, u64 address);
 
 void felix86_crash_and_burn();
+
+void felix86_warn_unaligned_atomic(ThreadState* state);
 
 [[noreturn]] void felix86_exit_dispatcher(struct felix86_frame* frame);
 

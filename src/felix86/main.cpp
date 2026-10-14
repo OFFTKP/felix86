@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstddef>
 #include <cstdio>
 #include <filesystem>
@@ -31,11 +32,11 @@
 #endif
 
 static void rootfs_not_set_error() {
-    printf("Rootfs path not set in %s\n", g_config.path().c_str());
-    printf("Set it using `sudo felix86 --set-config general.rootfs_path=/path/to/rootfs`.\n");
-    printf("Consult the installation guide: https://felix86.com/docs/users/installation-guide/\n\n");
-    printf("If you don't have an x86 rootfs, you can use the rootfs installer script to download and install one:\n");
-    printf("    bash <(curl -s https://install.felix86.com/rootfs.sh)\n");
+    fprintf(stderr, "Rootfs path not set in %s\n", g_config.path().c_str());
+    fprintf(stderr, "Set it using `sudo felix86 --set-config general.rootfs_path=/path/to/rootfs`.\n");
+    fprintf(stderr, "Consult the installation guide: https://felix86.com/docs/users/installation-guide/\n\n");
+    fprintf(stderr, "If you don't have an x86 rootfs, you can use the rootfs installer script to download and install one:\n");
+    fprintf(stderr, "    bash <(curl -s https://install.felix86.com/rootfs.sh)\n");
     exit(1);
 }
 
@@ -102,16 +103,14 @@ static int print_system_info() {
     int ok = posix_spawnp(&pid, "fastfetch", nullptr, nullptr, (char**)args.data(), environ);
     if (ok != 0) {
         printf("Please install fastfetch for more information\n");
-        return ok;
-    } else {
-        int result = waitpid(pid, &status, 0);
-        if (!(result == 0 && WIFEXITED(status) && WEXITSTATUS(status) == 0)) {
-            return 0;
-        } else {
-            printf("Failed to get info from fastfetch\n");
-            return 1;
-        }
+        return 0;
     }
+
+    if (waitpid(pid, &status, 0) == -1 || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+        printf("Failed to get info from fastfetch\n");
+        return 1;
+    }
+    return 0;
 }
 
 static void kill_all() {
@@ -122,13 +121,14 @@ static void kill_all() {
     proc_dir = opendir("/proc");
     if (!proc_dir) {
         perror("opendir /proc");
+        return;
     }
 
     std::string our_name;
     char self[PATH_MAX];
     ssize_t len = readlink("/proc/self/exe", self, PATH_MAX - 1);
     if (len == -1) {
-        printf("Failed to read /proc/self/exe? Using `felix86` as search name");
+        printf("Failed to read /proc/self/exe? Using `felix86` as search name\n");
         our_name = "felix86";
     } else {
         self[len] = 0;
@@ -154,12 +154,13 @@ static void kill_all() {
         exe_target[len] = '\0';
 
         std::string path = exe_target;
-        if (path.find(' ') != std::string::npos) {
+        const std::string deleted_suffix = " (deleted)";
+        if (path.ends_with(deleted_suffix)) {
             // Sometimes paths come up as "/path/to/felix86 (deleted)"
             // This happens when the executable... was deleted
             // Helpful when I eg. recompile but also wanna kill old running instances
             // ie. wine leftovers and stuff like that
-            path = path.substr(0, path.find(' '));
+            path.erase(path.size() - deleted_suffix.size());
         }
 
         char* base = basename(path.data());
@@ -168,7 +169,7 @@ static void kill_all() {
             if (kill(pid, SIGKILL) == 0) {
                 printf("Killed process %d\n", pid);
             } else {
-                printf("Failed to kill process %d", pid);
+                printf("Failed to kill process %d: %s\n", pid, strerror(errno));
             }
         }
     }
@@ -209,13 +210,13 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
 
         bool rootfs_exists = std::filesystem::exists(g_config.rootfs_path, ec);
         if (!rootfs_exists || ec) {
-            printf("Rootfs path %s does not exist\n", g_config.rootfs_path.c_str());
+            fprintf(stderr, "Rootfs path %s does not exist\n", g_config.rootfs_path.c_str());
             exit(1);
         }
 
         bool rootfs_dir = std::filesystem::is_directory(g_config.rootfs_path, ec);
         if (!rootfs_dir || ec) {
-            printf("Rootfs path %s is not a directory\n", g_config.rootfs_path.c_str());
+            fprintf(stderr, "Rootfs path %s is not a directory\n", g_config.rootfs_path.c_str());
             exit(1);
         }
 
@@ -236,13 +237,13 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         }
 
         if (!std::filesystem::exists(shell_path, ec) || !std::filesystem::is_regular_file(shell_path, ec)) {
-            printf("Couldn't find a shell inside the rootfs\n");
+            fprintf(stderr, "Couldn't find a shell inside the rootfs\n");
             exit(1);
         }
 
         struct passwd* pw = getpwuid(geteuid());
         if (!pw || !pw->pw_dir) {
-            printf("Could not determine home directory\n");
+            fprintf(stderr, "Could not determine home directory\n");
             exit(1);
         }
 
@@ -254,20 +255,20 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             // chdir to root instead
             int result = chdir(g_config.rootfs_path.c_str());
             if (result != 0) {
-                printf("Failed to chdir to %s\n", g_config.rootfs_path.c_str());
+                fprintf(stderr, "Failed to chdir to %s\n", g_config.rootfs_path.c_str());
                 exit(1);
             }
         } else {
             if (g_config.mount_home) {
                 int result = chdir(home.c_str());
                 if (result != 0) {
-                    printf("Failed to chdir to %s\n", home_inside_rootfs.c_str());
+                    fprintf(stderr, "Failed to chdir to %s\n", home_inside_rootfs.c_str());
                     exit(1);
                 }
             } else {
                 int result = chdir(home_inside_rootfs.c_str());
                 if (result != 0) {
-                    printf("Failed to chdir to %s\n", home_inside_rootfs.c_str());
+                    fprintf(stderr, "Failed to chdir to %s\n", home_inside_rootfs.c_str());
                     exit(1);
                 }
             }
@@ -330,7 +331,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         envp.push_back(nullptr);
 
         (void)execve(self.c_str(), argv.data(), envp.data());
-        printf("Failed to start %s, error: %s\n", path_string.c_str(), strerror(errno));
+        fprintf(stderr, "Failed to start %s, error: %s\n", path_string.c_str(), strerror(errno));
         exit(1);
         break;
     }
@@ -360,7 +361,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             printf("%s\n", get.value().c_str());
             exit(0);
         } else {
-            ERROR("%s.%s is not a valid config tuple\n", group.c_str(), field.c_str());
+            ERROR("%s.%s is not a valid config tuple", group.c_str(), field.c_str());
         }
 
         break;
@@ -368,7 +369,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     case -4: {
         // set-config
         if (geteuid() != 0) {
-            printf("Setting config requires root permissions. Please re-run with sudo.\n");
+            fprintf(stderr, "Setting config requires root permissions. Please re-run with sudo.\n");
             exit(1);
         }
         ASSERT(Config::initialize(true));
@@ -400,7 +401,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             Config::save(g_config.path(), g_config);
             exit(0);
         } else {
-            ERROR("%s.%s is not a valid config tuple, or %s is not a valid value for the configuration\n", group.c_str(), field.c_str(),
+            ERROR("%s.%s is not a valid config tuple, or %s is not a valid value for the configuration", group.c_str(), field.c_str(),
                   value.c_str());
         }
 
@@ -438,7 +439,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         break;
     }
     case 'l': {
-        Logger::startServer(true);
+        Logger::startServer();
         exit(0);
         break;
     }
@@ -493,6 +494,8 @@ int main(int argc, char* argv[]) {
         return 0x42;
     }
 
+    std::set_terminate([]() { ERROR("std::terminate was called"); });
+
 #ifdef __x86_64__
     WARN("You're running an x86-64 executable version of felix86, get ready for a crash soon");
 #endif
@@ -542,60 +545,69 @@ int main(int argc, char* argv[]) {
                 envp++;
             }
         }
+    }
 
-        if (!g_config.environment.empty()) {
-            std::vector<std::string> envs = split_string(g_config.environment, ';');
-            for (const auto& env : envs) {
-                if (!env.empty()) {
-                    auto pos = env.find("=");
-                    if (pos == std::string::npos) {
-                        WARN("Environment variable %s in FELIX86_ENVIRONMENT has no '=' character", env.c_str());
+    Config::initialize();
+
+    if (!g_config.environment.empty()) {
+        std::vector<std::string> envs = split_string(g_config.environment, ';');
+        for (const auto& env : envs) {
+            if (!env.empty()) {
+                auto pos = env.find("=");
+                if (pos == std::string::npos) {
+                    WARN("Environment variable %s in FELIX86_ENVIRONMENT has no '=' character", env.c_str());
+                } else {
+                    auto existing = std::find_if(g_params.envp.begin(), g_params.envp.end(),
+                                                 [&](const std::string& e) { return e.compare(0, pos + 1, env, 0, pos + 1) == 0; });
+                    if (existing != g_params.envp.end()) {
+                        *existing = env;
                     } else {
                         g_params.envp.push_back(env);
                     }
                 }
             }
         }
+    }
 
-        if (!g_config.host_environment.empty()) {
-            std::vector<std::string> envs = split_string(g_config.host_environment, ';');
-            for (const auto& env : envs) {
-                if (!env.empty()) {
-                    auto pos = env.find("=");
-                    if (pos == std::string::npos) {
-                        WARN("Environment variable %s in FELIX86_HOST_ENVIRONMENT has no '=' character", env.c_str());
-                    } else {
-                        std::string name = env.substr(0, pos);
-                        std::string value = env.substr(pos + 1);
-                        int result = setenv(name.c_str(), value.c_str(), true);
-                        if (result != 0) {
-                            WARN("Failed to set %s from FELIX86_HOST_ENVIRONMENT", name.c_str());
-                        }
+    if (!g_config.host_environment.empty()) {
+        std::vector<std::string> envs = split_string(g_config.host_environment, ';');
+        for (const auto& env : envs) {
+            if (!env.empty()) {
+                auto pos = env.find("=");
+                if (pos == std::string::npos) {
+                    WARN("Environment variable %s in FELIX86_HOST_ENVIRONMENT has no '=' character", env.c_str());
+                } else {
+                    std::string name = env.substr(0, pos);
+                    std::string value = env.substr(pos + 1);
+                    int result = setenv(name.c_str(), value.c_str(), true);
+                    if (result != 0) {
+                        WARN("Failed to set %s from FELIX86_HOST_ENVIRONMENT", name.c_str());
                     }
                 }
             }
         }
     }
 
-    Config::initialize();
+    const char* pipe = secure_getenv("__FELIX86_PIPE"); // don't inherit pipe from different uid
+    if (!pipe || !*pipe) {
+        Logger::openTerminal();
+    } else {
+        Logger::joinServer();
+    }
+    Logger::openLogFile();
+
+#ifdef FELIX86_VALIDATE_BINFMT_MISC
+    bool is_secure = getauxval(AT_SECURE) != 0;
+    if (g_config.binfmt_misc_installed && !g_execve_process && !is_secure) {
+        validate_binfmt_misc();
+    }
+#endif
+
     if (!g_config.no_rootfs && g_config.rootfs_path.empty()) {
         rootfs_not_set_error();
     }
     initialize_globals();
     Signals::initialize();
-
-    if (getenv("__FELIX86_QUIET")) {
-        g_config.quiet = true;
-    }
-
-    if (!g_config.quiet) {
-        const char* pipe = secure_getenv("__FELIX86_PIPE"); // don't inherit pipe from different uid
-        if (!pipe) {
-            Logger::startServer();
-        } else {
-            Logger::joinServer();
-        }
-    }
 
     const char* argv0_original = getenv("__FELIX86_ARGV0");
     if (argv0_original) {
@@ -617,9 +629,20 @@ int main(int argc, char* argv[]) {
     // TODO: These "hacky" environment variables are bandaid solutions to problems that we need to eventually fix
     // They are enabled by default
     if (g_config.hacky_envs) {
+        auto add_env_if_missing = [](const std::string& key, const std::string& value) {
+            std::string prefix = key + "=";
+            for (const auto& env : g_params.envp) {
+                if (env.rfind(prefix, 0) == 0) {
+                    return;
+                }
+            }
+            g_params.envp.push_back(prefix + value);
+        };
         // DOTNET tries to allocate too much heap memory, and many RISC-V boards currently come with 39-bit address space
         // To counteract this by default, we'll limit the heap memory dotnet allocates
-        g_params.envp.push_back("DOTNET_GCHeapHardLimit=1C0000000");
+        add_env_if_missing("DOTNET_GCHeapHardLimit", "1C0000000");
+        // Some DOTNET games will use W^X mappings which will break our current SMC detection, disable it for now
+        add_env_if_missing("DOTNET_EnableWriteXorExecute", "0");
     }
 
     auto it = g_params.envp.begin();
@@ -646,8 +669,11 @@ int main(int argc, char* argv[]) {
             std::error_code ec;
             bool found = false;
             std::filesystem::path canonical_path = std::filesystem::canonical(unmodified_executable_path, ec);
-            if (ec) {
-                ERROR("Executable not inside rootfs, couldn't canonicalize path");
+            if (ec == std::errc::no_such_file_or_directory) {
+                ERROR("Executable %s does not exist", unmodified_executable_path.c_str());
+            } else if (ec) {
+                ERROR("Executable not inside rootfs, couldn't canonicalize path %s: %s", unmodified_executable_path.c_str(),
+                      ec.message().c_str());
             }
 
             for (const auto& fake_mount : g_fake_mounts) {
@@ -685,6 +711,8 @@ int main(int argc, char* argv[]) {
              "install "
              "it, make sure to remove other x86/x86-64 emulators from binfmt_misc");
     }
+
+    g_params.envp.push_back("__FELIX86_EXE=" + std::filesystem::absolute(g_params.executable_path).string());
 
     SIGLOG("New felix86 instance with PID %d and executable path %s", getpid(), g_params.executable_path.c_str());
 

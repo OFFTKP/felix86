@@ -80,15 +80,14 @@ void* Freelist::allocate(u32 addr, size_t size) {
         // We need to choose the first available mapping
         Node* current = list;
         Node* best = nullptr;
-        u32 best_size = UINT32_MAX;
         while (current) {
-            u32 start = current->start;
-            u32 end = current->end + 1;
-            u32 cur_size = end - start;
+            u64 start = current->start;
+            u64 end = (u64)current->end + 1;
+            u64 cur_size = end - start;
 
-            if (cur_size >= size && (!best || best_size < cur_size)) {
+            if (cur_size >= size) {
                 best = current;
-                best_size = cur_size;
+                break;
             }
 
             current = current->next;
@@ -115,6 +114,17 @@ void Freelist::deallocate(u32 addr, size_t size) {
         size = ((u64)UINT32_MAX + 1) - addr;
     }
 
+    u64 min_addr = mmap_min_addr();
+    if ((u64)addr < min_addr) {
+        u64 end = (u64)addr + size;
+        if (end <= min_addr) {
+            WARN("Deallocate called entirely before min addr: %x %lx", addr, size);
+            return;
+        }
+        size = end - min_addr;
+        addr = min_addr;
+    }
+
     u32 new_start = addr;
     u32 new_end = addr + size - 1;
 
@@ -139,11 +149,34 @@ void Freelist::deallocate(u32 addr, size_t size) {
                 list = new_node;
             }
             placed = true;
+            previous = new_node;
             break;
         }
 
         previous = current;
         current = current->next;
+    }
+
+    // Remove any other overlapping regions.
+    while (current) {
+        // No more region will be overlapping.
+        if (new_end < current->start) {
+            break;
+        }
+
+        if (current->end <= new_end) {
+            Node* to_remove = current;
+            if (previous) {
+                previous->next = current->next;
+                current = previous->next;
+            }
+            delete to_remove;
+        } else if (current->start > new_start) {
+            current->start = new_end;
+            current = current->next;
+        } else {
+            current = current->next;
+        }
     }
 
     if (!placed) {
@@ -152,9 +185,13 @@ void Freelist::deallocate(u32 addr, size_t size) {
         new_node->start = new_start;
         new_node->end = new_end;
         new_node->next = nullptr;
-        ASSERT(previous->next == nullptr);
         ASSERT(current == nullptr);
-        previous->next = new_node;
+        if (previous) {
+            ASSERT(previous->next == nullptr);
+            previous->next = new_node;
+        } else {
+            list = new_node;
+        }
     }
 
     consolidate();
@@ -170,7 +207,7 @@ void Freelist::consolidate() {
         while (current) {
             Node* next = current->next;
             if (next) {
-                if (current->end + 1 >= next->start) {
+                if ((u64)current->end + 1 >= next->start) {
                     current->end = std::max(current->end, next->end);
                     current->next = next->next;
                     delete next;

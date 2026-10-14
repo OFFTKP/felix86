@@ -32,7 +32,7 @@ void Assembler::Bind(Label* label) {
 
 void Assembler::ADD(GPR rd, GPR lhs, GPR rhs) noexcept {
     if (IsOptimizationEnabled(Optimization::AutoCompress)) {
-        if (IsValid3BitCompressedReg(rd) && IsValid3BitCompressedReg(lhs) && IsValid3BitCompressedReg(rhs)) {
+        if (rd != x0 && lhs != x0 && rhs != x0) {
             if (rd == lhs) {
                 C_ADD(rd, rhs);
                 return;
@@ -1543,7 +1543,7 @@ void Assembler::SLLIUW(GPR rd, GPR rs, uint32_t shift_amount) noexcept {
 
 void Assembler::UNZIP(GPR rd, GPR rs) noexcept {
     BISCUIT_ASSERT(IsRV32(m_features));
-    EmitIType(m_buffer, 0b000010011111, rs, 0b101, rd, 0b0010011);
+    EmitIType(m_buffer, 0b000010001111, rs, 0b101, rd, 0b0010011);
 }
 
 void Assembler::XNOR(GPR rd, GPR rs1, GPR rs2) noexcept {
@@ -1572,7 +1572,7 @@ void Assembler::ZEXTW(GPR rd, GPR rs) noexcept {
 
 void Assembler::ZIP(GPR rd, GPR rs) noexcept {
     BISCUIT_ASSERT(IsRV32(m_features));
-    EmitIType(m_buffer, 0b000010011110, rs, 0b001, rd, 0b0010011);
+    EmitIType(m_buffer, 0b000010001111, rs, 0b001, rd, 0b0010011);
 }
 
 // Cache Management Operation Extension Instructions
@@ -1839,7 +1839,7 @@ void Assembler::ResolveLabelOffsets(Label* label) {
                 BISCUIT_ASSERT(IsValidJTypeImm(encoded_offset));
                 instruction |= TransformToJTypeImm(static_cast<uint32_t>(encoded_offset));
             } else if (is_auipc_type(instruction)) {
-                const auto high20 = static_cast<uint32_t>(encoded_offset & 0xFFFFF000);
+                const auto high20 = static_cast<uint32_t>((encoded_offset + 0x800) & 0xFFFFF000);
                 const auto low12 = static_cast<uint32_t>(encoded_offset & 0xFFF);
                 instruction |= high20;
                 uint32_t next_instruction = 0;
@@ -1900,7 +1900,7 @@ void Assembler::ResolveLiteralOffsetsRaw(ptrdiff_t location, const std::set<ptrd
         BISCUIT_ASSERT((static_cast<int64_t>(encoded_offset << 32) >> 32) == encoded_offset);
 
         if (is_gpr_load_type(instructions[1]) || is_addi_type(instructions[1])) {
-            const auto high20 = static_cast<uint32_t>(encoded_offset & 0xFFFFF000);
+            const auto high20 = static_cast<uint32_t>((encoded_offset + 0x800) & 0xFFFFF000);
             const auto low12 = static_cast<uint32_t>(encoded_offset & 0xFFF);
             instructions[0] |= high20;
             instructions[1] |= low12 << 20;

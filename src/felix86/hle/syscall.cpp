@@ -1,4 +1,7 @@
+#include <cassert>
 #include <csignal>
+#include <memory>
+#include <new>
 #include <errno.h>
 #include <fcntl.h>
 #include <fmt/format.h>
@@ -76,7 +79,21 @@ private:
 #define felix86_x86_64_ARCH_GET_FS 0x1003
 #define felix86_x86_64_ARCH_GET_GS 0x1004
 
+#ifndef SS_AUTODISARM
+#define SS_AUTODISARM (1U << 31)
+#endif
+
 #define SYSCALL(name, ...) (syscall(x64_to_riscv(felix86_x86_64_##name), ##__VA_ARGS__))
+
+static i64 interruptible_syscall(ThreadState* state, u64 nr, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5, u64 arg6) {
+    i64 result = state->recompiler->interruptibleSyscall(&state->effective_deferred_signals, nr, arg1, arg2, arg3, arg4, arg5, arg6);
+    if (result == -1) {
+        errno = EPERM;
+    }
+    return result;
+}
+
+#define INTERRUPTIBLE_SYSCALL(name, ...) (interruptible_syscall(state, x64_to_riscv(felix86_x86_64_##name), ##__VA_ARGS__))
 
 // TODO: move me elsewhere
 static bool try_strace_ioctl(int rdi, u64 rsi, u64 rdx, u64 result) {
@@ -187,6 +204,11 @@ static bool try_strace_ioctl(int rdi, u64 rsi, u64 rdx, u64 result) {
     return false;
 }
 
+static bool is_xdg_open_url(const char* arg) {
+    std::string_view url = arg;
+    return url.starts_with("https://") || url.starts_with("http://");
+}
+
 static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5, u64 arg6) {
     ThreadState* state = frame->state;
     bool mode32 = state->ctx.Mode32();
@@ -259,11 +281,21 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_futex_waitv: {
-        result = SYSCALL(futex_waitv, arg1, arg2, arg3, arg4, arg5);
+        result = INTERRUPTIBLE_SYSCALL(futex_waitv, arg1, arg2, arg3, arg4, arg5, 0);
         break;
     }
     case felix86_riscv64_personality: {
-        result = SYSCALL(personality, arg1 & ~PER_LINUX32);
+        u32 persona = arg1;
+        u64 old_persona = state->persona;
+        if (persona == 0xffffffff) {
+            result = old_persona;
+        } else {
+            result = SYSCALL(personality, persona & ~PER_LINUX32);
+            if (result >= 0) {
+                state->persona = persona;
+                result = old_persona;
+            }
+        }
         break;
     }
     case felix86_riscv64_process_vm_readv: {
@@ -283,7 +315,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_mprotect: {
-        result = SYSCALL(mprotect, arg1, arg2, arg3, arg4, arg5, arg6);
+        result = g_mapper->protect((void*)arg1, arg2, arg3);
         u64 start = arg1;
         u64 size = arg2;
         int prot = arg3;
@@ -316,8 +348,18 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_shmat: {
-        result = SYSCALL(shmat, arg1, arg2, arg3);
-        if (result >= 0 && ((u64)result) > mmap_min_addr() && result < UINT32_MAX) {
+        if (g_is_single_thread) {
+            // Similar to mmap with MAP_SHARED
+            g_is_single_thread = false;
+            Recompiler::invalidateRangeGlobal(0, UINT64_MAX & ~0xFFFull, "shmat happened");
+        }
+        u64 result_address = 0;
+        result = g_mapper->shmat(false, (int)arg1, (void*)arg2, (int)arg3, &result_address);
+        if (result == 0) {
+            ASSERT(result_address != 0);
+            result = result_address;
+        }
+        if (result >= 0 && ((u64)result) > mmap_min_addr() && result <= UINT32_MAX) {
             WARN("shmat in 32-bit address space, this could cause problems with MAP_32BIT");
         }
         break;
@@ -327,10 +369,10 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_shmdt: {
-        if (arg1 > mmap_min_addr() && arg1 < UINT32_MAX) {
+        if (arg1 > mmap_min_addr() && arg1 <= UINT32_MAX) {
             WARN("shmdt in 32-bit address space, this could cause problems with MAP_32BIT");
         }
-        result = SYSCALL(shmdt, arg1);
+        result = g_mapper->shmdt(false, (void*)arg1);
         break;
     }
     case felix86_riscv64_getsid: {
@@ -438,8 +480,17 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_epoll_pwait: {
-        epoll_event* host_events = (epoll_event*)alloca(std::max(0, (int)arg3) * sizeof(epoll_event));
-        result = SYSCALL(epoll_pwait, arg1, host_events, arg3, arg4, arg5, arg6);
+        int max_events = INT_MAX / sizeof(x86_epoll_event);
+        if ((int)arg3 <= 0 || (int)arg3 > max_events) {
+            result = -EINVAL;
+            break;
+        }
+        std::unique_ptr<epoll_event[]> host_events(new (std::nothrow) epoll_event[(int)arg3]);
+        if (!host_events) {
+            result = -ENOMEM;
+            break;
+        }
+        result = SYSCALL(epoll_pwait, arg1, host_events.get(), arg3, arg4, arg5, arg6);
         if (result >= 0) {
             x86_epoll_event* guest_event = (x86_epoll_event*)arg2;
             for (int i = 0; i < result; i++) {
@@ -449,8 +500,17 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_epoll_pwait2: {
-        epoll_event* host_events = (epoll_event*)alloca(std::max(0, (int)arg3) * sizeof(epoll_event));
-        result = SYSCALL(epoll_pwait2, arg1, host_events, arg3, arg4, arg5, arg6);
+        int max_events = INT_MAX / sizeof(x86_epoll_event);
+        if ((int)arg3 <= 0 || (int)arg3 > max_events) {
+            result = -EINVAL;
+            break;
+        }
+        std::unique_ptr<epoll_event[]> host_events(new (std::nothrow) epoll_event[(int)arg3]);
+        if (!host_events) {
+            result = -ENOMEM;
+            break;
+        }
+        result = SYSCALL(epoll_pwait2, arg1, host_events.get(), arg3, arg4, arg5, arg6);
         if (result >= 0) {
             x86_epoll_event* guest_event = (x86_epoll_event*)arg2;
             for (int i = 0; i < result; i++) {
@@ -701,7 +761,8 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         if (g_config.calltrace_on_exit) {
             dump_states();
         }
-        LOG("Process %d called exit_group(%d)", gettid(), arg1);
+        g_process_globals.shm_manager.unlink();
+        LOG("Process %d called exit_group(%d)", gettid(), (int)arg1);
         SYSCALL(exit_group, arg1);
         UNREACHABLE();
         break;
@@ -734,7 +795,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_getdents64: {
-        result = SYSCALL(getdents64, arg1, arg2, arg3, arg4, arg5, arg6);
+        result = FD::getdents64(arg1, arg2, arg3);
         break;
     }
     case felix86_riscv64_lgetxattr: {
@@ -793,28 +854,28 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
     case felix86_riscv64_openat2: {
         open_how* how = (open_how*)arg3;
         if (how->resolve) {
-            IMPORTANT("Ignored how->resolve flags: %x", how->resolve);
+            IMPORTANT("Ignored how->resolve flags: %llx", how->resolve);
         }
         result = g_fs->OpenAt(mode32, (int)arg1, (char*)arg2, how->flags, how->mode);
         break;
     }
     case felix86_riscv64_tgkill: {
         if (arg3 != 0) { // sig==0 is used to check if process exists
-            SIGLOG("%d is calling tgkill with sig: %d for TGID: %d and TID: %d", gettid(), arg3, arg1, arg2);
+            SIGLOG("%d is calling tgkill with sig: %d for TGID: %d and TID: %d", gettid(), (int)arg3, (int)arg1, (int)arg2);
         }
         result = SYSCALL(tgkill, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_tkill: {
         if (arg2 != 0) {
-            SIGLOG("%d is calling tkill with sig: %d for TID: %d", gettid(), arg2, arg1);
+            SIGLOG("%d is calling tkill with sig: %d for TID: %d", gettid(), (int)arg2, (int)arg1);
         }
         result = SYSCALL(tkill, arg1, arg2);
         break;
     }
     case felix86_riscv64_kill: {
         if (arg2 != 0) {
-            SIGLOG("%d is calling kill with sig: %d and PID: %d", gettid(), arg2, arg1);
+            SIGLOG("%d is calling kill with sig: %d and PID: %d", gettid(), (int)arg2, (int)arg1);
         }
         result = SYSCALL(kill, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
@@ -824,17 +885,18 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
 #define MAP_32BIT 0x40
 #endif
         u64 flags = arg4;
-        bool is_fixed = (flags & MAP_FIXED) || (flags & MAP_FIXED_NOREPLACE);
-        if ((flags & MAP_32BIT) || (is_fixed && arg1 < UINT32_MAX) || mode32) {
-            // The MAP_32BIT flag is x86 only so we need to emulate it
-            // For example, Mono tries to use it to allocate code cache pages near the executable so that it can use
-            // +-2GiB jumps. If it doesn't get them near enough it will eventually crash and die.
-            // We need to also track fixed mappings in the 32-bit address space
-            result = (ssize_t)g_mapper->map32((void*)arg1, arg2, arg3, (int)arg4, (int)arg5, arg6);
-        } else {
-            // No need to use mapper
-            result = SYSCALL(mmap, arg1, arg2, arg3, (int)arg4, (int)arg5, arg6);
+        if (g_is_single_thread && (flags & MAP_TYPE) != MAP_PRIVATE) {
+            // If a MAP_SHARED happens we can no longer do single threaded optimizations like not emitting TSO fences
+            g_is_single_thread = false;
+            Recompiler::invalidateRangeGlobal(0, UINT64_MAX & ~0xFFFull, "MAP_SHARED happened");
         }
+        // The MAP_32BIT flag is x86 only so we need to emulate it
+        // For example, Mono tries to use it to allocate code cache pages near the executable so that it can use
+        // +-2GiB jumps. If it doesn't get them near enough it will eventually crash and die.
+        // We need to also track fixed mappings in the 32-bit address space
+        bool is_fixed = ((flags & MAP_FIXED) || (flags & MAP_FIXED_NOREPLACE)) && arg1 <= UINT32_MAX;
+        bool is_mmap32 = is_fixed || (flags & MAP_32BIT) || mode32;
+        result = (ssize_t)g_mapper->map(is_mmap32, (void*)arg1, arg2, arg3, (int)arg4, (int)arg5, arg6);
 
         // If there's any blocks in any threads that match this mmapped range they need to be invalidated
         if (result > 0) {
@@ -849,12 +911,9 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_munmap: {
-        if (arg1 < UINT32_MAX || mode32) {
-            // Track unmaps in the 32-bit address space for MAP_32BIT in 64-bit mode
-            result = g_mapper->unmap32((void*)arg1, arg2);
-        } else {
-            result = SYSCALL(munmap, arg1, arg2, arg3, arg4, arg5, arg6);
-        }
+        // Track unmaps in the 32-bit address space for MAP_32BIT in 64-bit mode
+        bool is_munmap32 = arg1 <= UINT32_MAX || mode32;
+        result = g_mapper->unmap(is_munmap32, (void*)arg1, arg2);
 
         if (result == 0) {
             Recompiler::invalidateRangeGlobal(arg1, arg1 + arg2, "munmap");
@@ -951,7 +1010,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             break;
         }
         default: {
-            WARN("seccomp(%x)", arg1);
+            WARN("seccomp(%lx)", arg1);
             result = -EINVAL;
             break;
         }
@@ -1033,11 +1092,10 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             WARN("Failed to determine host node name");
         }
         strcpy(guest_uname->sysname, "Linux");
-        strcpy(guest_uname->release, "5.0.0");
+        strcpy(guest_uname->release, (state->persona & UNAME26) ? "2.6.60" : "5.0.0");
         std::string version = "#1 SMP " __DATE__ " " __TIME__;
         strcpy(guest_uname->version, version.c_str());
-        strcpy(guest_uname->machine, (state->persona & PER_LINUX32) ? "i686" : "x86_64");
-        ASSERT(!(state->persona & UNAME26));
+        strcpy(guest_uname->machine, ((state->persona & PER_MASK) == PER_LINUX32) ? "i686" : "x86_64");
         result = 0;
         break;
     }
@@ -1085,13 +1143,18 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         if (g_config.calltrace_on_exit) {
             dump_states();
         }
-        LOG("Thread %ld exited with SYS_exit(%d)", gettid(), arg1);
+        g_process_globals.shm_manager.removeThread(state->thread_stats);
+        LOG("Thread %d exited with SYS_exit(%d)", gettid(), (int)arg1);
         if (state->clear_tid_address) {
             __atomic_store_n(state->clear_tid_address, 0, __ATOMIC_SEQ_CST);
             syscall(SYS_futex, state->clear_tid_address, FUTEX_WAKE, ~0ULL, 0, 0, 0);
         }
+        sigset_t all;
+        sigfillset(&all);
+        syscall(SYS_rt_sigprocmask, SIG_SETMASK, &all, nullptr, 8);
+        void* host_stack = state->host_stack;
         ThreadState::Destroy(state);
-        syscall(SYS_exit, arg1);
+        Threads::ExitThread(host_stack, arg1);
         UNREACHABLE();
         break;
     }
@@ -1192,7 +1255,12 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_rt_sigaction: {
-        if (arg1 > 64) {
+        if (arg4 != sizeof(u64)) {
+            result = -EINVAL;
+            break;
+        }
+
+        if (arg1 > 64 || arg1 == 0) {
             result = -EINVAL;
             break;
         }
@@ -1251,43 +1319,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_sigaltstack: {
-        VERBOSE("----- sigaltstack was called -----");
-        stack_t* new_ss = (stack_t*)arg1;
-        stack_t* old_ss = (stack_t*)arg2;
-        u64 current_rsp = state->ctx.gprs[X86_REF_RSP];
-
-        bool on_stack = false;
-        if (!(state->alt_stack.ss_flags & SS_DISABLE) && current_rsp >= (u64)state->alt_stack.ss_sp &&
-            current_rsp < (u64)state->alt_stack.ss_sp + state->alt_stack.ss_size) {
-            on_stack = true;
-        }
-
-        if (old_ss) {
-            old_ss->ss_sp = state->alt_stack.ss_sp;
-            old_ss->ss_flags = 0;
-            old_ss->ss_size = state->alt_stack.ss_size;
-
-            if (on_stack) {
-                old_ss->ss_flags = SS_ONSTACK;
-            } else {
-                old_ss->ss_flags = SS_DISABLE;
-            }
-        }
-
-        if (new_ss) {
-            if (on_stack) {
-                WARN("Tried to set sigaltstack while using it");
-                result = -EPERM;
-                break;
-            }
-
-            state->alt_stack.ss_sp = new_ss->ss_sp;
-            state->alt_stack.ss_flags = new_ss->ss_flags;
-            state->alt_stack.ss_size = new_ss->ss_size;
-            VERBOSE("New altstack: %lx", new_ss->ss_sp);
-        }
-
-        result = 0;
+        result = Signals::sigaltstack(state, (stack_t*)arg1, (stack_t*)arg2, arg3);
         break;
     }
     case felix86_riscv64_prctl: {
@@ -1319,7 +1351,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
                     result = 0;
                 }
             } else {
-                WARN("prctl(SECCOMP, %d) not implemented", arg2);
+                WARN("prctl(SECCOMP, %lu) not implemented", arg2);
                 result = -EINVAL;
             }
             break;
@@ -1338,7 +1370,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_futex: {
-        result = SYSCALL(futex, arg1, arg2, arg3, arg4, arg5, arg6);
+        result = INTERRUPTIBLE_SYSCALL(futex, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_inotify_init1: {
@@ -1366,7 +1398,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         break;
     }
     case felix86_riscv64_sched_setattr: {
-        result = SYSCALL(sched_getattr, arg1, arg2, arg3);
+        result = SYSCALL(sched_setattr, arg1, arg2, arg3);
         break;
     }
     case felix86_riscv64_sched_setaffinity: {
@@ -1479,10 +1511,44 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             break;
         }
 
+        if (g_config.xdg_open_passthrough && std::filesystem::path((char*)arg1).filename() == "xdg-open") {
+            const char* url = nullptr;
+            if (arg2) {
+                size_t ptr_size = mode32 ? 4 : 8;
+                u64 argv0_ptr = 0, url_ptr = 0, next_ptr = 0;
+                memcpy(&argv0_ptr, (u8*)arg2, ptr_size);
+                if (argv0_ptr) {
+                    memcpy(&url_ptr, (u8*)arg2 + ptr_size, ptr_size);
+                }
+                if (url_ptr) {
+                    memcpy(&next_ptr, (u8*)arg2 + ptr_size * 2, ptr_size);
+                }
+                if (url_ptr && !next_ptr && is_xdg_open_url((const char*)url_ptr)) {
+                    url = (const char*)url_ptr;
+                }
+            }
+
+            if (!url) {
+                VERBOSE("xdg-open wasn't called with a URL, using the guest xdg-open instead");
+            } else {
+                const char* xdg_argv[] = {"xdg-open", url, nullptr};
+
+                LOG("Calling host xdg-open: %s", url);
+
+                g_process_globals.shm_manager.unlink();
+
+                ThreadState::Set(nullptr);
+                execvpe("xdg-open", (char* const*)xdg_argv, environ);
+                ThreadState::Set(state);
+
+                WARN("Couldn't run the host xdg-open with error %s, running the guest xdg-open instead", strerror(errno));
+            }
+        }
+
         FdPath fd_path = Filesystem::resolve((char*)arg1, true);
 
         if (!fd_path.path() || !std::filesystem::exists(fd_path.full_path())) {
-            WARN("Execve couldn't find path: %s", arg1);
+            WARN("Execve couldn't find path: %s", (char*)arg1);
             result = -ENOENT;
             break;
         }
@@ -1511,15 +1577,14 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             executable = g_emulator_path;
             argv.push_back(executable.c_str());
 
-            if (check_if_privileged_executable(path)) {
-                ASSERT_MSG(!is_script, "Script with setuid...?");
-
+            if (!is_script && check_if_privileged_executable(path)) {
                 // If this is a privileged executable, it won't work out if we don't have binfmt_misc support
                 // Because binfmt_misc would see that the binary has extra permissions and give the emulator
                 // those permissions as well. When we run it through the emulator manually however, we can't
                 // do the same. So warn that this might end badly.
                 WARN("About to run privileged executable %s, but there's no binfmt_misc support, so things may go wrong. Please enable "
-                     "binfmt_misc support by running `felix86 -b` and disabling it for any other x86/x86-64 emulators");
+                     "binfmt_misc support by running `felix86 -b` and disabling it for any other x86/x86-64 emulators",
+                     path.c_str());
             }
         } else {
             executable = path;
@@ -1532,8 +1597,11 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             const std::string& args = script.GetArgs();
             script_interpreter = script.GetInterpreter();
             FdPath interpreter_fd_path = Filesystem::resolve(script_interpreter.c_str(), true);
-            ASSERT_MSG(!interpreter_fd_path.is_error(), "Interpreter not found: %s", script_interpreter.c_str());
-            ASSERT(interpreter_fd_path.full_path());
+            if (interpreter_fd_path.is_error() || !interpreter_fd_path.full_path()) {
+                WARN("Interpreter not found during execve: %s", script_interpreter.c_str());
+                result = -ENOENT;
+                break;
+            }
             ASSERT(interpreter_fd_path.full_path()[0] == '/');
             script_interpreter = interpreter_fd_path.full_path();
             script_args = split_string(args, ' ');
@@ -1576,16 +1644,20 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
 
         if (arg2) {
             u8* guest_argv = (u8*)arg2;
-            guest_argv += mode32 ? 4 : 8;
-            while (true) {
-                u64 ptr = 0;
-                memcpy(&ptr, guest_argv, mode32 ? 4 : 8);
-                if (ptr == 0) {
-                    break;
-                }
-
-                argv.push_back((const char*)ptr);
+            u64 argv0 = 0;
+            memcpy(&argv0, guest_argv, mode32 ? 4 : 8);
+            if (argv0 != 0) {
                 guest_argv += mode32 ? 4 : 8;
+                while (true) {
+                    u64 ptr = 0;
+                    memcpy(&ptr, guest_argv, mode32 ? 4 : 8);
+                    if (ptr == 0) {
+                        break;
+                    }
+
+                    argv.push_back((const char*)ptr);
+                    guest_argv += mode32 ? 4 : 8;
+                }
             }
         } else {
             WARN("argv null during execve...?");
@@ -1629,6 +1701,8 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
 
         std::string flags;
         std::string former_tracee;
+        std::string parent_tid_env = std::string("__FELIX86_PARENT_TID=") + std::to_string(state->ptrace_data.constants.parent_tid);
+        envp.push_back(parent_tid_env.c_str());
         if (Ptrace::is_traced(state)) {
             flags = std::string("__FELIX86_PTRACE_FLAGS=") + std::to_string(state->ptrace_data.constants.flags);
             former_tracee = std::string("__FELIX86_PTRACE_FORMER_TRACEE=") + std::to_string(gettid());
@@ -1639,12 +1713,17 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         // We need to tell the new process where the server is
         std::string log_env;
         envp.push_back("__FELIX86_EXECVE=1");
-        if (!g_config.quiet) {
+        if (*Logger::getPipeName()) {
             log_env = std::string("__FELIX86_PIPE=") + Logger::getPipeName();
-        } else {
-            log_env = "__FELIX86_QUIET=1";
         }
-        envp.push_back(log_env.c_str());
+        if (!log_env.empty()) {
+            envp.push_back(log_env.c_str());
+        }
+        std::string online_env = std::string("__FELIX86_ONLINE_CPUS=");
+        if (!g_online_cpu_string.empty()) {
+            online_env += g_online_cpu_string;
+            envp.push_back(online_env.c_str());
+        }
         std::string rootfs_env = std::string("__FELIX86_ROOTFS=") + g_config.rootfs_path.string();
         envp.push_back(rootfs_env.c_str());
         std::string extensions_env = "__FELIX86_EXTENSIONS=" + get_extensions();
@@ -1652,8 +1731,12 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         std::string mounts_env = std::string("__FELIX86_MOUNTS=") + g_mounts_path.string();
         envp.push_back(mounts_env.c_str());
         size_t current_mount = 0;
+        std::vector<std::string> mount_envs;
         for (auto& mount_path : g_process_globals.mount_paths) {
-            envp.push_back(strdup((std::string("__FELIX86_MOUNT_") + std::to_string(current_mount++) + "=" + mount_path.string()).c_str()));
+            mount_envs.push_back(std::string("__FELIX86_MOUNT_") + std::to_string(current_mount++) + "=" + mount_path.string());
+        }
+        for (auto& mount_env : mount_envs) {
+            envp.push_back(mount_env.c_str());
         }
         // We only care about the first u64 and this is unlikely to ever change
         std::string mask_env = std::string("__FELIX86_SIGNAL_MASK=") + std::to_string(state->signal_mask.__val[0]);
@@ -1665,6 +1748,8 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             args += " ";
             args += arg ? arg : "";
         }
+
+        g_process_globals.shm_manager.unlink();
 
         LOG("Running execve on %s, wish me luck. Args:%s", executable.c_str(), args.c_str());
 
@@ -1681,7 +1766,8 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         // If execve fails, set it back
         ThreadState::Set(state);
 
-        ASSERT_MSG(false, "Error during execve: %d %s (executable: %s)", strerror(result), executable.c_str());
+        ssize_t error = result;
+        WARN("Error during execve: %d %s (executable: %s)", (int)error, strerror(-error), executable.c_str());
         break;
     }
     case felix86_riscv64_umask: {
@@ -1691,7 +1777,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
     case felix86_riscv64_ptrace: {
         if (!g_config.ptrace_enabled) {
             // TODO: remove me when we rewrite result/SYSCALL macro to not use errno
-            errno = -EPERM; // since -EPERM == -1 the result operator= will use errno...
+            errno = EPERM; // since -EPERM == -1 the result operator= will use errno...
             result = -EPERM;
             break;
         }
@@ -1720,31 +1806,57 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
     }
     case felix86_riscv64_rt_sigsuspend: {
         SIGLOG("Entering rt_sigsuspend");
-        // In most programs, before a call to sigsuspend, a sigprocmask will be called to make sure no signal happens until
-        // the actual sigsuspend kernel handler is reached. As a sanity check (which granted, might fail if a signal happens after the sanity check
-        // but before the syscall), check if we have any pending signals and warn if so.
-        if (state->deferred_signals) {
-            WARN("There are deferred signals before running sigsuspend");
+        if (arg2 != sizeof(u64)) {
+            result = -EINVAL;
+            break;
         }
+
+        sigset_t* guest_mask = (sigset_t*)arg1;
+        if (!guest_mask || !felix86_address_check(guest_mask)) {
+            result = -EFAULT;
+            break;
+        }
+
         // If a signal happens during sigsuspend we need to defer it and activate the fault page
         // The signal needs to be set in effective_deferred_signals accordingly, so we need to temporarily change the mask
         sigset_t old_mask = state->signal_mask;
-        sigset_t* new_mask = (sigset_t*)arg1;
-        if (new_mask && arg2) {
-            state->signal_mask.__val[0] = new_mask->__val[0];
-        } else {
-            WARN("Couldn't copy sigsuspend mask");
+        sigset_t new_mask = state->signal_mask;
+        new_mask.__val[0] = guest_mask->__val[0];
+        sigdelset(&new_mask, SIGKILL);
+        sigdelset(&new_mask, SIGSTOP);
+
+        u64 host_mask = new_mask.__val[0] & Signals::hostSignalMask()->__val[0];
+        u64 old_host_mask = old_mask.__val[0] & Signals::hostSignalMask()->__val[0];
+
+        u64 full = -1ull;
+        ASSERT(syscall(SYS_rt_sigprocmask, SIG_BLOCK, &full, nullptr, sizeof(full)) == 0);
+
+        state->signal_mask.__val[0] = new_mask.__val[0];
+        state->effective_deferred_signals |= state->deferred_signals & ~new_mask.__val[0];
+        if (state->effective_deferred_signals) {
+            ASSERT(::mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
+            state->signal_mask.__val[0] = old_mask.__val[0];
+            ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old_host_mask, nullptr, sizeof(old_host_mask)) == 0);
+            SIGLOG("rt_sigsuspend returning without waiting, a deferred signal is already deliverable");
+            result = -EINTR;
+            break;
         }
-        result = SYSCALL(rt_sigsuspend, arg1, arg2);
+
+        result = SYSCALL(rt_sigsuspend, &host_mask, sizeof(host_mask));
         state->signal_mask.__val[0] = old_mask.__val[0];
-        SIGLOG("rt_sigsuspend returned with %d", result);
+        ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old_host_mask, nullptr, sizeof(old_host_mask)) == 0);
+        SIGLOG("rt_sigsuspend returned with %d", (int)result);
         // Will set RAX to EINTR and the actual signal will be handled in the safepoint after the syscall
         break;
     }
     case felix86_riscv64_rt_sigpending: {
         SIGLOG("Entering rt_sigpending");
         result = SYSCALL(rt_sigpending, arg1, arg2);
-        SIGLOG("rt_sigpending returned with %d", result);
+        if (result == 0) {
+            sigset_t* set = (sigset_t*)arg1;
+            set->__val[0] |= state->deferred_signals;
+        }
+        SIGLOG("rt_sigpending returned with %d", (int)result);
         break;
     }
     case felix86_riscv64_epoll_create1: {
@@ -1849,24 +1961,26 @@ void felix86_syscall(felix86_frame* frame) {
             break;
         }
         case felix86_x86_64_pause: {
-            WARN("Entering pause");
+            SIGLOG("Entering pause");
             // Similar to sigsuspend, but in this case pause doesn't take a mask like sigsuspend.
             // Instead of pausing, block all signals and run a sigsuspend with the old mask. This will do effectively
             // the same suspension as pause, but gives us a safe window to check if there is any deferred signals.
             // Had we just checked without blocking, it could be possible a signal happens after our check but before the pause.
-            sigset_t filled, old;
-            sigfillset(&filled);
-            sigprocmask(SIG_BLOCK, &filled, &old);
-            if (state->deferred_signals) {
-                WARN("There are deferred signals before running pause");
-                // TODO: if we hit this, we need to service the deferred signals immediately
-                // by jumping from here to the signal handler (making sure to restore the stack)
-                // and when the signal returns it should *probably* return to before the syscall instruction
-                // NOTE: it is unlikely that pause is ever used in modern programs
+            u64 full = -1ull;
+            u64 old = 0;
+            ASSERT(syscall(SYS_rt_sigprocmask, SIG_BLOCK, &full, &old, sizeof(old)) == 0);
+            u64 effective = state->deferred_signals & ~state->signal_mask.__val[0];
+            if (effective) {
+                state->effective_deferred_signals = effective;
+                ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
+                ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old, nullptr, sizeof(old)) == 0);
+                SIGLOG("pause returning without waiting, a deferred signal is already deliverable");
+                result = -EINTR;
+                break;
             }
-            result = ::sigsuspend(&old);
-            sigprocmask(SIG_SETMASK, &old, nullptr);
-            WARN("pause returned with %d", result);
+            result = SYSCALL(rt_sigsuspend, &old, sizeof(old));
+            ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old, nullptr, sizeof(old)) == 0);
+            SIGLOG("pause returned with %d", (int)result);
             break;
         }
         case felix86_x86_64_inotify_init: {
@@ -1898,8 +2012,17 @@ void felix86_syscall(felix86_frame* frame) {
             break;
         }
         case felix86_x86_64_epoll_wait: {
-            epoll_event* host_events = (epoll_event*)alloca(std::max(0, (int)arg3) * sizeof(epoll_event));
-            result = epoll_wait((int)arg1, host_events, (int)arg3, (int)arg4);
+            int max_events = INT_MAX / sizeof(x86_epoll_event);
+            if ((int)arg3 <= 0 || (int)arg3 > max_events) {
+                result = -EINVAL;
+                break;
+            }
+            std::unique_ptr<epoll_event[]> host_events(new (std::nothrow) epoll_event[(int)arg3]);
+            if (!host_events) {
+                result = -ENOMEM;
+                break;
+            }
+            result = epoll_wait((int)arg1, host_events.get(), (int)arg3, (int)arg4);
             if (result >= 0) {
                 x86_epoll_event* guest_event = (x86_epoll_event*)arg2;
                 for (int i = 0; i < result; i++) {
@@ -1993,7 +2116,7 @@ void felix86_syscall(felix86_frame* frame) {
             u64 dirp = arg2;
             u32 count = arg3;
 
-            result = SYSCALL(getdents64, fd, dirp, count);
+            result = FD::getdents64(fd, dirp, count);
             if (result > 0) {
                 size_t bytes = result;
                 for (size_t i = 0; i < bytes;) {
@@ -2121,7 +2244,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
     bool mode32 = state->ctx.Mode32();
     u64 syscall_number = state->GetGpr(X86_REF_RAX);
     if (!mode32) {
-        WARN("Executing 32-bit syscall %d on 64-bit process", syscall_number);
+        WARN("Executing 32-bit syscall %lu on 64-bit process", syscall_number);
     }
     state->should_restart_syscall = false;
     state->ctx.orig_rax = syscall_number;
@@ -2241,24 +2364,26 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_pause: {
-            WARN("Entering pause");
+            SIGLOG("Entering pause");
             // Similar to sigsuspend, but in this case pause doesn't take a mask like sigsuspend.
             // Instead of pausing, block all signals and run a sigsuspend with the old mask. This will do effectively
             // the same suspension as pause, but gives us a safe window to check if there is any deferred signals.
             // Had we just checked without blocking, it could be possible a signal happens after our check but before the pause.
-            sigset_t filled, old;
-            sigfillset(&filled);
-            sigprocmask(SIG_BLOCK, &filled, &old);
-            if (state->deferred_signals) {
-                WARN("There are deferred signals before running pause");
-                // TODO: if we hit this, we need to service the deferred signals immediately
-                // by jumping from here to the signal handler (making sure to restore the stack)
-                // and when the signal returns it should *probably* return to before the syscall instruction
-                // NOTE: it is unlikely that pause is ever used in modern programs
+            u64 full = -1ull;
+            u64 old = 0;
+            ASSERT(syscall(SYS_rt_sigprocmask, SIG_BLOCK, &full, &old, sizeof(old)) == 0);
+            u64 effective = state->deferred_signals & ~state->signal_mask.__val[0];
+            if (effective) {
+                state->effective_deferred_signals = effective;
+                ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
+                ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old, nullptr, sizeof(old)) == 0);
+                SIGLOG("pause returning without waiting, a deferred signal is already deliverable");
+                result = -EINTR;
+                break;
             }
-            result = ::sigsuspend(&old);
-            sigprocmask(SIG_SETMASK, &old, nullptr);
-            WARN("pause returned with %d", result);
+            result = SYSCALL(rt_sigsuspend, &old, sizeof(old));
+            ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old, nullptr, sizeof(old)) == 0);
+            SIGLOG("pause returned with %d", (int)result);
             break;
         }
         case felix86_x86_32_symlink: {
@@ -2333,6 +2458,28 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             result = SYSCALL(rt_tgsigqueueinfo, arg1, arg2, arg3, host_info);
             break;
         }
+        case felix86_x86_32_rt_sigtimedwait_time32: {
+            siginfo_t host_info;
+            timespec host_timeout;
+            timespec* timeout = nullptr;
+            if (arg3) {
+                host_timeout = *(x86_timespec*)arg3;
+                timeout = &host_timeout;
+            }
+            result = SYSCALL(rt_sigtimedwait, arg1, arg2 ? &host_info : nullptr, timeout, arg4);
+            if (result >= 0 && arg2) {
+                *(x86_siginfo_t*)arg2 = host_info;
+            }
+            break;
+        }
+        case felix86_x86_32_rt_sigtimedwait: {
+            siginfo_t host_info;
+            result = SYSCALL(rt_sigtimedwait, arg1, arg2 ? &host_info : nullptr, arg3, arg4);
+            if (result >= 0 && arg2) {
+                *(x86_siginfo_t*)arg2 = host_info;
+            }
+            break;
+        }
         case felix86_x86_32_llseek: {
             int fd = arg1;
             u64 offset_high = arg2;
@@ -2356,7 +2503,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_getegid16: {
-            result = SYSCALL(geteuid);
+            result = SYSCALL(getegid);
             break;
         }
         case felix86_x86_32_geteuid16: {
@@ -2380,6 +2527,12 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                 host_offset_ptr = &host_offset;
             }
             result = SYSCALL(sendfile, arg1, arg2, host_offset_ptr, arg4);
+            if (result >= 0 && offset) {
+                if (host_offset > UINT32_MAX) {
+                    WARN("Host offset during sendfile exceeds UINT32_MAX: %lx", host_offset);
+                }
+                *offset = (u32)host_offset;
+            }
             break;
         }
         case felix86_x86_32_sendfile64: {
@@ -2400,12 +2553,20 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         }
         case felix86_x86_32_readv: {
             x86_iovec* iovecs32 = (x86_iovec*)arg2;
+            if (arg3 > UIO_MAXIOV) {
+                result = -EINVAL;
+                break;
+            }
             std::vector<iovec> iovecs(iovecs32, iovecs32 + arg3);
             result = SYSCALL(readv, arg1, iovecs.data(), arg3);
             break;
         }
         case felix86_x86_32_writev: {
             x86_iovec* iovecs32 = (x86_iovec*)arg2;
+            if (arg3 > UIO_MAXIOV) {
+                result = -EINVAL;
+                break;
+            }
             std::vector<iovec> iovecs(iovecs32, iovecs32 + arg3);
             result = SYSCALL(writev, arg1, iovecs.data(), arg3);
             break;
@@ -2416,8 +2577,17 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_epoll_wait: {
-            epoll_event* host_events = (epoll_event*)alloca(std::max(0, (int)arg3) * sizeof(epoll_event));
-            result = epoll_wait((int)arg1, host_events, (int)arg3, (int)arg4);
+            int max_events = INT_MAX / sizeof(x86_epoll_event);
+            if ((int)arg3 <= 0 || (int)arg3 > max_events) {
+                result = -EINVAL;
+                break;
+            }
+            std::unique_ptr<epoll_event[]> host_events(new (std::nothrow) epoll_event[(int)arg3]);
+            if (!host_events) {
+                result = -ENOMEM;
+                break;
+            }
+            result = epoll_wait((int)arg1, host_events.get(), (int)arg3, (int)arg4);
             if (result >= 0) {
                 x86_epoll_event* guest_event = (x86_epoll_event*)arg2;
                 for (int i = 0; i < result; i++) {
@@ -2453,19 +2623,16 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             }
             break;
         }
-        case felix86_x86_32_mlockall: {
-            result = SYSCALL(mlock2, mmap_min_addr(), 0x1'0000'0000 - mmap_min_addr(), arg1);
-            break;
-        }
-        case felix86_x86_32_munlockall: {
-            result = SYSCALL(munlock, mmap_min_addr(), 0x1'0000'0000 - mmap_min_addr());
-            break;
-        }
         case felix86_x86_32_process_vm_readv: {
             x86_iovec* lvec = (x86_iovec*)arg2;
             size_t liovcnt = arg3;
             x86_iovec* rvec = (x86_iovec*)arg4;
             size_t riovcnt = arg5;
+
+            if (liovcnt > UIO_MAXIOV || riovcnt > UIO_MAXIOV) {
+                result = -EINVAL;
+                break;
+            }
 
             std::vector<iovec> lvec_host(lvec, lvec + liovcnt);
             std::vector<iovec> rvec_host(rvec, rvec + riovcnt);
@@ -2478,6 +2645,11 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             size_t liovcnt = arg3;
             x86_iovec* rvec = (x86_iovec*)arg4;
             size_t riovcnt = arg5;
+
+            if (liovcnt > UIO_MAXIOV || riovcnt > UIO_MAXIOV) {
+                result = -EINVAL;
+                break;
+            }
 
             std::vector<iovec> lvec_host(lvec, lvec + liovcnt);
             std::vector<iovec> rvec_host(rvec, rvec + riovcnt);
@@ -2499,9 +2671,42 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             result = Signals::sigprocmask(state, arg1, (sigset_t*)arg2, (sigset_t*)arg3);
             break;
         }
+        case felix86_x86_32_mmap: {
+            x86_mmap_arg_struct* mmap_args = (x86_mmap_arg_struct*)arg1;
+            u64 offset = mmap_args->offset;
+            if (offset & 0xFFF) {
+                result = -EINVAL;
+                break;
+            }
+
+            if (g_is_single_thread && (mmap_args->flags & MAP_TYPE) != MAP_PRIVATE) {
+                // If a MAP_SHARED happens we can no longer do single threaded optimizations like not emitting TSO fences
+                g_is_single_thread = false;
+                Recompiler::invalidateRangeGlobal(0, UINT64_MAX & ~0xFFFull, "MAP_SHARED happened");
+            }
+
+            u64 size = mmap_args->len;
+            int fd = mmap_args->fd;
+            result = (ssize_t)g_mapper->map(mode32, (void*)(u64)mmap_args->addr, size, mmap_args->prot, mmap_args->flags, fd, offset);
+            if (result > 0) {
+                Recompiler::invalidateRangeGlobal(result, result + size, "mmap");
+
+                if (fd != -1) {
+                    g_symbols_cached = false;
+                }
+            }
+            break;
+        }
         case felix86_x86_32_mmap_pgoff: {
             // mmap2 is like mmap but file offset is in pages (4096 bytes) to help with the lack of big enough integers in x86-32
             u64 offset = arg6 * 4096;
+
+            if (g_is_single_thread && (arg4 & MAP_TYPE) != MAP_PRIVATE) {
+                // If a MAP_SHARED happens we can no longer do single threaded optimizations like not emitting TSO fences
+                g_is_single_thread = false;
+                Recompiler::invalidateRangeGlobal(0, UINT64_MAX & ~0xFFFull, "MAP_SHARED happened");
+            }
+
             result = (ssize_t)g_mapper->map(mode32, (void*)arg1, arg2, arg3, arg4, arg5, offset);
             if (result > 0) {
                 Recompiler::invalidateRangeGlobal(result, result + arg2, "mmap_pgoff");
@@ -2521,7 +2726,12 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_rt_sigaction: {
-            if (arg1 > 64) {
+            if (arg4 != sizeof(u64)) {
+                result = -EINVAL;
+                break;
+            }
+
+            if (arg1 > 64 || arg1 == 0) {
                 result = -EINVAL;
                 break;
             }
@@ -2548,6 +2758,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             if (old_act) {
                 old_act->handler = (decltype(old_act->handler))old.func;
                 old_act->sa_flags = old.flags;
+                old_act->restorer = old.restorer;
                 old_act->sa_mask[0] = old.mask;
                 old_act->sa_mask[1] = old.mask >> 32;
             }
@@ -2560,16 +2771,22 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_shmat: {
-            u32 result_address = 0;
-            result = g_mapper->shmat32((int)arg1, (void*)arg2, (int)arg3, &result_address);
+            if (g_is_single_thread) {
+                // Similar to mmap with MAP_SHARED
+                g_is_single_thread = false;
+                Recompiler::invalidateRangeGlobal(0, UINT64_MAX & ~0xFFFull, "shmat happened");
+            }
+            u64 result_address = 0;
+            result = g_mapper->shmat(true, (int)arg1, (void*)arg2, (int)arg3, &result_address);
             if (result == 0) {
                 ASSERT(result_address != 0);
+                ASSERT(result_address >> 32 == 0 || result_address >> 32 == 0xFFFF'FFFF);
                 result = result_address;
             }
             break;
         }
         case felix86_x86_32_shmdt: {
-            result = g_mapper->shmdt32((void*)arg1);
+            result = g_mapper->shmdt(true, (void*)arg1);
             break;
         }
         case felix86_x86_32_waitid: {
@@ -2621,7 +2838,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                 udesc->seg_not_present = 1;
             }
 
-            LOG("Getting thread area %d which is %lx", index, udesc->base_addr);
+            LOG("Getting thread area %d which is %x", index, udesc->base_addr);
 
             result = 0;
             break;
@@ -2636,49 +2853,24 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_sigaltstack: {
-            VERBOSE("----- sigaltstack was called -----");
             x86_stack_t* new_ss = (x86_stack_t*)arg1;
             x86_stack_t* old_ss = (x86_stack_t*)arg2;
-
-#define SS_AUTODISARM (1U << 31)
-            if (arg3 & SS_AUTODISARM) {
-                WARN("SS_AUTODISARM when establishing alt stack");
-            }
-
-            u64 current_rsp = state->ctx.gprs[X86_REF_RSP];
-
-            bool on_stack = false;
-            if (!(state->alt_stack.ss_flags & SS_DISABLE) && current_rsp >= (u64)state->alt_stack.ss_sp &&
-                current_rsp < (u64)state->alt_stack.ss_sp + state->alt_stack.ss_size) {
-                on_stack = true;
-            }
-
-            if (old_ss) {
-                old_ss->ss_sp = (u32)(u64)state->alt_stack.ss_sp;
-                old_ss->ss_flags = 0;
-                old_ss->ss_size = state->alt_stack.ss_size;
-
-                if (on_stack) {
-                    old_ss->ss_flags = SS_ONSTACK;
-                } else {
-                    old_ss->ss_flags = SS_DISABLE;
-                }
-            }
-
+            stack_t host_new_ss = {};
+            stack_t host_old_ss = {};
+            stack_t* host_new_ss_ptr = nullptr;
+            stack_t* host_old_ss_ptr = nullptr;
             if (new_ss) {
-                if (on_stack) {
-                    WARN("Tried to set sigaltstack while using it");
-                    result = -EPERM;
-                    break;
-                }
-
-                state->alt_stack.ss_sp = (void*)(u64)new_ss->ss_sp;
-                state->alt_stack.ss_flags = new_ss->ss_flags;
-                state->alt_stack.ss_size = new_ss->ss_size;
-                VERBOSE("New altstack: %lx", new_ss->ss_sp);
+                host_new_ss = *new_ss;
+                host_new_ss_ptr = &host_new_ss;
             }
-
-            result = 0;
+            if (old_ss) {
+                host_old_ss = *old_ss;
+                host_old_ss_ptr = &host_old_ss;
+            }
+            result = Signals::sigaltstack(state, host_new_ss_ptr, host_old_ss_ptr, arg3);
+            if (old_ss) {
+                *old_ss = host_old_ss;
+            }
             break;
         }
         case felix86_x86_32_access: {
@@ -2770,7 +2962,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                 break;
             }
             default: {
-                WARN("Unknown fcntl: %d", arg2);
+                WARN("Unknown fcntl: %lu", arg2);
                 result = ::fcntl(arg1, arg2, arg3);
                 break;
             }
@@ -2818,10 +3010,12 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_time32: {
-            time_t time;
-            result = ::time(&time);
-            if (result == 0) {
-                *(u32*)arg1 = time;
+            result = ::time(nullptr);
+            if (result >= 0 && arg1) {
+                if (result > UINT32_MAX) {
+                    WARN("Host time during time32 exceeds UINT32_MAX: %lx", (u64)result);
+                }
+                *(u32*)arg1 = result;
             }
             break;
         }
@@ -2832,7 +3026,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             u64 len = arg4;
             int advice = arg5;
             u64 offset = offset_low | (offset_high << 32);
-            result = posix_fadvise64(fd, offset, len, advice);
+            result = SYSCALL(fadvise64, fd, offset, len, advice);
             break;
         }
         case felix86_x86_32_ia32_fadvise64_64: {
@@ -2844,7 +3038,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             int advice = arg6;
             u64 offset = offset_low | (offset_high << 32);
             u64 len = len_low | (len_high << 32);
-            result = posix_fadvise64(fd, offset, len, advice);
+            result = SYSCALL(fadvise64, fd, offset, len, advice);
             break;
         }
         case felix86_x86_32_readlink: {
@@ -2884,7 +3078,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             u64 dirp = arg2;
             u32 count = arg3;
 
-            result = SYSCALL(getdents64, fd, dirp, count);
+            result = FD::getdents64(fd, dirp, count);
             if (result >= 0) {
                 size_t bytes = result;
                 size_t num = 0;
@@ -2970,11 +3164,14 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         }
         case felix86_x86_32_futex_time32: {
             const x86_timespec* guest_spec = (x86_timespec*)arg4;
-            if (guest_spec) {
+            int cmd = arg2 & FUTEX_CMD_MASK;
+            bool is_timespec =
+                cmd == FUTEX_WAIT || cmd == FUTEX_LOCK_PI || cmd == FUTEX_WAIT_BITSET || cmd == FUTEX_WAIT_REQUEUE_PI || cmd == FUTEX_LOCK_PI2;
+            if (guest_spec && is_timespec) {
                 const timespec host_spec = *guest_spec;
-                result = SYSCALL(futex, arg1, arg2, arg3, &host_spec, arg5, arg6);
+                result = INTERRUPTIBLE_SYSCALL(futex, arg1, arg2, arg3, (u64)&host_spec, arg5, arg6);
             } else {
-                result = SYSCALL(futex, arg1, arg2, arg3, arg4, arg5, arg6);
+                result = INTERRUPTIBLE_SYSCALL(futex, arg1, arg2, arg3, arg4, arg5, arg6);
             }
             break;
         }
@@ -3361,7 +3558,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                 break;
             }
             default: {
-                ERROR("Unimplemented socketcall command: %d", arg1);
+                ERROR("Unimplemented socketcall command: %lu", arg1);
                 result = -EINVAL;
                 break;
             }

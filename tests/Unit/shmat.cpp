@@ -1,0 +1,388 @@
+// clang-format off
+// Test our shmat implementation
+#include <catch2/catch_test_macros.hpp>
+#include <sys/mman.h>
+#include <sys/shm.h>
+#include <sys/types.h>
+#include "felix86/common/log.hpp"
+#include "felix86/common/utility.hpp"
+#include "felix86/hle/mmap.hpp"
+
+namespace Catch {
+    template <>
+    struct StringMaker<std::pair<uint32_t, uint32_t>> {
+        static std::string convert(const std::pair<uint32_t, uint32_t>& range) {
+            std::ostringstream oss;
+            oss << "0x" << std::hex << std::setw(16) << std::setfill('0') << range.first
+                << " - 0x" << std::hex << std::setw(16) << std::setfill('0') << range.second;
+            return oss.str();
+        }
+    };
+}
+
+#define SUCCESS_MESSAGE() SUCCESS("Test passed: %s", Catch::getResultCapture().getCurrentTestName().c_str())
+
+struct GuestRegionExpected {
+    u64 start;
+    u64 len;
+    int prot;
+};
+
+static void verifyGuestRegions(Mapper& mapper, const std::vector<GuestRegionExpected>& expected_regions) {
+    auto guest_regions = mapper.get_guest_regions();
+    int found_regions = 0;
+    for (const auto region : expected_regions) {
+        for (const auto guest_region : guest_regions) {
+            bool yes = true;
+            yes &= region.start == guest_region.start;
+            yes &= region.start + region.len == guest_region.end;
+            yes &= region.prot == guest_region.prot;
+            yes &= guest_region.shmem;
+            if (yes) {
+                found_regions += 1;
+                break;
+            };
+        }
+    }
+    CATCH_REQUIRE(found_regions == expected_regions.size());    
+    CATCH_REQUIRE(guest_regions.size() == expected_regions.size());
+}
+
+CATCH_TEST_CASE("Simple1", "[shmat32]") {
+    Mapper mapper;
+
+    key_t key;
+    int shmid = shmget(IPC_PRIVATE, 0x1000, 0644 | IPC_CREAT);
+    CATCH_REQUIRE(shmid != -1);
+
+    u64 result = 0;
+    CATCH_REQUIRE(mapper.shmat(true, shmid, (void*)0x50000, 0, &result) == 0);
+    CATCH_REQUIRE(result == 0x50000);
+
+    verifyGuestRegions(mapper, { 
+        {result, 0x1000, PROT_READ | PROT_WRITE},
+    });
+
+    CATCH_REQUIRE(mapper.shmdt(true, (void*)result) == 0);
+
+    verifyGuestRegions(mapper, {});
+
+    CATCH_REQUIRE(shmctl(shmid, IPC_RMID, 0) == 0);
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("Simple2", "[shmat32]") {
+    Mapper mapper;
+
+    key_t key;
+    int shmid = shmget(IPC_PRIVATE, 0x1000, 0777 | IPC_CREAT);
+    CATCH_REQUIRE(shmid != -1);
+
+    u64 result = 0;
+    CATCH_REQUIRE(mapper.shmat(true, shmid, (void*)0x50000, SHM_EXEC | SHM_RDONLY, &result) == 0);
+    CATCH_REQUIRE(result == 0x50000);
+
+    verifyGuestRegions(mapper, { 
+        {result, 0x1000, PROT_READ | PROT_EXEC},
+    });
+
+    CATCH_REQUIRE(mapper.shmdt(true, (void*)result) == 0);
+
+    verifyGuestRegions(mapper, {});
+
+    CATCH_REQUIRE(shmctl(shmid, IPC_RMID, 0) == 0);
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("ShmatPastEndOf32BitSpace", "[shmat32]") {
+    Mapper mapper;
+
+    int shmid = shmget(IPC_PRIVATE, 0x2000, 0644 | IPC_CREAT);
+    CATCH_REQUIRE(shmid != -1);
+
+    u64 result = 0;
+    CATCH_REQUIRE(mapper.shmat(true, shmid, (void*)0xfffff000ull, 0, &result) < 0);
+
+    CATCH_REQUIRE(mapper.shmat(true, shmid, (void*)0xffffe000ull, 0, &result) == 0);
+    CATCH_REQUIRE(result == 0xffffe000ull);
+    CATCH_REQUIRE(mapper.shmdt(true, (void*)result) == 0);
+
+    CATCH_REQUIRE(shmctl(shmid, IPC_RMID, nullptr) == 0);
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("Simple1", "[shmat]") {
+    Mapper mapper;
+
+    key_t key;
+    int shmid = shmget(IPC_PRIVATE, 0x1000, 0644 | IPC_CREAT);
+    CATCH_REQUIRE(shmid != -1);
+
+    u64 result = 0;
+    CATCH_REQUIRE(mapper.shmat(false, shmid, (void*)0x50000, 0, &result) == 0);
+    CATCH_REQUIRE(result == 0x50000);
+
+    verifyGuestRegions(mapper, { 
+        {result, 0x1000, PROT_READ | PROT_WRITE},
+    });
+
+    CATCH_REQUIRE(mapper.shmdt(false, (void*)result) == 0);
+
+    verifyGuestRegions(mapper, {});
+
+    CATCH_REQUIRE(shmctl(shmid, IPC_RMID, 0) == 0);
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("Simple2", "[shmat]") {
+    Mapper mapper;
+
+    key_t key;
+    int shmid = shmget(IPC_PRIVATE, 0x1000, 0777 | IPC_CREAT);
+    CATCH_REQUIRE(shmid != -1);
+
+    u64 result = 0;
+    CATCH_REQUIRE(mapper.shmat(false, shmid, (void*)0x50000, SHM_EXEC | SHM_RDONLY, &result) == 0);
+    CATCH_REQUIRE(result == 0x50000);
+
+    verifyGuestRegions(mapper, { 
+        {result, 0x1000, PROT_READ | PROT_EXEC},
+    });
+
+    CATCH_REQUIRE(mapper.shmdt(false, (void*)result) == 0);
+
+    verifyGuestRegions(mapper, {});
+
+    CATCH_REQUIRE(shmctl(shmid, IPC_RMID, 0) == 0);
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("DistinctSegments", "[shmat]") {
+    Mapper mapper;
+
+    int first_shmid = shmget(IPC_PRIVATE, 0x1000, 0644 | IPC_CREAT);
+    int second_shmid = shmget(IPC_PRIVATE, 0x2000, 0644 | IPC_CREAT);
+    CATCH_REQUIRE(first_shmid != -1);
+    CATCH_REQUIRE(second_shmid != -1);
+
+    u64 first = 0;
+    u64 second = 0;
+    CATCH_REQUIRE(mapper.shmat(false, first_shmid, (void*)0x100005000ull, 0, &first) == 0);
+    CATCH_REQUIRE(mapper.shmat(false, second_shmid, (void*)0x200005000ull, 0, &second) == 0);
+
+    verifyGuestRegions(mapper, { 
+        {first, 0x1000, PROT_READ | PROT_WRITE},
+        {second, 0x2000, PROT_READ | PROT_WRITE},
+    });
+
+    CATCH_REQUIRE(mapper.shmdt(false, (void*)first) == 0);
+ 
+    verifyGuestRegions(mapper, { 
+       {second, 0x2000, PROT_READ | PROT_WRITE},
+    });
+ 
+    CATCH_REQUIRE(mapper.shmdt(false, (void*)second) == 0);
+ 
+    verifyGuestRegions(mapper, {});
+ 
+    CATCH_REQUIRE(shmctl(first_shmid, IPC_RMID, nullptr) == 0);
+    CATCH_REQUIRE(shmctl(second_shmid, IPC_RMID, nullptr) == 0);
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("AdjacentDistinctSegments", "[shmat]") {
+    Mapper mapper;
+
+    int first_shmid = shmget(IPC_PRIVATE, 0x1000, 0644 | IPC_CREAT);
+    int second_shmid = shmget(IPC_PRIVATE, 0x1000, 0644 | IPC_CREAT);
+    CATCH_REQUIRE(first_shmid != -1);
+    CATCH_REQUIRE(second_shmid != -1);
+
+    u64 first = 0;
+    u64 second = 0;
+    CATCH_REQUIRE(mapper.shmat(false, first_shmid, (void*)0x100005000ull, 0, &first) == 0);
+    CATCH_REQUIRE(mapper.shmat(false, second_shmid, (void*)0x100006000ull, 0, &second) == 0);
+
+    verifyGuestRegions(mapper, {
+        {first, 0x1000, PROT_READ | PROT_WRITE},
+        {second, 0x1000, PROT_READ | PROT_WRITE},
+    });
+
+    CATCH_REQUIRE(mapper.shmdt(false, (void*)first) == 0);
+    CATCH_REQUIRE(mapper.shmdt(false, (void*)second) == 0);
+
+    CATCH_REQUIRE(shmctl(first_shmid, IPC_RMID, nullptr) == 0);
+    CATCH_REQUIRE(shmctl(second_shmid, IPC_RMID, nullptr) == 0);
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("ShmdtKeepsUnrelatedMappingInWindow", "[shmat]") {
+    Mapper mapper;
+
+    int shmid = shmget(IPC_PRIVATE, 0x3000, 0644 | IPC_CREAT);
+    CATCH_REQUIRE(shmid != -1);
+
+    const u64 base = 0x100005000ull;
+    u64 address = 0;
+    CATCH_REQUIRE(mapper.shmat(false, shmid, (void*)base, 0, &address) == 0);
+    CATCH_REQUIRE(address == base);
+
+    CATCH_REQUIRE(mapper.unmap(false, (void*)(base + 0x1000), 0x2000) == 0);
+
+    void* neighbour = mapper.map(false, (void*)(base + 0x1000), 0x1000, PROT_READ, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
+    CATCH_REQUIRE(neighbour == (void*)(base + 0x1000));
+
+    CATCH_REQUIRE(mapper.shmdt(false, (void*)base) == 0);
+
+    auto regions = mapper.get_guest_regions();
+    CATCH_REQUIRE(regions.size() == 1);
+    CATCH_REQUIRE(regions[0].start == base + 0x1000);
+    CATCH_REQUIRE(regions[0].end == base + 0x2000);
+    CATCH_REQUIRE(!regions[0].shmem);
+
+    munmap(neighbour, 0x1000);
+    CATCH_REQUIRE(shmctl(shmid, IPC_RMID, nullptr) == 0);
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("ShmdtOneOfTwoAdjacentAttachments", "[shmat]") {
+    Mapper mapper;
+
+    int shmid = shmget(IPC_PRIVATE, 0x2000, 0644 | IPC_CREAT);
+    CATCH_REQUIRE(shmid != -1);
+
+    const u64 first_address = 0x100005000ull;
+    const u64 second_address = first_address + 0x2000;
+    u64 first = 0;
+    u64 second = 0;
+    CATCH_REQUIRE(mapper.shmat(false, shmid, (void*)first_address, 0, &first) == 0);
+    CATCH_REQUIRE(mapper.shmat(false, shmid, (void*)second_address, 0, &second) == 0);
+
+    CATCH_CHECK(mapper.get_guest_regions().size() == 2);
+
+    CATCH_REQUIRE(mapper.shmdt(false, (void*)second) == 0);
+
+    auto regions = mapper.get_guest_regions();
+    CATCH_REQUIRE(regions.size() == 1);
+    CATCH_REQUIRE(regions[0].start == first_address);
+    CATCH_REQUIRE(regions[0].end == first_address + 0x2000);
+
+    CATCH_REQUIRE(mapper.shmdt(false, (void*)first) == 0);
+    CATCH_REQUIRE(mapper.get_guest_regions().empty());
+
+    CATCH_REQUIRE(shmctl(shmid, IPC_RMID, nullptr) == 0);
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("AdjacentAttachmentsOfSameSegment", "[shmat]") {
+    Mapper mapper;
+
+    int shmid = shmget(IPC_PRIVATE, 0x1000, 0644 | IPC_CREAT);
+    CATCH_REQUIRE(shmid != -1);
+
+    u64 first = 0;
+    u64 second = 0;
+    CATCH_REQUIRE(mapper.shmat(false, shmid, (void*)0x100005000ull, 0, &first) == 0);
+    CATCH_REQUIRE(mapper.shmat(false, shmid, (void*)0x100006000ull, 0, &second) == 0);
+
+    verifyGuestRegions(mapper, {
+        {first, 0x1000, PROT_READ | PROT_WRITE},
+        {second, 0x1000, PROT_READ | PROT_WRITE},
+    });
+
+    CATCH_REQUIRE(mapper.shmdt(false, (void*)first) == 0);
+    CATCH_REQUIRE(mapper.shmdt(false, (void*)second) == 0);
+
+    CATCH_REQUIRE(shmctl(shmid, IPC_RMID, nullptr) == 0);
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("ShmdtRemovesGrownAttachment", "[shmat]") {
+    Mapper mapper;
+
+    int shmid = shmget(IPC_PRIVATE, 0x2000, 0644 | IPC_CREAT);
+    CATCH_REQUIRE(shmid != -1);
+
+    u64 address = 0;
+    CATCH_REQUIRE(mapper.shmat(false, shmid, (void*)0x100005000ull, 0, &address) == 0);
+    CATCH_REQUIRE(mapper.remap(false, (void*)address, 0x2000, 0x3000, 0, (void*)address) == (void*)address);
+
+    verifyGuestRegions(mapper, {
+        {address, 0x3000, PROT_READ | PROT_WRITE},
+    });
+
+    CATCH_REQUIRE(mapper.shmdt(false, (void*)address) == 0);
+    verifyGuestRegions(mapper, {});
+
+    CATCH_REQUIRE(shmctl(shmid, IPC_RMID, nullptr) == 0);
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("ShmdtKeepsNeighbouringMapping", "[shmat]") {
+    Mapper mapper;
+
+    int shmid = shmget(IPC_PRIVATE, 0x2000, 0644 | IPC_CREAT);
+    CATCH_REQUIRE(shmid != -1);
+
+    u64 address = 0;
+    CATCH_REQUIRE(mapper.shmat(false, shmid, (void*)0x100005000ull, 0, &address) == 0);
+    CATCH_REQUIRE(mapper.unmap(false, (void*)0x100006000ull, 0x1000) == 0);
+
+    void* neighbour = mapper.map(false, (void*)0x100006000ull, 0x1000, PROT_READ, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
+    CATCH_REQUIRE(neighbour == (void*)0x100006000ull);
+
+    CATCH_REQUIRE(mapper.shmdt(false, (void*)address) == 0);
+
+    auto regions = mapper.get_guest_regions();
+    CATCH_REQUIRE(regions.size() == 1);
+    CATCH_REQUIRE(regions[0].start == 0x100006000ull);
+    CATCH_REQUIRE(regions[0].end == 0x100007000ull);
+
+    munmap(neighbour, 0x1000);
+    CATCH_REQUIRE(shmctl(shmid, IPC_RMID, nullptr) == 0);
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("ShmdtRemovesEveryAttachmentPiece", "[shmat]") {
+    Mapper mapper;
+
+    int shmid = shmget(IPC_PRIVATE, 0x3000, 0644 | IPC_CREAT);
+    CATCH_REQUIRE(shmid != -1);
+
+    const u64 base = 0x100040000ull;
+    u64 address = 0;
+    CATCH_REQUIRE(mapper.shmat(false, shmid, (void*)base, 0, &address) == 0);
+
+    CATCH_REQUIRE(mapper.unmap(false, (void*)(base + 0x1000), 0x1000) == 0);
+    CATCH_REQUIRE(mapper.get_guest_regions().size() == 2);
+
+    CATCH_REQUIRE(mapper.shmdt(false, (void*)base) == 0);
+    CATCH_REQUIRE(mapper.get_guest_regions().empty());
+
+    CATCH_REQUIRE(shmctl(shmid, IPC_RMID, nullptr) == 0);
+    munmap((void*)base, 0x8000);
+    SUCCESS_MESSAGE();
+}
+
+CATCH_TEST_CASE("ShmdtRemovesAttachmentAfterFirstPageMoved", "[shmat]") {
+    Mapper mapper;
+
+    int shmid = shmget(IPC_PRIVATE, 0x2000, 0644 | IPC_CREAT);
+    CATCH_REQUIRE(shmid != -1);
+
+    const u64 base = 0x100050000ull;
+    const u64 moved = base + 0x4000;
+    u64 address = 0;
+    CATCH_REQUIRE(mapper.shmat(false, shmid, (void*)base, 0, &address) == 0);
+    CATCH_REQUIRE(mapper.remap(false, (void*)base, 0x1000, 0x1000, MREMAP_MAYMOVE | MREMAP_FIXED, (void*)moved) == (void*)moved);
+    CATCH_REQUIRE(mapper.shmdt(false, (void*)base) == 0);
+
+    auto regions = mapper.get_guest_regions();
+    CATCH_REQUIRE(regions.size() == 1);
+    CATCH_REQUIRE(regions[0].start == moved);
+
+    munmap((void*)moved, 0x1000);
+    CATCH_REQUIRE(shmctl(shmid, IPC_RMID, nullptr) == 0);
+    munmap((void*)base, 0x8000);
+    SUCCESS_MESSAGE();
+}

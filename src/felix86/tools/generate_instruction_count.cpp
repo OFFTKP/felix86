@@ -1,15 +1,16 @@
 // TODO: This file is a big mess, refactor
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <nlohmann/json.hpp>
 #define XBYAK_NO_EXCEPTION
 #include <xbyak/xbyak.h>
 #include "Zydis/Disassembler.h"
+#include "felix86/common/disassembler.h"
 #include "felix86/v2/handlers.hpp"
 #include "felix86/v2/recompiler.hpp"
 #include "fmt/format.h"
-#include "rv64_printer.h"
 
 using namespace nlohmann;
 
@@ -51,7 +52,40 @@ static void gen_many(Recompiler& rec, const std::string& name, nlohmann::ordered
         i += 4;
         u32 data = 0;
         memcpy(&data, address, 4);
-        const char* out = rv64_print(data, (u64)address);
+        std::string out = riscv_disassemble(data, (u64)address);
+        inst.expected_asm.push_back(out);
+        count++;
+    }
+
+    inst.count = count;
+    json[name] = inst;
+}
+
+static void gen_sequence(Recompiler& rec, nlohmann::ordered_json& json, const char* name, bool mode32) {
+    std::string command = "nasm -f bin counts/sequences/" + std::string(name) + ".asm -o /dev/stdout";
+    FILE* pipe = popen(command.c_str(), "r");
+    ASSERT_MSG(pipe, "Failed to run nasm for %s", name);
+    std::vector<u8> bytes;
+    u8 buffer[4096];
+    size_t read = 0;
+    while ((read = fread(buffer, 1, sizeof(buffer), pipe)) > 0) {
+        bytes.insert(bytes.end(), buffer, buffer + read);
+    }
+    int status = pclose(pipe);
+    ASSERT_MSG(status == 0 && !bytes.empty(), "nasm failed for %s", name);
+
+    rec.setVectorState(SEW::E1024, 0);
+    auto bisc = rec.getAssembler().GetCursorPointer();
+    rec.compileSequence(mode32, (u64)bytes.data());
+    auto after = rec.getAssembler().GetCursorPointer();
+    int count = 0;
+    Instruction inst;
+    for (int i = 0; i < after - bisc;) {
+        void* address = bisc + i;
+        i += 4;
+        u32 data = 0;
+        memcpy(&data, address, 4);
+        std::string out = riscv_disassemble(data, (u64)address);
         inst.expected_asm.push_back(out);
         count++;
     }
@@ -89,6 +123,7 @@ static void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbya
     rec.compileInstruction(zinstruction, zoperands, rip);
     rec.resetScratch();
     rec.flushX87();
+    rec.flushPushpop();
     auto after = rec.getAssembler().GetCursorPointer();
     int count = 0;
     Instruction inst;
@@ -102,7 +137,7 @@ static void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbya
         i += 4;
         u32 data = 0;
         memcpy(&data, address, 4);
-        const char* out = rv64_print(data, (u64)address);
+        std::string out = riscv_disassemble(data, (u64)address);
         inst.expected_asm.push_back(out);
         count++;
     }
@@ -116,6 +151,7 @@ static void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbya
 }
 
 int main() {
+    riscv_set_felix86_allocations(true);
     g_config.inline_syscalls = false;
     g_config.scan_ahead_multi = false;
     Extensions::G = true;
@@ -123,12 +159,15 @@ int main() {
     Extensions::Zbb = true;
     Extensions::Zbs = true;
     Extensions::Zbc = true;
+    Extensions::Zvbb = true;
     Extensions::Zvbc = true;
     Extensions::C = true;
     Extensions::V = true;
     Extensions::VLEN = 256;
     Extensions::Zicond = true;
     Extensions::Zvkned = true;
+    Extensions::Zicclsm = true;
+    Extensions::Zvknha = true;
     Handlers::initialize();
 
     std::unique_ptr<Recompiler> rec_storage = std::make_unique<Recompiler>(true /* relocatable code */);
@@ -214,6 +253,65 @@ int main() {
     GEN(name(dword[rdi], cl));                                                                                                                       \
     GEN(name(qword[rdi], cl))
 
+#define GEN_BitTest(name)                                                                                                                            \
+    GEN(name(dx, bx));                                                                                                                               \
+    GEN(name(edx, ebx));                                                                                                                             \
+    GEN(name(rdx, rbx));                                                                                                                             \
+    GEN(name(word[rdi], dx));                                                                                                                        \
+    GEN(name(dword[rdi], edx));                                                                                                                      \
+    GEN(name(qword[rdi], rdx));                                                                                                                      \
+    GEN(name(dx, 3));                                                                                                                                \
+    GEN(name(edx, 3));                                                                                                                               \
+    GEN(name(rdx, 3));                                                                                                                               \
+    GEN(name(word[rdi], 3));                                                                                                                         \
+    GEN(name(dword[rdi], 3));                                                                                                                        \
+    GEN(name(qword[rdi], 3))
+
+#define GEN_BitScan(name)                                                                                                                            \
+    GEN(name(ax, bx));                                                                                                                               \
+    GEN(name(eax, ebx));                                                                                                                             \
+    GEN(name(rax, rbx));                                                                                                                             \
+    GEN(name(ax, word[rdi]));                                                                                                                        \
+    GEN(name(eax, dword[rdi]));                                                                                                                      \
+    GEN(name(rax, qword[rdi]))
+
+#define GEN_DoubleShift(name)                                                                                                                        \
+    GEN(name(dx, bx, 5));                                                                                                                            \
+    GEN(name(edx, ebx, 5));                                                                                                                          \
+    GEN(name(rdx, rbx, 5));                                                                                                                          \
+    GEN(name(dx, bx, cl));                                                                                                                           \
+    GEN(name(edx, ebx, cl));                                                                                                                         \
+    GEN(name(rdx, rbx, cl));                                                                                                                         \
+    GEN(name(word[rdi], dx, 5));                                                                                                                     \
+    GEN(name(dword[rdi], edx, 5));                                                                                                                   \
+    GEN(name(qword[rdi], rdx, 5));                                                                                                                   \
+    GEN(name(word[rdi], dx, cl));                                                                                                                    \
+    GEN(name(dword[rdi], edx, cl));                                                                                                                  \
+    GEN(name(qword[rdi], rdx, cl))
+
+#define GEN_SetCC(name)                                                                                                                              \
+    GEN(name(dl));                                                                                                                                   \
+    GEN(name(dh));                                                                                                                                   \
+    GEN(name(byte[rdi]))
+
+#define GEN_BMI1_2(name)                                                                                                                             \
+    GEN(name(eax, ebx));                                                                                                                             \
+    GEN(name(rax, rbx));                                                                                                                             \
+    GEN(name(eax, dword[rdi]));                                                                                                                      \
+    GEN(name(rax, qword[rdi]))
+
+#define GEN_BMI1_3(name)                                                                                                                             \
+    GEN(name(eax, ebx, ecx));                                                                                                                        \
+    GEN(name(rax, rbx, rcx));                                                                                                                        \
+    GEN(name(eax, dword[rdi], ecx));                                                                                                                 \
+    GEN(name(rax, qword[rdi], rcx))
+
+#define GEN_BMI2_3(name)                                                                                                                             \
+    GEN(name(eax, ebx, ecx));                                                                                                                        \
+    GEN(name(rax, rbx, rcx));                                                                                                                        \
+    GEN(name(eax, ebx, dword[rdi]));                                                                                                                 \
+    GEN(name(rax, rbx, qword[rdi]))
+
         GEN_Group1(add);
         GEN_Group1(sub);
         GEN_Group1(adc);
@@ -233,6 +331,18 @@ int main() {
         GEN_SingleRM(imul);
         GEN_SingleRM(mul);
         GEN_SingleRM(neg);
+        GEN(imul(dx, bx));
+        GEN(imul(edx, ebx));
+        GEN(imul(rdx, rbx));
+        GEN(imul(dx, word[rdi]));
+        GEN(imul(edx, dword[rdi]));
+        GEN(imul(rdx, qword[rdi]));
+        GEN(imul(dx, bx, -1));
+        GEN(imul(edx, ebx, -1));
+        GEN(imul(rdx, rbx, -1));
+        GEN(imul(dx, word[rdi], -1));
+        GEN(imul(edx, dword[rdi], -1));
+        GEN(imul(rdx, qword[rdi], -1));
         GEN(cmpxchg(ptr[rdi], bl));
         GEN(cmpxchg(ptr[rdi], bh));
         GEN(cmpxchg(ptr[rdi], bx));
@@ -250,6 +360,31 @@ int main() {
         GEN(lzcnt(eax, dword[rdi]));
         GEN(lzcnt(rax, rbx));
         GEN(lzcnt(rax, qword[rdi]));
+        GEN_BitScan(bsf);
+        GEN_BitScan(bsr);
+        GEN_BitScan(popcnt);
+        // GEN_BitTest(bt);
+        // GEN_BitTest(btc);
+        // GEN_BitTest(btr);
+        // GEN_BitTest(bts);
+        GEN_DoubleShift(shld);
+        GEN_DoubleShift(shrd);
+        GEN(adcx(eax, ebx));
+        GEN(adcx(rax, rbx));
+        GEN(adcx(eax, dword[rdi]));
+        GEN(adcx(rax, qword[rdi]));
+        GEN(adox(eax, ebx));
+        GEN(adox(rax, rbx));
+        GEN(adox(eax, dword[rdi]));
+        GEN(adox(rax, qword[rdi]));
+        GEN_BMI1_2(blsi);
+        GEN_BMI1_2(blsmsk);
+        GEN_BMI1_2(blsr);
+        GEN_BMI1_3(bextr);
+        GEN_BMI1_3(bzhi);
+        GEN_BMI2_3(andn);
+        GEN(cmpxchg8b(qword[rdi]));
+        GEN(cmc());
         if (flags) {
             GEN_Group1(mov);
             GEN(mov(rax, qword[rdi + 128]));
@@ -268,18 +403,6 @@ int main() {
             GEN(idiv(byte[rdi]));
             GEN(idiv(word[rdi]));
             GEN(idiv(dword[rdi]));
-            GEN(imul(dx, bx));
-            GEN(imul(edx, ebx));
-            GEN(imul(rdx, rbx));
-            GEN(imul(dx, word[rdi]));
-            GEN(imul(edx, dword[rdi]));
-            GEN(imul(rdx, qword[rdi]));
-            GEN(imul(dx, bx, -1));
-            GEN(imul(edx, ebx, -1));
-            GEN(imul(rdx, rbx, -1));
-            GEN(imul(dx, word[rdi], -1));
-            GEN(imul(edx, dword[rdi], -1));
-            GEN(imul(rdx, qword[rdi], -1));
             GEN(putSeg(fs); x.lea(rax, ptr[(void*)1]));
             GEN(putSeg(fs); x.lea(rax, ptr[rdi]));
             GEN(putSeg(fs); x.lea(rax, ptr[rdi + rsi]));
@@ -451,6 +574,55 @@ int main() {
             GEN(leave());
             GEN(bswap(ecx));
             GEN(bswap(rcx));
+            GEN_SingleRM(not_);
+            GEN_SetCC(seto);
+            GEN_SetCC(setno);
+            GEN_SetCC(setb);
+            GEN_SetCC(setnb);
+            GEN_SetCC(setz);
+            GEN_SetCC(setnz);
+            GEN_SetCC(setbe);
+            GEN_SetCC(setnbe);
+            GEN_SetCC(sets);
+            GEN_SetCC(setns);
+            GEN_SetCC(setp);
+            GEN_SetCC(setnp);
+            GEN_SetCC(setl);
+            GEN_SetCC(setnl);
+            GEN_SetCC(setle);
+            GEN_SetCC(setnle);
+            GEN(movsxd(rax, ebx));
+            GEN(movsxd(rax, dword[rdi]));
+            GEN(movbe(ax, word[rdi]));
+            GEN(movbe(eax, dword[rdi]));
+            GEN(movbe(rax, qword[rdi]));
+            GEN(movbe(word[rdi], ax));
+            GEN(movbe(dword[rdi], eax));
+            GEN(movbe(qword[rdi], rax));
+            GEN(xlatb());
+            GEN(enter(16, 0));
+            GEN(cpuid());
+            GEN(rdtsc());
+            GEN(rdtscp());
+            GEN(rdfsbase(eax));
+            GEN(rdfsbase(rax));
+            GEN(rdgsbase(eax));
+            GEN(rdgsbase(rax));
+            GEN(wrfsbase(eax));
+            GEN(wrfsbase(rax));
+            GEN(wrgsbase(eax));
+            GEN(wrgsbase(rax));
+            GEN(clflush(ptr[rdi]));
+            GEN_BMI2_3(mulx);
+            GEN_BMI2_3(pdep);
+            GEN_BMI2_3(pext);
+            GEN_BMI1_3(sarx);
+            GEN_BMI1_3(shlx);
+            GEN_BMI1_3(shrx);
+            GEN(rorx(eax, ebx, 5));
+            GEN(rorx(rax, rbx, 5));
+            GEN(rorx(eax, dword[rdi], 5));
+            GEN(rorx(rax, qword[rdi], 5));
         }
 
         std::ofstream base("counts/" + name);
@@ -486,6 +658,38 @@ int main() {
         GEN(lock(); x.cmpxchg(ptr[rdi], ax));
         GEN(lock(); x.cmpxchg(ptr[rdi], eax));
         GEN(lock(); x.cmpxchg(ptr[rdi], rax));
+
+        GEN(lock(); x.adc(ptr[rdi], ah));
+        GEN(lock(); x.adc(ptr[rdi], ax));
+        GEN(lock(); x.adc(ptr[rdi], eax));
+        GEN(lock(); x.adc(ptr[rdi], rax));
+        GEN(lock(); x.sbb(ptr[rdi], ah));
+        GEN(lock(); x.sbb(ptr[rdi], ax));
+        GEN(lock(); x.sbb(ptr[rdi], eax));
+        GEN(lock(); x.sbb(ptr[rdi], rax));
+        GEN(lock(); x.sub(ptr[rdi], ah));
+        GEN(lock(); x.sub(ptr[rdi], ax));
+        GEN(lock(); x.sub(ptr[rdi], eax));
+        GEN(lock(); x.sub(ptr[rdi], rax));
+        GEN(lock(); x.xadd(ptr[rdi], ah));
+        GEN(lock(); x.xadd(ptr[rdi], ax));
+        GEN(lock(); x.inc(byte[rdi]));
+        GEN(lock(); x.inc(word[rdi]));
+        GEN(lock(); x.inc(dword[rdi]));
+        GEN(lock(); x.inc(qword[rdi]));
+        GEN(lock(); x.dec(byte[rdi]));
+        GEN(lock(); x.dec(word[rdi]));
+        GEN(lock(); x.dec(dword[rdi]));
+        GEN(lock(); x.dec(qword[rdi]));
+        GEN(lock(); x.neg(byte[rdi]));
+        GEN(lock(); x.neg(word[rdi]));
+        GEN(lock(); x.neg(dword[rdi]));
+        GEN(lock(); x.neg(qword[rdi]));
+        GEN(lock(); x.not_(byte[rdi]));
+        GEN(lock(); x.not_(word[rdi]));
+        GEN(lock(); x.not_(dword[rdi]));
+        GEN(lock(); x.not_(qword[rdi]));
+        GEN(lock(); x.cmpxchg8b(qword[rdi]));
 
         std::ofstream base("counts/Lock.json");
         base << json.dump(4);
@@ -707,6 +911,21 @@ int main() {
     GEN(unpcklps(xmm2, xmm2));
     GEN(unpcklps(xmm3, ptr[rdi]));
 
+    GEN(pshufw(mm2, mm3, 0b10101010));
+    GEN(pshufw(mm1, ptr[rdi], 0b10101010));
+    GEN(cvtpi2ps(xmm2, mm3));
+    GEN(cvtpi2ps(xmm1, ptr[rdi]));
+    GEN(cvtps2pi(mm2, xmm3));
+    GEN(cvtps2pi(mm1, ptr[rdi]));
+    GEN(cvttps2pi(mm2, xmm3));
+    GEN(cvttps2pi(mm1, ptr[rdi]));
+    GEN(maskmovq(mm2, mm3));
+    GEN(movntq(ptr[rdi], mm1));
+    GEN(movntps(ptr[rdi], xmm1));
+    GEN(ldmxcsr(ptr[rdi]));
+    GEN(stmxcsr(ptr[rdi]));
+    GEN(emms());
+
     std::ofstream sse1("counts/SSE1.json");
     sse1 << json.dump(4);
     json.clear();
@@ -805,12 +1024,18 @@ int main() {
     GEN_SSE_CMP(cmpsd);
     GEN_SSE_CMP(cmppd);
 
-    GEN(shufpd(xmm3, xmm4, (u8)0));
-    GEN(shufpd(xmm2, xmm2, (u8)0));
-    GEN(shufpd(xmm3, ptr[rdi], (u8)0));
-    GEN(shufpd(xmm3, xmm4, (u8)0xE4));
-    GEN(shufpd(xmm2, xmm2, (u8)0xE4));
-    GEN(shufpd(xmm3, ptr[rdi], (u8)0xE4));
+    GEN(shufpd(xmm3, xmm4, 0));
+    GEN(shufpd(xmm2, xmm2, 0));
+    GEN(shufpd(xmm3, ptr[rdi], 0));
+    GEN(shufpd(xmm3, xmm4, 1));
+    GEN(shufpd(xmm2, xmm2, 1));
+    GEN(shufpd(xmm3, ptr[rdi], 1));
+    GEN(shufpd(xmm3, xmm4, 2));
+    GEN(shufpd(xmm2, xmm2, 2));
+    GEN(shufpd(xmm3, ptr[rdi], 2));
+    GEN(shufpd(xmm3, xmm4, 3));
+    GEN(shufpd(xmm2, xmm2, 3));
+    GEN(shufpd(xmm3, ptr[rdi], 3));
 
     GEN_SSE(punpcklbw);
     GEN_SSE(punpcklwd);
@@ -840,6 +1065,136 @@ int main() {
     GEN(movmskpd(rax, xmm2));
 
     GEN_SSE(pmuludq);
+
+    GEN_SSE(paddb);
+    GEN_SSE(paddw);
+    GEN_SSE(paddd);
+    GEN_SSE(paddq);
+    GEN_SSE(paddsb);
+    GEN_SSE(paddsw);
+    GEN_SSE(paddusb);
+    GEN_SSE(paddusw);
+    GEN_SSE(psubb);
+    GEN_SSE(psubw);
+    GEN_SSE(psubd);
+    GEN_SSE(psubq);
+    GEN_SSE(psubsb);
+    GEN_SSE(psubsw);
+    GEN_SSE(psubusb);
+    GEN_SSE(psubusw);
+    GEN_SSE(pand);
+    GEN_SSE(pandn);
+    GEN_SSE(por);
+    GEN_SSE(pxor);
+    GEN_SSE(pcmpgtb);
+    GEN_SSE(pcmpgtw);
+    GEN_SSE(pcmpgtd);
+    GEN_SSE(pmullw);
+    GEN_SSE(pmulhw);
+    GEN_MMX(paddb);
+    GEN_MMX(paddw);
+    GEN_MMX(paddd);
+    GEN_MMX(paddq);
+    GEN_MMX(paddsb);
+    GEN_MMX(paddsw);
+    GEN_MMX(paddusb);
+    GEN_MMX(paddusw);
+    GEN_MMX(psubb);
+    GEN_MMX(psubw);
+    GEN_MMX(psubd);
+    GEN_MMX(psubq);
+    GEN_MMX(psubsb);
+    GEN_MMX(psubsw);
+    GEN_MMX(psubusb);
+    GEN_MMX(psubusw);
+    GEN_MMX(pand);
+    GEN_MMX(pandn);
+    GEN_MMX(por);
+    GEN_MMX(pxor);
+    GEN_MMX(pcmpgtb);
+    GEN_MMX(pcmpgtw);
+    GEN_MMX(pcmpgtd);
+    GEN_MMX(pcmpeqb);
+    GEN_MMX(pcmpeqw);
+    GEN_MMX(pcmpeqd);
+    GEN_MMX(pmullw);
+    GEN_MMX(pmulhw);
+    GEN_MMX(pmulhuw);
+    GEN_MMX(pmaddwd);
+    GEN_MMX(pmuludq);
+    GEN_MMX(psadbw);
+    GEN_MMX(pavgb);
+    GEN_MMX(pavgw);
+    GEN_MMX(pmaxub);
+    GEN_MMX(pmaxsw);
+    GEN_MMX(pminub);
+    GEN_MMX(pminsw);
+    GEN_MMX(packuswb);
+    GEN_MMX(packsswb);
+    GEN_MMX(packssdw);
+    GEN_MMX(punpcklbw);
+    GEN_MMX(punpcklwd);
+    GEN_MMX(punpckldq);
+    GEN_MMX(punpckhbw);
+    GEN_MMX(punpckhwd);
+    GEN_MMX(punpckhdq);
+
+#define GEN_SSE_SHIFT(name)                                                                                                                          \
+    GEN(name(xmm2, xmm3));                                                                                                                           \
+    GEN(name(xmm1, ptr[rdi]));                                                                                                                       \
+    GEN(name(xmm2, 5));                                                                                                                              \
+    GEN(name(mm2, mm3));                                                                                                                             \
+    GEN(name(mm1, ptr[rdi]));                                                                                                                        \
+    GEN(name(mm2, 5))
+
+    GEN_SSE_SHIFT(psllw);
+    GEN_SSE_SHIFT(pslld);
+    GEN_SSE_SHIFT(psllq);
+    GEN_SSE_SHIFT(psrlw);
+    GEN_SSE_SHIFT(psrld);
+    GEN_SSE_SHIFT(psrlq);
+    GEN_SSE_SHIFT(psraw);
+    GEN_SSE_SHIFT(psrad);
+
+    GEN(pmovmskb(eax, mm2));
+
+    GEN(movd(xmm1, eax));
+    GEN(movd(eax, xmm1));
+    GEN(movd(xmm1, ptr[rdi]));
+    GEN(movd(ptr[rdi], xmm1));
+    GEN(movd(mm1, eax));
+    GEN(movd(eax, mm1));
+    GEN(movd(mm1, ptr[rdi]));
+    GEN(movd(ptr[rdi], mm1));
+    GEN(movq(xmm1, rax));
+    GEN(movq(rax, xmm1));
+    GEN(movq(xmm1, xmm2));
+    GEN(movq(xmm1, ptr[rdi]));
+    GEN(movq(ptr[rdi], xmm1));
+    GEN(movq(mm1, rax));
+    GEN(movq(rax, mm1));
+    GEN(movq(mm1, mm2));
+    GEN(movq(mm1, ptr[rdi]));
+    GEN(movq(ptr[rdi], mm1));
+    GEN(movq2dq(xmm1, mm2));
+    GEN(movdq2q(mm1, xmm2));
+
+    GEN(cvtdq2pd(xmm2, xmm3));
+    GEN(cvtdq2pd(xmm1, ptr[rdi]));
+    GEN(cvtdq2ps(xmm2, xmm3));
+    GEN(cvtdq2ps(xmm1, ptr[rdi]));
+    GEN(cvtpi2pd(xmm2, mm3));
+    GEN(cvtpi2pd(xmm1, ptr[rdi]));
+    GEN(cvtpd2pi(mm2, xmm3));
+    GEN(cvtpd2pi(mm1, ptr[rdi]));
+    GEN(cvttpd2pi(mm2, xmm3));
+    GEN(cvttpd2pi(mm1, ptr[rdi]));
+
+    GEN(maskmovdqu(xmm2, xmm3));
+    GEN(movntdq(ptr[rdi], xmm1));
+    GEN(movntpd(ptr[rdi], xmm1));
+    GEN(movnti(ptr[rdi], eax));
+    GEN(movnti(ptr[rdi], rax));
 
     std::ofstream sse2("counts/SSE2.json");
     sse2 << json.dump(4);
@@ -961,8 +1316,82 @@ int main() {
 
     GEN(mpsadbw(xmm0, ptr[rdi], 0b111));
 
+    GEN(dppd(xmm2, xmm3, 0b00110011));
+    GEN(dppd(xmm1, ptr[rdi], 0b00110011));
+    GEN(roundps(xmm2, xmm3, 0b00000011));
+    GEN(roundps(xmm1, ptr[rdi], 0b00000011));
+    GEN(roundpd(xmm2, xmm3, 0b00000011));
+    GEN(roundpd(xmm1, ptr[rdi], 0b00000011));
+    GEN(insertps(xmm2, xmm3, 0b00010010));
+    GEN(insertps(xmm1, ptr[rdi], 0b00010010));
+    GEN(extractps(eax, xmm2, 2));
+    GEN(extractps(ptr[rdi], xmm2, 2));
+    GEN(pinsrq(xmm2, rax, 1));
+    GEN(pinsrq(xmm2, ptr[rdi], 1));
+    GEN(pinsrq(xmm2, rax, 0));
+    GEN(pextrb(eax, xmm2, 5));
+    GEN(pextrw(eax, xmm2, 4));
+    GEN(pextrd(eax, xmm2, 3));
+    GEN(pextrq(rax, xmm2, 1));
+    GEN(pextrq(ptr[rdi], xmm2, 1));
+    GEN(movntdqa(xmm1, ptr[rdi]));
+
     std::ofstream sse4_1("counts/SSE4_1.json");
     sse4_1 << json.dump(4);
+    json.clear();
+
+    GEN_SSE(pcmpgtq);
+    GEN(pcmpistri(xmm2, xmm3, 0b00000000));
+    GEN(pcmpistri(xmm2, xmm3, 0b01000101));
+    GEN(pcmpistri(xmm1, ptr[rdi], 0b00000000));
+    GEN(pcmpistrm(xmm2, xmm3, 0b00000000));
+    GEN(pcmpistrm(xmm2, xmm3, 0b01000101));
+    GEN(pcmpistrm(xmm1, ptr[rdi], 0b00000000));
+    GEN(pcmpestri(xmm2, xmm3, 0b00000000));
+    GEN(pcmpestri(xmm2, xmm3, 0b01000101));
+    GEN(pcmpestri(xmm1, ptr[rdi], 0b00000000));
+    GEN(pcmpestrm(xmm2, xmm3, 0b00000000));
+    GEN(pcmpestrm(xmm2, xmm3, 0b01000101));
+    GEN(pcmpestrm(xmm1, ptr[rdi], 0b00000000));
+    GEN(crc32(eax, bl));
+    GEN(crc32(eax, bx));
+    GEN(crc32(eax, ebx));
+    GEN(crc32(rax, rbx));
+    GEN(crc32(eax, byte[rdi]));
+    GEN(crc32(eax, word[rdi]));
+    GEN(crc32(eax, dword[rdi]));
+    GEN(crc32(rax, qword[rdi]));
+
+    std::ofstream sse4_2("counts/SSE4_2.json");
+    sse4_2 << json.dump(4);
+    json.clear();
+
+    GEN_SSE(aesenc);
+    GEN_SSE(aesenclast);
+    GEN_SSE(aesdec);
+    GEN_SSE(aesdeclast);
+    GEN_SSE(aesimc);
+    GEN(aeskeygenassist(xmm2, xmm3, 0b10101010));
+    GEN(aeskeygenassist(xmm1, ptr[rdi], 0b10101010));
+    GEN(pclmulqdq(xmm2, xmm3, 0x00));
+    GEN(pclmulqdq(xmm2, xmm3, 0x01));
+    GEN(pclmulqdq(xmm2, xmm3, 0x10));
+    GEN(pclmulqdq(xmm2, xmm3, 0x11));
+    GEN(pclmulqdq(xmm1, ptr[rdi], 0x00));
+
+    std::ofstream aes("counts/AES.json");
+    aes << json.dump(4);
+    json.clear();
+
+    GEN_SSE(sha1msg1);
+    GEN_SSE(sha1msg2);
+    GEN_SSE(sha1nexte);
+    GEN_SSE(sha256msg1);
+    GEN_SSE(sha256msg2);
+    GEN_SSE(sha256rnds2);
+
+    std::ofstream sha("counts/SHA.json");
+    sha << json.dump(4);
     json.clear();
 
     GEN_AVX_XMM3(vaddss);
@@ -1431,6 +1860,33 @@ int main() {
 
     GEN_AVX_YMM3_IMM(vpclmulqdq);
 
+#define GEN_FMA_PACKED(prefix)                                                                                                                       \
+    GEN_AVX(prefix##132ps);                                                                                                                          \
+    GEN_AVX(prefix##213ps);                                                                                                                          \
+    GEN_AVX(prefix##231ps);                                                                                                                          \
+    GEN_AVX(prefix##132pd);                                                                                                                          \
+    GEN_AVX(prefix##213pd);                                                                                                                          \
+    GEN_AVX(prefix##231pd)
+
+#define GEN_FMA_SCALAR(prefix)                                                                                                                       \
+    GEN_AVX_XMM3(prefix##132ss);                                                                                                                     \
+    GEN_AVX_XMM3(prefix##213ss);                                                                                                                     \
+    GEN_AVX_XMM3(prefix##231ss);                                                                                                                     \
+    GEN_AVX_XMM3(prefix##132sd);                                                                                                                     \
+    GEN_AVX_XMM3(prefix##213sd);                                                                                                                     \
+    GEN_AVX_XMM3(prefix##231sd)
+
+    GEN_FMA_PACKED(vfmadd);
+    GEN_FMA_SCALAR(vfmadd);
+    GEN_FMA_PACKED(vfmsub);
+    GEN_FMA_SCALAR(vfmsub);
+    GEN_FMA_PACKED(vfnmadd);
+    GEN_FMA_SCALAR(vfnmadd);
+    GEN_FMA_PACKED(vfnmsub);
+    GEN_FMA_SCALAR(vfnmsub);
+    GEN_FMA_PACKED(vfmaddsub);
+    GEN_FMA_PACKED(vfmsubadd);
+
     std::ofstream avx("counts/AVX.json");
     avx << json.dump(4);
     json.clear();
@@ -1539,6 +1995,18 @@ int main() {
         x87 << json.dump(4);
         json.clear();
     }
+
+    g_config.reduced_precision = 1;
+    rec.setFlagMode(FlagMode::Default);
+    gen_sequence(rec, json, "crysis1", false);
+    gen_sequence(rec, json, "crysis2", false);
+    gen_sequence(rec, json, "crysis3", false);
+    gen_sequence(rec, json, "tekken1", false);
+    gen_sequence(rec, json, "7z1", false);
+    gen_sequence(rec, json, "overcooked1", true);
+    gen_sequence(rec, json, "overcooked2", true);
+    g_config.reduced_precision = 2;
+    gen_sequence(rec, json, "tombraider1", false);
 
     std::ofstream many("counts/HotBlocks.json");
     many << json.dump(4);

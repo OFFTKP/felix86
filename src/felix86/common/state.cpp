@@ -30,10 +30,15 @@ ThreadState* ThreadState::Create(ThreadState* copy_state) {
     ThreadState* state = new (state_location) ThreadState;
     state->recompiler = new Recompiler;
     state->deferred_fault_page = state_memory;
-    VERBOSE("ThreadState* for %d is %lx", gettid(), state);
+    u32 tid = gettid();
+    VERBOSE("ThreadState* for %d is %lx", tid, (u64)state);
     memset(&state->ptrace_data, 0, sizeof(state->ptrace_data));
-    state->ptrace_data.constants.my_tid = gettid();
+    state->ptrace_data.constants.my_tid = tid;
     state->ptrace_data.constants.my_tgid = getpid();
+
+    if (g_emit_stats) {
+        state->thread_stats = g_process_globals.shm_manager.addThread(tid);
+    }
 
     sigemptyset(&state->signal_mask);
 
@@ -42,7 +47,9 @@ ThreadState* ThreadState::Create(ThreadState* copy_state) {
 
         state->alt_stack = copy_state->alt_stack;
         state->signal_mask = copy_state->signal_mask;
+        state->persona = copy_state->persona;
         state->ptrace_data.constants.tracer_pid = copy_state->ptrace_data.constants.tracer_pid;
+        state->ptrace_data.constants.parent_tid = copy_state->ptrace_data.constants.parent_tid;
         state->ptrace_data.constants.flags = copy_state->ptrace_data.constants.flags;
 
         // Currently unsupported, warn
@@ -83,7 +90,7 @@ void ThreadState::Destroy(ThreadState* state) {
     if (it != g_process_globals.states.end()) {
         g_process_globals.states.erase(it);
     } else {
-        WARN("Thread state %ld not found in global list", gettid());
+        WARN("Thread state %d not found in global list", gettid());
     }
     munmap(state->riscv_trampoline_storage_start, trampoline_storage_size);
     munmap(state->x86_trampoline_storage_start, trampoline_storage_size);

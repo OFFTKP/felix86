@@ -1,9 +1,12 @@
+#include <algorithm>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <system_error>
 #include <fcntl.h>
 #include <linux/limits.h>
 #include <linux/openat2.h>
+#include <sched.h>
 #include <sys/inotify.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
@@ -19,6 +22,7 @@
 #include "felix86/hle/filesystem.hpp"
 
 #define FLAGS_SET(v, flags) ((~(v) & (flags)) == 0)
+#define PROC_SUPER_MAGIC 0x9fa0
 
 static void remove_if_found(std::string& path, const std::filesystem::path& rootfs) {
     if (path.find(rootfs) == 0) {
@@ -89,6 +93,26 @@ void Filesystem::initializeEmulatedNodes() {
             int fd = generate_memfd("/proc/self/mountinfo", flags);
             ASSERT_MSG(fd >= 0, "/proc/self/mountinfo fd is negative: %d %s", fd, strerror(errno));
             ASSERT(write(fd, maps.data(), maps.size()) == (ssize_t)maps.size());
+            lseek(fd, 0, SEEK_SET);
+            seal_memfd(fd);
+            return fd;
+        }
+    };
+
+    emulated_nodes[SYS_CPU_ONLINE] = EmulatedNode{
+        .path = "/sys/devices/system/cpu/online",
+        .open_func = [](const char* path, int flags) {
+            std::string online;
+            if (g_online_cpu_string.empty()) {
+                std::ifstream ifs("/sys/devices/system/cpu/online");
+                std::getline(ifs, online);
+                online += "\n";
+            } else {
+                online = g_online_cpu_string + "\n";
+            }
+            int fd = generate_memfd("/sys/devices/system/cpu/online", flags);
+            ASSERT_MSG(fd >= 0, "/sys/devices/system/cpu/online fd is negative: %d %s", fd, strerror(errno));
+            ASSERT(write(fd, online.data(), online.size()) == (ssize_t)online.size());
             lseek(fd, 0, SEEK_SET);
             seal_memfd(fd);
             return fd;
@@ -222,22 +246,29 @@ int Filesystem::StatFs(const char* filename, struct statfs* buf) {
 }
 
 int Filesystem::ReadlinkAt(int fd, const char* filename, char* buf, int bufsiz) {
-    if (isProcSelfExe(filename)) {
+    if (std::optional<std::string> exe = getProcSelfExe(fd, filename)) {
         // If it's /proc/self/exe or similar, we don't want to resolve the path then readlink,
         // because readlink will fail as the resolved path would not be a link
-        FdPath npath = resolve(filename, false);
-        ASSERT(!npath.is_error());
-        ASSERT(npath.full_path());
-        std::string path = npath.full_path();
-        size_t rootfs_size;
-        if (is_subpath(path, g_config.rootfs_path)) {
-            rootfs_size = g_config.rootfs_path.string().size();
-        } else {
-            rootfs_size = 0;
+        std::string path = *exe;
+        if (!g_config.no_rootfs) {
+            auto strip = [&path](const std::filesystem::path& root) {
+                if (is_subpath(path, root)) {
+                    path = path.substr(root.string().size());
+                    return true;
+                }
+                return false;
+            };
+            if (!strip(g_config.rootfs_path)) {
+                auto lock = g_process_globals.states_lock.lock();
+                for (const auto& mount : g_process_globals.mount_paths) {
+                    if (strip(mount.lexically_normal())) {
+                        break;
+                    }
+                }
+            }
         }
-        const size_t stem_size = path.size() - rootfs_size;
-        int bytes = std::min((int)stem_size, bufsiz);
-        memcpy(buf, path.c_str() + rootfs_size, bytes);
+        int bytes = std::min((int)path.size(), bufsiz);
+        memcpy(buf, path.c_str(), bytes);
         return bytes;
     }
 
@@ -268,7 +299,7 @@ int Filesystem::Getcwd(char* buf, size_t size) {
         std::string str = buf;
         removeRootfsPrefix(str);
         strncpy(buf, str.c_str(), size);
-        return strlen(buf);
+        return str.size() + 1;
     }
 
     return result;
@@ -554,6 +585,22 @@ std::filesystem::path create_unique_mount_path() {
     return dir;
 }
 
+void Filesystem::SetRootfs(const std::filesystem::path& path) {
+    auto guard = g_process_globals.states_lock.lock();
+    g_config.rootfs_path = path;
+    g_process_globals.mount_paths.push_back(g_config.rootfs_path);
+    int old_rootfs_fd = g_rootfs_fd;
+    g_rootfs_fd = open(path.c_str(), O_PATH | O_DIRECTORY);
+    FD::unprotectAndClose(old_rootfs_fd);
+    ASSERT_MSG(g_rootfs_fd > 0, "Failed to open new rootfs dir: %s", path.c_str());
+    g_rootfs_fd = FD::moveToHighNumber(g_rootfs_fd);
+    FD::protect(g_rootfs_fd);
+    if (g_process_globals.vfork_rootfs) {
+        strncpy(g_process_globals.vfork_rootfs, path.c_str(), PATH_MAX - 1);
+        g_process_globals.vfork_rootfs[PATH_MAX - 1] = 0;
+    }
+}
+
 int Filesystem::Chroot(const char* path) {
     WARN("chroot(%s)", path);
     if (g_config.no_rootfs) {
@@ -594,15 +641,7 @@ int Filesystem::Chroot(const char* path) {
     }
 
     // TODO: setting rootfs_path is most likely thread unsafe?
-    auto guard = g_process_globals.states_lock.lock();
-    g_config.rootfs_path = final_path;
-    g_process_globals.mount_paths.push_back(g_config.rootfs_path);
-    int old_rootfs_fd = g_rootfs_fd;
-    g_rootfs_fd = open(final_path.c_str(), O_PATH | O_DIRECTORY);
-    FD::unprotectAndClose(old_rootfs_fd);
-    ASSERT_MSG(g_rootfs_fd > 0, "Failed to open new rootfs dir: %s", final_path.c_str());
-    g_rootfs_fd = FD::moveToHighNumber(g_rootfs_fd);
-    FD::protect(g_rootfs_fd);
+    SetRootfs(final_path);
     return 0;
 }
 
@@ -645,16 +684,7 @@ int Filesystem::PivotRoot(const char* new_root, const char* put_old) {
         WARN("Failed to move mount during pivot_root %s -> %s, error: %s", new_root_full, path.c_str(), strerror(errno));
         return -errno;
     } else {
-        auto lock = g_process_globals.states_lock.lock();
-        int old_rootfs_fd = g_rootfs_fd;
-        g_rootfs_fd = open(path.c_str(), O_PATH | O_DIRECTORY);
-        FD::unprotectAndClose(old_rootfs_fd);
-        ASSERT_MSG(g_rootfs_fd > 0, "Failed to open new rootfs dir: %s", path.c_str());
-        g_rootfs_fd = FD::moveToHighNumber(g_rootfs_fd);
-        FD::protect(g_rootfs_fd);
-        g_config.rootfs_path = path;
-
-        g_process_globals.mount_paths.push_back(g_config.rootfs_path);
+        SetRootfs(path);
     }
 
     // TODO: Super HACK: when there's a pivot_root(".", "."), don't mount the old directory
@@ -884,17 +914,105 @@ void Filesystem::removeRootfsPrefix(std::string& path) {
     }
 }
 
-bool Filesystem::isProcSelfExe(const char* path) {
-    if (!path) {
-        return false;
+std::optional<std::string> Filesystem::getProcSelfExe(int fd, const char* path) {
+    if (!path || !path[0]) {
+        return std::nullopt;
     }
 
-    std::string spath = path;
-    std::string pidpath = "/proc/" + std::to_string(getpid()) + "/exe";
-    if (spath == "/proc/self/exe" || spath == "/proc/thread-self/exe" || spath == pidpath) {
-        return true;
+    std::filesystem::path p = path;
+    if (p.filename() != "exe") {
+        return std::nullopt;
     }
-    return false;
+
+    std::filesystem::path full_path;
+    if (p.is_absolute()) {
+        full_path = p;
+    } else if (fd == AT_FDCWD) {
+        char buffer[PATH_MAX];
+        if (!getcwd(buffer, sizeof(buffer))) {
+            IMPORTANT("Failed to use getcwd, our /proc/self/exe emulation may not work");
+            return std::nullopt;
+        }
+        full_path = std::filesystem::path(buffer) / p;
+    } else {
+        std::string fdpath = "/proc/self/fd/" + std::to_string(fd);
+        char buffer[PATH_MAX];
+        ssize_t size = readlink(fdpath.c_str(), buffer, sizeof(buffer) - 1);
+        if (size <= 0) {
+            IMPORTANT("Failed to read /proc/self/fd, our /proc/self/exe emulation may not work");
+            return std::nullopt;
+        }
+        buffer[size] = 0;
+        full_path = std::filesystem::path(buffer) / p;
+    }
+
+    std::vector<std::string> components;
+    for (const auto& component : full_path.lexically_normal()) {
+        components.push_back(component.string());
+    }
+
+    auto is_number = [](const std::string& str) {
+        return !str.empty() && std::all_of(str.begin(), str.end(), [](unsigned char c) { return std::isdigit(c); });
+    };
+
+    if (components.size() < 4 || components[0] != "/" || components[1] != "proc" || components.back() != "exe") {
+        return std::nullopt;
+    }
+
+    pid_t pid;
+    if (components[2] == "self" || components[2] == "thread-self") {
+        pid = getpid();
+    } else if (is_number(components[2])) {
+        pid = std::stoi(components[2]);
+    } else {
+        return std::nullopt;
+    }
+
+    bool direct = components.size() == 4;
+    bool via_task = components.size() == 6 && components[3] == "task" && is_number(components[4]);
+    if (!direct && !via_task) {
+        return std::nullopt;
+    }
+
+    // We got the pid, fetch the emulated /proc/<pid>/exe by parsing guest /proc/<pid>/environ
+    // This pid may be us of course, but we can fetch it from ourselves the same way
+    std::string environ_path = "/proc/" + std::to_string(pid) + "/environ";
+    int environ_fd = open(environ_path.c_str(), O_RDONLY | O_CLOEXEC);
+    if (environ_fd < 0) {
+        IMPORTANT("Failed to open %s: %s, our /proc/<pid>/exe will fail", environ_path.c_str(), strerror(errno));
+        return std::nullopt;
+    }
+
+    std::string data;
+    char buffer[4096];
+    for (;;) {
+        ssize_t bytes = read(environ_fd, buffer, sizeof(buffer));
+        if (bytes < 0 && errno == EINTR) {
+            continue;
+        }
+        if (bytes <= 0) {
+            break;
+        }
+        data.append(buffer, bytes);
+    }
+    close(environ_fd);
+
+    const std::string_view key = "__FELIX86_EXE=";
+    size_t pos = 0;
+    while (pos < data.size()) {
+        size_t end = data.find('\0', pos);
+        if (end == std::string::npos) {
+            end = data.size();
+        }
+        std::string_view entry(data.data() + pos, end - pos);
+        if (entry.starts_with(key)) {
+            return std::string(entry.substr(key.size()));
+        }
+        pos = end + 1;
+    }
+
+    IMPORTANT("Process %d has no __FELIX86_EXE in its environment, our /proc/<pid>/exe will fail", pid);
+    return std::nullopt;
 }
 
 FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
@@ -905,7 +1023,7 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
 
         if (!felix86_address_check((void*)path)) {
             ASSERT(path != nullptr);
-            WARN("Tried to resolve bad path pointer: %lx", path);
+            WARN("Tried to resolve bad path pointer: %p", path);
             return FdPath::error(EFAULT);
         }
 
@@ -918,12 +1036,8 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
         }
     }
 
-    if (isProcSelfExe(path)) {
-        if (g_executable_path_guest_override.empty()) {
-            return FdPath::create(AT_FDCWD, g_executable_path_absolute);
-        } else {
-            return FdPath::create(AT_FDCWD, g_executable_path_guest_override);
-        }
+    if (std::optional<std::string> exe = getProcSelfExe(fd, path)) {
+        return FdPath::create(AT_FDCWD, exe->c_str());
     }
 
     if (g_config.no_rootfs) {
@@ -971,7 +1085,7 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
         struct statx current_statx;
         result = statx(current_fd, current_relative_path.c_str(), AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &current_statx);
         if (result != 0) {
-            VERBOSE("Error while resolving statx %d %s, error: %s", current_fd, current_relative_path.c_str());
+            VERBOSE("Error while resolving statx %d %s, error: %s", current_fd, current_relative_path.c_str(), strerror(errno));
             return FdPath::error(errno);
         }
 
@@ -984,7 +1098,8 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
                 // Need to recalculate statx for ".." check
                 result = statx(current_fd, current_relative_path.c_str(), AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &current_statx);
                 if (result != 0) {
-                    VERBOSE("Error while resolving statx (for fake mount) %d %s, error: %s", current_fd, current_relative_path.c_str());
+                    VERBOSE("Error while resolving statx (for fake mount) %d %s, error: %s", current_fd, current_relative_path.c_str(),
+                            strerror(errno));
                     return FdPath::error(errno);
                 }
                 break;
@@ -1031,7 +1146,7 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
         }
 
         std::filesystem::path current = current_relative_path / current_component;
-        struct stat current_stat;
+        struct stat current_stat{};
         result = fstatat(current_fd, current.c_str(), &current_stat, AT_SYMLINK_NOFOLLOW);
         if (result != 0) {
             switch (errno) {

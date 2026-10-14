@@ -4,6 +4,7 @@
 #include "felix86/common/log.hpp"
 #include "felix86/common/overlay.hpp"
 #include "felix86/common/state.hpp"
+#include "felix86/hle/filesystem.hpp"
 
 struct Overlay {
     std::string lib_name;
@@ -23,19 +24,20 @@ const char* Overlays::isOverlay(int fd, const char* pathname) {
         return nullptr;
     }
 
-    std::filesystem::path path = pathname;
-    if (path.is_relative()) {
-        if (fd != AT_FDCWD) {
-            path = std::filesystem::path("/proc/self/fd/" + std::to_string(fd)) / path;
-        }
-    } else {
-        path = g_config.rootfs_path / path.relative_path();
+    std::string filename = std::filesystem::path(pathname).filename();
+    if (filename.empty()) {
+        return nullptr;
     }
+
     bool mode32 = ThreadState::Get()->ctx.Mode32();
-    std::string filename = path.filename();
     for (auto& entry : overlays) {
         if (filename == entry.lib_name) {
-            Elf::PeekResult result = Elf::Peek(path);
+            FdPath fd_path = Filesystem::resolve(fd, pathname, true);
+            if (fd_path.is_error()) {
+                return nullptr;
+            }
+
+            Elf::PeekResult result = Elf::Peek(fd_path.full_path());
             if ((mode32 && result == Elf::PeekResult::Elf32) || (!mode32 && result == Elf::PeekResult::Elf64)) {
                 LOG("Found overlay %s -> %s", pathname, entry.overlayed_path.c_str());
                 return entry.overlayed_path.c_str();

@@ -12,7 +12,8 @@
 #include "felix86/v2/handlers.hpp"
 #include "felix86/v2/recompiler.hpp"
 
-extern "C" const char* rv64_print(uint32_t opcode, uintptr_t addr);
+extern std::string riscv_disassemble(u32 opcode, u64 addr);
+extern void riscv_set_felix86_allocations(bool enable);
 
 static FlagMode flag_mode = FlagMode::Default;
 
@@ -23,7 +24,7 @@ const char* colors[color_count] = {
 
 const char* reset = ANSI_COLOR_RESET;
 
-static bool use_color = false;
+static bool use_color = true;
 static bool mode32 = false;
 
 static void print_help() {
@@ -124,37 +125,48 @@ static void compile(const std::string& input) {
 
     std::unique_ptr<Recompiler> rec = std::make_unique<Recompiler>(true);
     rec->setFlagMode(flag_mode);
-    u64 start = (u64)rec->getAssembler().GetCursorPointer();
     rec->compileSequence(mode32, (u64)output.data());
-    u64 end = (u64)rec->getAssembler().GetCursorPointer();
 
     BlockMetadata& metadata = rec->getBlockMetadata((u64)output.data());
 
-    // Remove compiled UNDEF instructions off the end, if any
-    u16* fin = (u16*)(end - 2);
-    while (*fin == 0) {
-        end -= 2;
-        fin = (u16*)(end - 2);
+    u64 start = metadata.host_address;
+    u64 end = start;
+    for (auto instr : metadata.translation_sizes) {
+        end += instr.riscv_instructions_size;
+    }
+
+    u64 code_end = (u64)rec->getEndOfCodeCache();
+    if (end == code_end) {
+        // Remove compiled UNDEF instructions off the end, if any
+        u16* fin = (u16*)(end - 2);
+        while (*fin == 0) {
+            end -= 2;
+            fin = (u16*)(end - 2);
+        }
+
+        // Also remove a store to zero and a hint used to emulate ud2
+        end -= 8;
     }
 
     // TODO: can we make this less hacky
     // Skip the safepoint at the start of the sequence
     start += 4;
-    // Also remove a store to zero and a hint used to emulate ud2
-    end -= 8;
 
     size_t span_index = 0;
     u64 address = start;
     for (int i = 0; i < end - start;) {
         u64 riscv_size = metadata.translation_sizes[span_index].riscv_instructions_size;
+        if (span_index == 0) {
+            riscv_size -= 4;
+        }
         for (int j = 0; j < riscv_size; j += 4) {
             u32 data = 0;
             memcpy(&data, (void*)(address + j), 4);
-            const char* out = rv64_print(data, address + j);
+            std::string out = riscv_disassemble(data, address + j);
             if (use_color) {
                 printf("%s", colors[span_index % color_count]);
             }
-            printf("%s", out);
+            printf("%s", out.c_str());
             if (use_color) {
                 printf("%s", reset);
             }
@@ -167,6 +179,8 @@ static void compile(const std::string& input) {
 }
 
 void __attribute__((noreturn)) enter_repl() {
+    riscv_set_felix86_allocations(true);
+
     if (system("which nasm > /dev/null 2>&1")) {
         printf("felix86 REPL needs nasm installed, please install the nasm assembler\n");
         exit(1);
@@ -181,10 +195,14 @@ void __attribute__((noreturn)) enter_repl() {
     Extensions::Zbb = true;
     Extensions::Zbs = true;
     Extensions::Zbc = true;
+    Extensions::Zvbb = true;
+    Extensions::Zvbc = true;
     Extensions::C = true;
     Extensions::V = true;
     Extensions::VLEN = 256;
     Extensions::Zicond = true;
+    Extensions::Zvknha = true;
+    Extensions::Zicclsm = true;
     Handlers::initialize();
     using_history();
     std::string version_full = get_version_full();

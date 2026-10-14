@@ -46,6 +46,18 @@ struct x86_sigset_argpack {
     u32 size;
 };
 
+struct x86_mmap_arg_struct {
+    u32 addr;
+    u32 len;
+    u32 prot;
+    u32 flags;
+    u32 fd;
+    u32 offset;
+};
+
+static_assert(std::is_trivially_copyable_v<x86_mmap_arg_struct>);
+static_assert(sizeof(x86_mmap_arg_struct) == 24);
+
 struct x64_sigaction {
     u64 handler;
     u64 sa_flags;
@@ -70,10 +82,26 @@ struct x86_old_sigaction {
     u32 restorer;
 };
 
-struct x86_stack_t {
+struct __attribute__((packed)) x86_stack_t {
     u32 ss_sp;
     u32 ss_flags;
     u32 ss_size;
+
+    x86_stack_t(const stack_t& stack) {
+        ASSERT((u64)stack.ss_sp <= UINT32_MAX);
+        ASSERT((u64)stack.ss_size <= UINT32_MAX);
+        ss_sp = (u64)stack.ss_sp;
+        ss_size = stack.ss_size;
+        ss_flags = stack.ss_flags;
+    }
+
+    operator stack_t() const {
+        stack_t stack;
+        stack.ss_sp = (void*)(u64)ss_sp;
+        stack.ss_size = ss_size;
+        stack.ss_flags = ss_flags;
+        return stack;
+    }
 };
 
 struct x86_user_desc {

@@ -538,12 +538,12 @@ TEST_CASE("UNZIP", "[rvb]") {
     auto as = MakeAssembler32(value);
 
     as.UNZIP(x31, x31);
-    REQUIRE(value == 0x09FFDF93);
+    REQUIRE(value == 0x08FFDF93);
 
     as.RewindBuffer();
 
     as.UNZIP(x1, x2);
-    REQUIRE(value == 0x09F15093);
+    REQUIRE(value == 0x08F15093);
 }
 
 TEST_CASE("XNOR", "[rvb]") {
@@ -601,10 +601,10 @@ TEST_CASE("ZIP", "[rvb]") {
     auto as = MakeAssembler32(value);
 
     as.ZIP(x31, x31);
-    REQUIRE(value == 0x09EF9F93);
+    REQUIRE(value == 0x08FF9F93);
 
     as.RewindBuffer();
 
     as.ZIP(x1, x2);
-    REQUIRE(value == 0x09E11093);
+    REQUIRE(value == 0x08F11093);
 }

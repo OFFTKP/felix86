@@ -209,7 +209,7 @@ uint_fast64_t
 /*----------------------------------------------------------------------------
 | The bit pattern for a default generated 80-bit extended floating-point NaN.
 *----------------------------------------------------------------------------*/
-#define defaultNaNExtF80UI64 0x7FFF
+#define defaultNaNExtF80UI64 0xFFFF
 #define defaultNaNExtF80UI0  UINT64_C( 0xC000000000000000 )
 
 /*----------------------------------------------------------------------------

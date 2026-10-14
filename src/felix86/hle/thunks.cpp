@@ -1,3 +1,5 @@
+#include "felix86/common/global.hpp"
+#include "felix86/hle/mmap.hpp"
 #include "felix86/hle/thunks.hpp"
 
 // TODO: this file is messy. Split it up to separate files per library once our thunking implementation is more concrete
@@ -158,6 +160,8 @@ struct wl_message {
     /** Object argument interfaces */
     const struct wl_interface** types;
 };
+
+typedef int (*wl_dispatcher_func_t)(const void* user_data, void* target, uint32_t opcode, const struct wl_message* msg, union wl_argument* args);
 
 static std::mutex display_map_mutex;
 static std::unordered_map<void*, void*> host_to_guest;
@@ -408,7 +412,7 @@ static void* generate_guest_pointer(const char* name, u64 host_ptr) {
     // We can't put this code in code cache, because it needs to outlive potential code cache clears
     u8* memory = state->x86_trampoline_storage;
     // Our recompiler marks guest code as PROT_READ, we need to undo this as it may have marked previous trampolines
-    mprotect((u8*)((u64)memory & ~0xFFFull), 4096, PROT_READ | PROT_WRITE);
+    ::mprotect((u8*)((u64)memory & ~0xFFFull), 4096, PROT_READ | PROT_WRITE);
 
     // 0f 01 39 ; invlpg [rcx] ; see handlers.cpp -- invlpg (magic instruction that generates jump to host code)
     // 00 00 00 00 00 00 00 00 ; pointer we jump to
@@ -422,7 +426,7 @@ static void* generate_guest_pointer(const char* name, u64 host_ptr) {
     memcpy(&memory[3 + 8 + sigsize + 1], name, namesize);
     memory[3 + 8 + sigsize + 1 + namesize + 1] = 0xc3;
     state->x86_trampoline_storage += 3 + 8 + sigsize + 1 + namesize + 1 + 1;
-    VERBOSE("Created guest-callable host pointer for %s: %p", name, host_ptr);
+    VERBOSE("Created guest-callable host pointer for %s: %lx", name, host_ptr);
     return memory;
 }
 
@@ -484,7 +488,7 @@ static void* felix86_thunk_vkGetInstanceProcAddr(VkInstance instance, const char
     if (strcmp(name, "vkGetPhysicalDeviceXlibPresentationSupportKHR") == 0) {
         host_vkGetPhysicalDeviceXlibPresentationSupportKHR =
             (decltype(host_vkGetPhysicalDeviceXlibPresentationSupportKHR))host_vkGetInstanceProcAddr(instance, name);
-    } else if (strcmp(name, "vkGetPhysicalDeviceXcbPresentationSupportKHR")) {
+    } else if (strcmp(name, "vkGetPhysicalDeviceXcbPresentationSupportKHR") == 0) {
         host_vkGetPhysicalDeviceXcbPresentationSupportKHR =
             (decltype(host_vkGetPhysicalDeviceXcbPresentationSupportKHR))host_vkGetInstanceProcAddr(instance, name);
     }
@@ -653,6 +657,16 @@ static int felix86_thunk_wl_proxy_add_listener(struct wl_proxy* proxy, void** ca
 
     static auto host_wl_proxy_add_listener = (int (*)(struct wl_proxy*, void*, void*))dlsym(libwayland, "wl_proxy_add_listener");
     return host_wl_proxy_add_listener(proxy, host_callable, data);
+}
+
+static int felix86_thunk_wl_proxy_add_dispatcher(struct wl_proxy* proxy, wl_dispatcher_func_t func, const void* impl, void* data) {
+    wl_dispatcher_func_t host_func = nullptr;
+    if (func) {
+        host_func = (wl_dispatcher_func_t)ABIMadness::hostToGuestTrampoline("d_qqdqq", (void*)func);
+    }
+    static auto host_wl_proxy_add_dispatcher =
+        (int (*)(struct wl_proxy*, wl_dispatcher_func_t, const void*, void*))dlsym(libwayland, "wl_proxy_add_dispatcher");
+    return host_wl_proxy_add_dispatcher(proxy, host_func, impl, data);
 }
 
 #define PRINTME VERBOSE("Calling thunked %s", __PRETTY_FUNCTION__)
@@ -929,6 +943,8 @@ void* get_custom_egl_thunk(const std::string& name) {
 void* get_custom_wl_thunk(const std::string& name) {
     if (name == "wl_proxy_add_listener") {
         return (void*)felix86_thunk_wl_proxy_add_listener;
+    } else if (name == "wl_proxy_add_dispatcher") {
+        return (void*)felix86_thunk_wl_proxy_add_dispatcher;
     } else {
         return nullptr;
     }
@@ -1079,7 +1095,7 @@ void Thunks::initialize() {
                 Overlays::addOverlay(name, thunk_path);
             }
         } else {
-            WARN("I couldn't find the thunked library for %s", names.begin());
+            WARN("I couldn't find the thunked library for %s", *names.begin());
         }
     };
 
@@ -1305,12 +1321,12 @@ void Thunks::runConstructor(const char* lib, GuestPointers* pointers) {
 
             const char* name = pointers->name;
             u64 host_ptr = (u64)dlsym(libwayland, name);
-            ASSERT_MSG(host_ptr != 0, "Could not find host libwayland-client pointer for %s", host_ptr);
+            ASSERT_MSG(host_ptr != 0, "Could not find host libwayland-client pointer for %s", name);
             // Interfaces are placed in RO memory but we need to change their values to match our host library
             // So hack away the protection
-            mprotect((void*)((u64)ptr & ~0xFFFull), 4096, PROT_READ | PROT_WRITE);
+            ::mprotect((void*)((u64)ptr & ~0xFFFull), 4096, PROT_READ | PROT_WRITE);
             memcpy((void*)ptr, (void*)host_ptr, sizeof(wl_interface));
-            VERBOSE("libwayland-client thunk: %s set to %p (guest ptr: %p)", name, host_ptr, ptr);
+            VERBOSE("libwayland-client thunk: %s set to %lx (guest ptr: %p)", name, host_ptr, ptr);
 
             pointers++;
         }

@@ -2,6 +2,7 @@
 #include <csignal>
 #include <dlfcn.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <linux/futex.h>
 #include <sys/mman.h>
 #include <sys/personality.h>
@@ -10,17 +11,27 @@
 #include <sys/resource.h>
 #include <sys/syscall.h>
 #include "felix86/common/exit.hpp"
+#include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/hle/fd.hpp"
+#include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/mmap.hpp"
 #include "felix86/hle/signals.hpp"
 #include "felix86/hle/thread.hpp"
 #include "felix86/v2/recompiler.hpp"
 
-static void* pthread_handler(void* args) {
+extern "C" {
+void je_jemalloc_prefork();
+void je_jemalloc_postfork_parent();
+void je_jemalloc_postfork_child();
+}
+
+constexpr static size_t host_stack_size = 8 * 1024 * 1024;
+
+static void pthread_handler_impl(void* args, void* host_stack) {
     u32* finished;
     CloneArgs clone_args;
     {
@@ -32,7 +43,12 @@ static void* pthread_handler(void* args) {
     }
 
     ThreadState* state = ThreadState::Create(clone_args.parent_state);
+    state->host_stack = host_stack;
     bool trace_clone = state->ptrace_data.constants.flags & PTRACE_O_TRACECLONE;
+    if (!trace_clone) {
+        state->ptrace_data.constants.tracer_pid = 0;
+        state->ptrace_data.constants.flags = 0;
+    }
 
     if (clone_args.guest_flags & CLONE_SIGHAND) {
         // If CLONE_SIGHAND is set, the child and the parent share the same signal handler table
@@ -94,7 +110,7 @@ static void* pthread_handler(void* args) {
     std::atomic_signal_fence(std::memory_order_seq_cst); // Don't let the compiler reorder the copy after this fence
     __atomic_store_n(finished, tid, __ATOMIC_SEQ_CST);
 
-    LOG("Thread %ld started", tid);
+    LOG("Thread %d started", tid);
     if (Ptrace::is_traced(state) && trace_clone) {
         int sig = SIGSTOP;
         siginfo_t info;
@@ -107,6 +123,27 @@ static void* pthread_handler(void* args) {
 
     Threads::StartThread(state);
     UNREACHABLE();
+}
+
+#ifdef __riscv
+__attribute__((naked)) static void run_on_stack(void* args, u8* stack_top, void (*func)(void*, void*), void* host_stack) {
+    asm volatile(R"(
+        mv sp, a1
+        mv a1, a3
+        jr a2
+    )");
+}
+#else
+static void run_on_stack(void* args, u8* stack_top, void (*func)(void*, void*), void* host_stack) {
+    UNREACHABLE();
+}
+#endif
+
+static void* pthread_handler(void* args) {
+    u8* host_stack = (u8*)mmap(nullptr, host_stack_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0);
+    ASSERT(host_stack != MAP_FAILED);
+    run_on_stack(args, host_stack + host_stack_size, pthread_handler_impl, host_stack);
+    UNREACHABLE();
     return nullptr;
 }
 
@@ -117,7 +154,11 @@ static int clone_handler(void* args) {
     // We can't use this cloned process, because when the guest created it, it passed a guest TLS which we can't use,
     // both due to differences in TLS and because the guest needs it, and creating a host TLS is not possible sans some hacky ways.
     // So we need to create a pthread (which will create a proper TLS) as the actual child process.
-    pthread_create(&clone_args->new_thread, nullptr, pthread_handler, args);
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
+    pthread_create(&clone_args->new_thread, &attr, pthread_handler, args);
+    pthread_attr_destroy(&attr);
     pthread_detach(clone_args->new_thread);
 
     return 0;
@@ -256,6 +297,7 @@ static long NewCloneMe(CloneArgs& host_clone_args) {
 
     pthread_attr_t attr;
     pthread_attr_init(&attr);
+    pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
     if (host_clone_args.guest_flags == pthread_create_flags) {
         // Great, just passthrough to host
     } else {
@@ -305,14 +347,26 @@ static long ForkMe(CloneArgs& host_clone_args) {
     ASSERT(!(host_clone_args.guest_flags & CLONE_VM));
     ASSERT(!(host_clone_args.guest_flags & CLONE_VFORK));
     int parent_pid = getpid();
+    pid_t parent_tid = gettid();
     ThreadState* state = ThreadState::Get();
     u64 parent_flags = state->ptrace_data.constants.flags;
     bool trace_fork = parent_flags & PTRACE_O_TRACEFORK;
     // By setting ThreadState to null temporarily the tracer will know to skip the SIGSTOP the child starts with which will be re-raised
     // with raise_stop later after everything is initialized
     state->ptrace_data.stop_info.in_clone = true;
+    // We don't need to block signals here, as nothing in signal handlers will lock (won't run malloc or lock these)
+    // when we aren't in JIT code
+    g_process_globals.before_fork();
+    je_jemalloc_prefork();
     long ret = syscall(SYS_clone, host_clone_args.guest_flags, nullptr, host_clone_args.parent_tid, host_clone_args.child_tid,
                        nullptr); // args are flipped in syscall
+    if (ret == 0) {
+        je_jemalloc_postfork_child();
+        g_process_globals.after_fork_child();
+    } else {
+        je_jemalloc_postfork_parent();
+        g_process_globals.after_fork_parent();
+    }
     state->ptrace_data.stop_info.in_clone = false;
     ASSERT(ret >= 0);
 
@@ -332,6 +386,11 @@ static long ForkMe(CloneArgs& host_clone_args) {
         int pid = getpid();
         state->ptrace_data.constants.my_tgid = pid;
         state->ptrace_data.constants.my_tid = gettid();
+        state->ptrace_data.constants.parent_tid = parent_tid;
+        if (!trace_fork) {
+            state->ptrace_data.constants.tracer_pid = 0;
+            state->ptrace_data.constants.flags = 0;
+        }
 
         if (host_clone_args.guest_flags & CLONE_SETTLS) {
             state->SetTLS(host_clone_args.new_tls);
@@ -372,8 +431,15 @@ static long VForkMe(CloneArgs& args) {
     // Thank you FEX
     // https://github.com/FEX-Emu/FEX/pull/2690
     int parent_pid = getpid();
+    pid_t parent_tid = gettid();
     int pipes[2];
     ASSERT(pipe2(pipes, O_CLOEXEC) != -1);
+
+    char* shared_rootfs = nullptr;
+    if ((args.guest_flags & CLONE_FS) && !g_config.no_rootfs) {
+        shared_rootfs = (char*)mmap(nullptr, PATH_MAX, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+        ASSERT(shared_rootfs != MAP_FAILED);
+    }
 
     ThreadState* state = ThreadState::Get();
     u64 parent_flags = state->ptrace_data.constants.flags;
@@ -382,7 +448,15 @@ static long VForkMe(CloneArgs& args) {
 
     // Similar to fork handler, we need to signal to the tracer that the child SIGSTOP is to be skipped
     state->ptrace_data.stop_info.in_clone = true;
-    long result = fork();
+    // We don't need to block signals here, as nothing in signal handlers will lock (won't run malloc or lock these)
+    // when we aren't in JIT code
+    g_process_globals.before_fork();
+    long result = fork(); // calls jemalloc prefork/postfork itself
+    if (result == 0) {
+        g_process_globals.after_fork_child();
+    } else {
+        g_process_globals.after_fork_parent();
+    }
     state->ptrace_data.stop_info.in_clone = false;
     ASSERT(result >= 0);
 
@@ -393,6 +467,14 @@ static long VForkMe(CloneArgs& args) {
         int pid = getpid();
         SIGLOG("%d vforked to %d", parent_pid, pid);
         ThreadState* state = ThreadState::Get();
+        g_process_globals.initialize();
+        g_process_globals.states.push_back(state);
+        g_process_globals.vfork_rootfs = shared_rootfs;
+        state->ptrace_data.constants.parent_tid = parent_tid;
+        if (!trace_vfork) {
+            state->ptrace_data.constants.tracer_pid = 0;
+            state->ptrace_data.constants.flags = 0;
+        }
 
         // TODO: probably clean up states here, but it doesn't matter cus it gets execve'd anyway
         if (args.new_rsp) {
@@ -463,6 +545,16 @@ static long VForkMe(CloneArgs& args) {
         // Close the read end now.
         close(pipes[0]);
 
+        // HACK: Chromium will vfork and change the rootfs. We don't CLONE_VM so g_config.rootfs won't be updated here
+        // but also g_rootfs_fd wouldn't be updated because the clone happens without CLONE_FILES. For now, allow chroot
+        // to propagate through vfork like this
+        if (shared_rootfs) {
+            if (shared_rootfs[0]) {
+                Filesystem::SetRootfs(shared_rootfs);
+            }
+            ::munmap(shared_rootfs, PATH_MAX);
+        }
+
         if (Ptrace::is_traced(state) && trace_vfork_done) {
             int sig = SIGTRAP;
             siginfo_t info;
@@ -476,11 +568,16 @@ static long VForkMe(CloneArgs& args) {
 
 long Threads::Clone(ThreadState* current_state, CloneArgs* args) {
     std::string sflags = flags_to_string(args->guest_flags);
-    STRACE("clone({%s}, stack: %llx, parid: %llx, ctid: %llx, tls: %llx)", sflags.c_str(), args->new_rsp, args->parent_tid, args->child_tid,
-           args->new_tls);
+    STRACE("clone({%s}, stack: %lx, parid: %p, ctid: %p, tls: %lx)", sflags.c_str(), args->new_rsp, args->parent_tid, args->child_tid, args->new_tls);
 
     bool clone_fs = args->guest_flags & CLONE_FS;
     bool clone_vm = args->guest_flags & CLONE_VM;
+    if (g_is_single_thread && clone_vm) {
+        // No longer single threaded, start emitting fences
+        g_is_single_thread = false;
+        Recompiler::invalidateRangeGlobal(0, UINT64_MAX & ~0xFFFull, "clone with CLONE_VM happened");
+    }
+
     if (clone_fs && !clone_vm) {
         // This would be quite cursed, because we'd have to use IPC to communicate any FS changes to the processes
         // that share the FS info. Hopefully we won't reach this ever but add a warning here
@@ -501,7 +598,7 @@ long Threads::Clone(ThreadState* current_state, CloneArgs* args) {
 
     u64 allowed_flags = CLONE_VM | CLONE_THREAD | CLONE_DETACHED | CLONE_SYSVSEM | CLONE_CHILD_CLEARTID | CLONE_CHILD_SETTID | CLONE_SIGHAND |
                         CLONE_FILES | CLONE_FS | CLONE_IO | CLONE_SETTLS | CLONE_PARENT_SETTID | CLONE_VFORK | CLONE_UNTRACED | CLONE_NEWNS |
-                        CLONE_NEWUSER | CLONE_NEWUTS | CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWPID | CLONE_PIDFD;
+                        CLONE_NEWUSER | CLONE_NEWUTS | CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWPID | CLONE_PIDFD | CLONE_NEWCGROUP;
     if ((args->guest_flags & ~CSIGNAL) & ~allowed_flags) {
         ERROR("Unsupported flags %s", sflags.c_str());
         return -ENOSYS;
@@ -526,7 +623,7 @@ long Threads::Clone(ThreadState* current_state, CloneArgs* args) {
     return result;
 }
 
-std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
+std::pair<u8*, size_t> Threads::AllocateStack(bool mode32, bool exec) {
     struct rlimit stack_limit = {0};
     if (getrlimit(RLIMIT_STACK, &stack_limit) == -1) {
         ERROR("Failed to get stack size limit");
@@ -556,6 +653,7 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
     u8* base;
     int attempts = 0;
     int max_attempts = 14;
+    const int stack_protections = PROT_READ | PROT_WRITE | (exec ? PROT_EXEC : 0);
 
     while (true) {
         VERBOSE("Attempting to allocate stack on %p", (void*)stack_hint);
@@ -572,7 +670,7 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
         }
     }
 
-    u8* stack_pointer = (u8*)g_mapper->map(mode32, base + max_stack_size - stack_size, stack_size, PROT_READ | PROT_WRITE,
+    u8* stack_pointer = (u8*)g_mapper->map(mode32, base + max_stack_size - stack_size, stack_size, stack_protections,
                                            MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS | MAP_GROWSDOWN, -1, 0);
     if (stack_pointer == MAP_FAILED) {
         ERROR("Failed to allocate stack");
@@ -586,12 +684,34 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
     stack_pointer += stack_size;
     VERBOSE("Stack pointer at %p", stack_pointer);
 
-    SMCLOG("Allocated stack: %lx-%lx", stack_pointer, stack_pointer + max_stack_size);
+    SMCLOG("Allocated stack: %p-%p", stack_pointer, stack_pointer + max_stack_size);
     return {stack_pointer, max_stack_size};
 }
 
 void Threads::StartThread(ThreadState* state) {
     state->recompiler->enterDispatcher(state);
+}
+
+void Threads::ExitThread(void* host_stack, int status) {
+#ifdef __riscv
+    if (host_stack) {
+        register u64 a0 asm("a0") = (u64)host_stack;
+        register u64 a1 asm("a1") = host_stack_size;
+        register u64 a2 asm("a2") = (u64)status;
+        register u64 a7 asm("a7") = SYS_munmap;
+        asm volatile(R"(
+            ecall
+            mv a0, a2
+            li a7, %[sys_exit]
+            ecall
+        )"
+                     : "+r"(a0), "+r"(a7)
+                     : "r"(a1), "r"(a2), [sys_exit] "i"(SYS_exit)
+                     : "memory");
+    }
+#endif
+    syscall(SYS_exit, status);
+    UNREACHABLE();
 }
 
 int Threads::Unshare(int flags) {

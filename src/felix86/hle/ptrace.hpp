@@ -71,6 +71,7 @@ struct PtraceData {
     // Written by tracee once during init
     struct {
         pid_t tracer_pid;
+        pid_t parent_tid;
         pid_t my_tgid;
         pid_t my_tid;
         u64 flags;

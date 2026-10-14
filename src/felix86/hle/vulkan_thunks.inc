@@ -360,6 +360,9 @@ KHR("libvulkan.so", vkCmdPushDescriptorSetWithTemplate2, v_qq)
 // VK_KHR_present_wait
 KHR("libvulkan.so", vkWaitForPresent, d_qqqq)
 
+// VK_KHR_present_wait2
+KHR("libvulkan.so", vkWaitForPresent2, d_qqq)
+
 // VK_KHR_line_rasterization
 KHR_EXT("libvulkan.so", vkCmdSetLineStipple, v_qdw)
 
@@ -410,6 +413,10 @@ EXT("libvulkan.so", vkGetMemoryHostPointerProperties, d_qdqq)
 // VK_KHR_fragment_shading_rate
 KHR("libvulkan.so", vkCmdSetFragmentShadingRateKHR, v_qqq)
 KHR("libvulkan.so", vkGetPhysicalDeviceFragmentShadingRates, d_qqq)
+
+// VK_AMD_buffer_marker
+X("libvulkan.so", vkCmdWriteBufferMarkerAMD, v_qdqqd)
+X("libvulkan.so", vkCmdWriteBufferMarker2AMD, v_qqqqd)
 
 #undef KHR
 #undef EXT

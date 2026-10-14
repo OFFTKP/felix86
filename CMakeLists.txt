@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 option(FELIX86_BUILD_THUNKING "Build with thunking support" ON)
 option(FELIX86_MONTHLY_RELEASE "Build as a monthly release" OFF)
+option(FELIX86_VALIDATE_BINFMT_MISC "Warn if felix86 binary is not the one installed in binfmt_misc" ON)
 set(FELIX86_CONFIG_PATH "/etc/opt/felix86/config.toml" CACHE STRING "Path to the system-wide configuration file")
 
 project(felix86)
@@ -40,13 +41,13 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
             " https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115789")
 
         # Don't use vector extension to avoid this bug
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=rv64gc_zicsr_zifencei -mno-relax")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gc_zicsr_zifencei -mno-relax")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=rv64gc_zba_zbb_zbs_zicsr_zifencei -mno-relax")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gc_zba_zbb_zbs_zicsr_zifencei -mno-relax")
     else()
         # Since felix86 needs RVV, specify the ISA here to get some free wins in the C++ side
         # Also use --no-relax so that the `gp` register is free to do as we please
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=rv64gcv_zicsr_zifencei -mno-relax")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gcv_zicsr_zifencei -mno-relax")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=rv64gcv_zba_zbb_zbs_zicsr_zifencei -mno-relax")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gcv_zba_zbb_zbs_zicsr_zifencei -mno-relax")
     endif()
 
     # Just an extra layer of making sure the compiler doesn't decide to use GP as an allocatable reg
@@ -55,6 +56,56 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffixed-gp")
 endif()
 
+include(ExternalProject)
+include(ProcessorCount)
+
+set(JEMALLOC_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/jemalloc)
+set(JEMALLOC_BINARY_DIR ${CMAKE_BINARY_DIR}/external/jemalloc)
+set(JEMALLOC_LIBRARY ${JEMALLOC_BINARY_DIR}/lib/libjemalloc_pic.a)
+
+set(JEMALLOC_CC "${CMAKE_C_COMPILER}")
+if (CMAKE_C_COMPILER_LAUNCHER)
+    set(JEMALLOC_CC "${CMAKE_C_COMPILER_LAUNCHER} ${CMAKE_C_COMPILER}")
+endif()
+
+set(JEMALLOC_CFLAGS "${CMAKE_C_FLAGS}")
+
+set(JEMALLOC_CONFIGURE_ARGS
+    --disable-cxx
+    --disable-doc
+    --with-lg-page=12
+)
+if (CMAKE_CROSSCOMPILING)
+    list(APPEND JEMALLOC_CONFIGURE_ARGS --host=${CMAKE_SYSTEM_PROCESSOR}-linux-gnu)
+endif()
+
+if (CMAKE_GENERATOR MATCHES "Make")
+    set(JEMALLOC_MAKE "$(MAKE)")
+else()
+    ProcessorCount(JEMALLOC_JOBS)
+    if (JEMALLOC_JOBS EQUAL 0)
+        set(JEMALLOC_JOBS 1)
+    endif()
+    set(JEMALLOC_MAKE make -j${JEMALLOC_JOBS})
+endif()
+
+ExternalProject_Add(jemalloc_build
+    SOURCE_DIR ${JEMALLOC_SOURCE_DIR}
+    BINARY_DIR ${JEMALLOC_BINARY_DIR}
+    CONFIGURE_COMMAND ${CMAKE_COMMAND} -E chdir ${JEMALLOC_SOURCE_DIR} autoconf -o ${JEMALLOC_BINARY_DIR}/configure
+              COMMAND ${CMAKE_COMMAND} -E env "CC=${JEMALLOC_CC}" "CFLAGS=${JEMALLOC_CFLAGS}" ${JEMALLOC_BINARY_DIR}/configure --srcdir=${JEMALLOC_SOURCE_DIR} ${JEMALLOC_CONFIGURE_ARGS}
+    BUILD_COMMAND ${JEMALLOC_MAKE} build_lib_static
+    INSTALL_COMMAND ""
+    BUILD_BYPRODUCTS ${JEMALLOC_LIBRARY}
+    LOG_CONFIGURE ON
+    LOG_BUILD ON
+    LOG_OUTPUT_ON_FAILURE ON
+)
+
+add_library(jemalloc STATIC IMPORTED GLOBAL)
+set_target_properties(jemalloc PROPERTIES IMPORTED_LOCATION ${JEMALLOC_LIBRARY})
+add_dependencies(jemalloc jemalloc_build)
+
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 cmake_policy(SET CMP0083 NEW)
 include(CheckPIESupported)
@@ -62,7 +113,11 @@ check_pie_supported()
 set(BISCUIT_CODE_BUFFER_MMAP ON)
 set(BUILD_TESTING OFF)
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fno-rtti> $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>)
+add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-include${CMAKE_SOURCE_DIR}/src/felix86/common/assert_override.hpp>)
 add_subdirectory(external/biscuit)
+set(ZYDIS_FEATURE_ENCODER OFF CACHE BOOL "" FORCE)
+set(ZYDIS_FEATURE_AVX512 OFF CACHE BOOL "" FORCE)
+set(ZYDIS_FEATURE_KNC OFF CACHE BOOL "" FORCE)
 add_subdirectory(external/zydis)
 add_subdirectory(external/fmt)
 add_subdirectory(external/berkeley-softfloat-3)
@@ -102,12 +157,14 @@ set(FELIX86_COMMON_SOURCES
     src/felix86/common/print.cpp
     src/felix86/common/process_lock.cpp
     src/felix86/common/script.cpp
+    src/felix86/common/shm_stats.cpp
     src/felix86/common/state.cpp
     src/felix86/common/strace.cpp
     src/felix86/common/utility.cpp
     src/felix86/common/binfmt.cpp
     src/felix86/common/x87.cpp
     src/felix86/common/xsave.cpp
+    src/felix86/common/decoder.c
 )
 
 set(FELIX86_HLE_SOURCES
@@ -140,6 +197,7 @@ set(FELIX86_HLE_SOURCES
 set(FELIX86_V2_SOURCES
     src/felix86/v2/recompiler.cpp
     src/felix86/v2/handlers.cpp
+    src/felix86/v2/optimizer.cpp
 )
 
 set(FELIX86_CORE_SOURCES
@@ -149,9 +207,14 @@ set(FELIX86_CORE_SOURCES
     src/felix86/emulator.cpp
 )
 
+set(FELIX86_DISASSEMBLER_SOURCES
+    src/felix86/common/disassembler.cpp
+    src/felix86/common/decoder.c
+)
+
 set(FELIX86_REPL_SOURCES
     src/felix86/repl.cpp
-    external/box64/rv64_printer.c
+    ${FELIX86_DISASSEMBLER_SOURCES}
 )
 
 set(FELIX86_INCLUDES
@@ -161,13 +224,14 @@ set(FELIX86_INCLUDES
     external/json
     external/biscuit/include
     external/tomlc17
+    external/FEX/include
 )
 
 add_library(tomlc17 STATIC external/tomlc17/tomlc17.c)
 add_library(felix86_core STATIC)
 target_sources(felix86_core PRIVATE ${FELIX86_CORE_SOURCES})
 target_include_directories(felix86_core PUBLIC ${FELIX86_INCLUDES})
-target_link_libraries(felix86_core PUBLIC Zydis fmt tomlc17 biscuit berkeley-softfloat cephes git_version x64_vdso)
+target_link_libraries(felix86_core PUBLIC Zydis fmt tomlc17 biscuit berkeley-softfloat cephes git_version x64_vdso jemalloc ${CMAKE_DL_LIBS})
 
 target_compile_options(felix86_core PRIVATE -Wall -Werror=implicit-fallthrough -Werror=switch -fPIE)
 target_compile_options(felix86_core PRIVATE $<$<COMPILE_LANGUAGE:C>:-Werror=incompatible-pointer-types>)
@@ -184,6 +248,10 @@ target_compile_definitions(felix86_core PUBLIC FELIX86_CONFIG_PATH="${FELIX86_CO
 
 if (FELIX86_BUILD_THUNKING)
     target_compile_definitions(felix86_core PUBLIC FELIX86_BUILD_THUNKING)
+endif()
+
+if (FELIX86_VALIDATE_BINFMT_MISC)
+    target_compile_definitions(felix86_core PUBLIC FELIX86_VALIDATE_BINFMT_MISC)
 endif()
 
 add_executable(felix86)
@@ -221,17 +289,28 @@ if (BUILD_THUNKGEN)
     target_include_directories(felix86_thunkgen PRIVATE src/felix86/hle)
 endif()
 
-if (BUILD_INSTRUCTION_COUNTER)
+if (BUILD_INSTRUCTION_COUNTER OR BUILD_LATENCY_MEASURER)
     # Generated x86 code may slightly change between xbyak versions
     # One example is order of operands in xchg reg, reg has changed in the past
     # which causes slightly different generated code, so we pin it to a vendored version
     add_library(vendored_xbyak INTERFACE)
     target_include_directories(vendored_xbyak INTERFACE external/xbyak)
-    add_executable(felix86_instruction_counter src/felix86/tools/generate_instruction_count.cpp external/box64/rv64_printer.c)
-    target_include_directories(felix86_instruction_counter PRIVATE src external/box64)
+endif()
+
+if (BUILD_INSTRUCTION_COUNTER)
+    add_executable(felix86_instruction_counter src/felix86/tools/generate_instruction_count.cpp ${FELIX86_DISASSEMBLER_SOURCES})
+    target_include_directories(felix86_instruction_counter PRIVATE src)
     target_link_libraries(felix86_instruction_counter PRIVATE vendored_xbyak felix86_core)
 endif()
 
+if (BUILD_LATENCY_MEASURER)
+    if (NOT CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
+        message(FATAL_ERROR "Latency measurer is only buildable for RISC-V")
+    endif()
+    add_executable(felix86_latency_measurer src/felix86/tools/latency_measurer.cpp)
+    target_include_directories(felix86_latency_measurer PRIVATE src)
+    target_link_libraries(felix86_latency_measurer PRIVATE vendored_xbyak felix86_core)
+endif()
 
 if (BUILD_TESTS)
     add_subdirectory(external/Catch2)
@@ -251,6 +330,7 @@ if (BUILD_TESTS)
         tests/FEX/x87.cpp
         tests/Binaries/binary_test_loader.cpp
         tests/Unit/mmap.cpp
+        tests/Unit/shmat.cpp
         tests/Unit/paths.cpp
     )
 

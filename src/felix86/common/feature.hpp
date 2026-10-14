@@ -26,6 +26,7 @@ enum class x86_feature {
     LZCNT_POPCNT,
     MOVBE,
     ADX,
+    SHA,
 };
 
 u64 get_xfeature_enabled_mask();

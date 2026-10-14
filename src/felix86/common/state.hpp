@@ -5,6 +5,7 @@
 #include "biscuit/isa.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/common/shm_stats.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/common/x87.hpp"
@@ -109,6 +110,7 @@ typedef enum : u8 {
     X86_REF_SF,
     X86_REF_DF,
     X86_REF_OF,
+    X86_REF_RF,
     X86_REF_TF,
     X86_REF_GS,
     X86_REF_FS,
@@ -165,12 +167,10 @@ typedef enum : u8 {
     X(felix86_xrstor)                                                                                                                                \
     X(felix86_pcmpxstrx)                                                                                                                             \
     X(felix86_mpsadbw)                                                                                                                               \
-    X(felix86_vpsadbw)                                                                                                                               \
-    X(felix86_vpsadbw256)                                                                                                                            \
     X(felix86_tf_changed)                                                                                                                            \
     X(felix86_aeskeygenassist)                                                                                                                       \
-    X(felix86_vmpsadbw_128)                                                                                                                          \
-    X(felix86_vmpsadbw_256)                                                                                                                          \
+    X(felix86_sha1rnds4)                                                                                                                             \
+    X(felix86_warn_unaligned_atomic)                                                                                                                 \
     X(felix86_crash_and_burn)                                                                                                                        \
     X(felix86_raise_hardware_breakpoint)                                                                                                             \
     X(felix86_x87_FLD)                                                                                                                               \
@@ -256,6 +256,7 @@ struct UserContext {
     bool of{};
     bool df{};
     bool tf{};
+    bool rf{};
     // Actual segment values
     // These are 64-bit here to simplify our life in PTRACE_POKEUSER emulation
     // Since host is 64-bit but guest can be 32-bit, it's nice to be able to use host PTRACE_POKEDATA that does 64-bit write
@@ -276,7 +277,7 @@ struct UserContext {
     u32 mxcsr{0x1F80}; // default value
     u16 fpu_cw{0x37F};
     u16 fpu_sw{};
-    u8 fpu_tw = -1;
+    u8 fpu_tw = 0;
     u8 fpu_top{};
     u64 orig_rax{};
 
@@ -293,13 +294,16 @@ struct UserContext {
     u64 GetFlags() const {
         u64 flags = 0;
         flags |= cf;
+        flags |= 1 << 1;
         flags |= pf << 2;
         flags |= af << 4;
         flags |= zf << 6;
         flags |= sf << 7;
         flags |= tf << 8;
+        flags |= 1 << 9;
         flags |= df << 10;
         flags |= of << 11;
+        flags |= rf << 16;
         return flags;
     }
 
@@ -323,6 +327,7 @@ struct UserContext {
         tf = (flags >> 8) & 1;
         df = (flags >> 10) & 1;
         of = (flags >> 11) & 1;
+        rf = (flags >> 16) & 1;
     }
 };
 
@@ -371,9 +376,13 @@ struct ThreadState {
     void* deferred_fault_page = nullptr;
     bool in_restartable_syscall = false;
     bool should_restart_syscall = false;
+    bool in_rmw_function = false;
 
     bool force_defer_synchronous = false;
     sigjmp_buf force_defer_buffer{};
+    bool in_scan_ahead = false;
+    u64 scan_ahead_address = 0;
+    sigjmp_buf scan_ahead_buffer{};
 
     // For storing generated risc-v or x86 code that needs to outlive code cache clears
     u8* riscv_trampoline_storage_start = nullptr;
@@ -383,7 +392,11 @@ struct ThreadState {
 
     bool use_precision_control = false;
 
+    void* host_stack = nullptr;
+
     PtraceData ptrace_data;
+
+    FEXCore::SHMStats::ThreadStats* thread_stats = nullptr;
 
     u64 GetGpr(x86_ref_e ref) const {
         if (ref < X86_REF_RAX || ref > X86_REF_R15) {
@@ -451,6 +464,9 @@ struct ThreadState {
             break;
         case X86_REF_TF:
             ctx.tf = value;
+            break;
+        case X86_REF_RF:
+            ctx.rf = value;
             break;
         default:
             ERROR("Invalid flag reference: %d", flag);
@@ -556,3 +572,5 @@ struct ThreadState {
 
     static void Destroy(ThreadState* state);
 };
+
+static_assert(offsetof(ThreadState, unaligned_atomics_counter) < 2048);

@@ -2,24 +2,33 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <unordered_map>
 #include <Zydis/Utils.h>
 #include "Zydis/Decoder.h"
 #include "biscuit/assembler.hpp"
+#include "biscuit/registers.hpp"
+#include "felix86/common/config.hpp"
 #include "felix86/common/frame.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
+#include "felix86/common/zydis_types.hpp"
 
 #define FELIX86_HINT_SAFEPOINT_SYSCALL 0xa5
 #define FELIX86_HINT_GP 0x86
+#define FELIX86_HINT_INT_GP 0x1d
 #define FELIX86_HINT_DIVZERO 0xd0
 #define FELIX86_HINT_INT3 0xc3
 #define FELIX86_HINT_INT1 0xf1
 #define FELIX86_HINT_UD2 0xd2
 #define FELIX86_HINT_TF 0x7f
+#define FELIX86_HINT_NOT_MAPPED 0x4e
+#define FELIX86_HINT_NOT_READ 0x15
+#define FELIX86_HINT_NOT_EXEC 0xec
 
-constexpr int address_cache_bits = 16;
+constexpr int scan_ahead_count = 64;
+constexpr int address_cache_bits = 17;
 
 struct AddressCacheEntry {
     u64 host{}, guest{};
@@ -30,6 +39,7 @@ struct AllocatedX87Reg {
     bool loaded = false;
     bool dirty = false;
     bool modify_tag = false;
+    bool is32bit = false;
 };
 
 struct AllocatedMMXReg {
@@ -64,14 +74,30 @@ struct TranslationSize {
 };
 static_assert(sizeof(TranslationSize) == sizeof(u16));
 
+enum class PendingLinkFlags : u64 {
+    HasReturnHint = 0x8000'0000'0000'0000,
+};
+
 struct BlockMetadata {
     u64 host_address{};
     u64 guest_address{};
     // This gives us a count of x86 instructions per block, the size of each instruction
     // and the size of the risc-v instructions used to translate it
     std::vector<TranslationSize> translation_sizes{};
-    std::vector<u8*> pending_links{};
+    /// Pointers to blocks to be linked. The top 7 bits are used to denote various flags
+    // related to the block as a bitset.
+    std::vector<uintptr_t> pending_links{};
+    // We always end blocks on CALL. This is because some games (e.g. Celeste) may include garbage or
+    // unmapped pages if we don't end sequences on CALL. Since we want to do the CALL/RET optimization,
+    // and the hardware RSB needs to match the return address, but we can't continue scanning after the call,
+    // we place a jumpAndLink after the CALL, and populate the address cache with it. But if the address cache
+    // entry of the return block gets evicted, the next return misses and the dispatcher re-inserts an entry.
+    // When the block would get recompiled the address cache entry would point to the new block and RSB prediction
+    // would fail. We want RSB to succeed and to not compile past the CALL, so this is our compromise.
+    u64 ret_stub{};
 };
+
+using InterruptibleSyscallFunc = u64 (*)(u64* effective_deferred_signals, u64 nr, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5, u64 arg6);
 
 // WARN: don't allocate this struct on the stack as it's quite big due to address_cache and can lead to stack overflow
 struct Recompiler {
@@ -117,17 +143,23 @@ struct Recompiler {
 
     void resetScratch();
 
+    void resetBlockState(u64 rip);
+
+    void flushBlockState(u64 rip);
+
+    void loadRoundingMode(bool sse);
+
     biscuit::GPR getTOP();
 
     void setTOP(biscuit::GPR top);
 
-    biscuit::FPR getST(int index, bool dirty = true);
+    biscuit::FPR getST(int index, bool dirty = true, bool convert_to_64_bit = true);
 
-    biscuit::FPR getST(ZydisDecodedOperand* operand, bool dirty = true);
+    biscuit::FPR getST(ZydisDecodedOperand* operand, bool dirty = true, bool convert_to_64_bit = true);
 
-    void setST(int index, biscuit::FPR value);
+    void setST(int index, biscuit::FPR value, bool is32bit = false);
 
-    void setST(ZydisDecodedOperand* operand, biscuit::FPR value);
+    void setST(ZydisDecodedOperand* operand, biscuit::FPR value, bool is32bit = false);
 
     x86_size_e getSize(const ZydisDecodedOperand* operand);
 
@@ -138,6 +170,10 @@ struct Recompiler {
     biscuit::GPR getGPR(x86_ref_e ref, x86_size_e size);
 
     biscuit::GPR getGPR(ZydisRegister reg);
+
+    biscuit::GPR getGPRSigned(x86_ref_e ref, x86_size_e size, bool dont_sext32 = false);
+
+    biscuit::GPR getGPRSigned(const ZydisDecodedOperand* operand, bool dont_sext32 = false);
 
     biscuit::Vec getVec(const ZydisDecodedOperand* operand);
 
@@ -158,11 +194,15 @@ struct Recompiler {
 
     void setVec(x86_ref_e ref, biscuit::Vec vec);
 
-    biscuit::GPR lea(const ZydisDecodedOperand* operand, bool use_temp = true);
+    biscuit::GPR lea(const ZydisDecodedOperand* operand, bool use_temp = true, biscuit::GPR forced_dst = x0, i64* offset = nullptr);
+
+    biscuit::GPR leaOffset(const ZydisDecodedOperand* operand, i64& offset);
+
+    void shadd(biscuit::GPR dst, biscuit::GPR base, biscuit::GPR index, u8 scale);
 
     void stopCompiling();
 
-    void backToDispatcher();
+    void backToDispatcher(bool return_hint = false, bool skip_lookup = false);
 
     void writebackState();
 
@@ -198,9 +238,7 @@ struct Recompiler {
 
     int getBitSize(x86_size_e size);
 
-    u64 getSignMask(x86_size_e size_e);
-
-    void jumpAndLink(u64 rip);
+    void jumpAndLink(u64 rip, bool return_hint = false, bool skip_lookup = false);
 
     void jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false);
 
@@ -224,6 +262,14 @@ struct Recompiler {
 
     SingleStepMode getSingleStepMode() {
         return single_step;
+    }
+
+    bool isSingleStepping() const {
+        return g_config.single_step || single_step != SingleStepMode::None;
+    }
+
+    bool canEmitRetStub() const {
+        return g_config.address_cache && g_config.return_address_hint && !relocatable && !isSingleStepping();
     }
 
     // TODO: move these elsewhere
@@ -425,6 +471,13 @@ struct Recompiler {
 
     biscuit::GPR getCond(int cond);
 
+    // Return a GPR and whether it needs to be inverted
+    std::pair<biscuit::GPR, bool> getCondNoInvert(int cond);
+
+    bool needsTsoFence() const;
+
+    void readMemorySigned(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size);
+
     void readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size);
 
     void readMemory(biscuit::Vec dest, biscuit::GPR address, int size);
@@ -487,14 +540,12 @@ struct Recompiler {
 
     u64 getCompiledBlock(ThreadState* state, u64 rip) {
         if (g_config.address_cache) {
-            AddressCacheEntry& entry = getAddressCacheEntry(rip);
-            if (entry.guest == rip) {
-                return entry.host;
-            } else if (blockExists(rip)) {
-                u64 host = getBlockMetadata(rip).host_address;
+            BlockMetadata& meta = getBlockMetadata(rip);
+            if (meta.host_address != 0) {
+                AddressCacheEntry& entry = getAddressCacheEntry(rip);
                 entry.guest = rip;
-                entry.host = host;
-                return host;
+                entry.host = meta.ret_stub ? meta.ret_stub : meta.host_address;
+                return meta.host_address;
             } else {
                 return compile(state, rip);
             }
@@ -550,9 +601,9 @@ struct Recompiler {
 
     void updateAuxiliarySub(biscuit::GPR lhs, biscuit::GPR rhs);
 
-    void updateAuxiliaryAdc(biscuit::GPR lhs, biscuit::GPR result, biscuit::GPR cf, biscuit::GPR result_2);
+    void updateAuxiliaryAdc(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result);
 
-    void updateAuxiliarySbb(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, biscuit::GPR cf);
+    void updateAuxiliarySbb(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result);
 
     void updateCarryAdc(biscuit::GPR dst, biscuit::GPR result, biscuit::GPR result_2, x86_size_e size);
 
@@ -644,8 +695,19 @@ struct Recompiler {
 
     // return true if SEW and VL add up to 128 bits
     bool isCurrentLength128() {
-        if (current_grouping != LMUL::M1) {
+        switch (current_grouping) {
+        case LMUL::M1: {
+            break;
+        }
+        case LMUL::MF2: {
+            if (Extensions::VLEN / 2 < 128) {
+                return false;
+            }
+            break;
+        }
+        default: {
             return false;
+        }
         }
 
         switch (current_sew) {
@@ -719,10 +781,54 @@ struct Recompiler {
             x87_reg_cache[i].loaded = false;
             x87_reg_cache[i].dirty = false;
             x87_reg_cache[i].modify_tag = false;
+            x87_reg_cache[i].is32bit = false;
             mmx_reg_cache[i].loaded = false;
             mmx_reg_cache[i].dirty = false;
         }
         pushed_this_block = 0;
+    }
+
+    void markX87RegAs32Bit(biscuit::FPR reg) {
+        for (auto& entry : x87_reg_cache) {
+            if (entry.loaded && entry.reg == reg) {
+                entry.is32bit = true;
+                return;
+            }
+        }
+        UNREACHABLE();
+    }
+
+    void markX87RegAs64Bit(biscuit::FPR reg) {
+        for (auto& entry : x87_reg_cache) {
+            if (entry.loaded && entry.reg == reg) {
+                if (entry.is32bit) {
+                    as.FCVT_D_S(reg, reg);
+                }
+                entry.is32bit = false;
+                return;
+            }
+        }
+        UNREACHABLE();
+    }
+
+    void setX87RegPrecision(biscuit::FPR reg, bool is32bit) {
+        for (auto& entry : x87_reg_cache) {
+            if (entry.loaded && entry.reg == reg) {
+                entry.is32bit = is32bit;
+                return;
+            }
+        }
+        UNREACHABLE();
+    }
+
+    bool isX87Reg32Bit(biscuit::FPR reg) {
+        for (auto& entry : x87_reg_cache) {
+            if (entry.loaded && entry.reg == reg) {
+                return entry.is32bit;
+            }
+        }
+        UNREACHABLE();
+        return false;
     }
 
     void switchToMMX();
@@ -754,15 +860,56 @@ struct Recompiler {
 
     std::optional<std::pair<ZydisDecodedInstruction*, ZydisDecodedOperand*>> getNextInstruction();
 
-private:
-    struct FlagAccess {
-        bool modification; // true if modified, false if used
-        u64 position;
-    };
+    i16 getCurrentPushpopOffset() {
+        return current_pushpop_offset;
+    }
 
+    void setCurrentPushpopOffset(i16 value) {
+        current_pushpop_offset = value;
+    }
+
+    void flushPushpop() {
+        i16 pushpop_offset = getCurrentPushpopOffset();
+        if (pushpop_offset != 0) {
+            ASSERT(IsValidSigned12BitImm(pushpop_offset));
+            setCurrentPushpopOffset(0);
+            biscuit::GPR rsp = getGPR(X86_REF_RSP, stackWidth());
+            as.ADDI(rsp, rsp, pushpop_offset);
+            setGPR(X86_REF_RSP, stackWidth(), rsp);
+        }
+    }
+
+    void addressCacheLookup(biscuit::GPR guest_address, void on_hit(Assembler&, biscuit::GPR), bool use_ra = false);
+
+    i64 interruptibleSyscall(u64* signals, u64 nr, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5, u64 arg6) {
+        ASSERT(interruptible_syscall_func);
+        return interruptible_syscall_func(signals, nr, arg1, arg2, arg3, arg4, arg5, arg6);
+    }
+
+    bool isInInterruptibleSyscall(u64 pc) {
+        return pc >= (u64)interruptible_syscall_func && pc <= (u64)interruptible_syscall_func_ecall;
+    }
+
+    u64 getInterruptibleSyscallEintrAddress() {
+        return (u64)interruptible_syscall_func_eintr;
+    }
+
+    bool isInNotMappedOrNotReadThunk(u64 pc) {
+        return pc == not_mapped_thunk || pc == not_read_thunk;
+    }
+
+    bool isInNotExecThunk(u64 pc) {
+        return pc == not_exec_thunk;
+    }
+
+private:
     void emitNecessaryStuff();
 
     void emitDispatcher();
+
+    void emitBadAddressThunks();
+
+    void emitInterruptibleSyscallFunction();
 
     [[nodiscard]] u8* emitInvalidateCallerThunk();
 
@@ -781,17 +928,6 @@ private:
     biscuit::Assembler as{};
     ZydisDecoder decoder{};
 
-    using Operands = ZydisDecodedOperand[ZYDIS_MAX_OPERAND_COUNT];
-    std::vector<std::pair<ZydisDecodedInstruction, Operands>> instructions;
-
-    ZydisDecodedInstruction* current_instruction;
-    ZydisDecodedOperand* current_operands;
-    u64 current_rip;
-    u64 current_ripreg_value;
-    u64 current_instruction_index = 0;
-    bool current_instruction_on_stack = false;
-    bool current_block_big = false;
-
     std::array<std::pair<bool, u64>, 4> breakpoints;
 
     void (*enter_dispatcher)(ThreadState*){};
@@ -799,10 +935,13 @@ private:
     void (*exit_dispatcher)(felix86_frame*){};
 
     u64 compile_next_handler{};
+    u64 compile_next_skip_address_cache{};
 
     u64 restore_state_handler{};
 
     u64 invalidate_caller_thunk{};
+
+    u64 not_mapped_thunk{}, not_read_thunk{}, not_exec_thunk{};
 
     void* start_of_code_cache{};
 
@@ -828,8 +967,16 @@ private:
 
     int rax_value = -1;
 
-    std::array<std::vector<FlagAccess>, 6> flag_access_cpazso{};
-
+    std::vector<InstructionData> instructions;
+    ZydisDecodedInstruction* current_instruction;
+    ZydisDecodedOperand* current_operands;
+    u64 current_rip;
+    u64 current_ripreg_value;
+    u64 current_instruction_index = 0;
+    i16 current_pushpop_offset = 0;
+    bool current_instruction_on_stack = false;
+    bool current_block_big = false;
+    FlagAccessData current_flag_access{};
     BlockMetadata* current_block_metadata{};
     SEW current_sew = SEW::E1024;
     u8 current_vlen = 0;
@@ -847,6 +994,9 @@ private:
     bool skip_next = false;
 
     AddressCacheEntry* address_cache = nullptr;
+
+    void* reservation_base = nullptr;
+    size_t reservation_size = 0;
 
     std::deque<u64> calltrace{};
 
@@ -866,10 +1016,14 @@ private:
 
     bool v0_has_mask = false;
 
+    InterruptibleSyscallFunc interruptible_syscall_func = nullptr;
+    void* interruptible_syscall_func_ecall = nullptr;
+    void* interruptible_syscall_func_eintr = nullptr;
+
     SingleStepMode single_step = SingleStepMode::None;
 
     constexpr static std::array scratch_gprs = {
-        x1, x6, x28, x29, x7, x30, x31,
+        x1, x6, x7, x28, x29, x30, x31,
     };
 
     // TODO: is the below comment still true? make it not true

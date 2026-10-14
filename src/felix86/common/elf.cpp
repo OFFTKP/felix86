@@ -100,11 +100,19 @@ private:
     bool mode32;
 
     Elf32_Ehdr& inner32() {
-        return std::get<Elf32_Ehdr>(inner);
+        Elf32_Ehdr* ptr = std::get_if<Elf32_Ehdr>(&inner);
+        if (!ptr) {
+            ERROR("ELF file header is not 32-bit");
+        }
+        return *ptr;
     }
 
     Elf64_Ehdr& inner64() {
-        return std::get<Elf64_Ehdr>(inner);
+        Elf64_Ehdr* ptr = std::get_if<Elf64_Ehdr>(&inner);
+        if (!ptr) {
+            ERROR("ELF file header is not 64-bit");
+        }
+        return *ptr;
     }
 
     std::variant<Elf64_Ehdr, Elf32_Ehdr> inner;
@@ -164,11 +172,19 @@ private:
     bool mode32;
 
     Elf32_Phdr& inner32() {
-        return std::get<Elf32_Phdr>(inner);
+        Elf32_Phdr* ptr = std::get_if<Elf32_Phdr>(&inner);
+        if (!ptr) {
+            ERROR("ELF program header is not 32-bit");
+        }
+        return *ptr;
     }
 
     Elf64_Phdr& inner64() {
-        return std::get<Elf64_Phdr>(inner);
+        Elf64_Phdr* ptr = std::get_if<Elf64_Phdr>(&inner);
+        if (!ptr) {
+            ERROR("ELF program header is not 64-bit");
+        }
+        return *ptr;
     }
 
     std::variant<Elf64_Phdr, Elf32_Phdr> inner;
@@ -224,11 +240,19 @@ private:
     bool mode32;
 
     Elf32_Shdr& inner32() {
-        return std::get<Elf32_Shdr>(inner);
+        Elf32_Shdr* ptr = std::get_if<Elf32_Shdr>(&inner);
+        if (!ptr) {
+            ERROR("ELF section header is not 32-bit");
+        }
+        return *ptr;
     }
 
     Elf64_Shdr& inner64() {
-        return std::get<Elf64_Shdr>(inner);
+        Elf64_Shdr* ptr = std::get_if<Elf64_Shdr>(&inner);
+        if (!ptr) {
+            ERROR("ELF section header is not 64-bit");
+        }
+        return *ptr;
     }
 
     std::variant<Elf64_Shdr, Elf32_Shdr> inner;
@@ -285,11 +309,19 @@ private:
     bool mode32;
 
     Elf32_Sym& inner32() {
-        return std::get<Elf32_Sym>(inner);
+        Elf32_Sym* ptr = std::get_if<Elf32_Sym>(&inner);
+        if (!ptr) {
+            ERROR("ELF symbol is not 32-bit");
+        }
+        return *ptr;
     }
 
     Elf64_Sym& inner64() {
-        return std::get<Elf64_Sym>(inner);
+        Elf64_Sym* ptr = std::get_if<Elf64_Sym>(&inner);
+        if (!ptr) {
+            ERROR("ELF symbol is not 64-bit");
+        }
+        return *ptr;
     }
 
     std::variant<Elf64_Sym, Elf32_Sym> inner;
@@ -416,13 +448,26 @@ void Elf::Load(const std::filesystem::path& path) {
                 ERROR("Failed to read interpreter from file %s", path.c_str());
             }
 
-            ASSERT(!interpreter_str.empty() && interpreter_str[0] == '/');
+            interpreter_str.resize(strnlen(interpreter_str.c_str(), interpreter_str.size()));
+
+            if (interpreter_str.empty()) {
+                ERROR("File %s has an empty interpreter path", path.c_str());
+            }
+
+            if (interpreter_str[0] != '/') {
+                WARN("File %s has relative interpreter path: %s", path.c_str(), interpreter_str.c_str());
+            }
+
             interpreter = interpreter_str;
             break;
         }
         case PT_GNU_STACK: {
-            if (phdr.flags() & PF_X) {
-                WARN("Executable stack");
+            if (!is_interpreter) {
+                g_gnu_stack = PF_R | PF_W;
+                if (phdr.flags() & PF_X) {
+                    WARN("Executable stack");
+                    g_gnu_stack |= PF_X;
+                }
             }
             break;
         }
@@ -495,7 +540,7 @@ void Elf::Load(const std::filesystem::path& path) {
         Elf_Phdr& phdr = phdrtable[i];
         switch (phdr.type()) {
         case PT_LOAD: {
-            VERBOSE("Segment %d: %lx-%lx", i, phdr.vaddr(), phdr.vaddr() + phdr.memsz());
+            VERBOSE("Segment %lu: %lx-%lx", i, phdr.vaddr(), phdr.vaddr() + phdr.memsz());
 
             u8* segment_base = base_ptr + PAGE_START(phdr.vaddr());
             u64 segment_size = phdr.filesz() + PAGE_OFFSET(phdr.vaddr());

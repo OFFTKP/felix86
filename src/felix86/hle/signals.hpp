@@ -104,4 +104,6 @@ struct Signals {
     static void sigreturn(ThreadState* state, bool rt);
 
     static int sigprocmask(ThreadState* state, int how, sigset_t* new_set, sigset_t* old_set);
+
+    static int sigaltstack(ThreadState* state, stack_t* new_ss, stack_t* old_ss, int flags);
 };

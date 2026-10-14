@@ -199,9 +199,12 @@ u64 sext_if_64(u64 value, u8 size_e) {
 }
 
 // Flush icache for current core
-void flush_icache() {
+void flush_icache(u64 start, u64 end) {
 #if defined(__riscv)
-    asm volatile("fence.i");
+#ifndef SYS_RISCV_FLUSH_ICACHE_LOCAL
+#define SYS_RISCV_FLUSH_ICACHE_LOCAL 1
+#endif
+    __riscv_flush_icache((void*)start, (void*)end, SYS_RISCV_FLUSH_ICACHE_LOCAL);
 #endif
 }
 
@@ -252,7 +255,7 @@ __attribute__((visibility("default"))) void disassemble(u64 host_address) {
         ZydisDecodedOperand operands[10];
         ZyanStatus status = ZydisDecoderDecodeFull(&decoder, (void*)cur, 15, &instruction, operands);
         if (!ZYAN_SUCCESS(status)) {
-            printf("Failed to decode instruction at %016lx\n", cur);
+            PLAIN("Failed to decode instruction at %016lx\n", cur);
             break;
         }
 
@@ -317,79 +320,6 @@ void felix86_iret(struct ThreadState* state, bool iretq) {
     felix86_set_segment(state, cs, ZYDIS_REGISTER_CS);
 }
 
-void felix86_pmaddwd(i16* dst, i16* src) {
-    ASSERT(((u64)dst & 1) == 0);
-    ASSERT(((u64)src & 1) == 0);
-    i32 temp[4];
-    i32 result[4];
-
-    temp[0] = dst[0] * src[0];
-    temp[1] = dst[2] * src[2];
-    temp[2] = dst[4] * src[4];
-    temp[3] = dst[6] * src[6];
-
-    result[0] = dst[1] * src[1];
-    result[1] = dst[3] * src[3];
-    result[2] = dst[5] * src[5];
-    result[3] = dst[7] * src[7];
-
-    u32* dst32 = (u32*)dst;
-    dst32[0] = temp[0] + result[0];
-    dst32[1] = temp[1] + result[1];
-    dst32[2] = temp[2] + result[2];
-    dst32[3] = temp[3] + result[3];
-}
-
-void felix86_psadbw(u8* dst, u8* src) {
-    u64 result1 = 0;
-    u64 result2 = 0;
-
-    for (int i = 0; i < 8; i++) {
-        result1 += abs(dst[i] - src[i]);
-        result2 += abs(dst[i + 8] - src[i + 8]);
-    }
-
-    u64* dst64 = (u64*)dst;
-    dst64[0] = (u16)result1;
-    dst64[1] = (u16)result2;
-}
-
-void felix86_vpsadbw(u8* dst, u8* src1, u8* src2) {
-    u64 result1 = 0;
-    u64 result2 = 0;
-
-    for (int i = 0; i < 8; i++) {
-        result1 += abs(src1[i] - src2[i]);
-        result2 += abs(src1[i + 8] - src2[i + 8]);
-    }
-
-    u64* dst64 = (u64*)dst;
-    dst64[0] = (u16)result1;
-    dst64[1] = (u16)result2;
-    dst64[2] = 0;
-    dst64[3] = 0;
-}
-
-void felix86_vpsadbw256(u8* dst, u8* src1, u8* src2) {
-    u64 result1 = 0;
-    u64 result2 = 0;
-    u64 result3 = 0;
-    u64 result4 = 0;
-
-    for (int i = 0; i < 8; i++) {
-        result1 += abs(src1[i] - src2[i]);
-        result2 += abs(src1[i + 8] - src2[i + 8]);
-        result3 += abs(src1[i + 16] - src2[i + 16]);
-        result4 += abs(src1[i + 24] - src2[i + 24]);
-    }
-
-    u64* dst64 = (u64*)dst;
-    dst64[0] = (u16)result1;
-    dst64[1] = (u16)result2;
-    dst64[2] = (u16)result3;
-    dst64[3] = (u16)result4;
-}
-
 void felix86_mpsadbw(u8* dst, u8* src, u8 imm) {
     WARN("Interpreting MPSADBW");
     uint16_t src_offset = (imm & 0b11) * 4;
@@ -412,85 +342,6 @@ void felix86_mpsadbw(u8* dst, u8* src, u8 imm) {
         int temp2 = std::abs(dst_bytes[i + 2] - src_bytes[2]);
         int temp3 = std::abs(dst_bytes[i + 3] - src_bytes[3]);
         dst_16[i] = temp0 + temp1 + temp2 + temp3;
-    }
-}
-
-void felix86_vmpsadbw_128(u8* dst, u8* src1, u8* src2, u8 imm) {
-    WARN("Interpreting VMPSADBW.128");
-    uint16_t src_offset = (imm & 0b11) * 4;
-    uint16_t dst_offset = ((imm >> 2) & 1) * 4;
-    u8* src2_shifted = src2 + src_offset;
-    u8* src1_shifted = src1 + dst_offset;
-    int src1_bytes[11];
-    int src2_bytes[4];
-    for (int i = 0; i < 4; i++) {
-        src2_bytes[i] = src2_shifted[i];
-    }
-    for (int i = 0; i < 11; i++) {
-        src1_bytes[i] = src1_shifted[i];
-    }
-
-    u16* dst_16 = (u16*)dst;
-    for (int i = 0; i < 8; i++) {
-        int temp0 = std::abs(src1_bytes[i + 0] - src2_bytes[0]);
-        int temp1 = std::abs(src1_bytes[i + 1] - src2_bytes[1]);
-        int temp2 = std::abs(src1_bytes[i + 2] - src2_bytes[2]);
-        int temp3 = std::abs(src1_bytes[i + 3] - src2_bytes[3]);
-        dst_16[i] = temp0 + temp1 + temp2 + temp3;
-    }
-
-    u64* dst_64 = (u64*)dst;
-    *(dst_64 + 2) = 0;
-    *(dst_64 + 3) = 0;
-}
-
-void felix86_vmpsadbw_256(u8* dst, u8* src1, u8* src2, u8 imm) {
-    WARN("Interpreting VMPSADBW.256");
-    {
-        uint16_t src_offset = (imm & 0b11) * 4;
-        uint16_t dst_offset = ((imm >> 2) & 1) * 4;
-        u8* src2_shifted = src2 + src_offset;
-        u8* src1_shifted = src1 + dst_offset;
-        int src1_bytes[11];
-        int src2_bytes[4];
-        for (int i = 0; i < 4; i++) {
-            src2_bytes[i] = src2_shifted[i];
-        }
-        for (int i = 0; i < 11; i++) {
-            src1_bytes[i] = src1_shifted[i];
-        }
-
-        u16* dst_16 = (u16*)dst;
-        for (int i = 0; i < 8; i++) {
-            int temp0 = std::abs(src1_bytes[i + 0] - src2_bytes[0]);
-            int temp1 = std::abs(src1_bytes[i + 1] - src2_bytes[1]);
-            int temp2 = std::abs(src1_bytes[i + 2] - src2_bytes[2]);
-            int temp3 = std::abs(src1_bytes[i + 3] - src2_bytes[3]);
-            dst_16[i] = temp0 + temp1 + temp2 + temp3;
-        }
-    }
-    {
-        uint16_t src_offset = ((imm >> 3) & 0b11) * 4;
-        uint16_t dst_offset = ((imm >> 5) & 1) * 4;
-        u8* src2_shifted = src2 + 16 + src_offset;
-        u8* src1_shifted = src1 + 16 + dst_offset;
-        int src1_bytes[11];
-        int src2_bytes[4];
-        for (int i = 0; i < 4; i++) {
-            src2_bytes[i] = src2_shifted[i];
-        }
-        for (int i = 0; i < 11; i++) {
-            src1_bytes[i] = src1_shifted[i];
-        }
-
-        u16* dst_16 = (u16*)dst;
-        for (int i = 0; i < 8; i++) {
-            int temp0 = std::abs(src1_bytes[i + 0] - src2_bytes[0]);
-            int temp1 = std::abs(src1_bytes[i + 1] - src2_bytes[1]);
-            int temp2 = std::abs(src1_bytes[i + 2] - src2_bytes[2]);
-            int temp3 = std::abs(src1_bytes[i + 3] - src2_bytes[3]);
-            dst_16[8 + i] = temp0 + temp1 + temp2 + temp3;
-        }
     }
 }
 
@@ -549,11 +400,6 @@ void update_symbols() {
             auto it = regions.find(buffer);
             if (it == regions.end() && Elf::Peek(buffer) == Elf::PeekResult::NotElf) {
                 VERBOSE("Buffer: %s is not an ELF", buffer);
-                continue;
-            }
-
-            if (std::string(buffer).find(g_config.rootfs_path.string()) != 0) {
-                // It's our emulator or its libraries, skip
                 continue;
             }
 
@@ -844,26 +690,35 @@ bool felix86_bt(u64 address, i64 offset) {
 }
 
 bool felix86_bts(u64 address, i64 offset) {
+    ThreadState* state = ThreadState::Get();
     u64 byte_offset = offset >> 3;
     u64 bit_offset = offset & 7;
     u8* ptr = (u8*)address + byte_offset;
+    state->in_rmw_function = true; // Possible SMC, lock bts seen in MK1
     u8 old = __atomic_fetch_or(ptr, 1 << bit_offset, __ATOMIC_SEQ_CST);
+    state->in_rmw_function = false;
     return (old >> bit_offset) & 1;
 }
 
 bool felix86_btr(u64 address, i64 offset) {
+    ThreadState* state = ThreadState::Get();
     u64 byte_offset = offset >> 3;
     u64 bit_offset = offset & 7;
     u8* ptr = (u8*)address + byte_offset;
+    state->in_rmw_function = true;
     u8 old = __atomic_fetch_and(ptr, ~(1 << bit_offset), __ATOMIC_SEQ_CST);
+    state->in_rmw_function = false;
     return (old >> bit_offset) & 1;
 }
 
 bool felix86_btc(u64 address, i64 offset) {
+    ThreadState* state = ThreadState::Get();
     u64 byte_offset = offset >> 3;
     u64 bit_offset = offset & 7;
     u8* ptr = (u8*)address + byte_offset;
+    state->in_rmw_function = true;
     u8 old = __atomic_fetch_xor(ptr, 1 << bit_offset, __ATOMIC_SEQ_CST);
+    state->in_rmw_function = false;
     return (old >> bit_offset) & 1;
 }
 
@@ -888,7 +743,7 @@ void felix86_fsincos(ThreadState* state) {
     memcpy(&boop, &state->ctx.st[TOP(0)], sizeof(double));
     state->ctx.fpu_top -= 1;
     state->ctx.fpu_top &= 0b111;
-    state->ctx.fpu_tw &= ~(0b1 << state->ctx.fpu_top);
+    state->ctx.fpu_tw |= 0b1 << state->ctx.fpu_top;
     sincos(boop, (double*)&state->ctx.st[TOP(1)], (double*)&state->ctx.st[TOP(0)]);
     state->ctx.fpu_sw &= ~C2_BIT;
 }
@@ -945,7 +800,7 @@ void felix86_fyl2xp1(ThreadState* state) {
 }
 
 template <class Int, int Count = 128 / (sizeof(Int) * 8), int UpperBound = Count - 1 /* 7 or 15 */, u32 Mask = (1u << Count) - 1u>
-void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 control) {
+void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 control, bool rexw) {
     enum Mode {
         EqualAny = 0b00,
         Ranges = 0b01,
@@ -994,16 +849,10 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
             }
         }
     } else {
-        dst_length = (i64)state->ctx.gprs[0]; // eax
-        src_length = (i64)state->ctx.gprs[2]; // edx
-
-        if (std::abs(dst_length) > Count) {
-            dst_length = Count;
-        }
-
-        if (std::abs(src_length) > Count) {
-            src_length = Count;
-        }
+        i64 rax = rexw ? (i64)state->ctx.gprs[0] : (i32)state->ctx.gprs[0];
+        i64 rdx = rexw ? (i64)state->ctx.gprs[2] : (i32)state->ctx.gprs[2];
+        dst_length = (rax < -Count || rax > Count) ? Count : std::abs(rax);
+        src_length = (rdx < -Count || rdx > Count) ? Count : std::abs(rdx);
     }
 
     for (int j = 0; j < Count; j++) {
@@ -1176,7 +1025,7 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
     state->ctx.pf = 0;
 }
 
-void felix86_pcmpxstrx(ThreadState* state, pcmpxstrx type, u8* dst, u8* src, u8 control) {
+void felix86_pcmpxstrx(ThreadState* state, pcmpxstrx type, u8* dst, u8* src, u8 control, bool rexw) {
     enum Type {
         UnsignedBytes = 0b00,
         UnsignedWords = 0b01,
@@ -1186,16 +1035,16 @@ void felix86_pcmpxstrx(ThreadState* state, pcmpxstrx type, u8* dst, u8* src, u8 
 
     switch ((Type)(control & 0b11)) {
     case UnsignedBytes: {
-        return pcmpxstrx_impl<u8>(state, type, (u8*)dst, (u8*)src, control);
+        return pcmpxstrx_impl<u8>(state, type, (u8*)dst, (u8*)src, control, rexw);
     }
     case UnsignedWords: {
-        return pcmpxstrx_impl<u16>(state, type, (u16*)dst, (u16*)src, control);
+        return pcmpxstrx_impl<u16>(state, type, (u16*)dst, (u16*)src, control, rexw);
     }
     case SignedBytes: {
-        return pcmpxstrx_impl<i8>(state, type, (i8*)dst, (i8*)src, control);
+        return pcmpxstrx_impl<i8>(state, type, (i8*)dst, (i8*)src, control, rexw);
     }
     case SignedWords: {
-        return pcmpxstrx_impl<i16>(state, type, (i16*)dst, (i16*)src, control);
+        return pcmpxstrx_impl<i16>(state, type, (i16*)dst, (i16*)src, control, rexw);
     }
     }
 
@@ -1233,6 +1082,31 @@ u64 mmap_max_addr() {
     return addr;
 }
 
+u64 rdtime_frequency() {
+    static u64 freq = []() {
+        biscuit::CPUInfo info;
+        return info.GetTimeFrequency();
+    }();
+    return freq;
+}
+
+int rdtime_frequency_shift() {
+    u64 freq = rdtime_frequency();
+    if (freq == 0)
+        return 0;
+
+    // Aim for plausible x86 values, an x86 CPU will never have a 24MHz RDTSC clock
+    // so without scaling software can detect emulation
+    constexpr u64 target = 2'400'000'000;
+    constexpr u64 ceiling = 4'000'000'000;
+    int shift = 0;
+    while (shift < 63 && (freq << shift) < target)
+        shift++;
+    if (shift > 0 && (freq << shift) > ceiling)
+        shift--;
+    return shift;
+}
+
 void felix86_set_segment(ThreadState* state, u64 value, int segment) {
     int index = value >> 3;
     u32 base = state->gdt[index];
@@ -1244,7 +1118,7 @@ void felix86_set_segment(ThreadState* state, u64 value, int segment) {
         state->ctx.csbase = base;
         u8 new_cs = state->ctx.cs;
         if (new_cs != 0x33 && new_cs != 0x23) {
-            WARN("Invalid cs %x during %lx", state->ctx.cs, state->ctx.rip);
+            WARN("Invalid cs %lx during %lx", state->ctx.cs, state->ctx.rip);
         }
 
         if (old_cs != new_cs) {
@@ -1325,7 +1199,7 @@ void felix86_fxam(ThreadState* state) {
 
     u16 mask = 0b1 << state->ctx.fpu_top;
     u8 c3c2c0;
-    if ((state->ctx.fpu_tw & mask) == mask) {
+    if ((state->ctx.fpu_tw & mask) == 0) {
         c3c2c0 = 0b101;
     } else if (st0d == 0.0) {
         c3c2c0 = 0b100;
@@ -1559,6 +1433,10 @@ void felix86_crash_and_burn() {
     exit(1);
 }
 
+void felix86_warn_unaligned_atomic(ThreadState* state) {
+    IMPORTANT("Unaligned atomic that we can't properly emulate at %lx", state->GetRip());
+}
+
 void replaceOne(std::string& s, const std::string& search, const std::string& replace) {
     for (size_t pos = 0;; pos += replace.length()) {
         // Locate the substring to replace
@@ -1641,6 +1519,46 @@ void felix86_aeskeygenassist(u32* dst, u32* src, u32 imm) {
     *(dst + 1) = x1_sub_rotate ^ imm;
     *(dst + 2) = x3_sub;
     *(dst + 3) = x3_sub_rotate ^ imm;
+}
+
+void felix86_sha1rnds4(u32* dst, u32* src, u8 imm) {
+    constexpr u32 ks[] = {0x5A827999, 0x6ED9EBA1, 0x8F1BBCDC, 0xCA62C1D6};
+    u32 k = ks[imm & 0b11];
+    u32 (*F)(u32, u32, u32) = nullptr;
+    switch (imm & 0b11) {
+    case 0: {
+        F = [](u32 b, u32 c, u32 d) -> u32 { return (b & c) ^ (~b & d); };
+        break;
+    }
+    case 1:
+    case 3: {
+        F = [](u32 b, u32 c, u32 d) -> u32 { return b ^ c ^ d; };
+        break;
+    }
+    case 2: {
+        F = [](u32 b, u32 c, u32 d) -> u32 { return (b & c) ^ (b & d) ^ (c & d); };
+        break;
+    }
+    }
+    auto rol32 = [](u32 val, int shift) -> u32 { return val >> (32 - shift) | val << shift; };
+    u32 a = dst[3];
+    u32 b = dst[2];
+    u32 c = dst[1];
+    u32 d = dst[0];
+    u32 e = 0, t = 0;
+    for (int i = 0; i < 4; i++) {
+        u32 w = src[3 - i];
+        t = F(b, c, d) + rol32(a, 5) + w + k + e;
+        e = d;
+        d = c;
+        c = rol32(b, 30);
+        b = a;
+        a = t;
+    }
+    dst[3] = a;
+    dst[2] = b;
+    dst[1] = c;
+    dst[0] = d;
 }
 
 void felix86_tf_changed(ThreadState* state, bool tf) {

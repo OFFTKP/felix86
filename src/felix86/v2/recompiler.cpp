@@ -1,10 +1,15 @@
 #include <algorithm>
+#include <cstdint>
+#include <linux/fs.h>
 #include <sys/file.h>
+#include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <sys/personality.h>
 #include <unistd.h>
 #include "Zycore/Status.h"
 #include "Zydis/Disassembler.h"
 #include "Zydis/SharedTypes.h"
+#include "biscuit/registers.hpp"
 #include "felix86/common/config.hpp"
 #include "felix86/common/frame.hpp"
 #include "felix86/common/gdbjit.hpp"
@@ -15,9 +20,11 @@
 #include "felix86/common/utility.hpp"
 #include "felix86/common/volatile.hpp"
 #include "felix86/emulator.hpp"
+#include "felix86/hle/mmap.hpp"
 #include "felix86/hle/ptrace.hpp"
 #include "felix86/hle/syscall.hpp"
 #include "felix86/v2/handlers.hpp"
+#include "felix86/v2/optimizer.hpp"
 #include "felix86/v2/recompiler.hpp"
 #include "fmt/format.h"
 
@@ -36,11 +43,11 @@ constexpr static u64 code_cache_sizes_count = std::size(code_cache_sizes);
 constexpr static u64 max_code_cache_size = code_cache_sizes[code_cache_sizes_count - 1];
 
 static void incorrect_magic(void* sp) {
-    ERROR("Incorrect magic in frame (sp: %lx)", sp);
+    ERROR("Incorrect magic in frame (sp: %p)", sp);
 }
 
 static void incorrect_stack(void* sp_expected, void* sp_actual) {
-    ERROR("Incorrect stack in frame, expected %lx, but got %lx", sp_expected, sp_actual);
+    ERROR("Incorrect stack in frame, expected %p, but got %p", sp_expected, sp_actual);
 }
 
 struct OptimizationGuard {
@@ -68,16 +75,28 @@ private:
 // Some instructions modify the flags conditionally or sometimes they don't modify them at all.
 // This needs to be marked as a usage of the flag as it can be passed through if they don't modify,
 // and previous instructions need to know that.
-static bool flag_passthrough(ZydisMnemonic mnemonic) {
-    switch (mnemonic) {
+static bool flag_passthrough(const ZydisDecodedInstruction& instruction) {
+    switch (instruction.mnemonic) {
     case ZYDIS_MNEMONIC_SHL:
     case ZYDIS_MNEMONIC_SHLD:
     case ZYDIS_MNEMONIC_SHR:
     case ZYDIS_MNEMONIC_SHRD:
     case ZYDIS_MNEMONIC_SAR:
     case ZYDIS_MNEMONIC_ROL:
-    case ZYDIS_MNEMONIC_ROR: {
+    case ZYDIS_MNEMONIC_ROR:
+    case ZYDIS_MNEMONIC_RCL:
+    case ZYDIS_MNEMONIC_RCR: {
         return true;
+    }
+    case ZYDIS_MNEMONIC_CMPSB:
+    case ZYDIS_MNEMONIC_CMPSW:
+    case ZYDIS_MNEMONIC_CMPSD:
+    case ZYDIS_MNEMONIC_CMPSQ:
+    case ZYDIS_MNEMONIC_SCASB:
+    case ZYDIS_MNEMONIC_SCASW:
+    case ZYDIS_MNEMONIC_SCASD:
+    case ZYDIS_MNEMONIC_SCASQ: {
+        return instruction.attributes & (ZYDIS_ATTRIB_HAS_REP | ZYDIS_ATTRIB_HAS_REPZ | ZYDIS_ATTRIB_HAS_REPNZ);
     }
     default: {
         return false;
@@ -86,23 +105,43 @@ static bool flag_passthrough(ZydisMnemonic mnemonic) {
 }
 
 static void alignment_check_failed(void* rip) {
-    WARN("Unaligned atomic access at %lx", rip);
+    WARN("Unaligned atomic access at %p", rip);
+}
+
+static bool is_register(const ZydisDecodedOperand& operand, ZydisRegister first, ZydisRegister last) {
+    return operand.type == ZYDIS_OPERAND_TYPE_REGISTER && operand.reg.value >= first && operand.reg.value <= last;
+}
+
+static bool is_mmx_operand(const ZydisDecodedOperand& operand) {
+    return is_register(operand, ZYDIS_REGISTER_MM0, ZYDIS_REGISTER_MM7);
+}
+
+static bool is_sse_or_avx_operand(const ZydisDecodedOperand& operand) {
+    return is_register(operand, ZYDIS_REGISTER_XMM0, ZYDIS_REGISTER_XMM15) || is_register(operand, ZYDIS_REGISTER_YMM0, ZYDIS_REGISTER_YMM15);
+}
+
+static bool is_stack_operand(const ZydisDecodedOperand& operand) {
+    return operand.type == ZYDIS_OPERAND_TYPE_MEMORY && operand.mem.base != ZYDIS_REGISTER_NONE &&
+           Recompiler::zydisToRef(operand.mem.base) == X86_REF_RSP;
 }
 
 Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
     // Placing address cache near code cache allows us to access address cache with AUIPC+ADDI combo
-    size_t address_cache_size = (1 << address_cache_bits) * sizeof(AddressCacheEntry);
-    size_t size = max_code_cache_size + address_cache_size;
+    constexpr size_t address_cache_size = (1 << address_cache_bits) * sizeof(AddressCacheEntry);
+    constexpr size_t total_size = max_code_cache_size + address_cache_size;
     // Try allocating code cache near program so that rip-relative immediates can be made in fewer instructions
     u64 min = std::min(g_executable_start, g_interpreter_start);
     void* address = MAP_FAILED;
     // If the program is allocated in 32-bit address space then it's not worth performing this optimization
     // as to not interfere with MAP_32BIT and because immediates can be made in 2 instructions
     if (min > 5 * GB) {
-        for (int i = 0; i < 4; i++) {
-            min -= 256 * MB;
-            address = ::mmap((void*)min, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE | MAP_FIXED_NOREPLACE, -1, 0);
+        for (int i = 0; i < 56; i++) {
+            min -= total_size;
+            min &= ~(2 * MB - 1);
+            address = ::mmap((void*)min, total_size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE | MAP_FIXED_NOREPLACE, -1, 0);
             if (address != MAP_FAILED) {
+                reservation_base = address;
+                reservation_size = total_size;
                 break;
             }
         }
@@ -112,7 +151,16 @@ Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
         }
     }
     if (address == MAP_FAILED) {
-        address = ::mmap(nullptr, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+        // Allocate an extra 2MB of virtual address space and skip it so that the mapping is aligned
+        // to 2MB for the MADV_HUGEPAGE to work
+        void* raw = ::mmap(nullptr, total_size + 2 * MB, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+        if (raw != MAP_FAILED) {
+            reservation_base = raw;
+            reservation_size = total_size + 2 * MB;
+            address = (void*)(((u64)raw + 2 * MB - 1) & ~(2 * MB - 1));
+        } else {
+            address = MAP_FAILED;
+        }
     }
     ASSERT_MSG(address != MAP_FAILED, "Failed to reserve code cache for thread %d?", gettid());
     u8* first_chunk = (u8*)::mmap((u8*)address + address_cache_size, code_cache_sizes[0], PROT_READ | PROT_WRITE | PROT_EXEC,
@@ -122,6 +170,11 @@ Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
 
     address_cache = (AddressCacheEntry*)::mmap(address, address_cache_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
     ASSERT(address_cache == address);
+
+    int result = madvise(address, total_size, MADV_HUGEPAGE);
+    if (result != 0) {
+        WARN("Failed to set MADV_HUGEPAGE for code cache and address cache");
+    }
 
     if (g_config.auto_compress) {
         as.EnableOptimization(Optimization::AutoCompress);
@@ -156,14 +209,15 @@ Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
 }
 
 Recompiler::~Recompiler() {
-    munmap(address_cache, (1 << address_cache_bits) * sizeof(AddressCacheEntry));
-    munmap(as.GetBufferPointer(0), max_code_cache_size);
+    munmap(reservation_base, reservation_size);
 }
 
 void Recompiler::emitNecessaryStuff() {
     OptimizationGuard guard(as, optimization_guard_counter);
 
+    u64 start = (u64)as.GetCursorPointer();
     u8* replace_me = emitInvalidateCallerThunk();
+    emitInterruptibleSyscallFunction();
     emitDispatcher();
     u8* ptr = as.GetCursorPointer();
     as.SetCursorPointer(replace_me);
@@ -171,8 +225,65 @@ void Recompiler::emitNecessaryStuff() {
     as.SetCursorPointer(ptr);
 
     start_of_code_cache = as.GetCursorPointer();
+    emitBadAddressThunks(); // after start_of_code_cache so is_in_jit_code triggers
 
-    flush_icache();
+    flush_icache((u64)start, (u64)start_of_code_cache);
+}
+
+void Recompiler::emitBadAddressThunks() {
+    while ((u64)as.GetCursorPointer() & 0xF) {
+        as.C_NOP();
+    }
+
+    // The signal handler will find the RIP via the allocated ripreg as it tried
+    // to compile a block there
+    not_mapped_thunk = (u64)as.GetCursorPointer();
+    as.SD(x0, 0, x0);
+    as.SLTIU(x0, x0, FELIX86_HINT_NOT_MAPPED);
+    as.C_UNDEF();
+    as.C_UNDEF();
+
+    not_read_thunk = (u64)as.GetCursorPointer();
+    as.SD(x0, 0, x0);
+    as.SLTIU(x0, x0, FELIX86_HINT_NOT_READ);
+    as.C_UNDEF();
+    as.C_UNDEF();
+
+    not_exec_thunk = (u64)as.GetCursorPointer();
+    as.SD(x0, 0, x0);
+    as.SLTIU(x0, x0, FELIX86_HINT_NOT_EXEC);
+    as.C_UNDEF();
+    as.C_UNDEF();
+}
+
+void Recompiler::emitInterruptibleSyscallFunction() {
+    while ((u64)as.GetCursorPointer() & 0xF) {
+        as.C_NOP();
+    }
+
+    // This function is used to have a straight line sequence of code that first checks if any signals are deferred, then
+    // loads the arguments and calls ECALL. Even if a signal happens *after* the check and before the ECALL,
+    // it is able to verify it is between these two points and jump to the -EINTR return from the signal handler.
+    interruptible_syscall_func = (decltype(interruptible_syscall_func))as.GetCursorPointer();
+    biscuit::Label eintr;
+    as.LD(t0, 0, a0);
+    as.MV(t1, a1);
+    as.MV(a0, a2);
+    as.MV(a1, a3);
+    as.MV(a2, a4);
+    as.MV(a3, a5);
+    as.MV(a4, a6);
+    as.MV(a5, a7);
+    as.MV(a7, t1);
+    as.BNEZ(t0, &eintr);
+    interruptible_syscall_func_ecall = as.GetCursorPointer();
+    as.ECALL();
+    as.RET();
+    as.Bind(&eintr);
+
+    interruptible_syscall_func_eintr = as.GetCursorPointer();
+    as.LI(a0, -EINTR);
+    as.RET();
 }
 
 void Recompiler::emitDispatcher() {
@@ -217,33 +328,11 @@ void Recompiler::emitDispatcher() {
     compile_next_handler = (u64)as.GetCursorPointer();
 
     if (g_config.address_cache) {
-        biscuit::GPR temp = scratch();
-        biscuit::GPR temp2 = scratch();
-        biscuit::GPR rip = scratch();
         biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
-        biscuit::Label not_equal;
-        u64 offset = (u64)address_cache - (u64)as.GetCursorPointer();
-        const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
-        const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
-        as.AUIPC(temp, hi20);
-        as.ADDI(temp, temp, lo12);
-        as.SLLI(temp2, ripreg, 64 - address_cache_bits);
-        // Multiply by 16, which is size of each address cache entry
-        as.SRLI(temp2, temp2, 64 - address_cache_bits - 4);
-        as.ADD(temp, temp, temp2);
-        as.LD(temp2, 8, temp); // read the AddressCacheEntry::guest field
-        as.BNE(temp2, ripreg, &not_equal);
-
-        // Address cache was correct, jump to host address
-        as.LD(rip, 0, temp);
-        as.MV(t5, x0); // zero out t5, see invalidate_caller_thunk
-        as.JR(rip);
-
-        as.Bind(&not_equal);
-        popScratch();
-        popScratch();
-        popScratch();
+        addressCacheLookup(ripreg, [](Assembler& as, biscuit::GPR new_rip) { as.JR(new_rip); });
     }
+
+    compile_next_skip_address_cache = (u64)as.GetCursorPointer();
 
     writebackState();
     as.MV(a0, threadStatePointer());
@@ -366,7 +455,7 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_
         // The link location should be an instruction after the AUIPC...
         u8* link_location = linked_block + sizeof(u32);
         u8* cursor = state->recompiler->as.GetCursorPointer();
-        ASSERT_MSG(linked_block >= state->recompiler->start_of_code_cache && linked_block < cursor, "%lx <= %lx < %lx",
+        ASSERT_MSG(linked_block >= state->recompiler->start_of_code_cache && linked_block < cursor, "%p <= %p < %p",
                    state->recompiler->start_of_code_cache, linked_block, cursor);
 
         // And here we need to mark the block for linking again. This will either link if the block is already compiled
@@ -374,9 +463,13 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_
         state->recompiler->as.SetCursorPointer(link_location);
         // Because there was a writebackState before entering this function, state->rip contains the guest address that we tried
         // to jump to before getting hit by this invalidation. So we can jumpAndLink there.
-        state->recompiler->jumpAndLink(rip);
+        u32 link_instruction = *(u32*)(link_location + sizeof(u32));
+        bool return_hint = ((link_instruction >> 7) & 0x1f) == ra.Index();
+        // Don't make the ret stub jump go to address cache, as it would jump to itself
+        bool is_ret_stub = metadata.ret_stub == (u64)linked_block;
+        state->recompiler->jumpAndLink(rip, return_hint, is_ret_stub);
         state->recompiler->as.SetCursorPointer(cursor);
-        flush_icache();
+        flush_icache((u64)link_location, (u64)link_location + 4096);
     } else {
         // The dispatcher makes sure the third argument is set to 0 if we get here not from a link
     }
@@ -398,11 +491,13 @@ void Recompiler::resizeOrClearCodeCache(ThreadState* state) {
             // TODO: investigate
             // Unsure what causes this to happen, but it does. In that case, clear code cache and carry on
             // Perhaps PR_MDWE_REFUSE_EXEC_GAIN
-            WARN("Couldn't increment code cache because mmap returned %lx (errno: %s), clearing code cache", address, strerror(errno));
+            WARN("Couldn't increment code cache because mmap returned %p (errno: %s), clearing code cache", address, strerror(errno));
             clearCodeCache(state);
 
             // Undo the size increment
             code_cache_size_index--;
+        } else {
+            madvise(address, size_difference, MADV_HUGEPAGE);
         }
     } else {
         clearCodeCache(state);
@@ -418,12 +513,55 @@ void Recompiler::clearCodeCache(ThreadState* state) {
     for (size_t i = 0; i < (1 << address_cache_bits); i++) {
         address_cache[i] = AddressCacheEntry{};
     }
+    address_cache[0].guest = -1ull;
 
     as.RewindBuffer();
     emitNecessaryStuff();
 }
 
 u64 Recompiler::compile(ThreadState* state, u64 rip) {
+    FELIX86_PROFILE_INSTANT_INCREMENT(state->thread_stats, AccumulatedJITCount, 1);
+    if (g_config.guest_memory_tracking_enabled) {
+        // If memory region isn't mapped or doesn't have the correct protections
+        // return a thunk that is in JIT code that will fault and get handled as
+        // a guest signal. This way we don't have to jump from here to JIT code
+        // and no block gets registered either.
+        // TODO: Currently this only checks the landing page and not further pages that the block
+        // might extend to, which is a known inaccuracy
+        const std::optional<int> prot = g_mapper->get_region_protections((void*)rip);
+        const bool mapped = prot.has_value();
+        const bool readable = mapped && *prot & PROT_READ;
+        const bool executable = mapped && ((*prot & PROT_EXEC) || ((state->persona & READ_IMPLIES_EXEC) && readable));
+        if (mapped) {
+            if (executable) {
+                // Continue compiling...
+            } else {
+                return (*prot & (PROT_READ | PROT_WRITE)) ? not_exec_thunk : not_read_thunk;
+            }
+        } else {
+            int maps_fd = open("/proc/self/maps", O_RDONLY | O_CLOEXEC);
+            procmap_query q{};
+            q.size = sizeof(q);
+            q.query_addr = rip;
+            q.query_flags = 0;
+            bool unmapped = false;
+            if (maps_fd >= 0) {
+                if (ioctl(maps_fd, PROCMAP_QUERY, &q) == 0) {
+                    unmapped = !(q.vma_flags & PROCMAP_QUERY_VMA_READABLE);
+                } else if (errno == ENOENT) {
+                    unmapped = true;
+                }
+                close(maps_fd);
+            }
+
+            if (!unmapped) {
+                // Continue compiling, may be one of our thunk trampolines
+            } else {
+                return not_mapped_thunk;
+            }
+        }
+    }
+
     u64 size = code_cache_sizes[code_cache_size_index];
     size_t remaining_size = size - as.GetCodeBuffer().GetCursorOffset();
     // TODO: restrict max x86 instruction count per block
@@ -460,7 +598,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
 
     if (g_config.address_cache) {
         AddressCacheEntry& entry = getAddressCacheEntry(start_rip);
-        entry.host = block_meta.host_address;
+        entry.host = block_meta.ret_stub ? block_meta.ret_stub : block_meta.host_address;
         entry.guest = start_rip;
     }
 
@@ -540,55 +678,37 @@ void Recompiler::markPagesAsReadOnly(u64 start, u64 end) {
     u64 start_page = start & ~0xFFFull;
     u64 end_page = (end + 0xFFF) & ~0xFFFull;
     u64 size = end_page - start_page;
-    int result = mprotect((void*)start_page, size, PROT_READ);
+    int result = ::mprotect((void*)start_page, size, PROT_READ);
     if (result != 0) {
         ERROR("Failed to protect pages %016lx-%016lx -- Error: %s", start_page, end_page, strerror(errno));
     }
+}
+
+void Recompiler::loadRoundingMode(bool sse) {
+    biscuit::GPR rm = scratch();
+    as.LBU(rm, sse ? offsetof(ThreadState, ctx.rmode_sse) : offsetof(ThreadState, ctx.rmode_x87), threadStatePointer());
+    as.FSRM(x0, rm);
+    popScratch();
 }
 
 u64 Recompiler::compileSequence(bool mode32, u64 rip) {
     const u64 start_rip = rip;
     const bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
     compiling = true;
-    u8* bytes = (u8*)rip;
-    bool all_zeroes = true;
-    if (bytes[0] == 0x00) {
-        for (int i = 0; i < 16; i++) {
-            if (bytes[i + 1] != 0x00) {
-                all_zeroes = false;
-                break;
-            }
-        }
-    } else {
-        all_zeroes = false;
-    }
-
-    if (all_zeroes) {
-        VERBOSE("Jumped to address %lx which has a sequence of zeroes -- probably a bad jump?", rip);
-    }
 
     // When invalidating from other threads we need to do it in a single atomic instruction, thus block starts
-    // need to be aligned to 8 bytes as we exchange two instructions
-    switch ((u64)as.GetCursorPointer() & 0x7) {
+    // need to be aligned to 4 bytes
+    switch ((u64)as.GetCursorPointer() & 0x3) {
     case 0: {
-        break;
-    }
-    case 4: {
-        as.NOP();
         break;
     }
     case 2: {
         as.C_NOP();
-        as.NOP();
-        break;
-    }
-    case 6: {
-        as.C_NOP();
         break;
     }
     }
 
-    ASSERT(((u64)as.GetCursorPointer() & 0x7) == 0);
+    ASSERT(((u64)as.GetCursorPointer() & 0x2) == 0);
 
     current_mode32 = mode32;
     current_decoder_initialized = false; // TODO: don't invalidate if same mode32 as before
@@ -597,18 +717,9 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
     block_meta.host_address = (u64)as.GetCursorPointer();
     block_meta.guest_address = start_rip;
     block_meta.translation_sizes.resize(instructions.size());
-
-    // TODO: Put all this resetting functionality in a function
-    resetX87();
-    pushed_this_block = 0;
     current_block_metadata = &block_meta;
-    resetVectorState();
-    local_x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
-    fsrm_sse = true;                     // dispatcher loads SSE rounding mode as a default
-    v0_has_mask = false;
 
-    current_ripreg_value = rip; // may change in a syscall to check for safepoints, or after a set amount of instructions in the future
-    current_instruction_index = 0;
+    resetBlockState(rip);
 
     bool ran_mmx_once = false;
 
@@ -620,33 +731,21 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
     while (compiling) {
         auto& [instruction, operands] = instructions[current_instruction_index];
 
-        bool is_mmx = (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].reg.value >= ZYDIS_REGISTER_MM0 &&
-                       operands[0].reg.value <= ZYDIS_REGISTER_MM7) ||
-                      (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].reg.value >= ZYDIS_REGISTER_MM0 &&
-                       operands[1].reg.value <= ZYDIS_REGISTER_MM7);
+        bool is_mmx = is_mmx_operand(operands[0]) || is_mmx_operand(operands[1]);
         bool is_x87 = instruction.meta.isa_ext == ZYDIS_ISA_EXT_X87;
-        bool is_sse = (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].reg.value >= ZYDIS_REGISTER_XMM0 &&
-                       operands[0].reg.value <= ZYDIS_REGISTER_XMM15) ||
-                      (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].reg.value >= ZYDIS_REGISTER_XMM0 &&
-                       operands[1].reg.value <= ZYDIS_REGISTER_XMM15) ||
-                      (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].reg.value >= ZYDIS_REGISTER_YMM0 &&
-                       operands[0].reg.value <= ZYDIS_REGISTER_YMM15) ||
-                      (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].reg.value >= ZYDIS_REGISTER_YMM0 &&
-                       operands[1].reg.value <= ZYDIS_REGISTER_YMM15);
+        bool is_sse = is_sse_or_avx_operand(operands[0]) || is_sse_or_avx_operand(operands[1]);
 
-        bool op1_on_stack = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[0].mem.base != ZYDIS_REGISTER_NONE &&
-                            zydisToRef(operands[0].mem.base) == X86_REF_RSP;
-        bool op2_on_stack = operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[1].mem.base != ZYDIS_REGISTER_NONE &&
-                            zydisToRef(operands[1].mem.base) == X86_REF_RSP;
-        bool op3_on_stack = operands[2].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[2].mem.base != ZYDIS_REGISTER_NONE &&
-                            zydisToRef(operands[2].mem.base) == X86_REF_RSP;
-        current_instruction_on_stack = op1_on_stack || op2_on_stack || op3_on_stack;
+        bool push_pop_reg = (instruction.mnemonic == ZYDIS_MNEMONIC_PUSH || instruction.mnemonic == ZYDIS_MNEMONIC_POP) &&
+                            operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
+        current_instruction_on_stack =
+            push_pop_reg || is_stack_operand(operands[0]) || is_stack_operand(operands[1]) || is_stack_operand(operands[2]);
 
         if (instruction.mnemonic == ZYDIS_MNEMONIC_EMMS) {
             ran_mmx_once = false; // if we run another mmx instruction, set tag to valid again
         }
 
-        u64 start_pc = (u64)as.GetCursorPointer();
+        // Make sure we factor in the safepoint for the first instruction
+        u64 start_pc = current_instruction_index == 0 ? block_meta.host_address : (u64)as.GetCursorPointer();
 
         if (g_breakpoints.find(rip) != g_breakpoints.end()) {
             u64 current_address = (u64)as.GetCursorPointer();
@@ -659,23 +758,25 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
             break;
         }
 
+        resetScratch();
         if (is_mmx) {
             if (!ran_mmx_once) {
                 // Set FPU tag word to valid for the first MMX instruction in this block
-                as.SB(x0, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
+                biscuit::GPR ones = scratch();
+                as.LI(ones, -1);
+                as.SB(ones, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
+                popScratch();
             }
             ran_mmx_once = true;
             WARN_ONCE("This program makes use of MMX");
             if (local_x87_state != x87State::MMX) {
-                if (local_x87_state == x87State::x87 && g_config.reduced_precision) {
+                if (local_x87_state == x87State::x87) {
                     flushX87();
                 }
                 switchToMMX();
             }
 
-            bool is_op0_mmx = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].reg.value >= ZYDIS_REGISTER_MM0 &&
-                              operands[0].reg.value <= ZYDIS_REGISTER_MM7;
-            if (is_op0_mmx && operands[0].actions & ZYDIS_OPERAND_ACTION_WRITE) {
+            if (is_mmx_operand(operands[0]) && operands[0].actions & ZYDIS_OPERAND_ACTION_WRITE) {
                 int index = operands[0].reg.value - ZYDIS_REGISTER_MM0;
                 mmx_reg_cache[index].dirty = true;
             }
@@ -684,25 +785,23 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
         if (is_x87) {
             if (local_x87_state == x87State::MMX) {
                 WARN("x87 and MMX mixed in a block?");
+                flushX87();
             }
 
-            if (local_x87_state != x87State::x87 && g_config.reduced_precision) {
+            ZydisMnemonic mnemonic = instruction.mnemonic;
+            bool is_save_restore = mnemonic == ZYDIS_MNEMONIC_FNSAVE || mnemonic == ZYDIS_MNEMONIC_FRSTOR || mnemonic == ZYDIS_MNEMONIC_FXSAVE ||
+                                   mnemonic == ZYDIS_MNEMONIC_FXSAVE64 || mnemonic == ZYDIS_MNEMONIC_FXRSTOR || mnemonic == ZYDIS_MNEMONIC_FXRSTOR64;
+            if (!is_save_restore && local_x87_state != x87State::x87) {
                 switchToX87();
             }
         }
 
         if (is_x87 && isFsrmSSE() && g_config.reduced_precision) {
             // An x87 instruction, load the x87 rounding mode
-            biscuit::GPR rm = scratch();
-            as.LBU(rm, offsetof(ThreadState, ctx.rmode_x87), threadStatePointer());
-            as.FSRM(x0, rm);
-            popScratch();
+            loadRoundingMode(false);
             setFsrmSSE(false);
         } else if (is_sse && !isFsrmSSE()) {
-            biscuit::GPR rm = scratch();
-            as.LBU(rm, offsetof(ThreadState, ctx.rmode_sse), threadStatePointer());
-            as.FSRM(x0, rm);
-            popScratch();
+            loadRoundingMode(true);
             setFsrmSSE(true);
         }
 
@@ -722,12 +821,7 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
         rip += instruction.length;
 
         if (is_single_step && compiling) {
-            resetScratch();
-            flushX87();
-            biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
-            u64 offset = rip - getCurrentRipregValue();
-            setCurrentRipregValue(getCurrentRipregValue() + offset);
-            addi(ripreg, ripreg, offset);
+            flushBlockState(rip);
             if (single_step != SingleStepMode::None) {
                 as.SD(x0, 0, x0);
                 as.SLTIU(x0, x0, FELIX86_HINT_TF);
@@ -754,7 +848,11 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
         current_instruction_index += 1;
 
         if (skip_next) {
-            rip += instructions[current_instruction_index].first.length;
+            u8 skipped_length = instructions[current_instruction_index].first.length;
+            ASSERT(skipped_length <= 15);
+            block_meta.translation_sizes[current_instruction_index].x86_instruction_size = skipped_length;
+            block_meta.translation_sizes[current_instruction_index].riscv_instructions_size = 0;
+            rip += skipped_length;
             current_instruction_index += 1;
             skip_next = false;
         }
@@ -766,28 +864,29 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
 
     if (current_block_big) {
         VERBOSE("Block at %lx exceeded max instruction count", start_rip);
-        resetScratch();
-        flushX87();
-        biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
-        u64 offset = rip - getCurrentRipregValue();
-        ASSERT(offset != 0);
-        setCurrentRipregValue(getCurrentRipregValue() + offset);
-        addi(ripreg, ripreg, offset);
+        flushBlockState(rip);
         as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
         jumpAndLink(rip);
     }
 
     resetScratch();
-    flush_icache();
+
+    if (g_config.optimization_pass && g_config.always_tso && !g_is_single_thread && !Extensions::TSO) {
+        Optimizer::native_pass((u8*)block_meta.host_address, (u64)as.GetCursorPointer() - block_meta.host_address);
+    }
+
+    flush_icache(block_meta.host_address, (u64)as.GetCursorPointer());
 
     current_block_metadata = nullptr;
     local_x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
+    if (single_step == SingleStepMode::PtraceSinglestep) {
+        single_step = SingleStepMode::None;
+    }
 
     return rip;
 }
 
 std::optional<std::pair<ZydisDecodedInstruction*, ZydisDecodedOperand*>> Recompiler::getNextInstruction() {
-    ASSERT(instructions.size() > current_instruction_index + 1);
     if (current_instruction_index + 1 < instructions.size()) {
         auto& [instruction, operands] = instructions[current_instruction_index + 1];
         return std::make_pair(&instruction, operands);
@@ -803,15 +902,16 @@ void Recompiler::skipNext() {
 void Recompiler::flushX87() {
     biscuit::GPR top;
     biscuit::GPR tag_word = x0;
-    biscuit::GPR st = scratch();
-    biscuit::GPR address = scratch();
+    biscuit::GPR temp = x0;
     bool top_got = false;
     bool x87_dirty = false;
     bool tag_dirty = false;
+    biscuit::FPR temp_fpr = scratchFPR();
     if (g_config.reduced_precision) {
         for (int i = 0; i < 8; i++) {
             if (x87_reg_cache[i].dirty) {
                 if (!top_got) {
+                    temp = scratch();
                     top = getTOP();
                     tag_word = scratch();
                     if (x87_reg_cache[i].modify_tag) {
@@ -822,20 +922,26 @@ void Recompiler::flushX87() {
                 }
                 ASSERT(x87_reg_cache[i].loaded);
                 int index = i - pushed_this_block;
-                as.ADDI(st, top, index);
-                as.ANDI(st, st, 0b111);
-                // Quick multiply by sizeof(Float80)
-                as.SH2ADD(address, st, st);
-                as.SLLI(address, address, 1);
-                static_assert(sizeof(ThreadState::ctx.st[0]) == sizeof(Float80) && sizeof(Float80) == 10);
-                as.ADD(address, address, threadStatePointer());
-                as.FSD(x87_reg_cache[i].reg, offsetof(ThreadState, ctx.st), address);
+                as.ADDI(temp, top, index);
+                as.ANDI(temp, temp, 0b111);
 
                 if (x87_reg_cache[i].modify_tag) {
                     ASSERT(pushed_this_block > 0);
                     ASSERT(tag_word != x0);
-                    as.BCLR(tag_word, tag_word, st);
+                    as.BSET(tag_word, tag_word, temp);
                 }
+
+                // Quick multiply by sizeof(Float80)
+                as.SH2ADD(temp, temp, temp);
+                as.SLLI(temp, temp, 1);
+                static_assert(sizeof(ThreadState::ctx.st[0]) == sizeof(Float80) && sizeof(Float80) == 10);
+                as.ADD(temp, temp, threadStatePointer());
+                biscuit::FPR value = x87_reg_cache[i].reg;
+                if (x87_reg_cache[i].is32bit) {
+                    as.FCVT_D_S(temp_fpr, value);
+                    value = temp_fpr;
+                }
+                as.FSD(value, offsetof(ThreadState, ctx.st), temp);
                 x87_dirty = true;
             }
         }
@@ -852,12 +958,15 @@ void Recompiler::flushX87() {
         if (mmx_reg_cache[i].dirty) {
             ASSERT(!x87_dirty);
             ASSERT(mmx_reg_cache[i].loaded);
+            if (temp == x0) {
+                temp = scratch();
+            }
             setVectorState(SEW::E64, 1);
             biscuit::Vec vec = mmx_reg_cache[i].reg;
-            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, ctx.st) + i * sizeof(Float80));
-            as.VSE64(vec, address);
-            as.LI(address, -1);
-            as.SH(address, offsetof(ThreadState, ctx.st) + i * sizeof(Float80) + sizeof(u64), Recompiler::threadStatePointer());
+            as.ADDI(temp, threadStatePointer(), offsetof(ThreadState, ctx.st) + i * sizeof(Float80));
+            as.VSE64(vec, temp);
+            as.LI(temp, -1);
+            as.SH(temp, offsetof(ThreadState, ctx.st) + i * sizeof(Float80) + sizeof(u64), Recompiler::threadStatePointer());
         }
     }
 
@@ -869,9 +978,10 @@ void Recompiler::flushX87() {
         popScratch();
     }
 
-    popScratch();
-    popScratch();
-
+    if (temp != x0) {
+        popScratch();
+    }
+    popScratchFPR();
     resetX87();
 }
 
@@ -910,6 +1020,7 @@ void Recompiler::compileInstruction(ZydisDecodedInstruction& instruction, ZydisD
                 u8 bytes = size / 8;
                 u8 alignment_bits = log2(bytes);
                 u64 mask = (1 << alignment_bits) - 1;
+                flushX87();
                 biscuit::GPR address = lea(&operands[0]);
                 biscuit::GPR temp = scratch();
                 biscuit::Label ok;
@@ -957,7 +1068,8 @@ void Recompiler::compileInstruction(ZydisDecodedInstruction& instruction, ZydisD
 }
 
 biscuit::GPR Recompiler::scratch() {
-    ASSERT(scratch_index != (int)scratch_gprs.size());
+    ASSERT_MSG(scratch_index != (int)scratch_gprs.size(), "Out of scratch registers while compiling %s",
+               disassemble_one(current_mode32, current_rip).c_str());
     return scratch_gprs[scratch_index++];
 }
 
@@ -1001,6 +1113,29 @@ void Recompiler::popScratch() {
 void Recompiler::popScratchFPR() {
     fpu_scratch_index--;
     ASSERT(fpu_scratch_index >= 0);
+}
+
+void Recompiler::resetBlockState(u64 rip) {
+    resetScratch();
+    resetX87();
+    resetVectorState();
+    local_x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
+    fsrm_sse = true;                     // dispatcher loads SSE rounding mode as a default
+    v0_has_mask = false;
+
+    current_ripreg_value = rip; // may change in a syscall to check for safepoints, or after a set amount of instructions in the future
+    current_instruction_index = 0;
+    current_pushpop_offset = 0;
+}
+
+void Recompiler::flushBlockState(u64 rip) {
+    resetScratch();
+    flushPushpop();
+    flushX87();
+    biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
+    u64 offset = rip - getCurrentRipregValue();
+    setCurrentRipregValue(rip);
+    addi(ripreg, ripreg, offset);
 }
 
 void Recompiler::resetScratch() {
@@ -1316,19 +1451,9 @@ biscuit::GPR Recompiler::getGPR(const ZydisDecodedOperand* operand) {
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::GPR dest = scratch();
-        u64 immediate = operand->mem.disp.value;
-        if (IsValidSigned12BitImm(immediate) && !(current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
-            g_config.no_address_overflow) { // can't do this with seg+a32
-            // Remove the immediate from the operand and use it in the write memory instruction
-            // This can turn an ADDI+load into just a load if the LEA is just a register
-            ZydisDecodedOperand op = *operand;
-            op.mem.disp.value = 0;
-            biscuit::GPR address = lea(&op, false);
-            readMemory(dest, address, immediate, zydisToSize(operand->size));
-        } else {
-            biscuit::GPR address = lea(operand, false);
-            readMemory(dest, address, 0, zydisToSize(operand->size));
-        }
+        i64 offset;
+        biscuit::GPR address = leaOffset(operand, offset);
+        readMemory(dest, address, offset, zydisToSize(operand->size));
         return dest;
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
@@ -1340,6 +1465,72 @@ biscuit::GPR Recompiler::getGPR(const ZydisDecodedOperand* operand) {
     default: {
         UNREACHABLE();
         return x0;
+    }
+    }
+}
+
+biscuit::GPR Recompiler::getGPRSigned(x86_ref_e ref, x86_size_e size, bool dont_sext32) {
+    biscuit::GPR gpr = allocatedGPR(ref);
+
+    switch (size) {
+    case X86_SIZE_BYTE: {
+        biscuit::GPR gpr8 = scratch();
+        sext(gpr8, gpr, X86_SIZE_BYTE);
+        return gpr8;
+    }
+    case X86_SIZE_BYTE_HIGH: {
+        biscuit::GPR gpr8 = scratch();
+        as.SRLI(gpr8, gpr, 8);
+        sext(gpr8, gpr8, X86_SIZE_BYTE);
+        return gpr8;
+    }
+    case X86_SIZE_WORD: {
+        biscuit::GPR gpr16 = scratch();
+        sext(gpr16, gpr, X86_SIZE_WORD);
+        return gpr16;
+    }
+    case X86_SIZE_DWORD: {
+        if (!dont_sext32) {
+            biscuit::GPR gpr32 = scratch();
+            sext(gpr32, gpr, X86_SIZE_DWORD);
+            return gpr32;
+        } else {
+            return gpr;
+        }
+    }
+    case X86_SIZE_QWORD: {
+        return gpr;
+    }
+    default: {
+        UNREACHABLE();
+        return x0;
+    }
+    }
+}
+
+biscuit::GPR Recompiler::getGPRSigned(const ZydisDecodedOperand* operand, bool dont_sext32) {
+    switch (operand->type) {
+    case ZYDIS_OPERAND_TYPE_REGISTER: {
+        ZydisRegister reg = operand->reg.value;
+        x86_ref_e ref = zydisToRef(reg);
+        x86_size_e size = zydisToSize(reg);
+        return getGPRSigned(ref, size, dont_sext32);
+    }
+    case ZYDIS_OPERAND_TYPE_MEMORY: {
+        biscuit::GPR dest = scratch();
+        i64 offset;
+        biscuit::GPR address = leaOffset(operand, offset);
+        readMemorySigned(dest, address, offset, zydisToSize(operand->size));
+        return dest;
+    }
+    case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
+        u64 value = operand->imm.value.s;
+        biscuit::GPR imm = scratch();
+        as.LI(imm, value);
+        return imm;
+    }
+    default: {
+        UNREACHABLE();
     }
     }
 }
@@ -1356,7 +1547,9 @@ biscuit::Vec Recompiler::getVec(const ZydisDecodedOperand* operand) {
 
         readMemory(vec, address, operand->size);
 
-        popScratch(); // pop lea scratch
+        if (isScratch(address)) {
+            popScratch(); // pop lea scratch
+        }
 
         return vec;
     }
@@ -1579,6 +1772,10 @@ void Recompiler::setGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
 void Recompiler::setVec(x86_ref_e ref, biscuit::Vec vec) {
     biscuit::Vec dest = allocatedVec(ref);
 
+    if (isMM(ref)) {
+        mmx_reg_cache[ref - X86_REF_MM0].loaded = true;
+    }
+
     if (dest != vec) {
         if (Extensions::VLEN == 128) {
             ASSERT_MSG(isXMM(ref) || isMM(ref), "setVec dealing with YMM registers but your VLEN is 128");
@@ -1618,19 +1815,9 @@ void Recompiler::setGPR(const ZydisDecodedOperand* operand, biscuit::GPR reg) {
         break;
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
-        u64 immediate = operand->mem.disp.value;
-        if (IsValidSigned12BitImm(immediate) && !(current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT) &&
-            !g_config.paranoid) { // can't do this with seg+a32
-            // Remove the immediate from the operand and use it in the write memory instruction
-            // This can turn an ADDI+store into just a store if the LEA is just a register
-            ZydisDecodedOperand op = *operand;
-            op.mem.disp.value = 0;
-            biscuit::GPR address = lea(&op, false);
-            writeMemory(reg, address, immediate, zydisToSize(operand->size));
-        } else {
-            biscuit::GPR address = lea(operand, false);
-            writeMemory(reg, address, 0, zydisToSize(operand->size));
-        }
+        i64 offset;
+        biscuit::GPR address = leaOffset(operand, offset);
+        writeMemory(reg, address, offset, zydisToSize(operand->size));
         break;
     }
     default: {
@@ -1656,18 +1843,52 @@ void Recompiler::setVec(const ZydisDecodedOperand* operand, biscuit::Vec vec) {
             break;
         }
         case 128: {
-            setVectorState(SEW::E8, 128 / 8);
-            as.VSE8(vec, address);
+            if (Extensions::Zicclsm && current_sew == SEW::E32 && current_vlen == 4 && current_grouping == LMUL::M1) {
+                as.VSE32(vec, address);
+            } else if (Extensions::Zicclsm && current_sew == SEW::E64 && current_vlen == 2 && current_grouping == LMUL::M1) {
+                as.VSE64(vec, address);
+            } else {
+                setVectorState(SEW::E8, 128 / 8);
+                as.VSE8(vec, address);
+            }
             break;
         }
         case 64: {
-            setVectorState(SEW::E8, 64 / 8);
-            as.VSE8(vec, address);
+            if (Extensions::Zicclsm && current_grouping == LMUL::M1 && current_vlen * (8u << (u32)current_sew) >= 64) {
+                if (current_vlen == 1) {
+                    as.VSE64(vec, address);
+                } else if (current_vlen == 2) {
+                    as.VSE32(vec, address);
+                } else if (current_vlen == 4) {
+                    as.VSE16(vec, address);
+                } else if (current_vlen == 8) {
+                    as.VSE8(vec, address);
+                } else {
+                    setVectorState(SEW::E8, 64 / 8);
+                    as.VSE8(vec, address);
+                }
+            } else {
+                setVectorState(SEW::E8, 64 / 8);
+                as.VSE8(vec, address);
+            }
             break;
         }
         case 32: {
-            setVectorState(SEW::E8, 32 / 8);
-            as.VSE8(vec, address);
+            if (Extensions::Zicclsm && current_grouping == LMUL::M1 && current_vlen * (8u << (u32)current_sew) >= 32) {
+                if (current_vlen == 1) {
+                    as.VSE32(vec, address);
+                } else if (current_vlen == 2) {
+                    as.VSE16(vec, address);
+                } else if (current_vlen == 4) {
+                    as.VSE8(vec, address);
+                } else {
+                    setVectorState(SEW::E8, 32 / 8);
+                    as.VSE8(vec, address);
+                }
+            } else {
+                setVectorState(SEW::E8, 32 / 8);
+                as.VSE8(vec, address);
+            }
             break;
         }
         default: {
@@ -1705,7 +1926,62 @@ bool Recompiler::setVectorState(SEW sew, int vlen, LMUL grouping) {
     return true;
 }
 
-biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) {
+void Recompiler::shadd(biscuit::GPR dst, biscuit::GPR base, biscuit::GPR index, u8 scale) {
+    switch (scale) {
+    case 1:
+        as.ADD(dst, base, index);
+        break;
+    case 2:
+        as.SH1ADD(dst, index, base);
+        break;
+    case 4:
+        as.SH2ADD(dst, index, base);
+        break;
+    case 8:
+        as.SH3ADD(dst, index, base);
+        break;
+    default:
+        UNREACHABLE();
+        break;
+    }
+}
+
+static int segmentBaseOffset(ZydisRegister segment) {
+    switch (segment) {
+    case ZYDIS_REGISTER_FS: {
+        return offsetof(ThreadState, ctx.fsbase);
+    }
+    case ZYDIS_REGISTER_GS: {
+        return offsetof(ThreadState, ctx.gsbase);
+    }
+    case ZYDIS_REGISTER_SS: {
+        return offsetof(ThreadState, ctx.ssbase);
+    }
+    case ZYDIS_REGISTER_ES: {
+        return offsetof(ThreadState, ctx.esbase);
+    }
+    case ZYDIS_REGISTER_DS: {
+        return offsetof(ThreadState, ctx.dsbase);
+    }
+    case ZYDIS_REGISTER_CS: {
+        return offsetof(ThreadState, ctx.csbase);
+    }
+    default: {
+        UNREACHABLE();
+        return 0;
+    }
+    }
+}
+
+biscuit::GPR Recompiler::leaOffset(const ZydisDecodedOperand* operand, i64& offset) {
+    return lea(operand, false, x0, &offset);
+}
+
+biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp, biscuit::GPR forced_dst, i64* offset) {
+    if (offset) {
+        *offset = 0;
+    }
+
     if (cached_lea_operand == operand) {
         ASSERT(cached_lea_operand->mem.base == operand->mem.base);
         ASSERT(cached_lea_operand->mem.index == operand->mem.index);
@@ -1716,16 +1992,43 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
     }
 
     ASSERT(operand->type == ZYDIS_OPERAND_TYPE_MEMORY);
-    biscuit::GPR address = scratch();
-    cached_lea = address;
-    cached_lea_operand = operand;
+
+    bool has_base = operand->mem.base != ZYDIS_REGISTER_NONE;
+    bool has_index = operand->mem.index != ZYDIS_REGISTER_NONE;
+    bool has_segment = current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT;
+    ASSERT(!has_segment || current_mode32 || operand->mem.segment == ZYDIS_REGISTER_FS || operand->mem.segment == ZYDIS_REGISTER_GS);
+    i64 disp = operand->mem.disp.value;
+    bool addressing32 = current_mode32 || (current_instruction->attributes & ZYDIS_ATTRIB_HAS_ADDRESSSIZE);
+    bool fold_disp =
+        offset && disp != 0 && IsValidSigned12BitImm(disp) && !has_segment && !g_config.paranoid && (g_config.no_address_overflow || !addressing32);
+    if (fold_disp) {
+        *offset = disp;
+        disp = 0;
+    }
+    bool has_disp = disp != 0;
+
+    if (!use_temp && forced_dst == x0 && !has_segment && !has_disp && operand->mem.base != ZYDIS_REGISTER_RIP) {
+        if (has_base && !has_index) {
+            return getGPR(operand->mem.base);
+        }
+
+        if (!has_base && has_index && operand->mem.scale == 1) {
+            return getGPR(operand->mem.index);
+        }
+    }
+
+    biscuit::GPR address = forced_dst == x0 ? scratch() : forced_dst;
+    if (!fold_disp) {
+        cached_lea = address;
+        cached_lea_operand = operand;
+    }
 
     biscuit::GPR base, index;
 
     if (operand->mem.base == ZYDIS_REGISTER_RIP) {
         ASSERT(!current_mode32);
-        u64 offset_from_start = (current_rip - getCurrentRipregValue()) + current_instruction->length + (u64)operand->mem.disp.value;
-        u64 offset_from_cursor = (current_rip + current_instruction->length + operand->mem.disp.value) - (u64)as.GetCursorPointer();
+        u64 offset_from_start = (current_rip - getCurrentRipregValue()) + current_instruction->length + (u64)disp;
+        u64 offset_from_cursor = (current_rip + current_instruction->length + disp) - (u64)as.GetCursorPointer();
         if (IsValid2GBImm(offset_from_cursor) && !IsValidSigned12BitImm(offset_from_start) && !relocatable) {
             u32 hi20 = static_cast<i32>(((static_cast<u32>(offset_from_cursor) + 0x800) >> 12) & 0xFFFFF);
             u32 lo12 = static_cast<i32>(offset_from_cursor << 20) >> 20;
@@ -1738,131 +2041,51 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
         return address;
     }
 
-    bool has_base = operand->mem.base != ZYDIS_REGISTER_NONE;
-    bool has_index = operand->mem.index != ZYDIS_REGISTER_NONE;
-    bool has_segment = current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT;
-    bool has_disp = operand->mem.disp.value != 0;
-
-    // Cover the case of just a segment register
-    if (has_segment && !has_base && !has_index && !has_disp) {
-        if (operand->mem.segment == ZYDIS_REGISTER_FS) {
-            as.LD(address, offsetof(ThreadState, ctx.fsbase), threadStatePointer());
-        } else if (operand->mem.segment == ZYDIS_REGISTER_GS) {
-            as.LD(address, offsetof(ThreadState, ctx.gsbase), threadStatePointer());
-        } else {
-            UNREACHABLE();
-        }
-        return address;
-    }
-
-    if (!use_temp) {
-        if (!has_segment && has_base && !has_index && !has_disp) {
-            cached_lea_operand = nullptr;
-            biscuit::GPR base = getGPR(operand->mem.base);
-            return base;
-        }
-
-        if (!has_segment && !has_base && has_index && !has_disp && operand->mem.scale == 1) {
-            cached_lea_operand = nullptr;
-            biscuit::GPR index = getGPR(operand->mem.index);
-            return index;
-        }
-    }
-
-    if (has_disp) {
-        // Load the displacement first
-        if (has_base && IsValidSigned12BitImm(operand->mem.disp.value)) {
-            base = allocatedGPR(zydisToRef(operand->mem.base));
-            as.ADDI(address, base, operand->mem.disp.value);
-        } else {
-            as.LI(address, operand->mem.disp.value);
-            if (has_base) {
-                base = allocatedGPR(zydisToRef(operand->mem.base));
-                as.ADD(address, address, base);
-            }
-        }
-
-        if (has_index) {
-            index = allocatedGPR(zydisToRef(operand->mem.index));
-            u8 scale = operand->mem.scale;
-            if (scale != 1) {
-                switch (scale) {
-                case 2:
-                    as.SH1ADD(address, index, address);
-                    break;
-                case 4:
-                    as.SH2ADD(address, index, address);
-                    break;
-                case 8: {
-                    as.SH3ADD(address, index, address);
-                    break;
-                }
-                default: {
-                    UNREACHABLE();
-                    break;
-                }
-                }
-            } else {
-                as.ADD(address, address, index);
-            }
-        }
-    } else {
-        if (has_index) {
-            index = allocatedGPR(zydisToRef(operand->mem.index));
-            u8 scale = operand->mem.scale;
-            if (!has_base) {
-                // No base, shift directly into address
-                if (scale == 1) {
-                    as.MV(address, index);
-                } else {
-                    switch (scale) {
-                    case 2:
-                        scale = 1;
-                        break;
-                    case 4:
-                        scale = 2;
-                        break;
-                    case 8:
-                        scale = 3;
-                        break;
-                    default:
-                        UNREACHABLE();
-                        break;
-                    }
-                    as.SLLI(address, index, scale);
-                }
-            } else {
-                // Add index to the base
-                base = allocatedGPR(zydisToRef(operand->mem.base));
-                if (scale != 1) {
-                    switch (scale) {
-                    case 2:
-                        as.SH1ADD(address, index, base);
-                        break;
-                    case 4:
-                        as.SH2ADD(address, index, base);
-                        break;
-                    case 8: {
-                        as.SH3ADD(address, index, base);
-                        break;
-                    }
-                    default: {
-                        UNREACHABLE();
-                        break;
-                    }
-                    }
-                } else {
-                    as.ADD(address, base, index);
-                }
-            }
-        } else if (has_base) {
-            base = allocatedGPR(zydisToRef(operand->mem.base));
-            as.MV(address, base);
+    if (!has_base && !has_index) {
+        if (has_disp) {
+            as.LI(address, disp);
+        } else if (has_segment) {
+            // Cover the case of just a segment register
+            as.LD(address, segmentBaseOffset(operand->mem.segment), threadStatePointer());
+            return address;
         } else {
             // We only get here if there's no base or index or segment and immediate == 0
-            ASSERT(operand->mem.disp.value == 0);
             WARN("Compiling null memory access");
             return x0;
+        }
+    } else if (has_disp && !IsValidSigned12BitImm(disp)) {
+        // Load the displacement first
+        as.LI(address, disp);
+        if (has_base) {
+            base = allocatedGPR(zydisToRef(operand->mem.base));
+            as.ADD(address, address, base);
+        }
+        if (has_index) {
+            index = allocatedGPR(zydisToRef(operand->mem.index));
+            shadd(address, address, index, operand->mem.scale);
+        }
+    } else {
+        biscuit::GPR sum = address;
+        if (has_index) {
+            index = allocatedGPR(zydisToRef(operand->mem.index));
+            u8 scale = operand->mem.scale;
+            if (has_base) {
+                base = allocatedGPR(zydisToRef(operand->mem.base));
+                shadd(address, base, index, scale);
+            } else if (scale == 1) {
+                sum = index;
+            } else {
+                ASSERT(scale == 2 || scale == 4 || scale == 8);
+                as.SLLI(address, index, std::countr_zero(scale));
+            }
+        } else {
+            sum = allocatedGPR(zydisToRef(operand->mem.base));
+        }
+
+        if (has_disp) {
+            as.ADDI(address, sum, disp);
+        } else if (sum != address) {
+            as.MV(address, sum);
         }
     }
 
@@ -1875,49 +2098,14 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
     }
 
     if (has_segment) {
-        int offset;
-        switch (operand->mem.segment) {
-        case ZYDIS_REGISTER_FS: {
-            offset = offsetof(ThreadState, ctx.fsbase);
-            break;
-        }
-        case ZYDIS_REGISTER_GS: {
-            offset = offsetof(ThreadState, ctx.gsbase);
-            break;
-        }
-        case ZYDIS_REGISTER_SS: {
-            ASSERT(current_mode32);
-            offset = offsetof(ThreadState, ctx.ssbase);
-            break;
-        }
-        case ZYDIS_REGISTER_ES: {
-            ASSERT(current_mode32);
-            offset = offsetof(ThreadState, ctx.esbase);
-            break;
-        }
-        case ZYDIS_REGISTER_DS: {
-            ASSERT(current_mode32);
-            offset = offsetof(ThreadState, ctx.dsbase);
-            break;
-        }
-        case ZYDIS_REGISTER_CS: {
-            ASSERT(current_mode32);
-            offset = offsetof(ThreadState, ctx.csbase);
-            break;
-        }
-        default: {
-            UNREACHABLE();
-        }
-        }
-
         // Whether or not there's a displacement, at this point it's guaranteed that there's something in `address`
         biscuit::GPR seg = scratch();
-        as.LD(seg, offset, threadStatePointer());
+        as.LD(seg, segmentBaseOffset(operand->mem.segment), threadStatePointer());
         as.ADD(address, address, seg);
         popScratch();
     }
 
-    if (current_mode32 && current_instruction->address_width != 64 /* HACK: we set address_width = 64 in handler for LEA to avoid this zext*/) {
+    if (current_mode32) {
         // The additions may have overflown the address
         as.ZEXTW(address, address);
     }
@@ -1932,9 +2120,11 @@ void Recompiler::stopCompiling() {
 }
 
 void Recompiler::writebackState() {
+    int saved_scratch_index = scratch_index;
     v0Modified();
     resetVectorState();
 
+    flushPushpop();
     flushX87();
 
     biscuit::GPR rip = allocatedGPR(X86_REF_RIP);
@@ -1983,9 +2173,11 @@ void Recompiler::writebackState() {
 
     resetVectorState();
     cached_lea_operand = nullptr;
+    scratch_index = saved_scratch_index;
 }
 
 void Recompiler::restoreState() {
+    int saved_scratch_index = scratch_index;
     resetVectorState();
 
     biscuit::GPR rip = allocatedGPR(X86_REF_RIP);
@@ -2034,53 +2226,51 @@ void Recompiler::restoreState() {
     as.LBU(of, offsetof(ThreadState, ctx.of), threadStatePointer());
 
     // Restore the rounding mode
-    if (fsrm_sse) {
-        biscuit::GPR rm = scratch();
-        as.LBU(rm, offsetof(ThreadState, ctx.rmode_sse), threadStatePointer());
-        as.FSRM(x0, rm);
-        popScratch();
-    } else {
-        biscuit::GPR rm = scratch();
-        as.LBU(rm, offsetof(ThreadState, ctx.rmode_x87), threadStatePointer());
-        as.FSRM(x0, rm);
-        popScratch();
-    }
+    loadRoundingMode(fsrm_sse);
 
     as.FENCETSO();
 
     resetVectorState();
     cached_lea_operand = nullptr;
     v0Modified();
+    scratch_index = saved_scratch_index;
 }
 
-void Recompiler::backToDispatcher() {
+void Recompiler::backToDispatcher(bool return_hint, bool skip_lookup) {
     OptimizationGuard guard(as, optimization_guard_counter);
     const bool is_single_step = single_step != SingleStepMode::None;
+    const u64 handler = skip_lookup ? compile_next_skip_address_cache : compile_next_handler;
     if (compiling && is_single_step) {
         as.SD(x0, 0, x0);
         as.SLTIU(x0, x0, FELIX86_HINT_TF);
         // Unreachable
         as.C_UNDEF();
         as.C_UNDEF();
-        if (single_step == SingleStepMode::PtraceSinglestep) {
-            single_step = SingleStepMode::None;
-        }
     } else if (!relocatable) {
-        const u64 offset = compile_next_handler - (u64)as.GetCursorPointer();
+        const u64 offset = handler - (u64)as.GetCursorPointer();
         ASSERT(IsValid2GBImm(offset));
         const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
         const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
         ASSERT(isScratch(t6));
         as.AUIPC(t6, hi20);
-        as.JR(t6, lo12);
+        if (return_hint)
+            as.JALR(x1, lo12, t6);
+        else
+            as.JR(t6, lo12);
     } else {
         ASSERT(isScratch(t6));
         as.LD(t6, offsetof(ThreadState, recompiler), threadStatePointer());
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Winvalid-offsetof"
-        as.LD(t6, offsetof(Recompiler, compile_next_handler), t6);
+        if (skip_lookup)
+            as.LD(t6, offsetof(Recompiler, compile_next_skip_address_cache), t6);
+        else
+            as.LD(t6, offsetof(Recompiler, compile_next_handler), t6);
 #pragma GCC diagnostic pop
-        as.JR(t6);
+        if (return_hint)
+            as.JALR(x1, 0, t6);
+        else
+            as.JR(t6);
     }
 }
 
@@ -2094,15 +2284,13 @@ void Recompiler::exitDispatcher(felix86_frame* frame) {
 }
 
 void Recompiler::scanAhead(u64 rip) {
-    for (int i = 0; i < 6; i++) {
-        flag_access_cpazso[i].clear();
-    }
-
     current_block_big = false;
-
     bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
     u64 initial_rip = rip;
+    u64 lowest_rip_write = UINT64_MAX;
     instructions.clear();
+    ZydisBookkeeping zydis_state{};
+    std::vector<FlagAccessData::ScanAccess> scan_entries;
     while (true) {
         instructions.push_back({});
         auto& [instruction, operands] = instructions.back();
@@ -2121,22 +2309,39 @@ void Recompiler::scanAhead(u64 rip) {
         bool is_jump = instruction.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
         bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET || mnemonic == ZYDIS_MNEMONIC_IRETD || mnemonic == ZYDIS_MNEMONIC_IRETQ;
         bool is_call = mnemonic == ZYDIS_MNEMONIC_CALL;
-        bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2 || mnemonic == ZYDIS_MNEMONIC_OUTSB || mnemonic == ZYDIS_MNEMONIC_OUTSW ||
+        bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2 || mnemonic == ZYDIS_MNEMONIC_VMCALL || mnemonic == ZYDIS_MNEMONIC_VMMCALL ||
+                          mnemonic == ZYDIS_MNEMONIC_VMFUNC || mnemonic == ZYDIS_MNEMONIC_OUTSB || mnemonic == ZYDIS_MNEMONIC_OUTSW ||
                           mnemonic == ZYDIS_MNEMONIC_OUTSD || mnemonic == ZYDIS_MNEMONIC_INSB || mnemonic == ZYDIS_MNEMONIC_INSW ||
-                          mnemonic == ZYDIS_MNEMONIC_INSD;
+                          mnemonic == ZYDIS_MNEMONIC_INSD || mnemonic == ZYDIS_MNEMONIC_IN || mnemonic == ZYDIS_MNEMONIC_OUT;
         bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
         bool is_int3 = mnemonic == ZYDIS_MNEMONIC_INT3;
+
+        if (instructions.size() > 1 && rip + instruction.length > lowest_rip_write) {
+            IMPORTANT("Inline SMC detected, block at %lx writes to %lx", initial_rip, lowest_rip_write);
+            current_block_big = true;
+            instructions.pop_back();
+            break;
+        }
+
+        if (g_config.optimization_pass) {
+            Optimizer::zydis_instruction_pass(zydis_state, instruction, operands);
+        }
+
+        for (int i = 0; i < std::min((int)instruction.operand_count, 2); i++) {
+            if (operands[i].type == ZYDIS_OPERAND_TYPE_MEMORY && (operands[i].actions & ZYDIS_OPERAND_ACTION_MASK_WRITE) &&
+                operands[i].mem.base == ZYDIS_REGISTER_RIP) {
+                u64 target = rip + instruction.length + operands[i].mem.disp.value;
+                if (target >= rip + instruction.length) {
+                    lowest_rip_write = std::min(lowest_rip_write, target);
+                }
+            }
+        }
 
         if (g_config.unsafe_flags && !g_config.paranoid) {
             if (is_call || is_ret) {
                 // Pretend that the call/ret changes the flags so that we don't calculate the flags
                 // This is most often the case so it's a good optimization.
-                flag_access_cpazso[0].push_back({true, rip});
-                flag_access_cpazso[1].push_back({true, rip});
-                flag_access_cpazso[2].push_back({true, rip});
-                flag_access_cpazso[3].push_back({true, rip});
-                flag_access_cpazso[4].push_back({true, rip});
-                flag_access_cpazso[5].push_back({true, rip});
+                scan_entries.push_back({.rip = rip, .flags_used = 0, .flags_changed = ALL_CPUFLAGS});
                 break;
             }
         }
@@ -2144,12 +2349,7 @@ void Recompiler::scanAhead(u64 rip) {
         if (instruction.mnemonic == ZYDIS_MNEMONIC_INVLPG) {
             // Don't calculate any flags
             if (!g_config.paranoid) {
-                flag_access_cpazso[0].push_back({true, rip});
-                flag_access_cpazso[1].push_back({true, rip});
-                flag_access_cpazso[2].push_back({true, rip});
-                flag_access_cpazso[3].push_back({true, rip});
-                flag_access_cpazso[4].push_back({true, rip});
-                flag_access_cpazso[5].push_back({true, rip});
+                scan_entries.push_back({.rip = rip, .flags_used = 0, .flags_changed = ALL_CPUFLAGS});
             }
             ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
             if (operands[0].mem.base == ZYDIS_REGISTER_RAX) {
@@ -2173,58 +2373,17 @@ void Recompiler::scanAhead(u64 rip) {
         }
 
         if (instruction.attributes & ZYDIS_ATTRIB_CPUFLAG_ACCESS) {
+            ZydisAccessedFlagsMask flags_used = 0;
+            ZydisAccessedFlagsMask flags_changed = 0;
             u32 changed =
                 instruction.cpu_flags->modified | instruction.cpu_flags->set_0 | instruction.cpu_flags->set_1 | instruction.cpu_flags->undefined;
             u32 used = instruction.cpu_flags->tested;
-            bool passthrough = flag_passthrough(instruction.mnemonic);
-
+            bool passthrough = flag_passthrough(instruction);
+            flags_used |= used & ALL_CPUFLAGS;
             if (!passthrough) {
-                if (used & ZYDIS_CPUFLAG_CF) {
-                    flag_access_cpazso[0].push_back({false, rip});
-                } else if (changed & ZYDIS_CPUFLAG_CF) {
-                    flag_access_cpazso[0].push_back({true, rip});
-                }
+                flags_changed |= changed & ALL_CPUFLAGS;
             }
-
-            if (!passthrough) {
-                if (used & ZYDIS_CPUFLAG_PF) {
-                    flag_access_cpazso[1].push_back({false, rip});
-                } else if (changed & ZYDIS_CPUFLAG_PF) {
-                    flag_access_cpazso[1].push_back({true, rip});
-                }
-            }
-
-            if (!passthrough) {
-                if (used & ZYDIS_CPUFLAG_AF) {
-                    flag_access_cpazso[2].push_back({false, rip});
-                } else if (changed & ZYDIS_CPUFLAG_AF) {
-                    flag_access_cpazso[2].push_back({true, rip});
-                }
-            }
-
-            if (!passthrough) {
-                if (used & ZYDIS_CPUFLAG_ZF) {
-                    flag_access_cpazso[3].push_back({false, rip});
-                } else if (changed & ZYDIS_CPUFLAG_ZF) {
-                    flag_access_cpazso[3].push_back({true, rip});
-                }
-            }
-
-            if (!passthrough) {
-                if (used & ZYDIS_CPUFLAG_SF) {
-                    flag_access_cpazso[4].push_back({false, rip});
-                } else if (changed & ZYDIS_CPUFLAG_SF) {
-                    flag_access_cpazso[4].push_back({true, rip});
-                }
-            }
-
-            if (!passthrough) {
-                if (used & ZYDIS_CPUFLAG_OF) {
-                    flag_access_cpazso[5].push_back({false, rip});
-                } else if (changed & ZYDIS_CPUFLAG_OF) {
-                    flag_access_cpazso[5].push_back({true, rip});
-                }
-            }
+            scan_entries.push_back({.rip = rip, .flags_used = flags_used, .flags_changed = flags_changed});
         }
 
         if (too_big) {
@@ -2233,18 +2392,25 @@ void Recompiler::scanAhead(u64 rip) {
                 // This way if current_block_big == true we know that it doesn't end in a block-ending instruction
                 current_block_big = false;
             } else {
-                // Similar to jumps, all flags will be calculated as the flag_access_cpazso array ends
+                // Similar to jumps, all flags will be calculated as the flag_access array ends
                 current_block_big = true;
                 break;
             }
         }
 
         if (is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3) {
-            if (g_config.scan_ahead_multi && !g_config.paranoid) {
-                // We need to see where the jump will land, and scan some of its instructions
-                // If all the landing places overwrite the flags (1 landing spot for jmp, 2 for jcc)
-                // then we can skip those flag calculations
-                if (is_jump && operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+            if (g_config.scan_ahead_multi && !g_config.paranoid && !is_ret && !is_call && !is_illegal && !is_hlt && !is_int3 &&
+                operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+                // In some cases, the program may deliberately jump to a bad location
+                // This was seen in a Ubisoft installer, for example. Now, we could use Mapper::is_guest_address,
+                // but these cases are so exceptionally rare that it is not worth the locked semaphore
+                // So instead, set a jump buffer so that if our scan ahead faults we skip it.
+                ThreadState* state = ThreadState::Get();
+                int ret = sigsetjmp(state->scan_ahead_buffer, 0);
+                if (ret == 0) {
+                    // We need to see where the jump will land, and scan some of its instructions
+                    // If all the landing places overwrite the flags (1 landing spot for jmp, 2 for jcc)
+                    // then we can skip those flag calculations
                     auto scan_landing_block = [&](u64 rip_ahead) {
                         bool jump_to_self = rip_ahead == initial_rip;
                         ZydisDecodedInstruction instruction_ahead;
@@ -2252,13 +2418,14 @@ void Recompiler::scanAhead(u64 rip) {
                         ZydisDecodedOperand* operands_ahead = operands_ahead_storage;
                         u32 changed_this_block = 0;
                         u32 used_this_block = 0;
-                        u32 flags_we_care_about =
-                            ZYDIS_CPUFLAG_OF | ZYDIS_CPUFLAG_CF | ZYDIS_CPUFLAG_ZF | ZYDIS_CPUFLAG_SF | ZYDIS_CPUFLAG_AF | ZYDIS_CPUFLAG_PF;
-                        // 10 is heuristically picked with no real reason
+                        u32 flags_we_care_about = ALL_CPUFLAGS;
+                        // 64 is heuristically picked, some games have a big slide of SSE instructions that follow a cmp/jcc
+                        // and usually this big of a number is good enough
                         // If we go too high we risk messing our performance
                         // TODO: some benchmarking may be in order
-                        for (size_t i = 0; i < 10; i++) {
+                        for (size_t i = 0; i < scan_ahead_count; i++) {
                             ZydisMnemonic mnemonic;
+                            state->scan_ahead_address = rip_ahead;
                             if (jump_to_self) {
                                 // Jump to self, we already decoded the instructions
                                 ASSERT(i < instructions.size());
@@ -2266,7 +2433,7 @@ void Recompiler::scanAhead(u64 rip) {
                                 operands_ahead = instructions[i].second;
                                 mnemonic = instruction_ahead.mnemonic;
                             } else {
-                                mnemonic = decode(rip_ahead, instruction_ahead, operands_ahead, true);
+                                mnemonic = decode(rip_ahead, instruction_ahead, nullptr, true);
                                 if (mnemonic == ZYDIS_MNEMONIC_INVALID) {
                                     // If this path is hit the instructions will be invalid
                                     // One may assume this means that we can assume flags won't be used in this path
@@ -2279,16 +2446,18 @@ void Recompiler::scanAhead(u64 rip) {
                             bool is_jump = instruction_ahead.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
                             bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET || mnemonic == ZYDIS_MNEMONIC_IRETD || mnemonic == ZYDIS_MNEMONIC_IRETQ;
                             bool is_call = mnemonic == ZYDIS_MNEMONIC_CALL;
-                            bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2 || mnemonic == ZYDIS_MNEMONIC_OUTSB ||
-                                              mnemonic == ZYDIS_MNEMONIC_OUTSW || mnemonic == ZYDIS_MNEMONIC_OUTSD ||
-                                              mnemonic == ZYDIS_MNEMONIC_INSB || mnemonic == ZYDIS_MNEMONIC_INSW || mnemonic == ZYDIS_MNEMONIC_INSD;
+                            bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2 || mnemonic == ZYDIS_MNEMONIC_VMCALL ||
+                                              mnemonic == ZYDIS_MNEMONIC_VMMCALL || mnemonic == ZYDIS_MNEMONIC_VMFUNC ||
+                                              mnemonic == ZYDIS_MNEMONIC_OUTSB || mnemonic == ZYDIS_MNEMONIC_OUTSW ||
+                                              mnemonic == ZYDIS_MNEMONIC_OUTSD || mnemonic == ZYDIS_MNEMONIC_INSB ||
+                                              mnemonic == ZYDIS_MNEMONIC_INSW || mnemonic == ZYDIS_MNEMONIC_INSD;
                             bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
                             bool is_int3 = mnemonic == ZYDIS_MNEMONIC_INT3;
 
                             u32 changed = instruction_ahead.cpu_flags->modified | instruction_ahead.cpu_flags->set_0 |
                                           instruction_ahead.cpu_flags->set_1 | instruction_ahead.cpu_flags->undefined;
                             u32 used = instruction_ahead.cpu_flags->tested;
-                            if (flag_passthrough(mnemonic)) {
+                            if (flag_passthrough(instruction_ahead)) {
                                 // Act as if this instruction didn't change any flags, since it may not if shift == 0
                                 changed = 0;
                             }
@@ -2306,8 +2475,7 @@ void Recompiler::scanAhead(u64 rip) {
                             if (is_call || is_ret) {
                                 if (g_config.unsafe_flags && !g_config.paranoid) {
                                     // Pretend call and ret overwrites all flags
-                                    changed_this_block = ZYDIS_CPUFLAG_CF | ZYDIS_CPUFLAG_PF | ZYDIS_CPUFLAG_AF | ZYDIS_CPUFLAG_ZF |
-                                                         ZYDIS_CPUFLAG_SF | ZYDIS_CPUFLAG_OF;
+                                    changed_this_block = ALL_CPUFLAGS;
                                 }
 
                                 break;
@@ -2315,7 +2483,12 @@ void Recompiler::scanAhead(u64 rip) {
 
                             if (is_jump || is_illegal || is_hlt || is_int3) {
                                 // Check if we can follow the jump trivially
-                                if (is_jump && mnemonic == ZYDIS_MNEMONIC_JMP && operands_ahead[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+                                if (mnemonic == ZYDIS_MNEMONIC_JMP && !jump_to_self) {
+                                    operands_ahead = operands_ahead_storage;
+                                    decode(rip_ahead, instruction_ahead, operands_ahead);
+                                }
+
+                                if (mnemonic == ZYDIS_MNEMONIC_JMP && operands_ahead[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
                                     u64 displacement = sextImmediate(getImmediate(&operands_ahead[0]), operands_ahead[0].imm.size);
                                     rip_ahead += instruction_ahead.length + displacement;
                                     jump_to_self = false; // stop using our cached instructions
@@ -2338,7 +2511,10 @@ void Recompiler::scanAhead(u64 rip) {
                     if (mnemonic == ZYDIS_MNEMONIC_JMP) {
                         u64 immediate = sextImmediate(getImmediate(&operands[0]), operands[0].imm.size);
                         u64 rip_ahead = rip + instruction.length + immediate;
+                        state->in_scan_ahead = true;
                         thrashed_ahead = scan_landing_block(rip_ahead);
+                        state->scan_ahead_address = 0;
+                        state->in_scan_ahead = false;
                     } else if (instruction.mnemonic >= ZYDIS_MNEMONIC_JB && instruction.mnemonic <= ZYDIS_MNEMONIC_JZ) {
                         ASSERT(instruction.mnemonic != ZYDIS_MNEMONIC_JKZD);
                         ASSERT(instruction.mnemonic != ZYDIS_MNEMONIC_JKNZD);
@@ -2346,7 +2522,10 @@ void Recompiler::scanAhead(u64 rip) {
                         u64 rip_ahead_false = rip + instruction.length;
                         u64 rip_ahead_true = rip_ahead_false + immediate;
                         // For the flags to not be calculated they need to be overwritten in both paths
+                        state->in_scan_ahead = true;
                         thrashed_ahead = scan_landing_block(rip_ahead_false) & scan_landing_block(rip_ahead_true);
+                        state->scan_ahead_address = 0;
+                        state->in_scan_ahead = false;
                     } else {
                         break;
                     }
@@ -2355,29 +2534,15 @@ void Recompiler::scanAhead(u64 rip) {
                     // trick the instruction handlers into not emitting this flag
                     // If the JCC actually uses the flag, that's fine because the flag access will be after the usage
                     // so the instruction handler will emit that flag
-                    if (thrashed_ahead & ZYDIS_CPUFLAG_CF) {
-                        flag_access_cpazso[0].push_back({true, rip});
-                    }
-
-                    if (thrashed_ahead & ZYDIS_CPUFLAG_PF) {
-                        flag_access_cpazso[1].push_back({true, rip});
-                    }
-
-                    if (thrashed_ahead & ZYDIS_CPUFLAG_AF) {
-                        flag_access_cpazso[2].push_back({true, rip});
-                    }
-
-                    if (thrashed_ahead & ZYDIS_CPUFLAG_ZF) {
-                        flag_access_cpazso[3].push_back({true, rip});
-                    }
-
-                    if (thrashed_ahead & ZYDIS_CPUFLAG_SF) {
-                        flag_access_cpazso[4].push_back({true, rip});
-                    }
-
-                    if (thrashed_ahead & ZYDIS_CPUFLAG_OF) {
-                        flag_access_cpazso[5].push_back({true, rip});
-                    }
+                    scan_entries.push_back({.rip = rip, .flags_used = 0, .flags_changed = (thrashed_ahead & ALL_CPUFLAGS)});
+                } else {
+                    // The scan ahead faulted
+                    state->in_scan_ahead = false;
+                    state->scan_ahead_address = 0;
+                    u64 sigsegv = 1 << (SIGSEGV - 1);
+                    // We don't save signal mask in sigsetjmp as it would cost a syscall per block, we just
+                    // unblock the SIGSEGV signal that the signal handler blocked on fault
+                    ASSERT(syscall(SYS_rt_sigprocmask, SIG_UNBLOCK, &sigsegv, nullptr, sizeof(u64)) == 0);
                 }
             }
 
@@ -2386,6 +2551,8 @@ void Recompiler::scanAhead(u64 rip) {
 
         rip += instruction.length;
     }
+
+    current_flag_access = FlagAccessData(scan_entries);
 }
 
 bool Recompiler::shouldEmitFlag(u64 rip, x86_ref_e ref) {
@@ -2395,42 +2562,32 @@ bool Recompiler::shouldEmitFlag(u64 rip, x86_ref_e ref) {
         return false;
     }
 
-    int index = 0;
+    ZydisAccessedFlagsMask mask = 0;
     switch (ref) {
     case X86_REF_CF:
-        index = 0;
+        mask = ZYDIS_CPUFLAG_CF;
         break;
     case X86_REF_PF:
-        index = 1;
+        mask = ZYDIS_CPUFLAG_PF;
         break;
     case X86_REF_AF:
-        index = 2;
+        mask = ZYDIS_CPUFLAG_AF;
         break;
     case X86_REF_ZF:
-        index = 3;
+        mask = ZYDIS_CPUFLAG_ZF;
         break;
     case X86_REF_SF:
-        index = 4;
+        mask = ZYDIS_CPUFLAG_SF;
         break;
     case X86_REF_OF:
-        index = 5;
+        mask = ZYDIS_CPUFLAG_OF;
         break;
     default:
         UNREACHABLE();
         break;
     }
 
-    for (auto& [changed, r] : flag_access_cpazso[index]) {
-        if (r > rip && !changed) {
-            return true;
-        }
-
-        if (r > rip && changed) {
-            return false;
-        }
-    }
-
-    return true;
+    return current_flag_access.getFlagsNeeded(rip, mask) != 0;
 }
 
 void Recompiler::updateOverflowSub(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size_e) {
@@ -2531,31 +2688,23 @@ void Recompiler::updateAuxiliarySub(biscuit::GPR lhs, biscuit::GPR rhs) {
     popScratch();
 }
 
-void Recompiler::updateAuxiliaryAdc(biscuit::GPR lhs, biscuit::GPR result, biscuit::GPR cf, biscuit::GPR result_2) {
+void Recompiler::updateAuxiliaryAdc(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result) {
     biscuit::GPR af = scratch();
-    biscuit::GPR temp = scratch();
-    as.ANDI(af, result, 0xF);
-    as.ANDI(temp, lhs, 0xF);
-    as.SLTU(af, af, temp);
-    as.ANDI(temp, result_2, 0xF);
-    as.SLTU(temp, temp, cf);
-    as.OR(af, af, temp);
+    as.XOR(af, lhs, rhs);
+    as.XOR(af, af, result);
+    as.SRLI(af, af, 4);
+    as.ANDI(af, af, 1);
     as.SB(af, offsetof(ThreadState, ctx.af), threadStatePointer());
-    popScratch();
     popScratch();
 }
 
-void Recompiler::updateAuxiliarySbb(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, biscuit::GPR cf) {
+void Recompiler::updateAuxiliarySbb(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result) {
     biscuit::GPR af = scratch();
-    biscuit::GPR temp = scratch();
-    as.ANDI(af, rhs, 0xF);
-    as.ANDI(temp, lhs, 0xF);
-    as.SLTU(af, temp, af);
-    as.ANDI(temp, result, 0xF);
-    as.SLTU(temp, temp, cf);
-    as.OR(af, af, temp);
+    as.XOR(af, lhs, rhs);
+    as.XOR(af, af, result);
+    as.SRLI(af, af, 4);
+    as.ANDI(af, af, 1);
     as.SB(af, offsetof(ThreadState, ctx.af), threadStatePointer());
-    popScratch();
     popScratch();
 }
 
@@ -2571,15 +2720,13 @@ void Recompiler::updateCarrySub(biscuit::GPR lhs, biscuit::GPR rhs) {
 }
 
 void Recompiler::updateCarryAdc(biscuit::GPR lhs, biscuit::GPR result, biscuit::GPR result_2, x86_size_e size) {
-    biscuit::GPR temp = scratch();
-    biscuit::GPR temp2 = scratch();
     biscuit::GPR cf = flag(X86_REF_CF);
-    zext(temp, result, size);
-    zext(temp2, result_2, size);
-    as.SLTU(temp, temp, lhs);
-    as.SLTU(temp2, temp2, cf);
-    as.OR(cf, temp, temp2);
-    popScratch();
+    biscuit::GPR temp = scratch();
+    zext(temp, result_2, size);
+    as.SLTU(temp, temp, cf);
+    zext(cf, result, size);
+    as.SLTU(cf, cf, lhs);
+    as.OR(cf, cf, temp);
     popScratch();
 }
 
@@ -2659,11 +2806,6 @@ int Recompiler::getBitSize(x86_size_e size) {
     }
 }
 
-u64 Recompiler::getSignMask(x86_size_e size_e) {
-    u16 size = getBitSize(size_e);
-    return 1ull << (size - 1);
-}
-
 void Recompiler::updateParity(biscuit::GPR result) {
     biscuit::GPR pf = scratch();
     as.ANDI(pf, result, 0xFF);
@@ -2709,20 +2851,24 @@ void Recompiler::updateSign(biscuit::GPR result, x86_size_e size) {
     }
 }
 
-void Recompiler::jumpAndLink(u64 rip) {
+void Recompiler::jumpAndLink(u64 rip, bool return_link, bool skip_lookup) {
     OptimizationGuard guard(as, optimization_guard_counter);
     const bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
-    if (!g_config.link || is_single_step || relocatable) {
+    if (is_single_step || relocatable) {
         // Just emit jump to dispatcher
-        backToDispatcher();
+        backToDispatcher(return_link, skip_lookup);
         return;
     }
 
     u8* start = as.GetCursorPointer();
     if (!blockExists(rip)) {
-        u8* link_me = as.GetCursorPointer();
-        backToDispatcher();
+        uintptr_t link_me = (uintptr_t)as.GetCursorPointer();
+        backToDispatcher(return_link, skip_lookup);
 
+        // The top 7 bits are used as flags.
+        link_me &= ((u64)1 << 57) - 1;
+        if (return_link)
+            link_me |= (u64)PendingLinkFlags::HasReturnHint;
         getBlockMetadata(rip).pending_links.push_back(link_me);
     } else {
         auto& target_meta = getBlockMetadata(rip);
@@ -2734,7 +2880,10 @@ void Recompiler::jumpAndLink(u64 rip) {
             if (offset - 4 == 4) {
                 as.NOP();
             } else {
-                as.J(offset - 4);
+                if (return_link)
+                    as.JAL(x1, offset - 4);
+                else
+                    as.J(offset - 4);
             }
         } else {
             // Too far for a regular jump, use AUIPC+JR
@@ -2745,7 +2894,10 @@ void Recompiler::jumpAndLink(u64 rip) {
             ASSERT(isScratch(t4));
             ASSERT(isScratch(t5));
             as.AUIPC(t4, hi20);
-            as.JR(t4, lo12);
+            if (return_link)
+                as.JALR(x1, lo12, t4);
+            else
+                as.JR(t4, lo12);
         }
     }
 
@@ -2755,6 +2907,39 @@ void Recompiler::jumpAndLink(u64 rip) {
 
 void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false) {
     OptimizationGuard guard(as, optimization_guard_counter);
+    constexpr i64 max_instr_space = 80;
+    i64 host_offset = current_block_metadata->host_address - (u64)as.GetCursorPointer();
+    // Check if it is branch to self
+    if (rip_true == current_block_metadata->guest_address && host_offset > -4096 + max_instr_space) {
+        biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
+        as.MV(t5, x0);
+        ASSERT(condition != t5);
+        if (getCurrentRipregValue() != rip_true) { // ripreg might've changed during the block, set it back to the start if so
+            ASSERT(getCurrentRipregValue() > rip_true);
+            u64 rip_true_offset = rip_true - getCurrentRipregValue();
+            addi(ripreg, ripreg, rip_true_offset);
+            if (current_mode32) {
+                zext(ripreg, ripreg, X86_SIZE_DWORD);
+                rip_true = (u32)rip_true;
+            }
+            setCurrentRipregValue(rip_true);
+        }
+        i64 host_offset = current_block_metadata->host_address - (u64)as.GetCursorPointer();
+        ASSERT(IsValidBTypeImm(host_offset)); // max_instr_space should guarantee it
+        as.BNEZ(condition, host_offset);
+
+        u64 rip_false_offset = rip_false - getCurrentRipregValue();
+        addi(ripreg, ripreg, rip_false_offset);
+        if (current_mode32) {
+            zext(ripreg, ripreg, X86_SIZE_DWORD);
+            rip_false = (u32)rip_false;
+        }
+
+        as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
+        jumpAndLink(rip_false);
+        return;
+    }
+
     Label true_label;
     as.BNEZ(condition, &true_label);
 
@@ -2782,7 +2967,7 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
 }
 
 void Recompiler::expirePendingLinks(u64 rip) {
-    if (!g_config.link || relocatable) {
+    if (relocatable) {
         return;
     }
 
@@ -2790,18 +2975,36 @@ void Recompiler::expirePendingLinks(u64 rip) {
         return;
     }
 
+    u64 min = -1ull;
+    u64 max = 0;
     auto& links = getBlockMetadata(rip).pending_links;
-    for (u8* link : links) {
-        u8* cursor = as.GetCursorPointer();
-        as.SetCursorPointer(link);
-        jumpAndLink(rip);
-        as.SetCursorPointer(cursor);
+    if (links.empty()) {
+        return;
     }
 
-    flush_icache();
+    for (uintptr_t link : links) {
+        bool has_return_hint = link & (u64)PendingLinkFlags::HasReturnHint;
+
+        intptr_t signed_link = link;
+        u8* link_addr = (u8*)((signed_link << 7) >> 7);
+        u8* cursor = as.GetCursorPointer();
+        as.SetCursorPointer(link_addr);
+        jumpAndLink(rip, has_return_hint);
+        as.SetCursorPointer(cursor);
+
+        u64 addr = (u64)link_addr;
+        if (addr < min) {
+            min = addr;
+        }
+        if (addr > max) {
+            max = addr;
+        }
+    }
+
+    flush_icache(min, max + 4096);
 
     // Free the memory as pending_links won't be used after the block is compiled
-    std::vector<u8*>().swap(links);
+    std::vector<uintptr_t>().swap(links);
 }
 
 u64 Recompiler::zextImmediate(u64 imm, ZyanU8 size) {
@@ -2884,82 +3087,89 @@ void Recompiler::sexth(biscuit::GPR dest, biscuit::GPR src) {
     as.SEXTH(dest, src);
 }
 
-biscuit::GPR Recompiler::getCond(int cond) {
+std::pair<biscuit::GPR, bool> Recompiler::getCondNoInvert(int cond) {
     switch (cond & 0xF) {
     case 0:
-        return flag(X86_REF_OF);
+        return {flag(X86_REF_OF), false};
     case 1: {
-        biscuit::GPR of = scratch();
-        as.XORI(of, flag(X86_REF_OF), 1);
-        return of;
+        return {flag(X86_REF_OF), true};
     }
     case 2:
-        return flag(X86_REF_CF);
+        return {flag(X86_REF_CF), false};
     case 3: {
-        biscuit::GPR cf = scratch();
-        as.XORI(cf, flag(X86_REF_CF), 1);
-        return cf;
+        return {flag(X86_REF_CF), true};
     }
     case 4:
-        return flag(X86_REF_ZF);
+        return {flag(X86_REF_ZF), false};
     case 5: {
-        biscuit::GPR zf = scratch();
-        as.XORI(zf, flag(X86_REF_ZF), 1);
-        return zf;
+        return {flag(X86_REF_ZF), true};
     }
     case 6: {
         biscuit::GPR cond = scratch();
         as.OR(cond, flag(X86_REF_CF), flag(X86_REF_ZF));
-        return cond;
+        return {cond, false};
     }
     case 7: {
         biscuit::GPR cond = scratch();
         as.OR(cond, flag(X86_REF_CF), flag(X86_REF_ZF));
-        as.XORI(cond, cond, 1);
-        return cond;
+        return {cond, true};
     }
     case 8:
-        return flag(X86_REF_SF);
+        return {flag(X86_REF_SF), false};
     case 9: {
-        biscuit::GPR sf = scratch();
-        as.XORI(sf, flag(X86_REF_SF), 1);
-        return sf;
+        return {flag(X86_REF_SF), true};
     }
     case 10:
-        return flag(X86_REF_PF);
+        return {flag(X86_REF_PF), false};
     case 11: {
         biscuit::GPR pf = flag(X86_REF_PF);
-        as.XORI(pf, pf, 1);
-        return pf;
+        return {pf, true};
     }
     case 12: {
         biscuit::GPR cond = scratch();
         as.XOR(cond, flag(X86_REF_SF), flag(X86_REF_OF));
-        return cond;
+        return {cond, false};
     }
     case 13: {
         biscuit::GPR cond = scratch();
         as.XOR(cond, flag(X86_REF_SF), flag(X86_REF_OF));
-        as.XORI(cond, cond, 1);
-        return cond;
+        return {cond, true};
     }
     case 14: {
         biscuit::GPR cond = scratch();
         as.XOR(cond, flag(X86_REF_SF), flag(X86_REF_OF));
         as.OR(cond, cond, flag(X86_REF_ZF));
-        return cond;
+        return {cond, false};
     }
     case 15: {
         biscuit::GPR cond = scratch();
         as.XOR(cond, flag(X86_REF_SF), flag(X86_REF_OF));
         as.OR(cond, cond, flag(X86_REF_ZF));
-        as.XORI(cond, cond, 1);
-        return cond;
+        return {cond, true};
     }
     }
 
     UNREACHABLE();
-    return x0;
+    return {x0, false};
+}
+
+biscuit::GPR Recompiler::getCond(int cond) {
+    auto [reg, needs_invert] = getCondNoInvert(cond);
+    if (needs_invert) {
+        if (isScratch(reg)) {
+            as.XORI(reg, reg, 1);
+        } else {
+            biscuit::GPR temp = scratch();
+            as.XORI(temp, reg, 1);
+            return temp;
+        }
+    }
+    return reg;
+}
+
+bool Recompiler::needsTsoFence() const {
+    return g_config.always_tso && !g_is_single_thread && !Extensions::TSO &&
+           !(g_config.no_tso_stack && current_instruction_on_stack && !g_config.paranoid);
 }
 
 void Recompiler::readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size) {
@@ -2987,8 +3197,36 @@ void Recompiler::readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset,
     }
     }
 
-    if ((g_config.always_tso || (g_volatile->AdrInRegion(current_rip) && g_config.volatile_meta)) && !Extensions::TSO &&
-        !(g_config.no_tso_stack && current_instruction_on_stack && !g_config.paranoid)) {
+    if (needsTsoFence()) {
+        as.FENCE(FenceOrder::R, FenceOrder::RW);
+    }
+}
+
+void Recompiler::readMemorySigned(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size) {
+    switch (size) {
+    case X86_SIZE_BYTE: {
+        as.LB(dest, offset, address);
+        break;
+    }
+    case X86_SIZE_WORD: {
+        as.LH(dest, offset, address);
+        break;
+    }
+    case X86_SIZE_DWORD: {
+        as.LW(dest, offset, address);
+        break;
+    }
+    case X86_SIZE_QWORD: {
+        as.LD(dest, offset, address);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+
+    if (needsTsoFence()) {
         as.FENCE(FenceOrder::R, FenceOrder::RW);
     }
 }
@@ -3006,23 +3244,43 @@ void Recompiler::readMemory(biscuit::Vec vec, biscuit::GPR address, int size) {
         break;
     }
     case 32: {
-        setVectorState(SEW::E8, 4);
-        as.VLE8(vec, address);
+        if (Extensions::Zicclsm && current_sew == SEW::E32 && current_vlen == 1 && current_grouping == LMUL::M1) {
+            as.VLE32(vec, address);
+        } else {
+            setVectorState(SEW::E8, 4);
+            as.VLE8(vec, address);
+        }
         break;
     }
     case 64: {
-        setVectorState(SEW::E8, 8);
-        as.VLE8(vec, address);
+        if (Extensions::Zicclsm && current_sew == SEW::E64 && current_vlen == 1 && current_grouping == LMUL::M1) {
+            as.VLE64(vec, address);
+        } else {
+            setVectorState(SEW::E8, 8);
+            as.VLE8(vec, address);
+        }
         break;
     }
     case 128: {
-        setVectorState(SEW::E8, 16);
-        as.VLE8(vec, address);
+        if (Extensions::Zicclsm && current_sew == SEW::E64 && current_vlen == 2 && current_grouping == LMUL::M1) {
+            as.VLE64(vec, address);
+        } else if (Extensions::Zicclsm && current_sew == SEW::E32 && current_vlen == 4 && current_grouping == LMUL::M1) {
+            as.VLE32(vec, address);
+        } else {
+            setVectorState(SEW::E8, 16);
+            as.VLE8(vec, address);
+        }
         break;
     }
     case 256: {
-        setVectorState(SEW::E8, 32);
-        as.VLE8(vec, address);
+        if (Extensions::Zicclsm && current_sew == SEW::E64 && current_vlen == 4 && current_grouping == LMUL::M1) {
+            as.VLE64(vec, address);
+        } else if (Extensions::Zicclsm && current_sew == SEW::E32 && current_vlen == 8 && current_grouping == LMUL::M1) {
+            as.VLE32(vec, address);
+        } else {
+            setVectorState(SEW::E8, 32);
+            as.VLE8(vec, address);
+        }
         break;
     }
     default: {
@@ -3033,8 +3291,7 @@ void Recompiler::readMemory(biscuit::Vec vec, biscuit::GPR address, int size) {
 }
 
 void Recompiler::writeMemory(biscuit::GPR src, biscuit::GPR address, i64 offset, x86_size_e size) {
-    if ((g_config.always_tso || (g_volatile->AdrInRegion(current_rip) && g_config.volatile_meta)) && !Extensions::TSO &&
-        !(g_config.no_tso_stack && current_instruction_on_stack && !g_config.paranoid)) {
+    if (needsTsoFence()) {
         as.FENCE(FenceOrder::RW, FenceOrder::W);
     }
 
@@ -3164,6 +3421,12 @@ biscuit::GPR Recompiler::getFlags() {
     as.LBU(temp, offsetof(ThreadState, ac_bit), threadStatePointer());
     as.SLLI(temp, temp, 18);
     as.OR(reg, reg, temp);
+    as.LBU(temp, offsetof(ThreadState, ctx.tf), threadStatePointer());
+    as.SLLI(temp, temp, 8);
+    as.OR(reg, reg, temp);
+    as.LBU(temp, offsetof(ThreadState, ctx.rf), threadStatePointer());
+    as.SLLI(temp, temp, 16);
+    as.OR(reg, reg, temp);
     popScratch();
     return reg;
 }
@@ -3174,9 +3437,13 @@ biscuit::GPR Recompiler::getTOP() {
     return top;
 }
 
-biscuit::FPR Recompiler::getST(int index, bool dirty) {
+biscuit::FPR Recompiler::getST(int index, bool dirty, bool convert_to_64_bit) {
     if (x87_reg_cache[index].loaded) {
-        return x87_reg_cache[index].reg;
+        biscuit::FPR reg = x87_reg_cache[index].reg;
+        if (g_config.reduced_precision >= 2 && convert_to_64_bit) {
+            markX87RegAs64Bit(reg);
+        }
+        return reg;
     }
 
     // The ST in memory needs to adjust for the regs we have pushed but not yet
@@ -3205,43 +3472,29 @@ biscuit::FPR Recompiler::getST(int index, bool dirty) {
     return x87_reg_cache[index].reg;
 }
 
-biscuit::FPR Recompiler::getST(ZydisDecodedOperand* operand, bool dirty) {
+biscuit::FPR Recompiler::getST(ZydisDecodedOperand* operand, bool dirty, bool convert_to_64_bit) {
     if (operand->type == ZYDIS_OPERAND_TYPE_REGISTER) {
         ASSERT(operand->reg.value >= ZYDIS_REGISTER_ST0 && operand->reg.value <= ZYDIS_REGISTER_ST7);
-        return getST(operand->reg.value - ZYDIS_REGISTER_ST0, dirty);
+        return getST(operand->reg.value - ZYDIS_REGISTER_ST0, dirty, convert_to_64_bit);
     } else if (operand->type == ZYDIS_OPERAND_TYPE_MEMORY) {
         switch (operand->size) {
         case 32: {
             biscuit::FPR st = scratchFPR();
             biscuit::GPR address;
-            u64 immediate = operand->mem.disp.value;
-            if (IsValidSigned12BitImm(immediate) && !(current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
-                g_config.no_address_overflow) { // can't do this with seg+a32
-                ZydisDecodedOperand op = *operand;
-                op.mem.disp.value = 0;
-                address = lea(&op, false);
-                as.FLW(st, immediate, address);
-            } else {
-                address = lea(operand, false);
-                as.FLW(st, 0, address);
+            i64 offset;
+            address = leaOffset(operand, offset);
+            as.FLW(st, offset, address);
+            if (convert_to_64_bit) {
+                as.FCVT_D_S(st, st);
             }
-            as.FCVT_D_S(st, st);
             return st;
         }
         case 64: {
             biscuit::FPR st = scratchFPR();
             biscuit::GPR address;
-            u64 immediate = operand->mem.disp.value;
-            if (IsValidSigned12BitImm(immediate) && !(current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
-                g_config.no_address_overflow) { // can't do this with seg+a32
-                ZydisDecodedOperand op = *operand;
-                op.mem.disp.value = 0;
-                address = lea(&op, false);
-                as.FLD(st, immediate, address);
-            } else {
-                address = lea(operand, false);
-                as.FLD(st, 0, address);
-            }
+            i64 offset;
+            address = leaOffset(operand, offset);
+            as.FLD(st, offset, address);
             return st;
         }
         case 80: {
@@ -3259,56 +3512,57 @@ biscuit::FPR Recompiler::getST(ZydisDecodedOperand* operand, bool dirty) {
     }
 }
 
-void Recompiler::setST(int index, biscuit::FPR st) {
-    biscuit::FPR stN = getST(index);
+void Recompiler::setST(int index, biscuit::FPR st, bool is32bit) {
+    biscuit::FPR stN = getST(index, true, false);
     if (stN != st) {
         as.FMV_D(stN, st);
+        setX87RegPrecision(stN, is32bit);
+    } else if (is32bit) {
+        markX87RegAs32Bit(stN);
+    } else {
+        markX87RegAs64Bit(stN);
     }
 }
 
-void Recompiler::setST(ZydisDecodedOperand* operand, biscuit::FPR value) {
+void Recompiler::setST(ZydisDecodedOperand* operand, biscuit::FPR value, bool is32bit) {
     if (operand->type == ZYDIS_OPERAND_TYPE_REGISTER) {
         ASSERT(operand->reg.value >= ZYDIS_REGISTER_ST0 && operand->reg.value <= ZYDIS_REGISTER_ST7);
-        return setST(operand->reg.value - ZYDIS_REGISTER_ST0, value);
+        return setST(operand->reg.value - ZYDIS_REGISTER_ST0, value, is32bit);
     } else if (operand->type == ZYDIS_OPERAND_TYPE_MEMORY) {
         switch (operand->size) {
         case 32: {
-            biscuit::FPR temp = scratchFPR();
+            biscuit::FPR temp = value;
             biscuit::GPR address;
-            as.FCVT_S_D(temp, value);
-            u64 immediate = operand->mem.disp.value;
-            if (IsValidSigned12BitImm(immediate) && !(current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
-                g_config.no_address_overflow) { // can't do this with seg+a32
-                ZydisDecodedOperand op = *operand;
-                op.mem.disp.value = 0;
-                address = lea(&op, false);
-                as.FSW(temp, immediate, address);
-            } else {
-                address = lea(operand, false);
-                as.FSW(temp, 0, address);
+            if (!is32bit) {
+                temp = scratchFPR();
+                as.FCVT_S_D(temp, value);
             }
+            i64 offset;
+            address = leaOffset(operand, offset);
+            as.FSW(temp, offset, address);
             break;
         }
         case 64: {
             biscuit::GPR address;
-            u64 immediate = operand->mem.disp.value;
-            if (IsValidSigned12BitImm(immediate) && !(current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
-                g_config.no_address_overflow) { // can't do this with seg+a32
-                ZydisDecodedOperand op = *operand;
-                op.mem.disp.value = 0;
-                address = lea(&op, false);
-                as.FSD(value, immediate, address);
-            } else {
-                address = lea(operand, false);
-                as.FSD(value, 0, address);
+            if (is32bit) {
+                biscuit::FPR temp = scratchFPR();
+                as.FCVT_D_S(temp, value);
+                value = temp;
             }
+            i64 offset;
+            address = leaOffset(operand, offset);
+            as.FSD(value, offset, address);
             break;
         }
         case 80: {
             biscuit::GPR address = lea(operand, false);
             writebackState();
             as.MV(a0, address);
-            as.FMV_D(fa0, value);
+            if (is32bit) {
+                as.FCVT_D_S(fa0, value);
+            } else {
+                as.FMV_D(fa0, value);
+            }
             call((u64)f64_to_80_mem);
             restoreState();
             break;
@@ -3348,7 +3602,7 @@ void Recompiler::invalidateBlock(BlockMetadata* block) {
     // so we use C.LDSP here
     tas.C_LDSP(t4, offsetof(felix86_frame, invalidate_caller_thunk_ptr));
     tas.C_JALR(t4); // ra is used in invalidate_caller_thunk
-    ASSERT(((u64)address & 0x4) == 0);
+    ASSERT(((u64)address & 0x3) == 0);
     __atomic_exchange_n(address, storage, __ATOMIC_SEQ_CST);
 }
 
@@ -3390,12 +3644,13 @@ void Recompiler::invalidateRangeGlobal(u64 start, u64 end, const char* reason) {
         }
     }
 
-    if (g_config.print_invalidations && blocks > 0) {
-        WARN("Invalidated %lu blocks for reason: %s", blocks, reason);
+    if (blocks > 0) {
+        if (g_config.print_invalidations) {
+            WARN("Invalidated %lu blocks for reason: %s", blocks, reason);
+        }
+        // Flush the entire affected range in one syscall
+        flush_icache_global(min, max);
     }
-
-    // Flush the entire affected range in one syscall
-    flush_icache_global(min, max);
 }
 
 bool Recompiler::tryInlineSyscall() {
@@ -3593,6 +3848,7 @@ biscuit::FPR Recompiler::pushX87() {
     x87_reg_cache[0].loaded = true;
     x87_reg_cache[0].dirty = true;
     x87_reg_cache[0].modify_tag = true;
+    x87_reg_cache[0].is32bit = false;
     return x87_reg_cache[0].reg;
 }
 
@@ -3605,7 +3861,7 @@ void Recompiler::popX87() {
         biscuit::GPR top = getTOP();
 
         as.LBU(ftw, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
-        as.BSET(ftw, ftw, top);
+        as.BCLR(ftw, ftw, top);
         as.SB(ftw, offsetof(ThreadState, ctx.fpu_tw), threadStatePointer());
 
         as.ADDI(top, top, 1);
@@ -3619,6 +3875,7 @@ void Recompiler::popX87() {
     x87_reg_cache[0].loaded = false;
     x87_reg_cache[0].dirty = false;
     x87_reg_cache[0].modify_tag = false;
+    x87_reg_cache[0].is32bit = false;
 
     AllocatedX87Reg temp = x87_reg_cache[0];
     x87_reg_cache[0] = x87_reg_cache[1];
@@ -3651,4 +3908,52 @@ void Recompiler::switchToX87() {
     popScratch();
 
     local_x87_state = x87State::x87;
+}
+
+void Recompiler::addressCacheLookup(biscuit::GPR guest_address, void on_hit(Assembler&, biscuit::GPR), bool use_ra) {
+    if (!use_ra) {
+        // Waste the ra scratch
+        (void)scratch();
+    }
+    biscuit::GPR host_address = use_ra ? x1 : scratch();
+    biscuit::GPR temp = scratch();
+    biscuit::GPR temp2 = scratch();
+    biscuit::Label not_equal;
+    i32 lo12 = 0;
+    if (relocatable) {
+        as.LD(temp, offsetof(ThreadState, recompiler), threadStatePointer());
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winvalid-offsetof"
+        as.LD(temp, offsetof(Recompiler, address_cache), temp);
+#pragma GCC diagnostic pop
+    } else {
+        u64 offset = (u64)address_cache - (u64)as.GetCursorPointer();
+        const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
+        lo12 = static_cast<int32_t>(offset << 20) >> 20;
+        const bool lo12overflow = lo12 + 8 > 2047;
+        as.AUIPC(temp, hi20);
+        if (lo12overflow) {
+            as.ADDI(temp, temp, lo12);
+            lo12 = 0;
+        }
+    }
+    const i32 offset_guest = lo12 + 8;
+    const i32 offset_host = lo12;
+    as.SLLI(temp2, guest_address, 64 - address_cache_bits);
+    // Multiply by 16, which is size of each address cache entry
+    as.SRLI(temp2, temp2, 64 - address_cache_bits - 4);
+    as.ADD(temp, temp, temp2);
+    // Load even if branch fails is slightly better for fusion
+    as.LD(host_address, offset_host, temp);
+    as.LD(temp2, offset_guest, temp);
+    as.BNE(temp2, guest_address, &not_equal);
+    as.MV(t5, x0); // zero out t5, see invalidate_caller_thunk
+    on_hit(as, host_address);
+    as.Bind(&not_equal);
+    popScratch();
+    popScratch();
+    if (!use_ra) {
+        popScratch();
+        popScratch();
+    }
 }

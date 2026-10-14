@@ -172,7 +172,7 @@ X87(LoadAtBoundary)
 X87(MemcopyWithCPUID)
 X87(Rounding)
 X87(StoreAtBoundary)
-X87(X87MMXInteraction)
+// X87(X87MMXInteraction) Fails on hardware
 X87(invalid_div_zero)
 X87(invalid_fcos_infinity)
 X87(invalid_fist_nan)

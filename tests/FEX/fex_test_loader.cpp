@@ -221,6 +221,7 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
     // According to the example assembly this is configurable but haven't found a test that configures it
     memory_mappings.push_back({0xC000'0000, 4096});
 
+    config.reduced_precision = false;
     if (j.find("Env") != j.end()) {
         std::unordered_map<std::string, std::string> env = j["Env"].get<std::unordered_map<std::string, std::string>>();
         if (env.find("FEX_X87REDUCEDPRECISION") != env.end()) {
