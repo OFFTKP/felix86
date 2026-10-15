@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+#include <atomic>
 #include <optional>
 #include <unordered_map>
 #include <vector>
@@ -73,6 +75,13 @@ struct Mapper {
         rwlock.after_fork_child();
     }
 
+    void bump_smc(u64 start, u64 end);
+
+    std::vector<u32> get_smc_trackers(u64 address, u64 size);
+
+    // Returns whether any pages have been modified since last check
+    bool check_smc_trackers(u64 address, u64 size, const std::vector<u32>& old);
+
 private:
     Freelist freelist;
     std::unordered_map<u64, int> page_to_shmid{};
@@ -81,6 +90,8 @@ private:
     std::vector<GuestRegion> allocated_regions;
     ino_t ino_anon_ctr{0};
     RWLock rwlock{};
+
+    std::array<std::atomic<u32>, 4096> smc_counters{};
 
     std::vector<std::pair<u32, u32>> getRegions();
 

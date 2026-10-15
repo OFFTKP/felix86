@@ -125,7 +125,7 @@ static void compile(const std::string& input) {
 
     std::unique_ptr<Recompiler> rec = std::make_unique<Recompiler>(true);
     rec->setFlagMode(flag_mode);
-    rec->compileSequence(mode32, (u64)output.data());
+    rec->compileSequence(mode32, (u64)output.data(), nullptr);
 
     BlockMetadata& metadata = rec->getBlockMetadata((u64)output.data());
 

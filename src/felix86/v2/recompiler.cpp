@@ -422,6 +422,12 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_
     BlockMetadata& metadata = state->recompiler->getBlockMetadata(rip);
     if (metadata.host_address == (u64)invalid_block) {
         ASSERT(invalid_block);
+        if (metadata.misc_info.self_validating) {
+            metadata.misc_info.self_validating = 0;
+            addSmcHit(metadata);
+            patchBlockEntry((u64)invalid_block);
+            flush_icache((u64)invalid_block, (u64)invalid_block + 4);
+        }
         metadata.host_address = 0;
         AddressCacheEntry& entry = state->getAddressCacheEntry(rip);
         entry.guest = ~rip;
@@ -558,39 +564,46 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
         }
     }
 
-    u64 size = code_cache_sizes[code_cache_size_index];
-    size_t remaining_size = size - as.GetCodeBuffer().GetCursorOffset();
-    // TODO: restrict max x86 instruction count per block
-    if (remaining_size < 400'000) { // less than ~400KB left, clear cache
-        resizeOrClearCodeCache(state);
-    }
-
     if (state->unaligned_atomics_counter) {
         WARN_ONCE("This program has unaligned atomics that we can't emulate atomically");
     }
 
     const u64 start_rip = rip;
-    u64 start = (u64)as.GetCursorPointer();
+    u64 start;
 
     // Map it immediately so we can optimize conditional branch to self
 
     // A sequence of code (ie. basic block). This is so that we can also call it recursively later.
-    u64 end_rip = compileSequence(state->ctx.Mode32(), rip);
+    int overruns = 0;
+    u64 protect_end = 0;
+    SequenceResult result;
+    do {
+        u64 size = code_cache_sizes[code_cache_size_index];
+        size_t remaining_size = size - as.GetCodeBuffer().GetCursorOffset();
+        // TODO: restrict max x86 instruction count per block
+        if (remaining_size < 400'000) { // less than ~400KB left, clear cache
+            resizeOrClearCodeCache(state);
+        }
+
+        start = (u64)as.GetCursorPointer();
+        result = compileSequence(state->ctx.Mode32(), rip, &protect_end);
+        if (result == SequenceResult::Overran) {
+            ASSERT_MSG(++overruns < 16, "Block at %016lx keeps compiling past its protected pages", rip);
+        } else if (result == SequenceResult::Modified) {
+            addSmcHit(getBlockMetadata(rip));
+        }
+    } while (result != SequenceResult::Compiled);
+
+    if (single_step == SingleStepMode::PtraceSinglestep) {
+        single_step = SingleStepMode::None;
+    }
+
     u64 host_address_end = (u64)as.GetCursorPointer();
 
     ASSERT(host_address_end - start >= 8); // At least 2 instructions, so that our unlinking logic works
 
     BlockMetadata& block_meta = getBlockMetadata(rip);
     host_pc_map[host_address_end - 1] = {&block_meta};
-
-    {
-        auto guard = page_map_lock.lock();
-        u64 start_masked = start_rip & ~0xFFFull;
-        u64 end_masked = (end_rip - 1) & ~0xFFFull;
-        for (u64 page = start_masked; page <= end_masked; page += 0x1000) {
-            page_map[page].push_back(&block_meta);
-        }
-    }
 
     if (g_config.address_cache) {
         AddressCacheEntry& entry = state->getAddressCacheEntry(start_rip);
@@ -600,9 +613,6 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
 
     // If other blocks were waiting for this block to be linked, link them now
     expirePendingLinks(rip);
-
-    // Mark the page as read-only to catch self-modifying code
-    markPagesAsReadOnly(rip, end_rip);
 
     if (g_config.gdb) {
         size_t inst_count = block_meta.translation_sizes.size();
@@ -666,20 +676,6 @@ void Recompiler::insertSafepoint() {
     as.SD(x0, -8, Recompiler::threadStatePointer());
 }
 
-void Recompiler::markPagesAsReadOnly(u64 start, u64 end) {
-    if (!g_config.protect_pages) {
-        return;
-    }
-
-    u64 start_page = start & ~0xFFFull;
-    u64 end_page = (end + 0xFFF) & ~0xFFFull;
-    u64 size = end_page - start_page;
-    int result = ::mprotect((void*)start_page, size, PROT_READ);
-    if (result != 0) {
-        ERROR("Failed to protect pages %016lx-%016lx -- Error: %s", start_page, end_page, strerror(errno));
-    }
-}
-
 void Recompiler::loadRoundingMode(bool sse) {
     biscuit::GPR rm = scratch();
     as.LBU(rm, sse ? offsetof(ThreadState, ctx.rmode_sse) : offsetof(ThreadState, ctx.rmode_x87), threadStatePointer());
@@ -687,7 +683,7 @@ void Recompiler::loadRoundingMode(bool sse) {
     popScratch();
 }
 
-u64 Recompiler::compileSequence(bool mode32, u64 rip) {
+SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_end) {
     const u64 start_rip = rip;
     const bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
     compiling = true;
@@ -708,8 +704,31 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
 
     current_mode32 = mode32;
     current_decoder_initialized = false; // TODO: don't invalidate if same mode32 as before
-    scanAhead(rip);
     BlockMetadata& block_meta = getBlockMetadata(rip);
+    bool is_self_validating = block_meta.misc_info.smc_hits >= smc_threshold && getBreakpointIndex(rip) == -1;
+    if (is_self_validating) {
+        current_block_self_validating = true;
+        self_validating_start = rip;
+        self_validating_bytes.clear();
+        is_self_validating = scanAhead(rip);
+        current_block_self_validating = false;
+    }
+
+    block_meta.misc_info.self_validating = is_self_validating;
+    const bool track_smc = protect_end && !is_self_validating;
+    u64 end_page = 0;
+    std::vector<u32> smc_trackers;
+    if (track_smc) {
+        if (*protect_end <= rip) {
+            *protect_end = rip + 1;
+        }
+        end_page = (*protect_end - 1) & ~0xFFF;
+        smc_trackers = g_mapper->get_smc_trackers(rip, *protect_end - rip);
+    }
+
+    if (!is_self_validating) {
+        scanAhead(rip);
+    }
     block_meta.host_address = (u64)as.GetCursorPointer();
     block_meta.guest_address = start_rip;
     block_meta.translation_sizes.resize(instructions.size());
@@ -723,6 +742,11 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
     // Also, this means that when a signal returns it will find a compiled block instead of needing to compile a new one
     // TODO: insert safepoints within the block every N instructions, needs to flushx87 too
     insertSafepoint();
+
+    Label expected_bytes;
+    if (is_self_validating) {
+        emitSelfValidation(&expected_bytes);
+    }
 
     while (compiling) {
         auto& [instruction, operands] = instructions[current_instruction_index];
@@ -824,9 +848,6 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
                 // Unreachable
                 as.C_UNDEF();
                 as.C_UNDEF();
-                if (single_step == SingleStepMode::PtraceSinglestep) {
-                    single_step = SingleStepMode::None;
-                }
             } else {
                 // g_config.single_step
                 backToDispatcher();
@@ -871,15 +892,52 @@ u64 Recompiler::compileSequence(bool mode32, u64 rip) {
         Optimizer::native_pass((u8*)block_meta.host_address, (u64)as.GetCursorPointer() - block_meta.host_address);
     }
 
-    flush_icache(block_meta.host_address, (u64)as.GetCursorPointer());
-
     current_block_metadata = nullptr;
     local_x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
-    if (single_step == SingleStepMode::PtraceSinglestep) {
-        single_step = SingleStepMode::None;
+
+    const u64 final_compiled_page = (rip - 1) & ~0xFFF;
+    if (track_smc && final_compiled_page > end_page) {
+        // RIP goes further than the protected pages, retry with the rest of the block protected
+        *protect_end = rip;
+        return SequenceResult::Overran;
     }
 
-    return rip;
+    {
+        auto guard = page_map_lock.lock();
+        u64 start_masked = start_rip & ~0xFFFull;
+        u64 end_masked = (rip - 1) & ~0xFFFull;
+        for (u64 page = start_masked; page <= end_masked; page += 0x1000) {
+            std::vector<BlockMetadata*>& blocks_in_page = page_map[page];
+            if (std::find(blocks_in_page.begin(), blocks_in_page.end(), &block_meta) == blocks_in_page.end()) {
+                blocks_in_page.push_back(&block_meta);
+            }
+        }
+    }
+
+    if (is_self_validating) {
+        ASSERT(rip > start_rip && rip - start_rip <= self_validating_bytes.size());
+        self_validating_bytes.resize(rip - start_rip);
+        while ((u64)as.GetCursorPointer() & 0x7) {
+            as.GetCodeBuffer().Emit(u8(0));
+        }
+        as.GetCodeBuffer().Emit<u64>(self_validating_bytes.size());
+        as.Bind(&expected_bytes);
+        for (u8 byte : self_validating_bytes) {
+            as.GetCodeBuffer().Emit(byte);
+        }
+        while ((u64)as.GetCursorPointer() & 0x3) {
+            as.GetCodeBuffer().Emit(u8(0));
+        }
+    }
+
+    flush_icache(block_meta.host_address, (u64)as.GetCursorPointer());
+
+    if (!track_smc) {
+        return SequenceResult::Compiled;
+    }
+
+    bool mismatch = g_mapper->check_smc_trackers(start_rip, *protect_end - start_rip, smc_trackers);
+    return mismatch ? SequenceResult::Modified : SequenceResult::Compiled;
 }
 
 std::optional<std::pair<ZydisDecodedInstruction*, ZydisDecodedOperand*>> Recompiler::getNextInstruction() {
@@ -1373,7 +1431,17 @@ ZydisMnemonic Recompiler::decode(u64 rip, ZydisDecodedInstruction& instruction, 
     }
 
     if (operands) {
-        ZyanStatus status = ZydisDecoderDecodeFull(&decoder, (void*)rip, 15, &instruction, operands);
+        ZyanStatus status;
+        if (current_block_self_validating) {
+            u64 length = std::min<u64>(ZYDIS_MAX_INSTRUCTION_LENGTH, 0x1000 - (rip & 0xFFF));
+            status = ZydisDecoderDecodeFull(&decoder, selfValidatingBytes(rip, length), length, &instruction, operands);
+            if (status == ZYDIS_STATUS_NO_MORE_DATA && length < ZYDIS_MAX_INSTRUCTION_LENGTH) {
+                length = ZYDIS_MAX_INSTRUCTION_LENGTH;
+                status = ZydisDecoderDecodeFull(&decoder, selfValidatingBytes(rip, length), length, &instruction, operands);
+            }
+        } else {
+            status = ZydisDecoderDecodeFull(&decoder, (void*)rip, 15, &instruction, operands);
+        }
         if (!ZYAN_SUCCESS(status)) {
             if (ok_to_fail) {
                 WARN("Failed to decode instruction at 0x%016lx", rip);
@@ -1382,6 +1450,7 @@ ZydisMnemonic Recompiler::decode(u64 rip, ZydisDecodedInstruction& instruction, 
             ERROR("Failed to decode instruction at 0x%016lx", rip);
         }
     } else {
+        ASSERT(!current_block_self_validating);
         ZydisDecoderContext context;
         ZyanStatus status = ZydisDecoderDecodeInstruction(&decoder, &context, (void*)rip, 15, &instruction);
         if (!ZYAN_SUCCESS(status)) {
@@ -1393,6 +1462,17 @@ ZydisMnemonic Recompiler::decode(u64 rip, ZydisDecodedInstruction& instruction, 
         }
     }
     return instruction.mnemonic;
+}
+
+const u8* Recompiler::selfValidatingBytes(u64 rip, u64 length) {
+    ASSERT(rip >= self_validating_start);
+    const u64 offset = rip - self_validating_start;
+    const u64 copied = self_validating_bytes.size();
+    if (offset + length > copied) {
+        self_validating_bytes.resize(offset + length);
+        memcpy(self_validating_bytes.data() + copied, (u8*)(self_validating_start + copied), offset + length - copied);
+    }
+    return self_validating_bytes.data() + offset;
 }
 
 x86_size_e Recompiler::getSize(const ZydisDecodedOperand* operand) {
@@ -1568,21 +1648,30 @@ void Recompiler::clearBreakpoints() {
     }
 }
 
-bool Recompiler::checkIfBreakpoint(u64 rip) {
+int Recompiler::getBreakpointIndex(u64 rip) {
     for (size_t i = 0; i < breakpoints.size(); i++) {
         if (rip == breakpoints[i].second) {
-            writebackState();
-            as.MV(a0, Recompiler::threadStatePointer());
-            as.LI(a1, rip);
-            as.LI(a2, i);
-            callPointer(offsetof(ThreadState, felix86_raise_hardware_breakpoint));
-            restoreState();
-            backToDispatcher();
-            stopCompiling();
-            return true;
+            return i;
         }
     }
-    return false;
+    return -1;
+}
+
+bool Recompiler::checkIfBreakpoint(u64 rip) {
+    int i = getBreakpointIndex(rip);
+    if (i == -1) {
+        return false;
+    }
+
+    writebackState();
+    as.MV(a0, Recompiler::threadStatePointer());
+    as.LI(a1, rip);
+    as.LI(a2, i);
+    callPointer(offsetof(ThreadState, felix86_raise_hardware_breakpoint));
+    restoreState();
+    backToDispatcher();
+    stopCompiling();
+    return true;
 }
 
 biscuit::FPR Recompiler::getElementFPR(ZydisDecodedOperand* operand, x86_size_e size, int element) {
@@ -2279,7 +2368,7 @@ void Recompiler::exitDispatcher(felix86_frame* frame) {
     __builtin_unreachable();
 }
 
-void Recompiler::scanAhead(u64 rip) {
+bool Recompiler::scanAhead(u64 rip) {
     current_block_big = false;
     bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
     u64 initial_rip = rip;
@@ -2287,13 +2376,20 @@ void Recompiler::scanAhead(u64 rip) {
     instructions.clear();
     ZydisBookkeeping zydis_state{};
     std::vector<FlagAccessData::ScanAccess> scan_entries;
+    bool decode_failed = false;
     while (true) {
+        if (!instructions.empty() && getBreakpointIndex(rip) != -1) {
+            current_block_big = true;
+            break;
+        }
+
         instructions.push_back({});
         auto& [instruction, operands] = instructions.back();
         ZydisMnemonic mnemonic = decode(rip, instruction, operands, true);
         if (mnemonic == ZYDIS_MNEMONIC_INVALID) {
             instruction.mnemonic = ZYDIS_MNEMONIC_UD2;
             mnemonic = ZYDIS_MNEMONIC_UD2;
+            decode_failed = true;
             break;
         }
 
@@ -2395,8 +2491,8 @@ void Recompiler::scanAhead(u64 rip) {
         }
 
         if (is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3) {
-            if (g_config.scan_ahead_multi && !g_config.paranoid && !is_ret && !is_call && !is_illegal && !is_hlt && !is_int3 &&
-                operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+            if (g_config.scan_ahead_multi && !g_config.paranoid && !current_block_self_validating && !is_ret && !is_call && !is_illegal && !is_hlt &&
+                !is_int3 && operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
                 // In some cases, the program may deliberately jump to a bad location
                 // This was seen in a Ubisoft installer, for example. Now, we could use Mapper::is_guest_address,
                 // but these cases are so exceptionally rare that it is not worth the locked semaphore
@@ -2549,6 +2645,7 @@ void Recompiler::scanAhead(u64 rip) {
     }
 
     current_flag_access = FlagAccessData(scan_entries);
+    return !decode_failed;
 }
 
 bool Recompiler::shouldEmitFlag(u64 rip, x86_ref_e ref) {
@@ -3576,12 +3673,22 @@ void Recompiler::setTOP(biscuit::GPR new_top) {
     as.SB(new_top, offsetof(ThreadState, ctx.fpu_top), threadStatePointer());
 }
 
-void Recompiler::invalidateBlock(BlockMetadata* block) {
+void Recompiler::invalidateBlock(BlockMetadata* block, bool is_smc) {
     u64 host_address = __atomic_load_n(&block->host_address, __ATOMIC_SEQ_CST);
     if (host_address == 0) {
         return;
     }
 
+    block->misc_info.self_validating = 0;
+    patchBlockEntry(host_address);
+    if (is_smc) {
+        addSmcHit(*block);
+    } else {
+        block->misc_info.smc_hits = 0;
+    }
+}
+
+void Recompiler::patchBlockEntry(u64 host_address) {
     u32* address = (u32*)host_address;
     u32 storage;
     Assembler tas((u8*)&storage, 4);
@@ -3602,33 +3709,93 @@ void Recompiler::invalidateBlock(BlockMetadata* block) {
     __atomic_exchange_n(address, storage, __ATOMIC_SEQ_CST);
 }
 
-int Recompiler::invalidateRange(u64 start, u64 end) {
+void Recompiler::addSmcHit(BlockMetadata& block) {
+    timespec now;
+    clock_gettime(CLOCK_MONOTONIC_COARSE, &now);
+    const u32 now_ms = now.tv_sec * 1000 + now.tv_nsec / 1'000'000;
+    auto info = block.misc_info;
+    if (info.smc_hits == 0 || (u32)(now_ms - info.last_smc_ms) > smc_window_ms) {
+        info.smc_hits = 1;
+    } else if (info.smc_hits < smc_threshold) {
+        info.smc_hits++;
+    }
+    info.last_smc_ms = now_ms;
+    block.misc_info = info;
+}
+
+void Recompiler::emitSelfValidation(biscuit::Label* expected_bytes) {
+    OptimizationGuard guard(as, optimization_guard_counter);
+    biscuit::GPR remaining = scratch();
+    biscuit::GPR count = scratch();
+    biscuit::GPR address_block = scratch();
+    biscuit::GPR address_bytes = scratch();
+    biscuit::Vec block_bytes = scratchVecM2();
+    biscuit::Vec compiled_bytes = scratchVecM2();
+    biscuit::Vec not_equal = scratchVec();
+    ASSERT(remaining != t5 && count != t5 && address_block != t5 && address_bytes != t5);
+
+    Label loop, mismatch, valid;
+    as.MV(address_block, allocatedGPR(X86_REF_RIP));
+    as.LILabel(address_bytes, expected_bytes);
+    as.LD(remaining, -8, address_bytes);
+    as.Bind(&loop);
+    as.VSETVLI(count, remaining, SEW::E8, LMUL::M2);
+    as.VLE8(block_bytes, address_block);
+    as.VLE8(compiled_bytes, address_bytes);
+    as.VMSNE(not_equal, block_bytes, compiled_bytes);
+    as.ADD(address_block, address_block, count);
+    as.ADD(address_bytes, address_bytes, count);
+    as.SUB(remaining, remaining, count);
+    as.VPOPC(count, not_equal);
+    as.BNEZ(count, &mismatch);
+    as.BEQZ(remaining, &valid);
+    as.J(&loop);
+
+    as.Bind(&mismatch);
+    const i64 offset = (i64)(current_block_metadata->host_address + 4) - (i64)as.GetCursorPointer();
+    ASSERT(IsValid2GBImm(offset));
+    const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
+    const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
+    as.AUIPC(ra, hi20);
+    as.ADDI(ra, ra, lo12);
+    as.LD(t4, offsetof(felix86_frame, invalidate_caller_thunk_ptr), sp);
+    as.JR(t4);
+    as.Bind(&valid);
+
+    resetVectorState();
+    resetScratch();
+}
+
+int Recompiler::invalidateRange(u64 start, u64 end, bool is_smc) {
     auto guard = page_map_lock.lock();
     auto lower = page_map.lower_bound(start);
     auto upper = page_map.upper_bound(end - 1);
 
     int blocks = 0;
     for (auto it = lower; it != upper; it++) {
-        auto& blocks_in_page = it->second;
-        for (BlockMetadata* block : blocks_in_page) {
-            invalidateBlock(block);
-            blocks++;
-        }
-        blocks_in_page.clear();
+        blocks += std::erase_if(it->second, [&](BlockMetadata* block) {
+            if (is_smc && block->misc_info.self_validating) {
+                // Don't invalidate self-validating blocks
+                return false;
+            }
+            invalidateBlock(block, is_smc);
+            return true;
+        });
     }
     return blocks;
 }
 
-void Recompiler::invalidateRangeGlobal(u64 start, u64 end, const char* reason) {
+void Recompiler::invalidateRangeGlobal(u64 start, u64 end, const char* reason, bool is_smc) {
     // Get all the pages in this range, search all thread states for these pages, invalidate the blocks in those pages
     auto states_guard = g_process_globals.states_lock.lock();
     start &= ~0xFFFull;
     end = (end + 0xFFF) & ~0xFFFull;
+    g_mapper->bump_smc(start, end);
     u64 min = UINT64_MAX;
     u64 max = 0;
     u64 blocks = 0;
     for (ThreadState* state : g_process_globals.states) {
-        blocks += state->recompiler->invalidateRange(start, end);
+        blocks += state->recompiler->invalidateRange(start, end, is_smc);
 
         u64 cache_start = (u64)state->recompiler->getStartOfCodeCache();
         u64 cache_end = (u64)state->recompiler->getEndOfCodeCache();

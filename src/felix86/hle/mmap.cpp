@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <iterator>
 #include <memory>
 #include <utility>
@@ -666,4 +667,49 @@ std::optional<int> Mapper::get_region_protections(void* address) {
     }
 
     return std::nullopt; // not mapped
+}
+
+void Mapper::bump_smc(u64 start, u64 end) {
+    if (end <= start) {
+        return;
+    }
+
+    const u64 start_page = start & ~0xFFFull;
+    const u64 end_page = (end - 1) & ~0xFFFull;
+    if (((end_page - start_page) >> 12) >= smc_counters.size()) {
+        for (auto& counter : smc_counters) {
+            counter.fetch_add(1);
+        }
+    } else {
+        for (u64 i = start_page; i <= end_page; i += 4096) {
+            smc_counters[(i >> 12) % smc_counters.size()].fetch_add(1);
+        }
+    }
+}
+
+std::vector<u32> Mapper::get_smc_trackers(u64 address, u64 size) {
+    std::vector<u32> ret;
+    const u64 start_page = address & ~0xFFFull;
+    const u64 end_page = (address + size - 1) & ~0xFFFull;
+    for (u64 i = start_page; i <= end_page; i += 4096) {
+        ret.push_back(smc_counters[(i >> 12) % smc_counters.size()].load());
+    }
+
+    if (g_config.protect_pages) {
+        if (::mprotect((void*)start_page, end_page - start_page + 0x1000, PROT_READ) != 0) {
+            ERROR("Failed to protect pages %016lx-%016lx -- Error: %s", start_page, end_page + 0x1000, strerror(errno));
+        }
+    }
+    return ret;
+}
+
+bool Mapper::check_smc_trackers(u64 address, u64 size, const std::vector<u32>& old) {
+    const u64 start_page = address & ~0xFFFull;
+    const u64 end_page = (address + size - 1) & ~0xFFFull;
+    for (u64 i = start_page, j = 0; i <= end_page; i += 4096, j++) {
+        if (smc_counters[(i >> 12) % smc_counters.size()].load() != old[j]) {
+            return true;
+        }
+    }
+    return false;
 }
