@@ -258,6 +258,10 @@ struct Recompiler {
 
     static void patchBlockEntry(u64 host_address);
 
+    static u32 smcClockMs();
+
+    static bool shouldSelfValidate(const BlockMetadata& block);
+
     static void addSmcHit(BlockMetadata& block);
 
     void emitSelfValidation(biscuit::Label* expected_bytes);
@@ -1073,9 +1077,10 @@ private:
     // matter and the order picks an available group.
     constexpr static std::array scratch_vec = {v2, v3, v4, v5, v6, v7, v1};
 
+    // Heuristically chosen, but seems to be good enough
     constexpr static u64 smc_threshold = 30;
 
-    constexpr static u32 smc_window_ms = 100;
+    constexpr static u32 smc_window_ms = 10;
 
     constexpr static std::array scratch_fprs = {ft8, ft9, ft10, ft11};
 };

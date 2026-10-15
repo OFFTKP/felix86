@@ -86,3 +86,4 @@ X(Performance, bool, group_loadstore, true, FELIX86_GROUP_LOADSTORE, "Load/store
 X(Performance, u64, reduced_precision, 0, FELIX86_REDUCED_PRECISION, "Set to 1 to use 64-bit floats for x86's 80-bit floats. Set to 2 to use 32-bit or 64-bit floats. May improve performance dramatically in older or 32-bit games.")
 X(Performance, bool, rdtsc_scaling, true, FELIX86_RDTSC_SCALING, "Scale RDTIME frequency to plausible x86 frequencies")
 X(Performance, bool, optimization_pass, true, FELIX86_OPTIMIZATION_PASS, "Run the Optimizer over the decoded instructions and the native code")
+X(Performance, bool, self_validating_blocks, true, FELIX86_SELF_VALIDATING_BLOCKS, "If a block is being invalidated too quickly, don't protect the page and instead make it validate its own code at runtime")

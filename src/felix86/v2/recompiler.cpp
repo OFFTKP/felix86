@@ -423,6 +423,9 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_
     if (metadata.host_address == (u64)invalid_block) {
         ASSERT(invalid_block);
         if (metadata.misc_info.self_validating) {
+            if (g_config.print_invalidations) {
+                WARN("Self-validation failed for block at %lx", rip);
+            }
             metadata.misc_info.self_validating = 0;
             addSmcHit(metadata);
             patchBlockEntry((u64)invalid_block);
@@ -705,16 +708,21 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
     current_mode32 = mode32;
     current_decoder_initialized = false; // TODO: don't invalidate if same mode32 as before
     BlockMetadata& block_meta = getBlockMetadata(rip);
-    bool is_self_validating = block_meta.misc_info.smc_hits >= smc_threshold && getBreakpointIndex(rip) == -1;
+    bool is_self_validating = g_config.self_validating_blocks && shouldSelfValidate(block_meta) && getBreakpointIndex(rip) == -1;
     if (is_self_validating) {
         current_block_self_validating = true;
         self_validating_start = rip;
         self_validating_bytes.clear();
+        // Disable self-validation if scanAhead reaches illegal instruction as we don't know
+        // how many bytes ahead to self-validate
         is_self_validating = scanAhead(rip);
         current_block_self_validating = false;
     }
 
     block_meta.misc_info.self_validating = is_self_validating;
+    if (is_self_validating && g_config.print_invalidations) {
+        WARN("Compiling self-validating block at %lx", rip);
+    }
     const bool track_smc = protect_end && !is_self_validating;
     u64 end_page = 0;
     std::vector<u32> smc_trackers;
@@ -3675,6 +3683,10 @@ void Recompiler::setTOP(biscuit::GPR new_top) {
 
 void Recompiler::invalidateBlock(BlockMetadata* block, bool is_smc) {
     u64 host_address = __atomic_load_n(&block->host_address, __ATOMIC_SEQ_CST);
+    if (!is_smc) {
+        block->misc_info.smc_hits = 0;
+    }
+
     if (host_address == 0) {
         return;
     }
@@ -3683,8 +3695,6 @@ void Recompiler::invalidateBlock(BlockMetadata* block, bool is_smc) {
     patchBlockEntry(host_address);
     if (is_smc) {
         addSmcHit(*block);
-    } else {
-        block->misc_info.smc_hits = 0;
     }
 }
 
@@ -3709,10 +3719,19 @@ void Recompiler::patchBlockEntry(u64 host_address) {
     __atomic_exchange_n(address, storage, __ATOMIC_SEQ_CST);
 }
 
-void Recompiler::addSmcHit(BlockMetadata& block) {
+u32 Recompiler::smcClockMs() {
     timespec now;
     clock_gettime(CLOCK_MONOTONIC_COARSE, &now);
-    const u32 now_ms = now.tv_sec * 1000 + now.tv_nsec / 1'000'000;
+    return now.tv_sec * 1000 + now.tv_nsec / 1'000'000;
+}
+
+bool Recompiler::shouldSelfValidate(const BlockMetadata& block) {
+    auto info = block.misc_info;
+    return info.smc_hits >= smc_threshold && (u32)(smcClockMs() - info.last_smc_ms) <= smc_window_ms;
+}
+
+void Recompiler::addSmcHit(BlockMetadata& block) {
+    const u32 now_ms = smcClockMs();
     auto info = block.misc_info;
     if (info.smc_hits == 0 || (u32)(now_ms - info.last_smc_ms) > smc_window_ms) {
         info.smc_hits = 1;
