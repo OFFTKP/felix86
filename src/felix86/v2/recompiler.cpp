@@ -737,6 +737,13 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
     if (!is_self_validating) {
         scanAhead(rip);
     }
+
+    if (track_smc && ((current_scan_end - 1) & ~0xFFFull) > end_page) {
+        // RIP goes further than the protected pages, retry with the rest of the block protected
+        *protect_end = current_scan_end;
+        return SequenceResult::Overran;
+    }
+
     block_meta.host_address = (u64)as.GetCursorPointer();
     block_meta.guest_address = start_rip;
     block_meta.translation_sizes.resize(instructions.size());
@@ -750,6 +757,23 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
     // Also, this means that when a signal returns it will find a compiled block instead of needing to compile a new one
     // TODO: insert safepoints within the block every N instructions, needs to flushx87 too
     insertSafepoint();
+
+    {
+        auto guard = page_map_lock.lock();
+        u64 start_masked = start_rip & ~0xFFFull;
+        u64 end_masked = (current_scan_end - 1) & ~0xFFFull;
+        for (u64 page = start_masked; page <= end_masked; page += 0x1000) {
+            std::vector<BlockMetadata*>& blocks_in_page = page_map[page];
+            if (std::find(blocks_in_page.begin(), blocks_in_page.end(), &block_meta) == blocks_in_page.end()) {
+                blocks_in_page.push_back(&block_meta);
+            }
+        }
+    }
+
+    if (track_smc && g_mapper->check_smc_trackers(start_rip, *protect_end - start_rip, smc_trackers)) {
+        current_block_metadata = nullptr;
+        return SequenceResult::Modified;
+    }
 
     Label expected_bytes;
     if (is_self_validating) {
@@ -903,25 +927,6 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
     current_block_metadata = nullptr;
     local_x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
 
-    const u64 final_compiled_page = (rip - 1) & ~0xFFF;
-    if (track_smc && final_compiled_page > end_page) {
-        // RIP goes further than the protected pages, retry with the rest of the block protected
-        *protect_end = rip;
-        return SequenceResult::Overran;
-    }
-
-    {
-        auto guard = page_map_lock.lock();
-        u64 start_masked = start_rip & ~0xFFFull;
-        u64 end_masked = (rip - 1) & ~0xFFFull;
-        for (u64 page = start_masked; page <= end_masked; page += 0x1000) {
-            std::vector<BlockMetadata*>& blocks_in_page = page_map[page];
-            if (std::find(blocks_in_page.begin(), blocks_in_page.end(), &block_meta) == blocks_in_page.end()) {
-                blocks_in_page.push_back(&block_meta);
-            }
-        }
-    }
-
     if (is_self_validating) {
         ASSERT(rip > start_rip && rip - start_rip <= self_validating_bytes.size());
         self_validating_bytes.resize(rip - start_rip);
@@ -940,12 +945,7 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
 
     flush_icache(block_meta.host_address, (u64)as.GetCursorPointer());
 
-    if (!track_smc) {
-        return SequenceResult::Compiled;
-    }
-
-    bool mismatch = g_mapper->check_smc_trackers(start_rip, *protect_end - start_rip, smc_trackers);
-    return mismatch ? SequenceResult::Modified : SequenceResult::Compiled;
+    return SequenceResult::Compiled;
 }
 
 std::optional<std::pair<ZydisDecodedInstruction*, ZydisDecodedOperand*>> Recompiler::getNextInstruction() {
@@ -2385,6 +2385,7 @@ bool Recompiler::scanAhead(u64 rip) {
     ZydisBookkeeping zydis_state{};
     std::vector<FlagAccessData::ScanAccess> scan_entries;
     bool decode_failed = false;
+    current_scan_end = rip;
     while (true) {
         if (!instructions.empty() && getBreakpointIndex(rip) != -1) {
             current_block_big = true;
@@ -2398,8 +2399,11 @@ bool Recompiler::scanAhead(u64 rip) {
             instruction.mnemonic = ZYDIS_MNEMONIC_UD2;
             mnemonic = ZYDIS_MNEMONIC_UD2;
             decode_failed = true;
+            current_scan_end = rip + 1;
             break;
         }
+
+        current_scan_end = rip + instruction.length;
 
         if (is_single_step) {
             break;
@@ -2420,6 +2424,7 @@ bool Recompiler::scanAhead(u64 rip) {
             IMPORTANT("Inline SMC detected, block at %lx writes to %lx", initial_rip, lowest_rip_write);
             current_block_big = true;
             instructions.pop_back();
+            current_scan_end = rip;
             break;
         }
 

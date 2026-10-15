@@ -1020,6 +1020,7 @@ private:
     FlagAccessData current_flag_access{};
     BlockMetadata* current_block_metadata{};
     bool current_block_self_validating = false;
+    u64 current_scan_end = 0;
     u64 self_validating_start = 0;
     std::vector<u8> self_validating_bytes{};
     SEW current_sew = SEW::E1024;
