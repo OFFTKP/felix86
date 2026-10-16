@@ -87,3 +87,5 @@ X(Performance, u64, reduced_precision, 0, FELIX86_REDUCED_PRECISION, "Set to 1 t
 X(Performance, bool, rdtsc_scaling, true, FELIX86_RDTSC_SCALING, "Scale RDTIME frequency to plausible x86 frequencies")
 X(Performance, bool, optimization_pass, true, FELIX86_OPTIMIZATION_PASS, "Run the Optimizer over the decoded instructions and the native code")
 X(Performance, bool, self_validating_blocks, true, FELIX86_SELF_VALIDATING_BLOCKS, "If a block is being invalidated too quickly, don't protect the page and instead make it validate its own code at runtime")
+X(Performance, u64, smc_threshold, 10, FELIX86_SMC_THRESHOLD, "How many SMC invalidations turn a block into a self validating one (max 255)")
+X(Performance, u64, smc_window_ms, 1000, FELIX86_SMC_WINDOW_MS, "Maximum ms between invalidations to count towards the self-validating threshold")

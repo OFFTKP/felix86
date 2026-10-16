@@ -3737,15 +3737,15 @@ u32 Recompiler::smcClockMs() {
 
 bool Recompiler::shouldSelfValidate(const BlockMetadata& block) {
     auto info = block.misc_info;
-    return info.smc_hits >= smc_threshold && (u32)(smcClockMs() - info.last_smc_ms) <= smc_window_ms;
+    return info.smc_hits >= g_config.smc_threshold && (u32)(smcClockMs() - info.last_smc_ms) <= g_config.smc_window_ms;
 }
 
 void Recompiler::addSmcHit(BlockMetadata& block) {
     const u32 now_ms = smcClockMs();
     auto info = block.misc_info;
-    if (info.smc_hits == 0 || (u32)(now_ms - info.last_smc_ms) > smc_window_ms) {
+    if (info.smc_hits == 0 || (u32)(now_ms - info.last_smc_ms) > g_config.smc_window_ms) {
         info.smc_hits = 1;
-    } else if (info.smc_hits < smc_threshold) {
+    } else if (info.smc_hits < g_config.smc_threshold) {
         info.smc_hits++;
     }
     info.last_smc_ms = now_ms;
