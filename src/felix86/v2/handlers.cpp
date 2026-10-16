@@ -5071,7 +5071,7 @@ FAST_HANDLE(SUBPD) {
 }
 
 FAST_HANDLE(MINPS) {
-    if (g_config.inaccurate_minmax && !g_config.paranoid) {
+    if (g_config.unsafe_math && !g_config.paranoid) {
         biscuit::Vec dst = rec.getVec(&operands[0]);
         biscuit::Vec src = rec.getVec(&operands[1]);
         rec.setVectorState(SEW::E32, 4);
@@ -5111,7 +5111,7 @@ FAST_HANDLE(MINPS) {
 }
 
 FAST_HANDLE(MINPD) {
-    if (g_config.inaccurate_minmax && !g_config.paranoid) {
+    if (g_config.unsafe_math && !g_config.paranoid) {
         biscuit::Vec dst = rec.getVec(&operands[0]);
         biscuit::Vec src = rec.getVec(&operands[1]);
         rec.setVectorState(SEW::E64, 2);
@@ -5331,7 +5331,7 @@ FAST_HANDLE(PMADDWD) {
 }
 
 FAST_HANDLE(MAXPS) {
-    if (g_config.inaccurate_minmax && !g_config.paranoid) {
+    if (g_config.unsafe_math && !g_config.paranoid) {
         biscuit::Vec dst = rec.getVec(&operands[0]);
         biscuit::Vec src = rec.getVec(&operands[1]);
         rec.setVectorState(SEW::E32, 4);
@@ -5371,7 +5371,7 @@ FAST_HANDLE(MAXPS) {
 }
 
 FAST_HANDLE(MAXPD) {
-    if (g_config.inaccurate_minmax && !g_config.paranoid) {
+    if (g_config.unsafe_math && !g_config.paranoid) {
         biscuit::Vec dst = rec.getVec(&operands[0]);
         biscuit::Vec src = rec.getVec(&operands[1]);
         rec.setVectorState(SEW::E64, 2);
@@ -6314,7 +6314,7 @@ static void ROUND(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstructi
     }
 
     biscuit::GPR max = rec.scratch();
-    bool inaccurate = g_config.inaccurate_conversions && !g_config.paranoid;
+    bool inaccurate = g_config.unsafe_math && !g_config.paranoid;
     if (!inaccurate) {
         if (sew == SEW::E32) {
             as.LI(max, 0x4B000000);
@@ -15744,7 +15744,7 @@ FAST_HANDLE(VCVTSD2SS) {
 }
 
 FAST_HANDLE(VMAXPS) {
-    if (!g_config.inaccurate_minmax) {
+    if (!g_config.unsafe_math) {
         WARN_ONCE("Accurate minmax not implemented for VMAXPS");
     }
 
@@ -15752,7 +15752,7 @@ FAST_HANDLE(VMAXPS) {
 }
 
 FAST_HANDLE(VMINPS) {
-    if (!g_config.inaccurate_minmax) {
+    if (!g_config.unsafe_math) {
         WARN_ONCE("Accurate minmax not implemented for VMINPS");
     }
 
@@ -15760,7 +15760,7 @@ FAST_HANDLE(VMINPS) {
 }
 
 FAST_HANDLE(VMAXPD) {
-    if (!g_config.inaccurate_minmax) {
+    if (!g_config.unsafe_math) {
         WARN_ONCE("Accurate minmax not implemented for VMAXPD");
     }
 
@@ -15768,7 +15768,7 @@ FAST_HANDLE(VMAXPD) {
 }
 
 FAST_HANDLE(VMINPD) {
-    if (!g_config.inaccurate_minmax) {
+    if (!g_config.unsafe_math) {
         WARN_ONCE("Accurate minmax not implemented for VMINPD");
     }
 
@@ -15776,7 +15776,7 @@ FAST_HANDLE(VMINPD) {
 }
 
 FAST_HANDLE(VMAXSS) {
-    if (!g_config.inaccurate_minmax) {
+    if (!g_config.unsafe_math) {
         WARN_ONCE("Accurate minmax not implemented for VMAXSS");
     }
 
@@ -15784,7 +15784,7 @@ FAST_HANDLE(VMAXSS) {
 }
 
 FAST_HANDLE(VMINSS) {
-    if (!g_config.inaccurate_minmax) {
+    if (!g_config.unsafe_math) {
         WARN_ONCE("Accurate minmax not implemented for VMINSS");
     }
 
@@ -15792,7 +15792,7 @@ FAST_HANDLE(VMINSS) {
 }
 
 FAST_HANDLE(VMAXSD) {
-    if (!g_config.inaccurate_minmax) {
+    if (!g_config.unsafe_math) {
         WARN_ONCE("Accurate minmax not implemented for VMAXSD");
     }
 
@@ -15800,7 +15800,7 @@ FAST_HANDLE(VMAXSD) {
 }
 
 FAST_HANDLE(VMINSD) {
-    if (!g_config.inaccurate_minmax) {
+    if (!g_config.unsafe_math) {
         WARN_ONCE("Accurate minmax not implemented for VMINSD");
     }
 
