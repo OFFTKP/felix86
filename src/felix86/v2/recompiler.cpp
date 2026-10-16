@@ -565,6 +565,11 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
                 return not_mapped_thunk;
             }
         }
+    } else {
+        // Probe the address before we change the protections to read-only
+        // If it's going to fault it will at least fault early
+        // This path will be removed when we make guest memory tracking be always on
+        (void)*(volatile u8*)rip;
     }
 
     if (state->unaligned_atomics_counter) {
