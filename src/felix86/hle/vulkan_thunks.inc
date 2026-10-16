@@ -340,6 +340,9 @@ EXT("libvulkan.so", vkCmdDrawMultiIndexed, v_qdqdddq)
 // VK_EXT_hdr_metadata
 EXT("libvulkan.so", vkSetHdrMetadata, v_qdqq)
 
+// VK_EXT_pageable_device_local_memory
+EXT("libvulkan.so", vkSetDeviceMemoryPriority, v_qqF)
+
 // VK_KHR_swapchain_maintenance1
 KHR_EXT("libvulkan.so", vkReleaseSwapchainImages, d_qq)
 
