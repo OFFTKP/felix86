@@ -9112,20 +9112,54 @@ FAST_HANDLE(MULSD) {
     SCALAR(rec, rip, as, instruction, operands, SEW::E64, 1, &Assembler::VFMUL);
 }
 
-FAST_HANDLE(MINSS) { // TODO: NaN handling
-    SCALAR(rec, rip, as, instruction, operands, SEW::E32, 1, &Assembler::VFMIN);
+FAST_HANDLE(MINSS) {
+    if (g_config.unsafe_math)
+        SCALAR(rec, rip, as, instruction, operands, SEW::E32, 1, &Assembler::VFMIN);
+    else {
+        biscuit::Vec dst = rec.getVec(&operands[0]);
+        biscuit::Vec src = rec.getVec(&operands[1]);
+        rec.setVectorState(SEW::E32, 1);
+        as.VMFLT(v0, dst, src);
+        as.VNOT(v0, v0);
+        as.VMERGE(dst, dst, src);
+    }
 }
 
 FAST_HANDLE(MINSD) {
-    SCALAR(rec, rip, as, instruction, operands, SEW::E64, 1, &Assembler::VFMIN);
+    if (g_config.unsafe_math) {
+        SCALAR(rec, rip, as, instruction, operands, SEW::E64, 1, &Assembler::VFMIN);
+    } else {
+        biscuit::Vec dst = rec.getVec(&operands[0]);
+        biscuit::Vec src = rec.getVec(&operands[1]);
+        rec.setVectorState(SEW::E64, 1);
+        as.VMFLT(v0, dst, src);
+        as.VNOT(v0, v0);
+        as.VMERGE(dst, dst, src);
+    }
 }
 
 FAST_HANDLE(MAXSS) {
-    SCALAR(rec, rip, as, instruction, operands, SEW::E32, 1, &Assembler::VFMAX);
+    if (g_config.unsafe_math) {
+        SCALAR(rec, rip, as, instruction, operands, SEW::E32, 1, &Assembler::VFMAX);
+    } else {
+        biscuit::Vec dst = rec.getVec(&operands[0]);
+        biscuit::Vec src = rec.getVec(&operands[1]);
+        rec.setVectorState(SEW::E32, 1);
+        as.VMFLT(v0, src, dst);
+        as.VMERGE(dst, src, dst);
+    }
 }
 
 FAST_HANDLE(MAXSD) {
-    SCALAR(rec, rip, as, instruction, operands, SEW::E64, 1, &Assembler::VFMAX);
+    if (g_config.unsafe_math) {
+        SCALAR(rec, rip, as, instruction, operands, SEW::E64, 1, &Assembler::VFMAX);
+    } else {
+        biscuit::Vec dst = rec.getVec(&operands[0]);
+        biscuit::Vec src = rec.getVec(&operands[1]);
+        rec.setVectorState(SEW::E64, 1);
+        as.VMFLT(v0, src, dst);
+        as.VMERGE(dst, src, dst);
+    }
 }
 
 FAST_HANDLE(CVTSI2SD) {
