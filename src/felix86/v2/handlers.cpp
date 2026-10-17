@@ -9112,20 +9112,56 @@ FAST_HANDLE(MULSD) {
     SCALAR(rec, rip, as, instruction, operands, SEW::E64, 1, &Assembler::VFMUL);
 }
 
-FAST_HANDLE(MINSS) { // TODO: NaN handling
-    SCALAR(rec, rip, as, instruction, operands, SEW::E32, 1, &Assembler::VFMIN);
+FAST_HANDLE(MINSS) {
+    if (g_config.unsafe_math)
+        SCALAR(rec, rip, as, instruction, operands, SEW::E32, 1, &Assembler::VFMIN);
+    else {
+        biscuit::Vec dst = rec.getVec(&operands[0]);
+        biscuit::Vec src = rec.getVec(&operands[1]);
+        rec.setVectorState(SEW::E32, 1);
+        as.VMFLT(v0, dst, src);
+        as.VMERGE(dst, src, dst);
+        rec.setVec(&operands[0], dst);
+    }
 }
 
 FAST_HANDLE(MINSD) {
-    SCALAR(rec, rip, as, instruction, operands, SEW::E64, 1, &Assembler::VFMIN);
+    if (g_config.unsafe_math) {
+        SCALAR(rec, rip, as, instruction, operands, SEW::E64, 1, &Assembler::VFMIN);
+    } else {
+        biscuit::Vec dst = rec.getVec(&operands[0]);
+        biscuit::Vec src = rec.getVec(&operands[1]);
+        rec.setVectorState(SEW::E64, 1);
+        as.VMFLT(v0, dst, src);
+        as.VMERGE(dst, src, dst);
+        rec.setVec(&operands[0], dst);
+    }
 }
 
 FAST_HANDLE(MAXSS) {
-    SCALAR(rec, rip, as, instruction, operands, SEW::E32, 1, &Assembler::VFMAX);
+    if (g_config.unsafe_math) {
+        SCALAR(rec, rip, as, instruction, operands, SEW::E32, 1, &Assembler::VFMAX);
+    } else {
+        biscuit::Vec dst = rec.getVec(&operands[0]);
+        biscuit::Vec src = rec.getVec(&operands[1]);
+        rec.setVectorState(SEW::E32, 1);
+        as.VMFLT(v0, src, dst);
+        as.VMERGE(dst, src, dst);
+        rec.setVec(&operands[0], dst);
+    }
 }
 
 FAST_HANDLE(MAXSD) {
-    SCALAR(rec, rip, as, instruction, operands, SEW::E64, 1, &Assembler::VFMAX);
+    if (g_config.unsafe_math) {
+        SCALAR(rec, rip, as, instruction, operands, SEW::E64, 1, &Assembler::VFMAX);
+    } else {
+        biscuit::Vec dst = rec.getVec(&operands[0]);
+        biscuit::Vec src = rec.getVec(&operands[1]);
+        rec.setVectorState(SEW::E64, 1);
+        as.VMFLT(v0, src, dst);
+        as.VMERGE(dst, src, dst);
+        rec.setVec(&operands[0], dst);
+    }
 }
 
 FAST_HANDLE(CVTSI2SD) {
@@ -15743,68 +15779,88 @@ FAST_HANDLE(VCVTSD2SS) {
     rec.setVec(&operands[0], result);
 }
 
-FAST_HANDLE(VMAXPS) {
-    if (!g_config.unsafe_math) {
-        WARN_ONCE("Accurate minmax not implemented for VMAXPS");
-    }
+static void VMAX(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, SEW sew, int len) {
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src0 = rec.getVec(&operands[1]);
+    biscuit::Vec src1 = rec.getVec(&operands[2]);
+    rec.setVectorState(sew, len);
+    as.VMFLT(v0, src1, src0);
+    as.VMERGE(dst, src1, src0);
+    rec.setVec(&operands[0], dst);
+}
 
-    AVX_Operation(rec, as, instruction, operands, (FuncPtr3)&Assembler::VFMAX, SEW::E32, 8);
+static void VMIN(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, SEW sew, int len) {
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src0 = rec.getVec(&operands[1]);
+    biscuit::Vec src1 = rec.getVec(&operands[2]);
+    rec.setVectorState(sew, len);
+    as.VMFLT(v0, src0, src1);
+    as.VMERGE(dst, src1, src0);
+    rec.setVec(&operands[0], dst);
+}
+
+FAST_HANDLE(VMAXPS) {
+    if (g_config.unsafe_math) {
+        AVX_Operation(rec, as, instruction, operands, (FuncPtr3)&Assembler::VFMAX, SEW::E32, 8);
+    } else {
+        VMAX(rec, as, operands, SEW::E32, 8);
+    }
 }
 
 FAST_HANDLE(VMINPS) {
-    if (!g_config.unsafe_math) {
-        WARN_ONCE("Accurate minmax not implemented for VMINPS");
+    if (g_config.unsafe_math) {
+        AVX_Operation(rec, as, instruction, operands, (FuncPtr3)&Assembler::VFMIN, SEW::E32, 8);
+    } else {
+        VMIN(rec, as, operands, SEW::E32, 8);
     }
-
-    AVX_Operation(rec, as, instruction, operands, (FuncPtr3)&Assembler::VFMIN, SEW::E32, 8);
 }
 
 FAST_HANDLE(VMAXPD) {
-    if (!g_config.unsafe_math) {
-        WARN_ONCE("Accurate minmax not implemented for VMAXPD");
+    if (g_config.unsafe_math) {
+        AVX_Operation(rec, as, instruction, operands, (FuncPtr3)&Assembler::VFMAX, SEW::E64, 4);
+    } else {
+        VMAX(rec, as, operands, SEW::E64, 4);
     }
-
-    AVX_Operation(rec, as, instruction, operands, (FuncPtr3)&Assembler::VFMAX, SEW::E64, 4);
 }
 
 FAST_HANDLE(VMINPD) {
-    if (!g_config.unsafe_math) {
-        WARN_ONCE("Accurate minmax not implemented for VMINPD");
+    if (g_config.unsafe_math) {
+        AVX_Operation(rec, as, instruction, operands, (FuncPtr3)&Assembler::VFMIN, SEW::E64, 4);
+    } else {
+        VMIN(rec, as, operands, SEW::E64, 4);
     }
-
-    AVX_Operation(rec, as, instruction, operands, (FuncPtr3)&Assembler::VFMIN, SEW::E64, 4);
 }
 
 FAST_HANDLE(VMAXSS) {
-    if (!g_config.unsafe_math) {
-        WARN_ONCE("Accurate minmax not implemented for VMAXSS");
+    if (g_config.unsafe_math) {
+        AVX_Operation(rec, as, instruction, operands, (FuncPtr3)&Assembler::VFMAX, SEW::E32, 1);
+    } else {
+        VMAX(rec, as, operands, SEW::E32, 1);
     }
-
-    AVX_Operation(rec, as, instruction, operands, (FuncPtr3)&Assembler::VFMAX, SEW::E32, 1);
 }
 
 FAST_HANDLE(VMINSS) {
-    if (!g_config.unsafe_math) {
-        WARN_ONCE("Accurate minmax not implemented for VMINSS");
+    if (g_config.unsafe_math) {
+        AVX_Operation(rec, as, instruction, operands, (FuncPtr3)&Assembler::VFMIN, SEW::E32, 1);
+    } else {
+        VMIN(rec, as, operands, SEW::E32, 1);
     }
-
-    AVX_Operation(rec, as, instruction, operands, (FuncPtr3)&Assembler::VFMIN, SEW::E32, 1);
 }
 
 FAST_HANDLE(VMAXSD) {
-    if (!g_config.unsafe_math) {
-        WARN_ONCE("Accurate minmax not implemented for VMAXSD");
+    if (g_config.unsafe_math) {
+        AVX_Operation(rec, as, instruction, operands, (FuncPtr3)&Assembler::VFMAX, SEW::E64, 1);
+    } else {
+        VMAX(rec, as, operands, SEW::E64, 1);
     }
-
-    AVX_Operation(rec, as, instruction, operands, (FuncPtr3)&Assembler::VFMAX, SEW::E64, 1);
 }
 
 FAST_HANDLE(VMINSD) {
-    if (!g_config.unsafe_math) {
-        WARN_ONCE("Accurate minmax not implemented for VMINSD");
+    if (g_config.unsafe_math) {
+        AVX_Operation(rec, as, instruction, operands, (FuncPtr3)&Assembler::VFMIN, SEW::E64, 1);
+    } else {
+        VMIN(rec, as, operands, SEW::E64, 1);
     }
-
-    AVX_Operation(rec, as, instruction, operands, (FuncPtr3)&Assembler::VFMIN, SEW::E64, 1);
 }
 
 FAST_HANDLE(VLDMXCSR) {
