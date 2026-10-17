@@ -1508,8 +1508,8 @@ static bool handle_smc(ThreadState* current_state, siginfo_t* info, ucontext_t* 
     SMCLOG("Handling SMC on %lx during PC: %lx and RIP of block: %lx", (u64)info->si_addr, pc, rip);
 #endif
     u64 write_address = (u64)info->si_addr & ~0xFFFull;
-    Recompiler::invalidateRangeGlobal(write_address, write_address + 1, "self-modifying code");
     ASSERT_MSG(::mprotect((void*)write_address, 0x1000, PROT_READ | PROT_WRITE) == 0, "mprotect failed on address %lx", write_address);
+    Recompiler::invalidateRangeGlobal(write_address, write_address + 1, "self-modifying code", true);
     FELIX86_PROFILE_INSTANT_INCREMENT(current_state->thread_stats, AccumulatedSMCCount, 1);
     return true;
 }

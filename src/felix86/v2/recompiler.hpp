@@ -29,6 +29,12 @@
 
 constexpr int scan_ahead_count = 64;
 
+enum class SequenceResult {
+    Compiled,
+    Modified,
+    Overran,
+};
+
 struct AllocatedX87Reg {
     biscuit::FPR reg;
     bool loaded = false;
@@ -90,6 +96,17 @@ struct BlockMetadata {
     // When the block would get recompiled the address cache entry would point to the new block and RSB prediction
     // would fail. We want RSB to succeed and to not compile past the CALL, so this is our compromise.
     u64 ret_stub{};
+    union {
+        struct {
+            // How many times this block was recompiled. After smc_threshold it will no longer protect the page
+            // and instead emit a self-validating block
+            u64 smc_hits : 8;
+            u64 self_validating : 1;
+            u64 last_smc_ms : 32;
+            u64 unused : 23;
+        };
+        u64 raw{};
+    } misc_info{};
 };
 
 using InterruptibleSyscallFunc = u64 (*)(u64* effective_deferred_signals, u64 nr, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5, u64 arg6);
@@ -237,13 +254,25 @@ struct Recompiler {
 
     void jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false);
 
-    void invalidateBlock(BlockMetadata* block);
+    void invalidateBlock(BlockMetadata* block, bool is_smc);
+
+    static void patchBlockEntry(u64 host_address);
+
+    static u32 smcClockMs();
+
+    static bool shouldSelfValidate(const BlockMetadata& block);
+
+    static void addSmcHit(BlockMetadata& block);
+
+    void emitSelfValidation(biscuit::Label* expected_bytes);
+
+    const u8* selfValidatingBytes(u64 rip, u64 length);
 
     void insertSafepoint();
 
-    static void invalidateRangeGlobal(u64 start, u64 end, const char* reason);
+    static void invalidateRangeGlobal(u64 start, u64 end, const char* reason, bool is_smc = false);
 
-    int invalidateRange(u64 start, u64 end);
+    int invalidateRange(u64 start, u64 end, bool is_smc);
 
     constexpr static biscuit::GPR threadStatePointer() {
         return gp; // due to -mno-relax, this register won't be modified in C++ code
@@ -769,7 +798,8 @@ struct Recompiler {
         return false;
     }
 
-    u64 compileSequence(bool mode32, u64 rip);
+    // Returns whether the compilation succeeded (fails if SMC happens during compilation)
+    SequenceResult compileSequence(bool mode32, u64 rip, u64* protect_end);
 
     void compileInstruction(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, u64 rip);
 
@@ -924,13 +954,13 @@ private:
 
     [[nodiscard]] u8* emitInvalidateCallerThunk();
 
-    void scanAhead(u64 rip);
+    bool scanAhead(u64 rip);
 
     void expirePendingLinks(u64 rip);
 
-    void markPagesAsReadOnly(u64 start, u64 end);
-
     void inlineSyscall(int sysno, int argcount);
+
+    int getBreakpointIndex(u64 rip);
 
     bool checkIfBreakpoint(u64 rip);
 
@@ -989,6 +1019,10 @@ private:
     bool current_block_big = false;
     FlagAccessData current_flag_access{};
     BlockMetadata* current_block_metadata{};
+    bool current_block_self_validating = false;
+    u64 current_scan_end = 0;
+    u64 self_validating_start = 0;
+    std::vector<u8> self_validating_bytes{};
     SEW current_sew = SEW::E1024;
     u8 current_vlen = 0;
     LMUL current_grouping = LMUL::M1;
