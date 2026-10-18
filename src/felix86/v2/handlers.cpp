@@ -9121,6 +9121,7 @@ FAST_HANDLE(MINSS) {
         rec.setVectorState(SEW::E32, 1);
         as.VMFLT(v0, dst, src);
         as.VMERGE(dst, src, dst);
+        rec.v0Modified();
         rec.setVec(&operands[0], dst);
     }
 }
@@ -9134,6 +9135,7 @@ FAST_HANDLE(MINSD) {
         rec.setVectorState(SEW::E64, 1);
         as.VMFLT(v0, dst, src);
         as.VMERGE(dst, src, dst);
+        rec.v0Modified();
         rec.setVec(&operands[0], dst);
     }
 }
@@ -9147,6 +9149,7 @@ FAST_HANDLE(MAXSS) {
         rec.setVectorState(SEW::E32, 1);
         as.VMFLT(v0, src, dst);
         as.VMERGE(dst, src, dst);
+        rec.v0Modified();
         rec.setVec(&operands[0], dst);
     }
 }
@@ -9160,6 +9163,7 @@ FAST_HANDLE(MAXSD) {
         rec.setVectorState(SEW::E64, 1);
         as.VMFLT(v0, src, dst);
         as.VMERGE(dst, src, dst);
+        rec.v0Modified();
         rec.setVec(&operands[0], dst);
     }
 }
@@ -15779,8 +15783,9 @@ FAST_HANDLE(VCVTSD2SS) {
     rec.setVec(&operands[0], result);
 }
 
-static void VMAXP(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, SEW sew, int len) {
-    biscuit::Vec dst = rec.getVec(&operands[0]);
+static void VMAXP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction instruction, ZydisDecodedOperand* operands, SEW sew, int len) {
+    bool is_xmms = !instruction.raw.vex.L;
+    biscuit::Vec dst = is_xmms ? rec.scratchVec() : rec.getVec(&operands[0]);
     biscuit::Vec src0 = rec.getVec(&operands[1]);
     biscuit::Vec src1 = rec.getVec(&operands[2]);
     rec.setVectorState(sew, len);
@@ -15790,8 +15795,9 @@ static void VMAXP(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands,
     rec.setVec(&operands[0], dst);
 }
 
-static void VMINP(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, SEW sew, int len) {
-    biscuit::Vec dst = rec.getVec(&operands[0]);
+static void VMINP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction instruction, ZydisDecodedOperand* operands, SEW sew, int len) {
+    bool is_xmms = !instruction.raw.vex.L;
+    biscuit::Vec dst = is_xmms ? rec.scratchVec() : rec.getVec(&operands[0]);
     biscuit::Vec src0 = rec.getVec(&operands[1]);
     biscuit::Vec src1 = rec.getVec(&operands[2]);
     rec.setVectorState(sew, len);
@@ -15801,24 +15807,26 @@ static void VMINP(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands,
     rec.setVec(&operands[0], dst);
 }
 
-static void VMAXS(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, SEW sew) {
-    biscuit::Vec dst = rec.scratchVec();
+static void VMAXS(Recompiler& rec, Assembler& as, ZydisDecodedInstruction instruction, ZydisDecodedOperand* operands, SEW sew) {
+    bool is_xmms = !instruction.raw.vex.L;
+    biscuit::Vec dst = is_xmms ? rec.scratchVec() : rec.getVec(&operands[0]);
     biscuit::Vec src0 = rec.getVec(&operands[1]);
     biscuit::Vec src1 = rec.getVec(&operands[2]);
     rec.setVectorState(sew, 1);
-    as.VMV1R(dst, src1);
+    as.VMV1R(dst, src0);
     as.VMFLT(v0, src1, src0);
     as.VMERGE(dst, src1, src0);
     rec.v0Modified();
     rec.setVec(&operands[0], dst);
 }
 
-static void VMINS(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, SEW sew) {
-    biscuit::Vec dst = rec.scratchVec();
+static void VMINS(Recompiler& rec, Assembler& as, ZydisDecodedInstruction instruction, ZydisDecodedOperand* operands, SEW sew) {
+    bool is_xmms = !instruction.raw.vex.L;
+    biscuit::Vec dst = is_xmms ? rec.scratchVec() : rec.getVec(&operands[0]);
     biscuit::Vec src0 = rec.getVec(&operands[1]);
     biscuit::Vec src1 = rec.getVec(&operands[2]);
     rec.setVectorState(sew, 1);
-    as.VMV1R(dst, src1);
+    as.VMV1R(dst, src0);
     as.VMFLT(v0, src0, src1);
     as.VMERGE(dst, src1, src0);
     rec.v0Modified();
@@ -15829,7 +15837,7 @@ FAST_HANDLE(VMAXPS) {
     if (g_config.unsafe_math) {
         AVX_Operation(rec, as, instruction, operands, (FuncPtr3)&Assembler::VFMAX, SEW::E32, 8);
     } else {
-        VMAXP(rec, as, operands, SEW::E32, 8);
+        VMAXP(rec, as, instruction, operands, SEW::E32, 8);
     }
 }
 
@@ -15837,7 +15845,7 @@ FAST_HANDLE(VMINPS) {
     if (g_config.unsafe_math) {
         AVX_Operation(rec, as, instruction, operands, (FuncPtr3)&Assembler::VFMIN, SEW::E32, 8);
     } else {
-        VMINP(rec, as, operands, SEW::E32, 8);
+        VMINP(rec, as, instruction, operands, SEW::E32, 8);
     }
 }
 
@@ -15845,7 +15853,7 @@ FAST_HANDLE(VMAXPD) {
     if (g_config.unsafe_math) {
         AVX_Operation(rec, as, instruction, operands, (FuncPtr3)&Assembler::VFMAX, SEW::E64, 4);
     } else {
-        VMAXP(rec, as, operands, SEW::E64, 4);
+        VMAXP(rec, as, instruction, operands, SEW::E64, 4);
     }
 }
 
@@ -15853,7 +15861,7 @@ FAST_HANDLE(VMINPD) {
     if (g_config.unsafe_math) {
         AVX_Operation(rec, as, instruction, operands, (FuncPtr3)&Assembler::VFMIN, SEW::E64, 4);
     } else {
-        VMINP(rec, as, operands, SEW::E64, 4);
+        VMINP(rec, as, instruction, operands, SEW::E64, 4);
     }
 }
 
@@ -15861,7 +15869,7 @@ FAST_HANDLE(VMAXSS) {
     if (g_config.unsafe_math) {
         AVX_Operation(rec, as, instruction, operands, (FuncPtr3)&Assembler::VFMAX, SEW::E32, 1);
     } else {
-        VMAXS(rec, as, operands, SEW::E32);
+        VMAXS(rec, as, instruction, operands, SEW::E32);
     }
 }
 
@@ -15869,7 +15877,7 @@ FAST_HANDLE(VMINSS) {
     if (g_config.unsafe_math) {
         AVX_Operation(rec, as, instruction, operands, (FuncPtr3)&Assembler::VFMIN, SEW::E32, 1);
     } else {
-        VMINS(rec, as, operands, SEW::E32);
+        VMINS(rec, as, instruction, operands, SEW::E32);
     }
 }
 
@@ -15877,7 +15885,7 @@ FAST_HANDLE(VMAXSD) {
     if (g_config.unsafe_math) {
         AVX_Operation(rec, as, instruction, operands, (FuncPtr3)&Assembler::VFMAX, SEW::E64, 1);
     } else {
-        VMAXS(rec, as, operands, SEW::E64);
+        VMAXS(rec, as, instruction, operands, SEW::E64);
     }
 }
 
@@ -15885,7 +15893,7 @@ FAST_HANDLE(VMINSD) {
     if (g_config.unsafe_math) {
         AVX_Operation(rec, as, instruction, operands, (FuncPtr3)&Assembler::VFMIN, SEW::E64, 1);
     } else {
-        VMINS(rec, as, operands, SEW::E64);
+        VMINS(rec, as, instruction, operands, SEW::E64);
     }
 }
 
