@@ -3606,183 +3606,176 @@
         "disassembly": "vpmaxud ymm1, ymm2, [rdi]"
     },
     "c5d85fdd": {
-        "instruction_count": 5,
+        "instruction_count": 3,
         "expected_asm": [
-            "VSETIVLI        zero, 4, e32, m1, tu, mu",
-            "VFMAX.VV        v2, xmm4, xmm5, none",
-            "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VMV.V.I         vmask, 0xfffffffc(-4)",
-            "VMERGE.VIM      xmm3, v2, 0x0(0)"
+            "VSETIVLI        zero, 8, e32, m1, tu, mu",
+            "VMFLT.VV        vmask, xmm5, xmm4, none",
+            "VMERGE.VVM      xmm3, xmm5, xmm4"
         ],
         "disassembly": "vmaxps xmm3, xmm4, xmm5"
     },
     "c5e85f0f": {
-        "instruction_count": 7,
+        "instruction_count": 5,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v3, rdi, none, 1",
-            "VSETIVLI        zero, 4, e32, m1, tu, mu",
-            "VFMAX.VV        v2, xmm2, v3, none",
-            "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VMV.V.I         vmask, 0xfffffffc(-4)",
-            "VMERGE.VIM      xmm1, v2, 0x0(0)"
+            "VLE8.V          v2, rdi, none, 1",
+            "VSETIVLI        zero, 8, e32, m1, tu, mu",
+            "VMFLT.VV        vmask, v2, xmm2, none",
+            "VMERGE.VVM      xmm1, v2, xmm2"
         ],
         "disassembly": "vmaxps xmm1, xmm2, [rdi]"
     },
     "c5dc5fdd": {
-        "instruction_count": 2,
+        "instruction_count": 3,
         "expected_asm": [
             "VSETIVLI        zero, 8, e32, m1, tu, mu",
-            "VFMAX.VV        xmm3, xmm4, xmm5, none"
+            "VMFLT.VV        vmask, xmm5, xmm4, none",
+            "VMERGE.VVM      xmm3, xmm5, xmm4"
         ],
         "disassembly": "vmaxps ymm3, ymm4, ymm5"
     },
     "c5ec5f0f": {
-        "instruction_count": 5,
+        "instruction_count": 6,
         "expected_asm": [
             "ADDIW           ra, zero, 0x20(32)",
             "VSETVLI         zero, ra, e8, m1, tu, mu",
             "VLE8.V          v2, rdi, none, 1",
             "VSETIVLI        zero, 8, e32, m1, tu, mu",
-            "VFMAX.VV        xmm1, xmm2, v2, none"
+            "VMFLT.VV        vmask, v2, xmm2, none",
+            "VMERGE.VVM      xmm1, v2, xmm2"
         ],
         "disassembly": "vmaxps ymm1, ymm2, [rdi]"
     },
     "c5d95fdd": {
-        "instruction_count": 5,
+        "instruction_count": 3,
         "expected_asm": [
-            "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VFMAX.VV        v2, xmm4, xmm5, none",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VMV.V.I         vmask, 0xfffffffc(-4)",
-            "VMERGE.VIM      xmm3, v2, 0x0(0)"
+            "VMFLT.VV        vmask, xmm5, xmm4, none",
+            "VMERGE.VVM      xmm3, xmm5, xmm4"
         ],
         "disassembly": "vmaxpd xmm3, xmm4, xmm5"
     },
     "c5e95f0f": {
-        "instruction_count": 7,
+        "instruction_count": 5,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v3, rdi, none, 1",
-            "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VFMAX.VV        v2, xmm2, v3, none",
+            "VLE8.V          v2, rdi, none, 1",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VMV.V.I         vmask, 0xfffffffc(-4)",
-            "VMERGE.VIM      xmm1, v2, 0x0(0)"
+            "VMFLT.VV        vmask, v2, xmm2, none",
+            "VMERGE.VVM      xmm1, v2, xmm2"
         ],
         "disassembly": "vmaxpd xmm1, xmm2, [rdi]"
     },
     "c5dd5fdd": {
-        "instruction_count": 2,
+        "instruction_count": 3,
         "expected_asm": [
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VFMAX.VV        xmm3, xmm4, xmm5, none"
+            "VMFLT.VV        vmask, xmm5, xmm4, none",
+            "VMERGE.VVM      xmm3, xmm5, xmm4"
         ],
         "disassembly": "vmaxpd ymm3, ymm4, ymm5"
     },
     "c5ed5f0f": {
-        "instruction_count": 5,
+        "instruction_count": 6,
         "expected_asm": [
             "ADDIW           ra, zero, 0x20(32)",
             "VSETVLI         zero, ra, e8, m1, tu, mu",
             "VLE8.V          v2, rdi, none, 1",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VFMAX.VV        xmm1, xmm2, v2, none"
+            "VMFLT.VV        vmask, v2, xmm2, none",
+            "VMERGE.VVM      xmm1, v2, xmm2"
         ],
         "disassembly": "vmaxpd ymm1, ymm2, [rdi]"
     },
     "c5d85ddd": {
-        "instruction_count": 5,
+        "instruction_count": 3,
         "expected_asm": [
-            "VSETIVLI        zero, 4, e32, m1, tu, mu",
-            "VFMIN.VV        v2, xmm4, xmm5, none",
-            "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VMV.V.I         vmask, 0xfffffffc(-4)",
-            "VMERGE.VIM      xmm3, v2, 0x0(0)"
+            "VSETIVLI        zero, 8, e32, m1, tu, mu",
+            "VMFLT.VV        vmask, xmm4, xmm5, none",
+            "VMERGE.VVM      xmm3, xmm5, xmm4"
         ],
         "disassembly": "vminps xmm3, xmm4, xmm5"
     },
     "c5e85d0f": {
-        "instruction_count": 7,
+        "instruction_count": 5,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v3, rdi, none, 1",
-            "VSETIVLI        zero, 4, e32, m1, tu, mu",
-            "VFMIN.VV        v2, xmm2, v3, none",
-            "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VMV.V.I         vmask, 0xfffffffc(-4)",
-            "VMERGE.VIM      xmm1, v2, 0x0(0)"
+            "VLE8.V          v2, rdi, none, 1",
+            "VSETIVLI        zero, 8, e32, m1, tu, mu",
+            "VMFLT.VV        vmask, xmm2, v2, none",
+            "VMERGE.VVM      xmm1, v2, xmm2"
         ],
         "disassembly": "vminps xmm1, xmm2, [rdi]"
     },
     "c5dc5ddd": {
-        "instruction_count": 2,
+        "instruction_count": 3,
         "expected_asm": [
             "VSETIVLI        zero, 8, e32, m1, tu, mu",
-            "VFMIN.VV        xmm3, xmm4, xmm5, none"
+            "VMFLT.VV        vmask, xmm4, xmm5, none",
+            "VMERGE.VVM      xmm3, xmm5, xmm4"
         ],
         "disassembly": "vminps ymm3, ymm4, ymm5"
     },
     "c5ec5d0f": {
-        "instruction_count": 5,
+        "instruction_count": 6,
         "expected_asm": [
             "ADDIW           ra, zero, 0x20(32)",
             "VSETVLI         zero, ra, e8, m1, tu, mu",
             "VLE8.V          v2, rdi, none, 1",
             "VSETIVLI        zero, 8, e32, m1, tu, mu",
-            "VFMIN.VV        xmm1, xmm2, v2, none"
+            "VMFLT.VV        vmask, xmm2, v2, none",
+            "VMERGE.VVM      xmm1, v2, xmm2"
         ],
         "disassembly": "vminps ymm1, ymm2, [rdi]"
     },
     "c5d95ddd": {
-        "instruction_count": 5,
+        "instruction_count": 3,
         "expected_asm": [
-            "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VFMIN.VV        v2, xmm4, xmm5, none",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VMV.V.I         vmask, 0xfffffffc(-4)",
-            "VMERGE.VIM      xmm3, v2, 0x0(0)"
+            "VMFLT.VV        vmask, xmm4, xmm5, none",
+            "VMERGE.VVM      xmm3, xmm5, xmm4"
         ],
         "disassembly": "vminpd xmm3, xmm4, xmm5"
     },
     "c5e95d0f": {
-        "instruction_count": 7,
+        "instruction_count": 5,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v3, rdi, none, 1",
-            "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VFMIN.VV        v2, xmm2, v3, none",
+            "VLE8.V          v2, rdi, none, 1",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VMV.V.I         vmask, 0xfffffffc(-4)",
-            "VMERGE.VIM      xmm1, v2, 0x0(0)"
+            "VMFLT.VV        vmask, xmm2, v2, none",
+            "VMERGE.VVM      xmm1, v2, xmm2"
         ],
         "disassembly": "vminpd xmm1, xmm2, [rdi]"
     },
     "c5dd5ddd": {
-        "instruction_count": 2,
+        "instruction_count": 3,
         "expected_asm": [
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VFMIN.VV        xmm3, xmm4, xmm5, none"
+            "VMFLT.VV        vmask, xmm4, xmm5, none",
+            "VMERGE.VVM      xmm3, xmm5, xmm4"
         ],
         "disassembly": "vminpd ymm3, ymm4, ymm5"
     },
     "c5ed5d0f": {
-        "instruction_count": 5,
+        "instruction_count": 6,
         "expected_asm": [
             "ADDIW           ra, zero, 0x20(32)",
             "VSETVLI         zero, ra, e8, m1, tu, mu",
             "VLE8.V          v2, rdi, none, 1",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VFMIN.VV        xmm1, xmm2, v2, none"
+            "VMFLT.VV        vmask, xmm2, v2, none",
+            "VMERGE.VVM      xmm1, v2, xmm2"
         ],
         "disassembly": "vminpd ymm1, ymm2, [rdi]"
     },
     "c5da5fdd": {
-        "instruction_count": 6,
+        "instruction_count": 7,
         "expected_asm": [
-            "VMV1R.V         v2, xmm4",
             "VSETIVLI        zero, 1, e32, m1, tu, mu",
-            "VFMAX.VV        v2, xmm4, xmm5, none",
+            "VMV1R.V         v2, xmm5",
+            "VMFLT.VV        vmask, xmm5, xmm4, none",
+            "VMERGE.VVM      v2, xmm5, xmm4",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "VMV.V.I         vmask, 0xfffffffc(-4)",
             "VMERGE.VIM      xmm3, v2, 0x0(0)"
@@ -3790,11 +3783,12 @@
         "disassembly": "vmaxss xmm3, xmm4, xmm5"
     },
     "c5ea5fda": {
-        "instruction_count": 6,
+        "instruction_count": 7,
         "expected_asm": [
-            "VMV1R.V         v2, xmm2",
             "VSETIVLI        zero, 1, e32, m1, tu, mu",
-            "VFMAX.VV        v2, xmm2, xmm2, none",
+            "VMV1R.V         v2, xmm2",
+            "VMFLT.VV        vmask, xmm2, xmm2, none",
+            "VMERGE.VVM      v2, xmm2, xmm2",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "VMV.V.I         vmask, 0xfffffffc(-4)",
             "VMERGE.VIM      xmm3, v2, 0x0(0)"
@@ -3802,13 +3796,14 @@
         "disassembly": "vmaxss xmm3, xmm2, xmm2"
     },
     "c5ea5f0f": {
-        "instruction_count": 8,
+        "instruction_count": 9,
         "expected_asm": [
-            "VMV1R.V         v2, xmm2",
             "VSETIVLI        zero, 4, e8, m1, tu, mu",
             "VLE8.V          v3, rdi, none, 1",
             "VSETIVLI        zero, 1, e32, m1, tu, mu",
-            "VFMAX.VV        v2, xmm2, v3, none",
+            "VMV1R.V         v2, v3",
+            "VMFLT.VV        vmask, v3, xmm2, none",
+            "VMERGE.VVM      v2, v3, xmm2",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "VMV.V.I         vmask, 0xfffffffc(-4)",
             "VMERGE.VIM      xmm1, v2, 0x0(0)"
@@ -3816,11 +3811,12 @@
         "disassembly": "vmaxss xmm1, xmm2, dword ptr [rdi]"
     },
     "c5db5fdd": {
-        "instruction_count": 6,
+        "instruction_count": 7,
         "expected_asm": [
-            "VMV1R.V         v2, xmm4",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "VFMAX.VV        v2, xmm4, xmm5, none",
+            "VMV1R.V         v2, xmm5",
+            "VMFLT.VV        vmask, xmm5, xmm4, none",
+            "VMERGE.VVM      v2, xmm5, xmm4",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "VMV.V.I         vmask, 0xfffffffc(-4)",
             "VMERGE.VIM      xmm3, v2, 0x0(0)"
@@ -3828,11 +3824,12 @@
         "disassembly": "vmaxsd xmm3, xmm4, xmm5"
     },
     "c5eb5fda": {
-        "instruction_count": 6,
+        "instruction_count": 7,
         "expected_asm": [
-            "VMV1R.V         v2, xmm2",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "VFMAX.VV        v2, xmm2, xmm2, none",
+            "VMV1R.V         v2, xmm2",
+            "VMFLT.VV        vmask, xmm2, xmm2, none",
+            "VMERGE.VVM      v2, xmm2, xmm2",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "VMV.V.I         vmask, 0xfffffffc(-4)",
             "VMERGE.VIM      xmm3, v2, 0x0(0)"
@@ -3840,13 +3837,14 @@
         "disassembly": "vmaxsd xmm3, xmm2, xmm2"
     },
     "c5eb5f0f": {
-        "instruction_count": 8,
+        "instruction_count": 9,
         "expected_asm": [
-            "VMV1R.V         v2, xmm2",
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
             "VLE8.V          v3, rdi, none, 1",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "VFMAX.VV        v2, xmm2, v3, none",
+            "VMV1R.V         v2, v3",
+            "VMFLT.VV        vmask, v3, xmm2, none",
+            "VMERGE.VVM      v2, v3, xmm2",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "VMV.V.I         vmask, 0xfffffffc(-4)",
             "VMERGE.VIM      xmm1, v2, 0x0(0)"
@@ -3854,11 +3852,12 @@
         "disassembly": "vmaxsd xmm1, xmm2, qword ptr [rdi]"
     },
     "c5da5ddd": {
-        "instruction_count": 6,
+        "instruction_count": 7,
         "expected_asm": [
-            "VMV1R.V         v2, xmm4",
             "VSETIVLI        zero, 1, e32, m1, tu, mu",
-            "VFMIN.VV        v2, xmm4, xmm5, none",
+            "VMV1R.V         v2, xmm5",
+            "VMFLT.VV        vmask, xmm4, xmm5, none",
+            "VMERGE.VVM      v2, xmm5, xmm4",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "VMV.V.I         vmask, 0xfffffffc(-4)",
             "VMERGE.VIM      xmm3, v2, 0x0(0)"
@@ -3866,11 +3865,12 @@
         "disassembly": "vminss xmm3, xmm4, xmm5"
     },
     "c5ea5dda": {
-        "instruction_count": 6,
+        "instruction_count": 7,
         "expected_asm": [
-            "VMV1R.V         v2, xmm2",
             "VSETIVLI        zero, 1, e32, m1, tu, mu",
-            "VFMIN.VV        v2, xmm2, xmm2, none",
+            "VMV1R.V         v2, xmm2",
+            "VMFLT.VV        vmask, xmm2, xmm2, none",
+            "VMERGE.VVM      v2, xmm2, xmm2",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "VMV.V.I         vmask, 0xfffffffc(-4)",
             "VMERGE.VIM      xmm3, v2, 0x0(0)"
@@ -3878,13 +3878,14 @@
         "disassembly": "vminss xmm3, xmm2, xmm2"
     },
     "c5ea5d0f": {
-        "instruction_count": 8,
+        "instruction_count": 9,
         "expected_asm": [
-            "VMV1R.V         v2, xmm2",
             "VSETIVLI        zero, 4, e8, m1, tu, mu",
             "VLE8.V          v3, rdi, none, 1",
             "VSETIVLI        zero, 1, e32, m1, tu, mu",
-            "VFMIN.VV        v2, xmm2, v3, none",
+            "VMV1R.V         v2, v3",
+            "VMFLT.VV        vmask, xmm2, v3, none",
+            "VMERGE.VVM      v2, v3, xmm2",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "VMV.V.I         vmask, 0xfffffffc(-4)",
             "VMERGE.VIM      xmm1, v2, 0x0(0)"
@@ -3892,11 +3893,12 @@
         "disassembly": "vminss xmm1, xmm2, dword ptr [rdi]"
     },
     "c5db5ddd": {
-        "instruction_count": 6,
+        "instruction_count": 7,
         "expected_asm": [
-            "VMV1R.V         v2, xmm4",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "VFMIN.VV        v2, xmm4, xmm5, none",
+            "VMV1R.V         v2, xmm5",
+            "VMFLT.VV        vmask, xmm4, xmm5, none",
+            "VMERGE.VVM      v2, xmm5, xmm4",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "VMV.V.I         vmask, 0xfffffffc(-4)",
             "VMERGE.VIM      xmm3, v2, 0x0(0)"
@@ -3904,11 +3906,12 @@
         "disassembly": "vminsd xmm3, xmm4, xmm5"
     },
     "c5eb5dda": {
-        "instruction_count": 6,
+        "instruction_count": 7,
         "expected_asm": [
-            "VMV1R.V         v2, xmm2",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "VFMIN.VV        v2, xmm2, xmm2, none",
+            "VMV1R.V         v2, xmm2",
+            "VMFLT.VV        vmask, xmm2, xmm2, none",
+            "VMERGE.VVM      v2, xmm2, xmm2",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "VMV.V.I         vmask, 0xfffffffc(-4)",
             "VMERGE.VIM      xmm3, v2, 0x0(0)"
@@ -3916,13 +3919,14 @@
         "disassembly": "vminsd xmm3, xmm2, xmm2"
     },
     "c5eb5d0f": {
-        "instruction_count": 8,
+        "instruction_count": 9,
         "expected_asm": [
-            "VMV1R.V         v2, xmm2",
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
             "VLE8.V          v3, rdi, none, 1",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "VFMIN.VV        v2, xmm2, v3, none",
+            "VMV1R.V         v2, v3",
+            "VMFLT.VV        vmask, xmm2, v3, none",
+            "VMERGE.VVM      v2, v3, xmm2",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
             "VMV.V.I         vmask, 0xfffffffc(-4)",
             "VMERGE.VIM      xmm1, v2, 0x0(0)"
