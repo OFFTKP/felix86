@@ -4,6 +4,7 @@
 #include <atomic>
 #include <map>
 #include <optional>
+#include <set>
 #include <unordered_map>
 #include <vector>
 #include <sys/types.h>
@@ -66,13 +67,16 @@ struct Mapper {
 
     void before_fork() {
         rwlock.before_fork();
+        ro_host_pages_rwlock.before_fork();
     }
 
     void after_fork_parent() {
+        ro_host_pages_rwlock.after_fork_parent();
         rwlock.after_fork_parent();
     }
 
     void after_fork_child() {
+        ro_host_pages_rwlock.after_fork_child();
         rwlock.after_fork_child();
     }
 
@@ -83,14 +87,20 @@ struct Mapper {
     // Returns whether any pages have been modified since last check
     bool check_smc_trackers(u64 address, u64 size, const std::vector<u32>& old);
 
+    void mark_ro(u64 address, u64 size);
+
+    void mark_rw(u64 address, u64 size);
+
 private:
     Freelist freelist;
     std::unordered_map<u64, int> page_to_shmid{};
     /// Tracks the amount of currently mapped regions in memory.
     /// This will merge multiple mappings together.
     std::map<u64, GuestRegion> allocated_regions;
+    std::set<u64> ro_host_pages;
     ino_t ino_anon_ctr{0};
     RWLock rwlock{};
+    RWLock ro_host_pages_rwlock{};
 
     std::array<std::atomic<u32>, 4096> smc_counters{};
 
@@ -102,4 +112,5 @@ private:
     void move_tracked_region(u64 old_address, u64 old_len, u64 new_address, u64 new_len, bool remove_source, int new_prot = -1, bool can_grow = true);
     void remove_tracked_region(u64 address, u64 len, bool only_shmat);
     std::map<u64, GuestRegion>::iterator first_region_ending_after(u64 address);
+    std::optional<int> get_region_protections_impl(void* address);
 };
