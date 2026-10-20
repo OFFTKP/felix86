@@ -2,6 +2,7 @@
 
 #include <array>
 #include <atomic>
+#include <map>
 #include <optional>
 #include <unordered_map>
 #include <vector>
@@ -87,7 +88,7 @@ private:
     std::unordered_map<u64, int> page_to_shmid{};
     /// Tracks the amount of currently mapped regions in memory.
     /// This will merge multiple mappings together.
-    std::vector<GuestRegion> allocated_regions;
+    std::map<u64, GuestRegion> allocated_regions;
     ino_t ino_anon_ctr{0};
     RWLock rwlock{};
 
@@ -100,5 +101,5 @@ private:
     void add_tracked_region(u64 address, u64 len, int prot, dev_t dev, ino_t ino, u64 offset, bool shmem, int shmid, bool anon);
     void move_tracked_region(u64 old_address, u64 old_len, u64 new_address, u64 new_len, bool remove_source, int new_prot = -1, bool can_grow = true);
     void remove_tracked_region(u64 address, u64 len, bool only_shmat);
-    std::vector<GuestRegion>::iterator first_region_ending_after(u64 address);
+    std::map<u64, GuestRegion>::iterator first_region_ending_after(u64 address);
 };
