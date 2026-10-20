@@ -252,9 +252,9 @@ int Mapper::protect(void* addr, u64 size, int prot) {
         u64 start = (u64)addr;
         if (prot & PROT_GROWSDOWN) {
             auto it = first_region_ending_after(start);
-            if (it != allocated_regions.end() && it->start <= start) {
-                size += start - it->start;
-                start = it->start;
+            if (it != allocated_regions.end() && it->second.start <= start) {
+                size += start - it->second.start;
+                start = it->second.start;
             }
         }
         move_tracked_region((u64)start, size, (u64)start, size, true, prot & (PROT_READ | PROT_WRITE | PROT_EXEC), false);
@@ -381,7 +381,7 @@ int Mapper::shmdt(bool mode32, void* address) {
                 if (g_config.guest_memory_tracking_enabled) {
                     // We need to check what guest regions are actually allocated by shmat
                     // and add those regions to the freelist explicitly.
-                    for (auto region : allocated_regions) {
+                    for (auto& [_, region] : allocated_regions) {
                         // Region is not allocated by shmat.
                         if (region.shmid == -1) {
                             continue;
@@ -420,8 +420,15 @@ int Mapper::shmdt(bool mode32, void* address) {
     return result;
 }
 
-std::vector<GuestRegion>::iterator Mapper::first_region_ending_after(u64 address) {
-    return std::upper_bound(allocated_regions.begin(), allocated_regions.end(), address, [](u64 a, const GuestRegion& r) { return a < r.end; });
+std::map<u64, GuestRegion>::iterator Mapper::first_region_ending_after(u64 address) {
+    auto it = allocated_regions.upper_bound(address);
+    if (it != allocated_regions.begin()) {
+        auto prev = std::prev(it);
+        if (prev->second.end > address) {
+            return prev;
+        }
+    }
+    return it;
 }
 
 static bool can_guest_regions_merge(GuestRegion& l, GuestRegion& h) {
@@ -452,37 +459,29 @@ void Mapper::add_tracked_region(u64 address, u64 len, int prot, dev_t dev, ino_t
     GuestRegion v = GuestRegion{address, end, prot, dev, ino, offset, shmid, shmem, anon};
 
     remove_tracked_region(address, len, false);
-    auto first = std::lower_bound(allocated_regions.begin(), allocated_regions.end(), address, [](const GuestRegion& r, u64 a) { return r.end < a; });
-    for (auto it = first; it != allocated_regions.end(); it++) {
-        auto& r = *it;
-
-        // Region extends another leading.
-        if (r.start == end && can_guest_regions_merge(v, r)) {
-            r.start = address;
-            r.offset = offset;
-            return;
-        }
-        // Region extends another trailing.
-        else if (r.end == address && can_guest_regions_merge(r, v)) {
+    auto it = allocated_regions.lower_bound(address);
+    if (it != allocated_regions.begin()) {
+        GuestRegion& r = std::prev(it)->second;
+        if (r.end == address && can_guest_regions_merge(r, v)) {
             r.end = std::max(r.end, end);
-            // Check if we can continue merging onwards.
-            it++;
-            while (it != allocated_regions.end()) {
-                if ((*it).start <= r.end && can_guest_regions_merge(r, *it)) {
-                    r.end = std::max(r.end, (*it).end);
-                    it = allocated_regions.erase(it);
-                } else {
-                    break;
-                }
+            while (it != allocated_regions.end() && it->second.start <= r.end && can_guest_regions_merge(r, it->second)) {
+                r.end = std::max(r.end, it->second.end);
+                it = allocated_regions.erase(it);
             }
-            return;
-        } else if (end <= r.start) {
-            allocated_regions.insert(it, v);
             return;
         }
     }
 
-    allocated_regions.emplace_back(v);
+    if (it != allocated_regions.end() && it->second.start == end && can_guest_regions_merge(v, it->second)) {
+        GuestRegion merged = it->second;
+        merged.start = address;
+        merged.offset = offset;
+        allocated_regions.erase(it);
+        allocated_regions.emplace(address, merged);
+        return;
+    }
+
+    allocated_regions.emplace(address, v);
 }
 
 void Mapper::move_tracked_region(u64 old_address, u64 old_len, u64 new_address, u64 new_len, bool remove_src, int new_prot, bool can_grow) {
@@ -501,7 +500,7 @@ void Mapper::move_tracked_region(u64 old_address, u64 old_len, u64 new_address, 
     u64 old_end = old_address + old_len;
 
     for (auto it = first_region_ending_after(old_address); it != allocated_regions.end();) {
-        auto& r = *it;
+        auto& r = it->second;
         if (r.end <= old_address) {
             it++;
             continue;
@@ -556,7 +555,7 @@ void Mapper::remove_tracked_region(u64 address, u64 len, bool only_shmat) {
     end = (end + 0xfff) & ~0xfff;
 
     for (auto it = first_region_ending_after(address); it != allocated_regions.end();) {
-        auto& r = *it;
+        auto& r = it->second;
 
         // If shmid is -1, the memory was not allocated by a call to shmat.
         if (r.shmid == -1 && only_shmat) {
@@ -575,7 +574,7 @@ void Mapper::remove_tracked_region(u64 address, u64 len, bool only_shmat) {
             continue;
         }
 
-        // Because the linked list is ordered, we know if the start address is greater than end,
+        // Because the map is ordered, we know if the start address is greater than end,
         // then there is no more regions to remove with this unmap.
         if (end <= r.start || address == end) {
             break;
@@ -590,34 +589,45 @@ void Mapper::remove_tracked_region(u64 address, u64 len, bool only_shmat) {
         /// The unmapped region is entirely within an existing region.
         if (r.start <= address && r.end >= end) {
             auto m = r;
-            it = allocated_regions.erase(it);
+            allocated_regions.erase(it);
 
             if (address - m.start > 0) {
-                it = allocated_regions.insert(it, GuestRegion{m.start, address, m.prot, m.dev, m.ino, m.offset, m.shmid, m.shmem, m.anonymous});
-                it++;
+                allocated_regions.emplace(m.start, GuestRegion{m.start, address, m.prot, m.dev, m.ino, m.offset, m.shmid, m.shmem, m.anonymous});
             }
             if (m.end - end > 0) {
-                it = allocated_regions.insert(
-                    it, GuestRegion{end, m.end, m.prot, m.dev, m.ino, m.offset + (end - m.start), m.shmid, m.shmem, m.anonymous});
-                it++;
+                allocated_regions.emplace(end,
+                                          GuestRegion{end, m.end, m.prot, m.dev, m.ino, m.offset + (end - m.start), m.shmid, m.shmem, m.anonymous});
             }
-            continue;
+            break;
         }
 
+        u64 new_start = r.start;
+        u64 new_end = r.end;
+        u64 new_offset = r.offset;
+
         /// The unmapped region removes from the left side.
-        if (r.start >= address && r.start < end) {
-            r.offset += end - r.start;
-            r.start = end;
+        if (new_start >= address && new_start < end) {
+            new_offset += end - new_start;
+            new_start = end;
         }
 
         /// The unmapped region removes from the right side.
-        if (r.end > address && r.end <= end) {
-            r.end = address;
+        if (new_end > address && new_end <= end) {
+            new_end = address;
         }
 
-        if (r.start >= r.end) {
+        if (new_start >= new_end) {
             it = allocated_regions.erase(it);
+        } else if (new_start != r.start) {
+            GuestRegion trimmed = r;
+            trimmed.start = new_start;
+            trimmed.end = new_end;
+            trimmed.offset = new_offset;
+            it = allocated_regions.erase(it);
+            allocated_regions.emplace(new_start, trimmed);
         } else {
+            r.end = new_end;
+            r.offset = new_offset;
             it++;
         }
     }
@@ -628,7 +638,7 @@ uint64_t Mapper::total_mapped_memory() {
     auto guard = rwlock.lock_read();
 
     uint64_t total_bytes = 0;
-    for (auto r : allocated_regions) {
+    for (auto& [_, r] : allocated_regions) {
         total_bytes += r.end - r.start;
     }
 
@@ -643,7 +653,7 @@ bool Mapper::is_guest_address(void* address) {
     // Optionally, an ordered map could maybe be iterated faster?
     u64 a = (u64)address;
     auto it = first_region_ending_after(a);
-    return it != allocated_regions.end() && it->start <= a;
+    return it != allocated_regions.end() && it->second.start <= a;
 }
 
 std::vector<GuestRegion> Mapper::get_guest_regions() {
@@ -651,7 +661,7 @@ std::vector<GuestRegion> Mapper::get_guest_regions() {
     auto guard = rwlock.lock_read();
 
     std::vector<GuestRegion> regions;
-    for (auto region : allocated_regions) {
+    for (auto& [_, region] : allocated_regions) {
         regions.push_back(region);
     }
     return regions;
@@ -662,8 +672,8 @@ std::optional<int> Mapper::get_region_protections(void* address) {
 
     u64 a = (u64)address;
     auto it = first_region_ending_after(a);
-    if (it != allocated_regions.end() && it->start <= a) {
-        return it->prot;
+    if (it != allocated_regions.end() && it->second.start <= a) {
+        return it->second.prot;
     }
 
     return std::nullopt; // not mapped
