@@ -2414,7 +2414,7 @@ bool Recompiler::scanAhead(u64 rip) {
             break;
         }
 
-        bool too_big = instructions.size() > g_config.max_block_size;
+        bool too_big = instructions.size() > std::min(g_config.max_block_size, (u64)500);
         bool is_jump = instruction.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
         bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET || mnemonic == ZYDIS_MNEMONIC_IRETD || mnemonic == ZYDIS_MNEMONIC_IRETQ;
         bool is_call = mnemonic == ZYDIS_MNEMONIC_CALL;

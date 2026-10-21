@@ -319,7 +319,10 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         u64 start = arg1;
         u64 size = arg2;
         int prot = arg3;
-        if ((prot & PROT_WRITE) && result == 0) {
+        // If a page becomes non-executable we invalidate the blocks as they must now fault
+        // It's faster to just invalidate them than to check what protections the pages used to have
+        const bool no_exec = g_config.guest_memory_tracking_enabled && !(prot & PROT_EXEC);
+        if (((prot & PROT_WRITE) || no_exec) && result == 0) {
             // We mark pages as read-only when we recompile their code. But if the guest program
             // decides to override that by marking them as PROT_WRITE then we can no longer keep track
             // of them. So in that case, we will invalidate everything in that region to be safe.

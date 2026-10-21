@@ -16,6 +16,10 @@
 #include "felix86/common/utility.hpp"
 #include "felix86/hle/mmap.hpp"
 
+static inline void mprotect_assert(void* address, u64 size, int prot) {
+    ASSERT_MSG(::mprotect(address, size, prot) == 0, "mprotect failed on address %lx with size %lx and prot %d", (u64)address, size, prot);
+}
+
 void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offset) {
     size = (size + 0xFFFull) & ~0xFFFull;
     auto guard = rwlock.lock_write();
@@ -554,6 +558,11 @@ void Mapper::remove_tracked_region(u64 address, u64 len, bool only_shmat) {
     u64 end = address + len;
     end = (end + 0xfff) & ~0xfff;
 
+    {
+        auto lock = ro_host_pages_rwlock.lock_write();
+        ro_host_pages.erase(ro_host_pages.lower_bound(address), ro_host_pages.lower_bound(end));
+    }
+
     for (auto it = first_region_ending_after(address); it != allocated_regions.end();) {
         auto& r = it->second;
 
@@ -669,7 +678,10 @@ std::vector<GuestRegion> Mapper::get_guest_regions() {
 
 std::optional<int> Mapper::get_region_protections(void* address) {
     auto guard = rwlock.lock_read();
+    return get_region_protections_impl(address);
+}
 
+std::optional<int> Mapper::get_region_protections_impl(void* address) {
     u64 a = (u64)address;
     auto it = first_region_ending_after(a);
     if (it != allocated_regions.end() && it->second.start <= a) {
@@ -706,9 +718,7 @@ std::vector<u32> Mapper::get_smc_trackers(u64 address, u64 size) {
     }
 
     if (g_config.protect_pages) {
-        if (::mprotect((void*)start_page, end_page - start_page + 0x1000, PROT_READ) != 0) {
-            ERROR("Failed to protect pages %016lx-%016lx -- Error: %s", start_page, end_page + 0x1000, strerror(errno));
-        }
+        mark_ro(start_page, end_page - start_page + 0x1000);
     }
     return ret;
 }
@@ -722,4 +732,61 @@ bool Mapper::check_smc_trackers(u64 address, u64 size, const std::vector<u32>& o
         }
     }
     return false;
+}
+
+void Mapper::mark_ro(u64 address, u64 size) {
+    if (g_config.guest_memory_tracking_enabled) {
+        const u64 start_page = address & ~0xFFFull;
+        const u64 end_page = (address + size - 1) & ~0xFFFull;
+        int i = 0;
+        std::optional<int> prots[10];
+        {
+            auto lock = rwlock.lock_read();
+            for (u64 page = start_page; page <= end_page; page += 4096) {
+                std::optional<int> prot = get_region_protections_impl((void*)page);
+                prots[i++] = prot;
+                ASSERT(i < 10);
+            }
+        }
+
+        auto needs_protection = [&](int index) { return !prots[index] || (*prots[index] & PROT_WRITE); };
+
+        bool any_unprotected = false;
+        {
+            auto lock = ro_host_pages_rwlock.lock_read();
+            i = 0;
+            for (u64 page = start_page; page <= end_page; page += 4096) {
+                if (needs_protection(i++) && !ro_host_pages.contains(page)) {
+                    any_unprotected = true;
+                    break;
+                }
+            }
+        }
+
+        if (any_unprotected) {
+            auto lock = ro_host_pages_rwlock.lock_write();
+            i = 0;
+            for (u64 page = start_page; page <= end_page; page += 4096) {
+                if (needs_protection(i++) && ro_host_pages.insert(page).second) {
+                    mprotect_assert((void*)page, 0x1000, PROT_READ);
+                }
+            }
+        }
+    } else {
+        mprotect_assert((void*)address, size, PROT_READ);
+    }
+}
+
+void Mapper::mark_rw(u64 address, u64 size) {
+    if (g_config.guest_memory_tracking_enabled) {
+        auto lock = ro_host_pages_rwlock.lock_write();
+        const u64 start_page = address & ~0xFFFull;
+        const u64 end_page = (address + size - 1) & ~0xFFFull;
+        for (u64 page = start_page; page <= end_page; page += 4096) {
+            ro_host_pages.erase(page);
+        }
+        mprotect_assert((void*)address, size, PROT_READ | PROT_WRITE);
+    } else {
+        mprotect_assert((void*)address, size, PROT_READ | PROT_WRITE);
+    }
 }
