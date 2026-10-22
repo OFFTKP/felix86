@@ -142,7 +142,9 @@ typedef enum : u8 {
     X86_SIZE_ST,
 } x86_size_e;
 
+// NOTE: Only append to the end of this macro from now on, so that offsets are kept the way they are
 #define FUNCTION_POINTERS                                                                                                                            \
+    X(f64_to_80_mem)                                                                                                                                 \
     X(f80_to_64)                                                                                                                                     \
     X(felix86_fsin)                                                                                                                                  \
     X(felix86_fcos)                                                                                                                                  \
@@ -179,6 +181,9 @@ typedef enum : u8 {
     X(felix86_tf_changed)                                                                                                                            \
     X(felix86_aeskeygenassist)                                                                                                                       \
     X(felix86_sha1rnds4)                                                                                                                             \
+    X(felix86_btr)                                                                                                                                   \
+    X(felix86_bts)                                                                                                                                   \
+    X(felix86_btc)                                                                                                                                   \
     X(felix86_warn_unaligned_atomic)                                                                                                                 \
     X(felix86_crash_and_burn)                                                                                                                        \
     X(felix86_raise_hardware_breakpoint)                                                                                                             \
@@ -351,6 +356,7 @@ struct ThreadState {
     FUNCTION_POINTERS;
 #undef X
 
+    // clear_tid_address is the first member after FUNCTION_POINTERS, asserted in callPointer
     pid_t* clear_tid_address = nullptr;
     pthread_t thread{}; // The pthread this state belongs to
     stack_t alt_stack{};

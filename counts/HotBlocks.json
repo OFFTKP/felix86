@@ -1,6 +1,6 @@
 {
     "crysis1": {
-        "instruction_count": 40,
+        "instruction_count": 39,
         "expected_asm": [
             "SD              zero, state, 0xfffffff8(-8)",
             "ADDIW           rdx, rdx, 0x0(0)",
@@ -39,13 +39,12 @@
             "LD              t1, rsp, 0x0(0)",
             "ADDI            rsp, rsp, 0x8(8)",
             "ADDI            rip, t1, 0x0(0)",
-            "LD              t6, state, 0x3a0(928)",
-            "LD              t6, t6, 0x90(144)",
+            "LD              t6, sp, 0x18(24)",
             "JALR            zero, t6, 0x0(0)"
         ]
     },
     "crysis2": {
-        "instruction_count": 71,
+        "instruction_count": 70,
         "expected_asm": [
             "SD              zero, state, 0xfffffff8(-8)",
             "LUI             t1, 0xd8(216)",
@@ -115,13 +114,12 @@
             "LD              t1, rsp, 0x0(0)",
             "ADDI            rsp, rsp, 0x8(8)",
             "ADDI            rip, t1, 0x0(0)",
-            "LD              t6, state, 0x3a0(928)",
-            "LD              t6, t6, 0x90(144)",
+            "LD              t6, sp, 0x18(24)",
             "JALR            zero, t6, 0x0(0)"
         ]
     },
     "crysis3": {
-        "instruction_count": 272,
+        "instruction_count": 271,
         "expected_asm": [
             "SD              zero, state, 0xfffffff8(-8)",
             "ADD             ra, rbp, r11",
@@ -392,13 +390,12 @@
             "BNE             zero, ra, 0xfffffbd8(-1064)",
             "ADDI            rip, rip, 0x1d2(466)",
             "AUIPC           t5, 0x0(0)",
-            "LD              t6, state, 0x3a0(928)",
-            "LD              t6, t6, 0x90(144)",
+            "LD              t6, sp, 0x18(24)",
             "JALR            zero, t6, 0x0(0)"
         ]
     },
     "tekken1": {
-        "instruction_count": 296,
+        "instruction_count": 295,
         "expected_asm": [
             "SD              zero, state, 0xfffffff8(-8)",
             "LUI             t1, 0xb3(179)",
@@ -693,13 +690,12 @@
             "BNE             zero, ra, 0xfffffb78(-1160)",
             "ADDI            rip, rip, 0x223(547)",
             "AUIPC           t5, 0x0(0)",
-            "LD              t6, state, 0x3a0(928)",
-            "LD              t6, t6, 0x90(144)",
+            "LD              t6, sp, 0x18(24)",
             "JALR            zero, t6, 0x0(0)"
         ]
     },
     "7z1": {
-        "instruction_count": 94,
+        "instruction_count": 92,
         "expected_asm": [
             "SD              zero, state, 0xfffffff8(-8)",
             "ADD.UW          rdi, rax, zero",
@@ -782,23 +778,21 @@
             "XOR             of, of, t3",
             "ANDI            of, of, 0x1(1)",
             "XORI            ra, cf, 0x1(1)",
-            "BNE             zero, ra, 0x18(24)",
+            "BNE             zero, ra, 0x14(20)",
             "ADDI            rip, rip, 0x49(73)",
             "AUIPC           t5, 0x0(0)",
-            "LD              t6, state, 0x3a0(928)",
-            "LD              t6, t6, 0x90(144)",
+            "LD              t6, sp, 0x18(24)",
             "JALR            zero, t6, 0x0(0)",
             "LUI             t1, 0xc(12)",
             "ADDIW           t1, t1, 0xfffffeef(-273)",
             "ADD             rip, rip, t1",
             "AUIPC           t5, 0x0(0)",
-            "LD              t6, state, 0x3a0(928)",
-            "LD              t6, t6, 0x90(144)",
+            "LD              t6, sp, 0x18(24)",
             "JALR            zero, t6, 0x0(0)"
         ]
     },
     "overcooked1": {
-        "instruction_count": 278,
+        "instruction_count": 277,
         "expected_asm": [
             "SD              zero, state, 0xfffffff8(-8)",
             "ADDI            ra, rdi, 0xfffffff8(-8)",
@@ -1075,13 +1069,12 @@
             "ADDI            rip, rip, 0x16f(367)",
             "ADD.UW          rip, rip, zero",
             "AUIPC           t5, 0x0(0)",
-            "LD              t6, state, 0x3a0(928)",
-            "LD              t6, t6, 0x90(144)",
+            "LD              t6, sp, 0x18(24)",
             "JALR            zero, t6, 0x0(0)"
         ]
     },
     "overcooked2": {
-        "instruction_count": 167,
+        "instruction_count": 166,
         "expected_asm": [
             "SD              zero, state, 0xfffffff8(-8)",
             "LWU             rcx, rbp, 0xffffffec(-20)",
@@ -1247,13 +1240,12 @@
             "ADDI            rip, rip, 0xc4(196)",
             "ADD.UW          rip, rip, zero",
             "AUIPC           t5, 0x0(0)",
-            "LD              t6, state, 0x3a0(928)",
-            "LD              t6, t6, 0x90(144)",
+            "LD              t6, sp, 0x18(24)",
             "JALR            zero, t6, 0x0(0)"
         ]
     },
     "tombraider1": {
-        "instruction_count": 165,
+        "instruction_count": 163,
         "expected_asm": [
             "SD              zero, state, 0xfffffff8(-8)",
             "ADDIW           ra, zero, 0x1(1)",
@@ -1407,18 +1399,16 @@
             "ANDI            of, of, 0x1(1)",
             "XOR             ra, sf, of",
             "OR              ra, ra, zf",
-            "BNE             zero, ra, 0x18(24)",
+            "BNE             zero, ra, 0x14(20)",
             "ADDI            rip, rip, 0xf4(244)",
             "AUIPC           t5, 0x0(0)",
-            "LD              t6, state, 0x3a0(928)",
-            "LD              t6, t6, 0x90(144)",
+            "LD              t6, sp, 0x18(24)",
             "JALR            zero, t6, 0x0(0)",
             "LUI             t1, 0xb71(2929)",
             "ADDIW           t1, t1, 0x402(1026)",
             "ADD             rip, rip, t1",
             "AUIPC           t5, 0x0(0)",
-            "LD              t6, state, 0x3a0(928)",
-            "LD              t6, t6, 0x90(144)",
+            "LD              t6, sp, 0x18(24)",
             "JALR            zero, t6, 0x0(0)"
         ]
     }

@@ -7312,7 +7312,7 @@ FAST_HANDLE(TZCNT) {
     }
 }
 
-static void BITSTRING_func(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, u64 func) {
+static void BITSTRING_func(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, u64 offset) {
     // Special case where the memory may index past the effective address, only when offset is a register
     biscuit::GPR base = rec.lea(&operands[0]);
     biscuit::GPR bit = rec.getGPR(&operands[1]);
@@ -7324,7 +7324,7 @@ static void BITSTRING_func(Recompiler& rec, u64 rip, Assembler& as, ZydisDecoded
     rec.writebackState();
     rec.sext(a1, bit, rec.zydisToSize(operands[1].size));
     as.MV(a0, base);
-    rec.call(func);
+    rec.callPointer(offset);
     as.MV(retval, a0); // so restoreState doesn't ovewrite
     rec.restoreState();
 
@@ -7335,7 +7335,7 @@ static void BITSTRING_func(Recompiler& rec, u64 rip, Assembler& as, ZydisDecoded
 
 FAST_HANDLE(BTC) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        BITSTRING_func(rec, rip, as, instruction, operands, (u64)&felix86_btc);
+        BITSTRING_func(rec, rip, as, instruction, operands, offsetof(ThreadState, felix86_btc));
         rec.setLockHandled();
         return;
     }
@@ -7414,7 +7414,7 @@ FAST_HANDLE(BT) {
 
 FAST_HANDLE(BTS) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        BITSTRING_func(rec, rip, as, instruction, operands, (u64)&felix86_bts);
+        BITSTRING_func(rec, rip, as, instruction, operands, offsetof(ThreadState, felix86_bts));
         rec.setLockHandled();
         return;
     }
@@ -7442,7 +7442,7 @@ FAST_HANDLE(BTS) {
 
 FAST_HANDLE(BTR) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        BITSTRING_func(rec, rip, as, instruction, operands, (u64)&felix86_btr);
+        BITSTRING_func(rec, rip, as, instruction, operands, offsetof(ThreadState, felix86_btr));
         rec.setLockHandled();
         return;
     }

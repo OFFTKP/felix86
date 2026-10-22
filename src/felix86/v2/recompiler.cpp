@@ -295,6 +295,12 @@ void Recompiler::emitDispatcher() {
     as.LI(t1, invalidate_caller_thunk);
     as.SD(t1, offsetof(felix86_frame, invalidate_caller_thunk_ptr), sp);
 
+    as.LI(t1, compile_next_handler);
+    as.SD(t1, offsetof(felix86_frame, compile_next_handler_ptr), sp);
+
+    as.LI(t1, compile_next_skip_address_cache);
+    as.SD(t1, offsetof(felix86_frame, compile_next_skip_address_cache_ptr), sp);
+
     as.MV(threadStatePointer(), a0);
 
     restore_state_handler = (u64)as.GetCursorPointer();
@@ -2091,16 +2097,8 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp, 
     if (operand->mem.base == ZYDIS_REGISTER_RIP) {
         ASSERT(!current_mode32);
         u64 offset_from_start = (current_rip - getCurrentRipregValue()) + current_instruction->length + (u64)disp;
-        u64 offset_from_cursor = (current_rip + current_instruction->length + disp) - (u64)as.GetCursorPointer();
-        if (IsValid2GBImm(offset_from_cursor) && !IsValidSigned12BitImm(offset_from_start) && !relocatable) {
-            u32 hi20 = static_cast<i32>(((static_cast<u32>(offset_from_cursor) + 0x800) >> 12) & 0xFFFFF);
-            u32 lo12 = static_cast<i32>(offset_from_cursor << 20) >> 20;
-            as.AUIPC(address, hi20);
-            as.ADDI(address, address, lo12);
-        } else {
-            biscuit::GPR ripreg = getGPR(X86_REF_RIP, X86_SIZE_QWORD);
-            addi(address, ripreg, offset_from_start);
-        }
+        biscuit::GPR ripreg = getGPR(X86_REF_RIP, X86_SIZE_QWORD);
+        addi(address, ripreg, offset_from_start);
         return address;
     }
 
@@ -2322,13 +2320,12 @@ void Recompiler::backToDispatcher(bool return_hint, bool skip_lookup) {
             as.JR(t6, lo12);
     } else {
         ASSERT(isScratch(t6));
-        as.LD(t6, offsetof(ThreadState, recompiler), threadStatePointer());
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Winvalid-offsetof"
         if (skip_lookup)
-            as.LD(t6, offsetof(Recompiler, compile_next_skip_address_cache), t6);
+            as.LD(t6, offsetof(felix86_frame, compile_next_skip_address_cache_ptr), sp);
         else
-            as.LD(t6, offsetof(Recompiler, compile_next_handler), t6);
+            as.LD(t6, offsetof(felix86_frame, compile_next_handler_ptr), sp);
 #pragma GCC diagnostic pop
         if (return_hint)
             as.JALR(x1, 0, t6);
@@ -3639,7 +3636,7 @@ void Recompiler::setST(ZydisDecodedOperand* operand, biscuit::FPR value, bool is
             } else {
                 as.FMV_D(fa0, value);
             }
-            call((u64)f64_to_80_mem);
+            callPointer(offsetof(ThreadState, f64_to_80_mem));
             restoreState();
             break;
         }
