@@ -319,7 +319,10 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         u64 start = arg1;
         u64 size = arg2;
         int prot = arg3;
-        if ((prot & PROT_WRITE) && result == 0) {
+        // If a page becomes non-executable we invalidate the blocks as they must now fault
+        // It's faster to just invalidate them than to check what protections the pages used to have
+        const bool no_exec = g_config.guest_memory_tracking_enabled && !(prot & PROT_EXEC);
+        if (((prot & PROT_WRITE) || no_exec) && result == 0) {
             // We mark pages as read-only when we recompile their code. But if the guest program
             // decides to override that by marking them as PROT_WRITE then we can no longer keep track
             // of them. So in that case, we will invalidate everything in that region to be safe.
@@ -1596,6 +1599,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             Script script(path);
             const std::string& args = script.GetArgs();
             script_interpreter = script.GetInterpreter();
+            argv0_original = std::string("__FELIX86_ARGV0=") + script_interpreter;
             FdPath interpreter_fd_path = Filesystem::resolve(script_interpreter.c_str(), true);
             if (interpreter_fd_path.is_error() || !interpreter_fd_path.full_path()) {
                 WARN("Interpreter not found during execve: %s", script_interpreter.c_str());
@@ -1627,7 +1631,6 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
                 path = path.string().substr(g_config.rootfs_path.string().size());
             }
 
-            argv0_original = std::string("__FELIX86_ARGV0=") + (char*)interpreter_fd_path.full_path();
             envp.push_back(argv0_original.c_str());
 
             // Pass the unresolved path to the interpreter. The interpreter will do path resolving by itself,
@@ -1637,10 +1640,17 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             argv.push_back((char*)arg1);
         } else {
             // Change the emulated argv0 to be what we got in the execve, but pass the resolved path to the emulator
-            argv0_original = std::string("__FELIX86_ARGV0=") + (char*)arg1;
+            u64 guest_argv0 = 0;
+            if (arg2) {
+                memcpy(&guest_argv0, (u8*)arg2, mode32 ? 4 : 8);
+            }
+            argv0_original = std::string("__FELIX86_ARGV0=") + (guest_argv0 ? (const char*)guest_argv0 : "");
             envp.push_back(argv0_original.c_str());
             argv.push_back(path.c_str());
         }
+
+        std::string execfn_original = std::string("__FELIX86_EXECFN=") + (char*)arg1;
+        envp.push_back(execfn_original.c_str());
 
         if (arg2) {
             u8* guest_argv = (u8*)arg2;
@@ -1834,7 +1844,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         state->signal_mask.__val[0] = new_mask.__val[0];
         state->effective_deferred_signals |= state->deferred_signals & ~new_mask.__val[0];
         if (state->effective_deferred_signals) {
-            ASSERT(::mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
+            ASSERT(::mprotect(state->getDeferredFaultPage(), 4096, PROT_NONE) == 0);
             state->signal_mask.__val[0] = old_mask.__val[0];
             ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old_host_mask, nullptr, sizeof(old_host_mask)) == 0);
             SIGLOG("rt_sigsuspend returning without waiting, a deferred signal is already deliverable");
@@ -1972,7 +1982,7 @@ void felix86_syscall(felix86_frame* frame) {
             u64 effective = state->deferred_signals & ~state->signal_mask.__val[0];
             if (effective) {
                 state->effective_deferred_signals = effective;
-                ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
+                ASSERT(mprotect(state->getDeferredFaultPage(), 4096, PROT_NONE) == 0);
                 ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old, nullptr, sizeof(old)) == 0);
                 SIGLOG("pause returning without waiting, a deferred signal is already deliverable");
                 result = -EINTR;
@@ -2375,7 +2385,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             u64 effective = state->deferred_signals & ~state->signal_mask.__val[0];
             if (effective) {
                 state->effective_deferred_signals = effective;
-                ASSERT(mprotect(state->deferred_fault_page, 4096, PROT_NONE) == 0);
+                ASSERT(mprotect(state->getDeferredFaultPage(), 4096, PROT_NONE) == 0);
                 ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old, nullptr, sizeof(old)) == 0);
                 SIGLOG("pause returning without waiting, a deferred signal is already deliverable");
                 result = -EINTR;
@@ -3413,7 +3423,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             result = ftruncate(fd, offset);
             break;
         }
-        case felix86_x86_32_socketcall: { // Funny syscall before the functions were seperated
+        case felix86_x86_32_socketcall: { // Funny syscall before the functions were separated
             enum {
                 SYS_SOCKET = 1,
                 SYS_BIND = 2,

@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <fstream>
 #include <optional>
+#include <string_view>
 #include <argp.h>
 #include <dirent.h>
 #include <fcntl.h>
@@ -22,6 +23,7 @@
 #include "felix86/common/global.hpp"
 #include "felix86/common/info.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/common/translate.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/signals.hpp"
@@ -32,12 +34,34 @@
 #endif
 
 static void rootfs_not_set_error() {
-    fprintf(stderr, "Rootfs path not set in %s\n", g_config.path().c_str());
-    fprintf(stderr, "Set it using `sudo felix86 --set-config general.rootfs_path=/path/to/rootfs`.\n");
-    fprintf(stderr, "Consult the installation guide: https://felix86.com/docs/users/installation-guide/\n\n");
-    fprintf(stderr, "If you don't have an x86 rootfs, you can use the rootfs installer script to download and install one:\n");
+    if (std::string_view(FELIX86_DEFAULT_ROOTFS_PATH).empty()) {
+        fprintf(stderr, TR("Rootfs path not set in %s\n"), g_config.path().c_str());
+    } else {
+        fprintf(stderr, TR("Rootfs path not set in %s and the default rootfs %s does not exist\n"), g_config.path().c_str(),
+                FELIX86_DEFAULT_ROOTFS_PATH);
+    }
+#ifdef FELIX86_PACKAGE_MANAGED
+    fprintf(stderr, TR("Install the felix86-rootfs package using your package manager, or set a rootfs path using `sudo felix86 --set-config "
+                       "general.rootfs_path=/path/to/rootfs`.\n"));
+    exit(1);
+#endif
+    fprintf(stderr, TR("Set it using `sudo felix86 --set-config general.rootfs_path=/path/to/rootfs`.\n"));
+    fprintf(stderr, TR("Consult the installation guide: https://felix86.com/docs/users/installation-guide/\n\n"));
+    fprintf(stderr, TR("If you don't have an x86 rootfs, you can use the rootfs installer script to download and install one:\n"));
     fprintf(stderr, "    bash <(curl -s https://install.felix86.com/rootfs.sh)\n");
     exit(1);
+}
+
+static void use_default_rootfs_if_unset() {
+    if (g_config.no_rootfs || !g_config.rootfs_path.empty()) {
+        return;
+    }
+
+    std::error_code ec;
+    std::filesystem::path default_path = FELIX86_DEFAULT_ROOTFS_PATH;
+    if (!default_path.empty() && std::filesystem::is_directory(default_path, ec)) {
+        g_config.rootfs_path = default_path;
+    }
 }
 
 void __attribute__((noreturn)) enter_repl();
@@ -46,26 +70,26 @@ static std::string version_full = get_version_full();
 const char* argp_program_version = version_full.c_str();
 const char* argp_program_bug_address = "<https://github.com/OFFTKP/felix86/issues>";
 
-static char doc[] = "felix86 - a userspace x86 and x86_64 emulator for RISC-V";
+static const char* doc = TR("felix86 - a userspace x86 and x86_64 emulator for RISC-V");
 static char args_doc[] = "TARGET_BINARY [TARGET_ARGS...]";
 
 static struct argp_option options[] = {
-    {"shell", -1, "PROGRAM", OPTION_ARG_OPTIONAL, "Enter the rootfs through a shell"},
-    {"shell-debug", -2, "PROGRAM", OPTION_ARG_OPTIONAL, "Enter the rootfs through a shell, enable logging"},
-    {"get-config", -3, "<GROUP.CONFIG>", 0, "Get a config value from the local felix configuration file. Format is '<group.config>'"},
+    {"shell", -1, "PROGRAM", OPTION_ARG_OPTIONAL, TR("Enter the rootfs through a shell")},
+    {"shell-debug", -2, "PROGRAM", OPTION_ARG_OPTIONAL, TR("Enter the rootfs through a shell, enable logging")},
+    {"get-config", -3, "<GROUP.CONFIG>", 0, TR("Get a config value from the local felix86 configuration file. Format is '<group.config>'")},
     {"set-config", -4, "<GROUP.CONFIG>=<VALUE>", 0,
-     "Set a config value and store it into the local felix configuration. Format is '<group.config>=<value>'"},
-    {"info", 'i', 0, 0, "Print system info"},
-    {"configs", 'c', 0, 0, "Print the emulator configurations"},
-    {"kill-all", 'k', 0, 0, "Kill all open emulator instances"},
-    {"binfmt-misc", 'b', 0, 0, "Register the emulator in binfmt_misc so that x86-64 executables can run without prepending the emulator path"},
+     TR("Set a config value and store it into the local felix86 configuration file. Format is '<group.config>=<value>'")},
+    {"info", 'i', 0, 0, TR("Print system info")},
+    {"configs", 'c', 0, 0, TR("Print the emulator configurations")},
+    {"kill-all", 'k', 0, 0, TR("Kill all open emulator instances")},
+    {"binfmt-misc", 'b', 0, 0, TR("Register the emulator in binfmt_misc so that x86-64 executables can run without prepending the emulator path")},
     {"binfmt-misc-setuid", 'B', 0, 0,
-     "Register the emulator in binfmt_misc so that x86-64 executables can run without prepending the emulator path. Also enables the credentials "
-     "flag, which allows for running privileged executables with the emulator. This may have security implications, read: "
-     "https://felix86.com/docs/users/troubleshooting#privileged-executables-dont-work"},
-    {"detect-binfmt-misc", 'd', 0, 0, "Check if we are correctly registered in binfmt_misc, returns 0 if ok"},
-    {"unregister-binfmt-misc", 'u', 0, 0, "Unregister the emulator from binfmt_misc"},
-    {"log-server", 'l', 0, 0, "Start just the log server in the background"},
+     TR("Register the emulator in binfmt_misc so that x86-64 executables can run without prepending the emulator path. Also enables the credentials "
+        "flag, which allows for running privileged executables (e.g. setuid programs) with the emulator. This may have security implications, read: "
+        "https://felix86.com/docs/users/troubleshooting#privileged-executables-dont-work")},
+    {"detect-binfmt-misc", 'd', 0, 0, TR("Check if we are correctly registered in binfmt_misc, returns 0 if ok")},
+    {"unregister-binfmt-misc", 'u', 0, 0, TR("Unregister the emulator from binfmt_misc")},
+    {"log-server", 'l', 0, 0, TR("Start just the log server in the background")},
 #ifdef BUILD_REPL
     {"repl", 'r', 0, 0, "Enter a REPL environment for testing instruction translations"},
 #endif
@@ -102,12 +126,12 @@ static int print_system_info() {
     int status;
     int ok = posix_spawnp(&pid, "fastfetch", nullptr, nullptr, (char**)args.data(), environ);
     if (ok != 0) {
-        printf("Please install fastfetch for more information\n");
+        printf(TR("Please install fastfetch for more information\n"));
         return 0;
     }
 
     if (waitpid(pid, &status, 0) == -1 || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-        printf("Failed to get info from fastfetch\n");
+        printf(TR("Failed to get info from fastfetch\n"));
         return 1;
     }
     return 0;
@@ -167,14 +191,30 @@ static void kill_all() {
 
         if (strcmp(base, our_name.c_str()) == 0) {
             if (kill(pid, SIGKILL) == 0) {
-                printf("Killed process %d\n", pid);
+                printf(TR("Killed process %d\n"), pid);
             } else {
-                printf("Failed to kill process %d: %s\n", pid, strerror(errno));
+                printf(TR("Failed to kill process %d: %s\n"), pid, strerror(errno));
             }
         }
     }
 
     closedir(proc_dir);
+}
+
+static bool argp_help_fmt_set = false;
+
+static void set_argp_help_fmt() {
+    if (!translation_is_english() && !getenv("ARGP_HELP_FMT")) {
+        setenv("ARGP_HELP_FMT", "rmargin=1000", 1);
+        argp_help_fmt_set = true;
+    }
+}
+
+static void unset_argp_help_fmt() {
+    if (argp_help_fmt_set) {
+        unsetenv("ARGP_HELP_FMT");
+        argp_help_fmt_set = false;
+    }
 }
 
 static error_t parse_opt(int key, char* arg, struct argp_state* state) {
@@ -198,8 +238,10 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         [[fallthrough]];
     }
     case -1: {
+        unset_argp_help_fmt();
         std::error_code ec;
         Config::initialize();
+        use_default_rootfs_if_unset();
         if (!g_config.no_rootfs) {
             if (g_config.rootfs_path.empty()) {
                 rootfs_not_set_error();
@@ -210,13 +252,13 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
 
         bool rootfs_exists = std::filesystem::exists(g_config.rootfs_path, ec);
         if (!rootfs_exists || ec) {
-            fprintf(stderr, "Rootfs path %s does not exist\n", g_config.rootfs_path.c_str());
+            fprintf(stderr, TR("Rootfs path %s does not exist\n"), g_config.rootfs_path.c_str());
             exit(1);
         }
 
         bool rootfs_dir = std::filesystem::is_directory(g_config.rootfs_path, ec);
         if (!rootfs_dir || ec) {
-            fprintf(stderr, "Rootfs path %s is not a directory\n", g_config.rootfs_path.c_str());
+            fprintf(stderr, TR("Rootfs path %s is not a directory\n"), g_config.rootfs_path.c_str());
             exit(1);
         }
 
@@ -237,13 +279,13 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         }
 
         if (!std::filesystem::exists(shell_path, ec) || !std::filesystem::is_regular_file(shell_path, ec)) {
-            fprintf(stderr, "Couldn't find a shell inside the rootfs\n");
+            fprintf(stderr, TR("Couldn't find a shell inside the rootfs\n"));
             exit(1);
         }
 
         struct passwd* pw = getpwuid(geteuid());
         if (!pw || !pw->pw_dir) {
-            fprintf(stderr, "Could not determine home directory\n");
+            fprintf(stderr, TR("Could not determine home directory\n"));
             exit(1);
         }
 
@@ -255,20 +297,20 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             // chdir to root instead
             int result = chdir(g_config.rootfs_path.c_str());
             if (result != 0) {
-                fprintf(stderr, "Failed to chdir to %s\n", g_config.rootfs_path.c_str());
+                fprintf(stderr, TR("Failed to chdir to %s\n"), g_config.rootfs_path.c_str());
                 exit(1);
             }
         } else {
             if (g_config.mount_home) {
                 int result = chdir(home.c_str());
                 if (result != 0) {
-                    fprintf(stderr, "Failed to chdir to %s\n", home_inside_rootfs.c_str());
+                    fprintf(stderr, TR("Failed to chdir to %s\n"), home_inside_rootfs.c_str());
                     exit(1);
                 }
             } else {
                 int result = chdir(home_inside_rootfs.c_str());
                 if (result != 0) {
-                    fprintf(stderr, "Failed to chdir to %s\n", home_inside_rootfs.c_str());
+                    fprintf(stderr, TR("Failed to chdir to %s\n"), home_inside_rootfs.c_str());
                     exit(1);
                 }
             }
@@ -331,7 +373,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         envp.push_back(nullptr);
 
         (void)execve(self.c_str(), argv.data(), envp.data());
-        fprintf(stderr, "Failed to start %s, error: %s\n", path_string.c_str(), strerror(errno));
+        fprintf(stderr, TR("Failed to start %s, error: %s\n"), path_string.c_str(), strerror(errno));
         exit(1);
         break;
     }
@@ -346,14 +388,14 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             group.push_back(c);
         }
         if (c != '.' || group.empty()) {
-            ERROR("expected argument to get-config to be in the format of '<GROUP.CONFIG>'");
+            ERROR("%s", TR("expected argument to get-config to be in the format of '<GROUP.CONFIG>'"));
         }
 
         while (arg != NULL && (c = *arg++)) {
             field.push_back(c);
         }
         if (field.empty()) {
-            ERROR("expected argument to get-config to be in the format of '<GROUP.CONFIG>'");
+            ERROR("%s", TR("expected argument to get-config to be in the format of '<GROUP.CONFIG>'"));
         }
 
         std::optional<std::string> get = g_config.getConfigString(group.c_str(), field.c_str());
@@ -361,7 +403,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             printf("%s\n", get.value().c_str());
             exit(0);
         } else {
-            ERROR("%s.%s is not a valid config tuple", group.c_str(), field.c_str());
+            ERROR("%s", TRF("%s.%s is not a valid config tuple", group.c_str(), field.c_str()));
         }
 
         break;
@@ -369,7 +411,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     case -4: {
         // set-config
         if (geteuid() != 0) {
-            fprintf(stderr, "Setting config requires root permissions. Please re-run with sudo.\n");
+            fprintf(stderr, TR("Setting config requires root permissions. Please re-run with sudo.\n"));
             exit(1);
         }
         ASSERT(Config::initialize(true));
@@ -382,14 +424,14 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             group.push_back(c);
         }
         if (c != '.' || group.empty()) {
-            ERROR("expected argument to set-config to be in the format of '<GROUP.CONFIG>=<VALUE>'");
+            ERROR("%s", TR("expected argument to set-config to be in the format of '<GROUP.CONFIG>=<VALUE>'"));
         }
 
         while (arg != NULL && (c = *arg++) && c != '=') {
             field.push_back(c);
         }
         if (c != '=' || field.empty()) {
-            ERROR("expected argument to set-config to be in the format of '<GROUP.CONFIG>=<VALUE>'");
+            ERROR("%s", TR("expected argument to set-config to be in the format of '<GROUP.CONFIG>=<VALUE>'"));
         }
 
         while (arg != NULL && (c = *arg++)) {
@@ -401,8 +443,8 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             Config::save(g_config.path(), g_config);
             exit(0);
         } else {
-            ERROR("%s.%s is not a valid config tuple, or %s is not a valid value for the configuration", group.c_str(), field.c_str(),
-                  value.c_str());
+            ERROR("%s", TRF("%s.%s is not a valid config tuple, or %s is not a valid value for the configuration", group.c_str(), field.c_str(),
+                            value.c_str()));
         }
 
         break;
@@ -423,12 +465,13 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     }
     case 'B': {
         binfmt_misc(true, true);
-        printf("Credentials flag enabled. Setuid x86 binaries will run with elevated privileges.\n");
+        printf(TR("Credentials flag enabled. Setuid x86 binaries will run with elevated privileges.\n"));
         exit(0);
         break;
     }
     case 'd': {
         Config::initialize();
+        use_default_rootfs_if_unset();
         bool ok = detect_binfmt_misc();
         exit(!ok);
         break;
@@ -455,15 +498,15 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         Config::initialize();
 
         std::string current_group;
-        printf("These are the configurations for felix86\n");
-        printf("You may edit %s or set the corresponding environment variable\n", g_config.path().c_str());
+        printf(TR("These are the configurations for felix86\n"));
+        printf(TR("You may edit %s or set the corresponding environment variable\n"), g_config.path().c_str());
 
 #define X(group, type, name, def, env, description)                                                                                                  \
     if (current_group != #group) {                                                                                                                   \
         current_group = #group;                                                                                                                      \
         printf("\n[%s]\n", current_group.c_str());                                                                                                   \
     }                                                                                                                                                \
-    fmt::print("{} {} = {}, source: {}\n", #type, #name, g_config.name, g_config.getConfigSourceString(#group, #name).value_or(""));
+    fmt::print(fmt::runtime(TR("{} {} = {}, source: {}\n")), #type, #name, g_config.name, g_config.getConfigSourceString(#group, #name).value_or(""));
 #include "felix86/common/config.inc"
 #undef X
         exit(0);
@@ -499,7 +542,9 @@ int main(int argc, char* argv[]) {
 #ifdef __x86_64__
     WARN("You're running an x86-64 executable version of felix86, get ready for a crash soon");
 #endif
+    set_argp_help_fmt();
     argp_parse(&argp, argc, argv, ARGP_IN_ORDER, 0, &g_params);
+    unset_argp_help_fmt();
     if (guest_arg_start_index != -1) {
         char** argv_next = &argv[guest_arg_start_index];
         while (*argv_next) {
@@ -603,6 +648,7 @@ int main(int argc, char* argv[]) {
     }
 #endif
 
+    use_default_rootfs_if_unset();
     if (!g_config.no_rootfs && g_config.rootfs_path.empty()) {
         rootfs_not_set_error();
     }
@@ -658,7 +704,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (g_params.executable_path.empty()) {
-        ERROR("Executable path not specified");
+        ERROR("%s", TR("Executable path not specified"));
         return 1;
     } else if (!g_config.no_rootfs) {
         g_params.executable_path = std::filesystem::absolute(g_params.executable_path);
@@ -670,10 +716,10 @@ int main(int argc, char* argv[]) {
             bool found = false;
             std::filesystem::path canonical_path = std::filesystem::canonical(unmodified_executable_path, ec);
             if (ec == std::errc::no_such_file_or_directory) {
-                ERROR("Executable %s does not exist", unmodified_executable_path.c_str());
+                ERROR("%s", TRF("Executable %s does not exist", unmodified_executable_path.c_str()));
             } else if (ec) {
-                ERROR("Executable not inside rootfs, couldn't canonicalize path %s: %s", unmodified_executable_path.c_str(),
-                      ec.message().c_str());
+                ERROR("%s", TRF("Executable not inside rootfs, couldn't canonicalize path %s: %s", unmodified_executable_path.c_str(),
+                                ec.message().c_str()));
             }
 
             for (const auto& fake_mount : g_fake_mounts) {
@@ -685,7 +731,9 @@ int main(int argc, char* argv[]) {
                     }
                     // Point /proc/self/exe & co to the fake mount guest path
                     g_executable_path_guest_override = executable;
-                    g_params.argv[0] = g_executable_path_guest_override;
+                    if (!argv0_original) {
+                        g_params.argv[0] = g_executable_path_guest_override;
+                    }
                     g_params.executable_path = canonical_path;
                     found = true;
                     break;
@@ -693,7 +741,7 @@ int main(int argc, char* argv[]) {
             }
 
             if (!found) {
-                ERROR("Executable not inside rootfs");
+                ERROR("%s", TR("Executable not inside rootfs"));
             }
         }
     }
@@ -707,10 +755,14 @@ int main(int argc, char* argv[]) {
 
     if (!g_config.binfmt_misc_installed && !g_execve_process && check_if_privileged_executable(g_params.executable_path)) {
         // Privileged executable but no binfmt_misc support, warn the user
-        WARN("This is a privileged executable but the emulator isn't installed in binfmt_misc, might run into problems. Run `felix86 -b` to "
-             "install "
-             "it, make sure to remove other x86/x86-64 emulators from binfmt_misc");
+        WARN("%s",
+             TR("This is a privileged executable but the emulator isn't installed in binfmt_misc, might run into problems. Run `sudo felix86 -B` to "
+                "install "
+                "it, make sure to remove other x86/x86-64 emulators from binfmt_misc"));
     }
+
+    const char* execfn_original = getenv("__FELIX86_EXECFN");
+    g_params.execfn = execfn_original ? execfn_original : g_params.argv[0];
 
     g_params.envp.push_back("__FELIX86_EXE=" + std::filesystem::absolute(g_params.executable_path).string());
 

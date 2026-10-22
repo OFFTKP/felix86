@@ -12,6 +12,7 @@
 #include "felix86/common/config.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/common/translate.hpp"
 
 bool unregister_binfmt_misc(const std::string& name) {
     ASSERT(!name.empty());
@@ -116,8 +117,20 @@ bool detect_binfmt_misc() {
 }
 
 void binfmt_misc(bool is_register, bool is_credentials) {
+#ifdef FELIX86_PACKAGE_MANAGED
+    printf(TR("This build of felix86 has its binfmt_misc registration managed by your package manager\n"));
+    exit(1);
+#endif
+
     if (geteuid() != 0) {
-        printf("I need root permissions to register felix86 in binfmt_misc, please re-run with root permissions as `sudo -E felix86 -b`\n");
+        if (is_register && is_credentials) {
+            printf(TR("I need root permissions to register felix86 in binfmt_misc, please re-run with root permissions as `sudo -E felix86 -B`\n"));
+        } else if (is_register) {
+            printf(TR("I need root permissions to register felix86 in binfmt_misc, please re-run with root permissions as `sudo -E felix86 -b`\n"));
+        } else {
+            printf(
+                TR("I need root permissions to unregister felix86 from binfmt_misc, please re-run with root permissions as `sudo -E felix86 -u`\n"));
+        }
         exit(1);
     }
 
@@ -139,17 +152,17 @@ void binfmt_misc(bool is_register, bool is_credentials) {
 
     if (!is_register) {
         if (unregister_binfmt_misc("felix86-x86_64")) {
-            printf("Unregistered felix86 from binfmt_misc for x86-64 apps\n");
+            printf(TR("Unregistered felix86 from binfmt_misc for x86-64 apps\n"));
         }
 
         if (unregister_binfmt_misc("felix86-i386")) {
-            printf("Unregistered felix86 from binfmt_misc for i386 apps\n");
+            printf(TR("Unregistered felix86 from binfmt_misc for i386 apps\n"));
         }
 
         g_config.binfmt_misc_installed = false;
         Config::save(g_config.path(), g_config);
 
-        printf("felix86 successfully unregistered from binfmt_misc\n");
+        printf(TR("felix86 successfully unregistered from binfmt_misc\n"));
     } else {
         // Unregister if already registered
         unregister_binfmt_misc("felix86-x86_64");
@@ -163,7 +176,7 @@ void binfmt_misc(bool is_register, bool is_credentials) {
         FILE* fp = fdopen(fd, "w");
 
         if (!fp) {
-            ERROR("Failed to open /proc/sys/fs/binfmt_misc/register");
+            ERROR("Failed to open /proc/sys/fs/binfmt_misc/register: %s", strerror(errno));
         }
 
         if (fwrite(registration_string_x64.c_str(), 1, registration_string_x64.size(), fp) != registration_string_x64.size()) {
@@ -179,6 +192,10 @@ void binfmt_misc(bool is_register, bool is_credentials) {
             exit(1);
         }
         fp = fdopen(fd, "w");
+
+        if (!fp) {
+            ERROR("Failed to open /proc/sys/fs/binfmt_misc/register: %s", strerror(errno));
+        }
 
         if (fwrite(registration_string_i386.c_str(), 1, registration_string_i386.size(), fp) != registration_string_i386.size()) {
             fclose(fp);
@@ -203,7 +220,7 @@ void binfmt_misc(bool is_register, bool is_credentials) {
                     std::filesystem::path x64path = dir / "felix86-x86_64.conf";
                     FILE* fp = fopen(x64path.c_str(), "w");
                     if (!fp) {
-                        ERROR("Failed to open %s", x64path.c_str());
+                        ERROR("Failed to open %s: %s", x64path.c_str(), strerror(errno));
                     }
                     if (fwrite(registration_string_x64.c_str(), 1, registration_string_x64.size(), fp) != registration_string_x64.size()) {
                         fclose(fp);
@@ -215,7 +232,7 @@ void binfmt_misc(bool is_register, bool is_credentials) {
                     std::filesystem::path i386path = dir / "felix86-i386.conf";
                     FILE* fp = fopen(i386path.c_str(), "w");
                     if (!fp) {
-                        ERROR("Failed to open %s", i386path.c_str());
+                        ERROR("Failed to open %s: %s", i386path.c_str(), strerror(errno));
                     }
                     if (fwrite(registration_string_i386.c_str(), 1, registration_string_i386.size(), fp) != registration_string_i386.size()) {
                         fclose(fp);
@@ -230,7 +247,7 @@ void binfmt_misc(bool is_register, bool is_credentials) {
         }
 
         if (!registered) {
-            printf("Failed to find a binfmt.d directory to put felix86.conf in\n");
+            printf(TR("Failed to find a binfmt.d directory to put felix86.conf in, the registration will not persist after a reboot\n"));
         }
 
         unregister_binfmt_misc("qemu-x86_64");
@@ -239,7 +256,7 @@ void binfmt_misc(bool is_register, bool is_credentials) {
         g_config.binfmt_misc_installed = true;
         Config::save(g_config.path(), g_config);
 
-        printf("felix86 successfully registered to binfmt_misc\n");
+        printf(TR("felix86 successfully registered to binfmt_misc\n"));
     }
 }
 

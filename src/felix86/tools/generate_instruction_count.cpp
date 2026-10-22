@@ -43,7 +43,7 @@ static void gen_many(Recompiler& rec, const std::string& name, nlohmann::ordered
     func(x);
 
     auto bisc = rec.getAssembler().GetCursorPointer();
-    rec.compileSequence(false, (u64)x86_start);
+    rec.compileSequence(false, (u64)x86_start, nullptr);
     auto after = rec.getAssembler().GetCursorPointer();
     int count = 0;
     Instruction inst;
@@ -76,7 +76,7 @@ static void gen_sequence(Recompiler& rec, nlohmann::ordered_json& json, const ch
 
     rec.setVectorState(SEW::E1024, 0);
     auto bisc = rec.getAssembler().GetCursorPointer();
-    rec.compileSequence(mode32, (u64)bytes.data());
+    rec.compileSequence(mode32, (u64)bytes.data(), nullptr);
     auto after = rec.getAssembler().GetCursorPointer();
     int count = 0;
     Instruction inst;

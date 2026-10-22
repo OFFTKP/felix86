@@ -14,6 +14,15 @@
 #include "felix86/hle/ptrace.hpp"
 #include "felix86/hle/syscall.hpp"
 
+struct AddressCacheEntry {
+    u64 host{}, guest{};
+};
+
+constexpr int address_cache_bits = 17;
+constexpr u64 address_cache_size = (1 << address_cache_bits) * sizeof(AddressCacheEntry);
+constexpr u64 deferred_fault_page_offset = 4096;
+constexpr u64 address_cache_offset = address_cache_size + deferred_fault_page_offset;
+
 // We statically allocate 8 FPRs and 8 Vecs for x87 and MMX. But in x86 they share the same registers.
 // For this reason we need to have a way to communicate to signal handlers which registers hold the correct values.
 // For now, the dispatcher will always assume FPRs hold the correct values so blocks must restore state to x87 when finished.
@@ -133,7 +142,9 @@ typedef enum : u8 {
     X86_SIZE_ST,
 } x86_size_e;
 
+// NOTE: Only append to the end of this macro from now on, so that offsets are kept the way they are
 #define FUNCTION_POINTERS                                                                                                                            \
+    X(f64_to_80_mem)                                                                                                                                 \
     X(f80_to_64)                                                                                                                                     \
     X(felix86_fsin)                                                                                                                                  \
     X(felix86_fcos)                                                                                                                                  \
@@ -170,6 +181,9 @@ typedef enum : u8 {
     X(felix86_tf_changed)                                                                                                                            \
     X(felix86_aeskeygenassist)                                                                                                                       \
     X(felix86_sha1rnds4)                                                                                                                             \
+    X(felix86_btr)                                                                                                                                   \
+    X(felix86_bts)                                                                                                                                   \
+    X(felix86_btc)                                                                                                                                   \
     X(felix86_warn_unaligned_atomic)                                                                                                                 \
     X(felix86_crash_and_burn)                                                                                                                        \
     X(felix86_raise_hardware_breakpoint)                                                                                                             \
@@ -342,12 +356,14 @@ struct ThreadState {
     FUNCTION_POINTERS;
 #undef X
 
+    // clear_tid_address is the first member after FUNCTION_POINTERS, asserted in callPointer
     pid_t* clear_tid_address = nullptr;
     pthread_t thread{}; // The pthread this state belongs to
     stack_t alt_stack{};
     bool cpuid_bit{}; // stupid rflags bit that is modifiable when cpuid is present, so we need to store its state here. SDL2 modifies it to
                       // check presence of cpuid... on x86-64 processors... lol...
     bool ac_bit{};    // this is checked by Java to see if it's i386 or not
+    bool pending_cache_clear{};
 
     u32 robust_list{};
 
@@ -373,7 +389,6 @@ struct ThreadState {
     u64 effective_deferred_signals = 0;
     std::array<siginfo_t, 31> deferred_standard_info{};
     std::array<SignalQueueNode*, 33> deferred_realtime_info{};
-    void* deferred_fault_page = nullptr;
     bool in_restartable_syscall = false;
     bool should_restart_syscall = false;
     bool in_rmw_function = false;
@@ -397,6 +412,8 @@ struct ThreadState {
     PtraceData ptrace_data;
 
     FEXCore::SHMStats::ThreadStats* thread_stats = nullptr;
+
+    void* reservation_base = nullptr;
 
     u64 GetGpr(x86_ref_e ref) const {
         if (ref < X86_REF_RAX || ref > X86_REF_R15) {
@@ -571,6 +588,26 @@ struct ThreadState {
     static ThreadState* Get();
 
     static void Destroy(ThreadState* state);
+
+    void* getDeferredFaultPage() {
+        return ((u8*)this - deferred_fault_page_offset);
+    }
+
+    AddressCacheEntry* getAddressCache() {
+        return (AddressCacheEntry*)((u64)this - address_cache_offset);
+    }
+
+    AddressCacheEntry& getAddressCacheEntry(u64 rip) {
+        return getAddressCache()[rip & ((1 << address_cache_bits) - 1)];
+    }
+
+    void clearAddressCache() {
+        AddressCacheEntry* address_cache = getAddressCache();
+        for (size_t i = 0; i < (1 << address_cache_bits); i++) {
+            address_cache[i] = AddressCacheEntry{};
+        }
+        address_cache[0].guest = -1ull;
+    }
 };
 
 static_assert(offsetof(ThreadState, unaligned_atomics_counter) < 2048);

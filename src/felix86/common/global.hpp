@@ -148,9 +148,6 @@ struct Extensions {
     X(Zknd)                                                                                                                                          \
     X(Zicclsm)                                                                                                                                       \
     X(Zvknha)                                                                                                                                        \
-    X(Xtheadcondmov)                                                                                                                                 \
-    X(Xtheadvector)                                                                                                                                  \
-    X(Xtheadba)                                                                                                                                      \
     X(TSO) /* no hardware has this so we don't care for now */
 
 #define X(ext) static bool ext;

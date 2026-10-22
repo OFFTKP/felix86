@@ -1,6 +1,7 @@
+#include <cerrno>
 #include <cstddef>
 #include <cstdio>
-#include <vector>
+#include <cstring>
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/pe.hpp"
@@ -253,7 +254,7 @@ FILE* CheckedOpenPE(const std::filesystem::path& path, CoffHeader& coff) {
     FILE* file = fopen(path.c_str(), "r");
 
     if (!file) {
-        ERROR("Failed to open file %s", path.c_str());
+        ERROR("Failed to open file %s: %s", path.c_str(), strerror(errno));
         return nullptr;
     }
 

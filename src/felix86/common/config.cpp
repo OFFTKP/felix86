@@ -11,6 +11,7 @@
 #include "felix86/common/config.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/common/translate.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
 #include "fmt/format.h"
@@ -21,6 +22,10 @@ static Config g_initial_config{};
 
 std::filesystem::path Config::getConfigFilePath() {
     return FELIX86_CONFIG_PATH;
+}
+
+std::filesystem::path Config::getSystemProfilesDir() {
+    return FELIX86_SYSTEM_PROFILES_PATH;
 }
 
 std::filesystem::path Config::getProfilesDir() {
@@ -103,9 +108,9 @@ bool Config::initialize(bool ignore_envs) {
                 chmod(config_path.c_str(), 0644);
                 LOG("Created configuration file: %s", config_path.c_str());
             } else {
-                ERROR("Config file %s does not exist and cannot be created without root permissions. "
-                      "Run `sudo felix86 --set-config general.rootfs_path=<path>` to create it.",
-                      config_path.c_str());
+                ERROR("%s", TRF("Config file %s does not exist and cannot be created without root permissions. "
+                                "Run `sudo felix86 --set-config general.rootfs_path=<path>` to create it.",
+                                config_path.c_str()));
             }
         }
 
@@ -120,7 +125,7 @@ bool Config::initialize(bool ignore_envs) {
                     extreme_config.unsafe_flags = true;
                     extreme_config.opcode_fusing = true;
                     extreme_config.inline_syscalls = true;
-                    extreme_config.inaccurate_minmax = true;
+                    extreme_config.unsafe_math = true;
                     extreme_config.always_tso = false;
                     extreme_config.protect_pages = true;
                     extreme_config.auto_compress = false;
@@ -136,7 +141,7 @@ bool Config::initialize(bool ignore_envs) {
                     safe_config.unsafe_flags = false;
                     safe_config.opcode_fusing = false;
                     safe_config.inline_syscalls = false;
-                    safe_config.inaccurate_minmax = false;
+                    safe_config.unsafe_math = false;
                     safe_config.always_tso = true;
                     safe_config.protect_pages = true;
                     safe_config.auto_compress = false;
@@ -149,13 +154,12 @@ bool Config::initialize(bool ignore_envs) {
                 if (!std::filesystem::exists(profiles_path / "paranoid.toml", ec)) {
                     Config paranoid_config{};
                     paranoid_config.paranoid = true;
-                    paranoid_config.alignment_check = true;
                     paranoid_config.always_flags = true;
                     paranoid_config.address_cache = false;
                     paranoid_config.unsafe_flags = false;
                     paranoid_config.opcode_fusing = false;
                     paranoid_config.inline_syscalls = false;
-                    paranoid_config.inaccurate_minmax = false;
+                    paranoid_config.unsafe_math = false;
                     paranoid_config.always_tso = true;
                     paranoid_config.protect_pages = true;
                     paranoid_config.auto_compress = false;
@@ -181,28 +185,36 @@ bool Config::initialize(bool ignore_envs) {
 
     const char* steam_appid = is_secure ? nullptr : guest_getenv("SteamAppId");
     if (steam_appid && euid != 0) {
-        const std::filesystem::path steam_dir = getProfilesDir() / "steam";
         const std::string toml_file = std::string(steam_appid) + ".toml";
-        const std::filesystem::path toml_path = steam_dir / toml_file;
-        std::error_code ec;
-        bool exists = std::filesystem::exists(toml_path, ec);
-        if (exists) {
-            bool loaded = Config::loadProfile(g_config, toml_path);
-            if (!loaded) {
-                WARN("Failed to load SteamAppId profile at %s", toml_path.c_str());
+        for (const std::filesystem::path& dir : {getSystemProfilesDir(), getProfilesDir()}) {
+            if (dir.empty()) {
+                continue;
+            }
+
+            const std::filesystem::path toml_path = dir / "steam" / toml_file;
+            std::error_code ec;
+            bool exists = std::filesystem::exists(toml_path, ec);
+            if (exists) {
+                bool loaded = Config::loadProfile(g_config, toml_path);
+                if (!loaded) {
+                    WARN("Failed to load SteamAppId profile at %s", toml_path.c_str());
+                }
             }
         }
     }
 
     if (!is_secure) {
-        // Scan this directory for user created files that contain configurations
-        // We install one of our own here with the name `00-installation-profiles.toml` which
+        // Scan these directories for user created files that contain configurations
+        // We install one of our own with the name `00-installation-profiles.toml` which
         // contains some useful profiles for programs. Users can add their own as well.
         // See https://felix86.com/docs/users/usage-guide#profiles for more info.
-        const std::filesystem::path executables_dir = getProfilesDir() / "executables";
         std::string program_name = getProgramName();
         if (!program_name.empty()) {
-            Config::loadExecutableProfiles(g_config, executables_dir, program_name);
+            for (const std::filesystem::path& dir : {getSystemProfilesDir(), getProfilesDir()}) {
+                if (!dir.empty()) {
+                    Config::loadExecutableProfiles(g_config, dir / "executables", program_name);
+                }
+            }
         }
     }
 
@@ -214,6 +226,14 @@ bool Config::initialize(bool ignore_envs) {
             std::string sprofile = profile;
             std::transform(sprofile.begin(), sprofile.end(), sprofile.begin(), [](unsigned char c) { return std::tolower(c); });
             path = profiles_path / (sprofile + ".toml");
+            const std::filesystem::path system_dir = getSystemProfilesDir();
+            std::error_code ec;
+            if (!system_dir.empty() && !std::filesystem::exists(path, ec)) {
+                const std::filesystem::path system_path = system_dir / (sprofile + ".toml");
+                if (std::filesystem::exists(system_path, ec)) {
+                    path = system_path;
+                }
+            }
         } else {
             path = profile;
         }
@@ -615,16 +635,16 @@ std::optional<std::string> Config::getConfigSourceString(const char* group, cons
         std::string s;
         switch (src.value()) {
         case ConfigSource::Default:
-            s = "Default value";
+            s = TR("Default value");
             break;
         case ConfigSource::Env:
-            s = "Environment variable";
+            s = TR("Environment variable");
             break;
         case ConfigSource::File:
-            s = std::string("Configuration file ") + config_path.string();
+            s = std::string(TR("Configuration file ")) + config_path.string();
             break;
         case ConfigSource::Profile:
-            s = std::string("Profile ") + profile_path.string();
+            s = std::string(TR("Profile ")) + profile_path.string();
             break;
         }
         return std::optional<std::string>(s);

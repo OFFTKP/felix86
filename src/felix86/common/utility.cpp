@@ -12,7 +12,6 @@
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
-#include "felix86/emulator.hpp"
 #include "felix86/hle/cpuid.hpp"
 #include "felix86/hle/ptrace.hpp"
 #include "felix86/v2/recompiler.hpp"
@@ -1056,7 +1055,7 @@ u64 mmap_min_addr() {
         FILE* file = fopen("/proc/sys/vm/mmap_min_addr", "r");
         u64 ret;
         if (!file) {
-            WARN("Failed to open /proc/sys/vm/mmap_min_addr");
+            WARN("Failed to open /proc/sys/vm/mmap_min_addr: %s", strerror(errno));
             ret = 0x10000;
         } else {
             u64 mmap_min_addr;
@@ -1565,9 +1564,9 @@ void felix86_tf_changed(ThreadState* state, bool tf) {
     if (tf) {
         WARN("This program sets the trap flag");
     }
-    state->recompiler->clearCodeCache(state);
     state->SetFlag(X86_REF_TF, tf);
     state->recompiler->setSingleStepMode(tf ? SingleStepMode::TrapFlag : SingleStepMode::None);
+    state->recompiler->setPendingCacheClear(state);
 }
 
 void felix86_coredump() {

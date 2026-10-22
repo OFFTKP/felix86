@@ -3,7 +3,11 @@ cmake_minimum_required(VERSION 3.16)
 option(FELIX86_BUILD_THUNKING "Build with thunking support" ON)
 option(FELIX86_MONTHLY_RELEASE "Build as a monthly release" OFF)
 option(FELIX86_VALIDATE_BINFMT_MISC "Warn if felix86 binary is not the one installed in binfmt_misc" ON)
+# Disables binfmt-misc registration commands, suggests to install the rootfs package if one not found
+option(FELIX86_PACKAGE_MANAGED "Installation managed by the package manager" OFF)
 set(FELIX86_CONFIG_PATH "/etc/opt/felix86/config.toml" CACHE STRING "Path to the system-wide configuration file")
+set(FELIX86_DEFAULT_ROOTFS_PATH "/opt/felix86/rootfs" CACHE STRING "Rootfs path used when general.rootfs_path is not set")
+set(FELIX86_SYSTEM_PROFILES_PATH "/opt/felix86/profiles" CACHE STRING "System-wide profiles directory")
 
 project(felix86)
 include(CheckGit.cmake)
@@ -160,6 +164,7 @@ set(FELIX86_COMMON_SOURCES
     src/felix86/common/shm_stats.cpp
     src/felix86/common/state.cpp
     src/felix86/common/strace.cpp
+    src/felix86/common/translate.cpp
     src/felix86/common/utility.cpp
     src/felix86/common/binfmt.cpp
     src/felix86/common/x87.cpp
@@ -244,10 +249,16 @@ else()
 endif()
 
 target_compile_definitions(felix86_core PUBLIC FELIX86_CONFIG_PATH="${FELIX86_CONFIG_PATH}")
+target_compile_definitions(felix86_core PUBLIC FELIX86_DEFAULT_ROOTFS_PATH="${FELIX86_DEFAULT_ROOTFS_PATH}")
+target_compile_definitions(felix86_core PUBLIC FELIX86_SYSTEM_PROFILES_PATH="${FELIX86_SYSTEM_PROFILES_PATH}")
 
 
 if (FELIX86_BUILD_THUNKING)
     target_compile_definitions(felix86_core PUBLIC FELIX86_BUILD_THUNKING)
+endif()
+
+if (FELIX86_PACKAGE_MANAGED)
+    target_compile_definitions(felix86_core PUBLIC FELIX86_PACKAGE_MANAGED)
 endif()
 
 if (FELIX86_VALIDATE_BINFMT_MISC)

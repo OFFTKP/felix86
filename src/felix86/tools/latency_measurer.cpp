@@ -51,7 +51,7 @@ void reset_recompiler() {
 
 void compile_sequence(u64 rip) {
     reset_recompiler();
-    g_rec->compileSequence(g_mode32, rip);
+    g_rec->compileSequence(g_mode32, rip, nullptr);
     BlockMetadata& metadata = g_rec->getBlockMetadata(rip);
     u64 start = metadata.host_address;
     u64 end = start;

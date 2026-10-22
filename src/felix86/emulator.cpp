@@ -23,6 +23,7 @@
 #include "felix86/common/utility.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/brk.hpp"
+#include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/mmap.hpp"
 #include "felix86/hle/signals.hpp"
 #include "felix86/hle/thread.hpp"
@@ -123,8 +124,6 @@ static void setupMainStack(ThreadState* state) {
         }
     }
 
-    const char* path = g_params.argv[0].c_str();
-
     std::shared_ptr<Elf> elf = g_fs->GetExecutable();
     std::shared_ptr<Elf> interpreter = g_fs->GetInterpreter();
 
@@ -153,7 +152,7 @@ static void setupMainStack(ThreadState* state) {
     // To hold the addresses of the arguments for later pushing
     u64* argv_addresses = (u64*)alloca(argc * sizeof(u64));
 
-    rsp = stack_push_string(rsp, path);
+    rsp = stack_push_string(rsp, g_params.execfn.c_str());
     const char* program_name = (const char*)rsp;
 
     rsp = stack_push_string(rsp, mode32 ? x86_string : x86_64_string);
@@ -304,13 +303,6 @@ static void setupMainStack(ThreadState* state) {
     state->SetGpr(X86_REF_RSP, rsp_guest);
 }
 
-void* Emulator::CompileNext(ThreadState* thread_state) {
-    FELIX86_PROFILE_ACCUMULATION(thread_state->thread_stats, AccumulatedJITTime);
-    u64 next_block = thread_state->recompiler->getCompiledBlock(thread_state, thread_state->GetRip());
-    ASSERT_MSG(next_block != 0, "getCompiledBlock returned null?");
-    return (void*)next_block;
-}
-
 void Emulator::Start() {
     g_process_globals.initialize();
 
@@ -344,17 +336,14 @@ void Emulator::Start() {
         }
     }
 
-    bool mode32 = false;
-    if (peek == Elf::PeekResult::Elf32) {
-        mode32 = true;
-        // Allocate a 2GiB guard right after to catch bad addresses (that may need to loop around the address space?)
-        constexpr u64 GB = 1024 * 1024 * 1024;
-        void* guard = mmap((void*)(4 * GB), 2 * GB, PROT_NONE, MAP_FIXED_NOREPLACE | MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+    bool mode32 = peek == Elf::PeekResult::Elf32;
+    if (mode32) {
+        void* guard = mmap((void*)(4 * GB), 4096, PROT_NONE, MAP_FIXED_NOREPLACE | MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
         if (guard == MAP_FAILED) {
-            ERROR("I failed to allocate the 32-bit guard");
+            ERROR("Failed to allocate the 32-bit guard");
         }
 
-        prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, 4 * GB, 2 * GB, "felix86-guard");
+        prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, 4 * GB, 4096, "felix86-guard");
     }
 
     ThreadState* main_state = ThreadState::Create();

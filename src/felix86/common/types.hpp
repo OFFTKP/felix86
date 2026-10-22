@@ -11,3 +11,6 @@ using i64 = int64_t;
 using i32 = int32_t;
 using i16 = int16_t;
 using i8 = int8_t;
+
+constexpr static u64 MB = 1024 * 1024;
+constexpr static u64 GB = 1024 * 1024 * 1024;
