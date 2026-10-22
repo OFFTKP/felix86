@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cerrno>
 #include <cstddef>
 #include <cstdio>
@@ -303,13 +304,12 @@ FILE* CheckedOpenPE(const std::filesystem::path& path, CoffHeader& coff) {
 }
 
 PE::PeekResult PE::Peek(const std::filesystem::path& path) {
-
     CoffHeader coff;
     FILE* file = CheckedOpenPE(path, coff);
-    fclose(file);
     if (!file) {
         return PeekResult::NotPE;
     }
+    fclose(file);
 
     switch (coff.Machine) {
     case IMAGE_FILE_MACHINE_I386: {
@@ -346,10 +346,12 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
 
     bool is32 = false;
 
+    int size_of_optional_header = coff.SizeOfOptionalHeader;
+
     switch (magic) {
     case IMAGE_OPTIONAL_MAGIC_I386: {
         OptionalHeader32 header;
-        if (fread(&header, sizeof(header), 1, file) != 1) {
+        if (size_of_optional_header > sizeof(header) || fread(&header, size_of_optional_header, 1, file) != 1) {
             fclose(file);
             return;
         }
@@ -361,7 +363,7 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
     } break;
     case IMAGE_OPTIONAL_MAGIC_AMD64: {
         OptionalHeader64 header;
-        if (fread(&header, sizeof(header), 1, file) != 1) {
+        if (size_of_optional_header > sizeof(header) || fread(&header, size_of_optional_header, 1, file) != 1) {
             fclose(file);
             return;
         }
@@ -377,7 +379,12 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
     }
 
     SectionHeader sections[IMAGE_MAX_SECTIONS];
-    if (fread(&sections, sizeof(SectionHeader), coff.NumberOfSections, file) != coff.NumberOfSections) {
+    int number_of_sections = coff.NumberOfSections;
+    if (number_of_sections > IMAGE_MAX_SECTIONS) {
+        fclose(file);
+        return;
+    }
+    if (fread(&sections, sizeof(SectionHeader), number_of_sections, file) != number_of_sections) {
         fclose(file);
         return;
     }
@@ -401,7 +408,7 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
 
             if (is32) {
                 LoadConfig32 config{};
-                if (fread(&config, size, 1, file) != 1) {
+                if (size > (u32)sizeof(LoadConfig32) || fread(&config, size, 1, file) != 1) {
                     fclose(file);
                     return;
                 }
@@ -410,7 +417,7 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
                 volatile_virt_adr = config.VolatileMetadataPointer;
             } else {
                 LoadConfig64 config{};
-                if (fread(&config, size, 1, file) != 1) {
+                if (size > (u32)sizeof(LoadConfig64) || fread(&config, size, 1, file) != 1) {
                     fclose(file);
                     return;
                 }
@@ -443,7 +450,7 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
 
             fseek(file, offset, SEEK_SET);
             VolatileData data{};
-            if (fread(&data, size, 1, file) != 1) {
+            if (size > (u32)sizeof(VolatileData) || fread(&data, size, 1, file) != 1) {
                 fclose(file);
                 return;
             }

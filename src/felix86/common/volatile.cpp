@@ -13,8 +13,8 @@ bool VolatileMemory::AdrIsVolatile(u64 adr) {
         return true;
     }
 
-    for (auto [start, size] : regions) {
-        if (adr >= start && adr < start + size) {
+    for (auto [start, end] : regions) {
+        if (adr >= start && adr < end) {
             return false;
         }
     }

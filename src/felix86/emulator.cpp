@@ -389,7 +389,7 @@ void Emulator::Start() {
         }
     }
 
-    if (g_config.isWine()) {
+    if (g_config.isWine() && g_config.volatile_metadata) {
         PE::RegisterVolatileMemory(g_config.getProgramPath());
     }
 

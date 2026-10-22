@@ -16,6 +16,6 @@ struct VolatileMemory {
 
 private:
     /// Keeps track of loaded DLLs and executable properties.
-    std::vector<std::pair<u32, u32>> regions{};
+    std::vector<std::pair<u64, u64>> regions{};
     std::unordered_set<u64> instructions{};
 };
