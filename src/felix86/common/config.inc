@@ -58,7 +58,6 @@ X(Debugging, bool, capture_sigabrt, false, FELIX86_CAPTURE_SIGABRT, "Sleep for 4
 X(Debugging, bool, hacky_envs, true, FELIX86_HACKY_ENVS, "Enable some hacky environment variable solutions to allow some apps to work under felix86")
 X(Debugging, bool, always_flags, false, FELIX86_ALWAYS_FLAGS, "Emit flag calculations for every instruction even if they are unused")
 X(Debugging, bool, paranoid, false, FELIX86_PARANOID, "Disables multiple optimizations in hopes to catch bugs")
-X(Debugging, bool, alignment_check, false, FELIX86_ALIGNMENT_CHECK, "Insert code that checks for correct alignment on atomics")
 X(Debugging, bool, enable_io_uring, false, FELIX86_ENABLE_IO_URING, "Enable io_uring -- See https://github.com/OFFTKP/felix86/issues/361")
 X(Debugging, bool, dump_seccomp, false, FELIX86_DUMP_SECCOMP, "Dump installed seccomp programs")
 X(Debugging, bool, seccomp_always_allow, false, FELIX86_SECCOMP_ALWAYS_ALLOW, "Don't run seccomp programs at all, allow all syscalls")
