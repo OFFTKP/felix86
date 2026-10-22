@@ -679,8 +679,8 @@ struct Recompiler {
     }
 
     void callPointer(u64 offset) {
-        ASSERT(offset >= offsetof(ThreadState, f80_to_64));
-        ASSERT(offset <= offsetof(ThreadState, felix86_exit_dispatcher));
+        ASSERT(offset >= offsetof(ThreadState, f64_to_80_mem));
+        ASSERT(offset < offsetof(ThreadState, clear_tid_address));
         ASSERT(isScratch(t4));
         as.LD(t4, offset, threadStatePointer());
         as.JALR(t4);
