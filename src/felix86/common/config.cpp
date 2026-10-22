@@ -154,7 +154,6 @@ bool Config::initialize(bool ignore_envs) {
                 if (!std::filesystem::exists(profiles_path / "paranoid.toml", ec)) {
                     Config paranoid_config{};
                     paranoid_config.paranoid = true;
-                    paranoid_config.alignment_check = true;
                     paranoid_config.always_flags = true;
                     paranoid_config.address_cache = false;
                     paranoid_config.unsafe_flags = false;
