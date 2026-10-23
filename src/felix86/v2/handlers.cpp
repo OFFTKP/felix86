@@ -1349,10 +1349,26 @@ FAST_HANDLE(OR_mem) {
                 as.AMOOR_H(Ordering::AQRL, dst, src, address);
                 rec.zext(dst, dst, X86_SIZE_WORD);
             } else {
+                biscuit::Label good_alignment, end;
                 biscuit::GPR masked_address = rec.scratch();
                 biscuit::GPR shifted_address = rec.scratch();
                 biscuit::GPR shifted_src = rec.scratch();
 
+                as.ANDI(masked_address, address, 0b11);
+                as.LI(dst, 0b11);
+                as.BNE(masked_address, dst, &good_alignment);
+
+                as.ADDI(masked_address, rec.threadStatePointer(), offsetof(ThreadState, unaligned_atomics_counter));
+                as.LI(dst, 1);
+                as.AMOADD_D(Ordering::AQRL, x0, dst, masked_address);
+                as.FENCETSO();
+                as.LHU(dst, 0, address);
+                as.OR(shifted_src, dst, src);
+                as.SH(shifted_src, 0, address);
+                as.FENCETSO();
+                as.J(&end);
+
+                as.Bind(&good_alignment);
                 as.ANDI(masked_address, address, -4);
                 as.SLLI(shifted_address, address, 3);
                 rec.zext(shifted_src, src, X86_SIZE_WORD);
@@ -1364,6 +1380,8 @@ FAST_HANDLE(OR_mem) {
                 rec.popScratch();
                 rec.popScratch();
                 rec.popScratch();
+
+                as.Bind(&end);
             }
             rec.setLockHandled();
             break;
