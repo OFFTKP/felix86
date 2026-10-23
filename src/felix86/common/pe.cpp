@@ -255,7 +255,6 @@ FILE* CheckedOpenPE(const std::filesystem::path& path, CoffHeader& coff) {
     FILE* file = fopen(path.c_str(), "r");
 
     if (!file) {
-        ERROR("Failed to open file %s: %s", path.c_str(), strerror(errno));
         return nullptr;
     }
 
@@ -324,19 +323,19 @@ PE::PeekResult PE::Peek(const std::filesystem::path& path) {
     }
 }
 
-void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
+bool PE::RegisterVolatileMemory(const std::filesystem::path& path) {
     g_volatile.Clear();
 
     CoffHeader coff;
     FILE* file = CheckedOpenPE(path, coff);
     if (!file)
-        return;
+        return false;
 
     u16 magic = 0;
     long cursor = ftell(file);
     if (fread(&magic, sizeof(magic), 1, file) != 1) {
         fclose(file);
-        return;
+        return false;
     }
     fseek(file, cursor, SEEK_SET);
 
@@ -353,7 +352,7 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
         OptionalHeader32 header{};
         if (size_of_optional_header > sizeof(header) || fread(&header, size_of_optional_header, 1, file) != 1) {
             fclose(file);
-            return;
+            return false;
         }
 
         image_base = header.ImageBase;
@@ -365,7 +364,7 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
         OptionalHeader64 header{};
         if (size_of_optional_header > sizeof(header) || fread(&header, size_of_optional_header, 1, file) != 1) {
             fclose(file);
-            return;
+            return false;
         }
 
         image_base = header.ImageBase;
@@ -374,7 +373,7 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
     } break;
     default: {
         fclose(file);
-        return;
+        return false;
     }
     }
 
@@ -382,11 +381,11 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
     int number_of_sections = coff.NumberOfSections;
     if (number_of_sections > IMAGE_MAX_SECTIONS) {
         fclose(file);
-        return;
+        return false;
     }
     if (fread(&sections, sizeof(SectionHeader), number_of_sections, file) != number_of_sections) {
         fclose(file);
-        return;
+        return false;
     }
 
     bool found = false;
@@ -402,7 +401,7 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
             u32 size = 0;
             if (fread(&size, sizeof(size), 1, file) != 1) {
                 fclose(file);
-                return;
+                return false;
             }
             fseek(file, cursor, SEEK_SET);
 
@@ -411,7 +410,7 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
                 size = std::min(size, (u32)sizeof(LoadConfig32));
                 if (fread(&config, size, 1, file) != 1) {
                     fclose(file);
-                    return;
+                    return false;
                 }
 
                 found = true;
@@ -421,7 +420,7 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
                 size = std::min(size, (u32)sizeof(LoadConfig64));
                 if (fread(&config, size, 1, file) != 1) {
                     fclose(file);
-                    return;
+                    return false;
                 }
 
                 found = true;
@@ -432,7 +431,7 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
 
     if (volatile_virt_adr == 0) {
         fclose(file);
-        return;
+        return false;
     }
 
     // Volatime metadata is not stored as RVA. Subtract image base.
@@ -447,14 +446,14 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
             u32 size = 0;
             if (fread(&size, sizeof(size), 1, file) != 1) {
                 fclose(file);
-                return;
+                return false;
             }
 
             fseek(file, offset, SEEK_SET);
             VolatileData data{};
             if (size > (u32)sizeof(VolatileData) || fread(&data, size, 1, file) != 1) {
                 fclose(file);
-                return;
+                return false;
             }
 
             bool found_access = false;
@@ -483,7 +482,7 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
 
             if (!found_range || !found_access) {
                 fclose(file);
-                return;
+                return false;
             }
 
             fseek(file, offset_range, SEEK_SET);
@@ -492,7 +491,7 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
                 if (fread(&range, sizeof(Range), 1, file) != 1) {
                     g_volatile.Clear();
                     fclose(file);
-                    return;
+                    return false;
                 }
 
                 g_volatile.RegisterRegion(image_base + range.Rva, range.Size);
@@ -504,16 +503,17 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
                 if (fread(&rva, sizeof(rva), 1, file) != 1) {
                     g_volatile.Clear();
                     fclose(file);
-                    return;
+                    return false;
                 }
 
                 g_volatile.RegisterInstruction(image_base + rva);
             }
 
             fclose(file);
-            return;
+            return true;
         }
     }
 
     fclose(file);
+    return false;
 }

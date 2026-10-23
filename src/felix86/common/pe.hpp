@@ -10,5 +10,7 @@ struct PE {
     };
 
     static PeekResult Peek(const std::filesystem::path& path);
-    static void RegisterVolatileMemory(const std::filesystem::path& path);
+
+    /// Returns `true` if any volatile memory was registered.
+    static bool RegisterVolatileMemory(const std::filesystem::path& path);
 };

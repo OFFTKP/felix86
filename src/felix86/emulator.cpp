@@ -390,7 +390,11 @@ void Emulator::Start() {
     }
 
     if (g_config.isWine() && g_config.volatile_metadata) {
-        PE::RegisterVolatileMemory(g_config.getProgramPath());
+        if (!PE::RegisterVolatileMemory(g_config.getProgramPath())) {
+            WARN("Failed to parse any volatile data from Wine executable, disabling volatile metadata for this session");
+            // If no volatile metadata was found, ignore this configuration.
+            g_config.volatile_metadata = false;
+        };
     }
 
     main_state->signal_table = SignalHandlerTable::create(nullptr);
