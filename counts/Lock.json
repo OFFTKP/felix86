@@ -130,10 +130,22 @@
         "disassembly": "lock or [rdi], ah"
     },
     "f0660907": {
-        "instruction_count": 9,
+        "instruction_count": 21,
         "expected_asm": [
             "ZEXT.H          t2, rax",
             "ADDI            t3, rdi, 0x0(0)",
+            "ANDI            t4, t3, 0x3(3)",
+            "ADDIW           ra, zero, 0x3(3)",
+            "BNE             t4, ra, 0x28(40)",
+            "ADDI            t4, state, 0x758(1880)",
+            "ADDIW           ra, zero, 0x1(1)",
+            "AMOADD.D        zero, t4, ra, aq, rl",
+            "FENCE          ",
+            "LHU             ra, t3, 0x0(0)",
+            "OR              t6, ra, t2",
+            "SH              t6, t3, 0x0(0)",
+            "FENCE          ",
+            "JAL             zero, 0x20(32)",
             "ANDI            t4, t3, 0xfffffffc(-4)",
             "SLLI            t5, t3, 0x3(3)",
             "ZEXT.H          t6, t2",
