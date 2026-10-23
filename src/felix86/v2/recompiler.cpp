@@ -928,8 +928,7 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
 
     resetScratch();
 
-    if (g_config.optimization_pass && (g_config.always_tso || (g_config.volatile_metadata && g_volatile.AdrIsVolatile(block_meta.guest_address))) &&
-        !g_is_single_thread && !Extensions::TSO) {
+    if (g_config.optimization_pass && (g_config.always_tso || g_config.volatile_metadata) && !g_is_single_thread && !Extensions::TSO) {
         Optimizer::native_pass((u8*)block_meta.host_address, (u64)as.GetCursorPointer() - block_meta.host_address);
     }
 

@@ -350,7 +350,7 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
 
     switch (magic) {
     case IMAGE_OPTIONAL_MAGIC_I386: {
-        OptionalHeader32 header;
+        OptionalHeader32 header{};
         if (size_of_optional_header > sizeof(header) || fread(&header, size_of_optional_header, 1, file) != 1) {
             fclose(file);
             return;
@@ -362,7 +362,7 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
         is32 = true;
     } break;
     case IMAGE_OPTIONAL_MAGIC_AMD64: {
-        OptionalHeader64 header;
+        OptionalHeader64 header{};
         if (size_of_optional_header > sizeof(header) || fread(&header, size_of_optional_header, 1, file) != 1) {
             fclose(file);
             return;
@@ -408,7 +408,8 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
 
             if (is32) {
                 LoadConfig32 config{};
-                if (size > (u32)sizeof(LoadConfig32) || fread(&config, size, 1, file) != 1) {
+                size = std::min(size, (u32)sizeof(LoadConfig32));
+                if (fread(&config, size, 1, file) != 1) {
                     fclose(file);
                     return;
                 }
@@ -417,7 +418,8 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
                 volatile_virt_adr = config.VolatileMetadataPointer;
             } else {
                 LoadConfig64 config{};
-                if (size > (u32)sizeof(LoadConfig64) || fread(&config, size, 1, file) != 1) {
+                size = std::min(size, (u32)sizeof(LoadConfig64));
+                if (fread(&config, size, 1, file) != 1) {
                     fclose(file);
                     return;
                 }
@@ -461,7 +463,8 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
             u64 offset_access = 0;
             for (int s = 0; s < coff.NumberOfSections; ++s) {
                 if (data.VolatileInfoRangeTable >= sections[s].VirtualAddress &&
-                    data.VolatileInfoRangeTable + data.VolatileInfoRangeTableSize <= sections[s].VirtualAddress + sections[s].SizeOfRawData) {
+                    (u64)data.VolatileInfoRangeTable + (u64)data.VolatileInfoRangeTableSize <=
+                        (u64)sections[s].VirtualAddress + (u64)sections[s].SizeOfRawData) {
                     offset_range = data.VolatileInfoRangeTable - sections[s].VirtualAddress;
                     offset_range += sections[s].PointerToRawData;
                     found_range = true;
@@ -469,8 +472,8 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
                 }
             }
             for (int s = 0; s < coff.NumberOfSections; ++s) {
-                if (data.VolatileAccessTable >= sections[s].VirtualAddress &&
-                    data.VolatileAccessTable + data.VolatileAccessTableSize <= sections[s].VirtualAddress + sections[s].SizeOfRawData) {
+                if (data.VolatileAccessTable >= sections[s].VirtualAddress && (u64)data.VolatileAccessTable + (u64)data.VolatileAccessTableSize <=
+                                                                                  (u64)sections[s].VirtualAddress + (u64)sections[s].SizeOfRawData) {
                     offset_access = data.VolatileAccessTable - sections[s].VirtualAddress;
                     offset_access += sections[s].PointerToRawData;
                     found_access = true;
@@ -487,6 +490,7 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
             for (u32 i = 0; i < data.VolatileInfoRangeTableSize / sizeof(Range); ++i) {
                 Range range;
                 if (fread(&range, sizeof(Range), 1, file) != 1) {
+                    g_volatile.Clear();
                     fclose(file);
                     return;
                 }
@@ -498,6 +502,7 @@ void PE::RegisterVolatileMemory(const std::filesystem::path& path) {
             for (u32 i = 0; i < data.VolatileAccessTableSize / sizeof(u32); ++i) {
                 u32 rva = 0;
                 if (fread(&rva, sizeof(rva), 1, file) != 1) {
+                    g_volatile.Clear();
                     fclose(file);
                     return;
                 }
