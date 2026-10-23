@@ -2647,7 +2647,7 @@ FAST_HANDLE(SAR_imm) {
 
         if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
             biscuit::GPR cf = rec.flag(X86_REF_CF);
-            as.SRLI(cf, dst, shift - 1);
+            as.SRLI(cf, dst, std::min<int>(shift - 1, rec.getBitSize(size) - 1));
             as.ANDI(cf, cf, 1);
         }
 
@@ -2817,15 +2817,17 @@ FAST_HANDLE(SAR) {
     switch (size) {
     case X86_SIZE_BYTE:
     case X86_SIZE_BYTE_HIGH: {
-        as.SLLI(result, dst, 56);
-        as.SRAI(result, result, 56);
-        as.SRA(result, result, count);
+        ASSERT(Recompiler::isScratch(dst));
+        as.SLLI(dst, dst, 56);
+        as.SRAI(dst, dst, 56);
+        as.SRA(result, dst, count);
         break;
     }
     case X86_SIZE_WORD: {
-        as.SLLI(result, dst, 48);
-        as.SRAI(result, result, 48);
-        as.SRA(result, result, count);
+        ASSERT(Recompiler::isScratch(dst));
+        as.SLLI(dst, dst, 48);
+        as.SRAI(dst, dst, 48);
+        as.SRA(result, dst, count);
         break;
     }
     case X86_SIZE_DWORD: {
