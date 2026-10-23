@@ -148,14 +148,21 @@ static inline uint64_t libdivide_128_div_64_to_64(uint64_t numhi, uint64_t numlo
     return ((uint64_t)q1 << 32) | q0;
 }
 
-void felix86_div128(ThreadState* state, u64 divisor) {
+bool felix86_div128(ThreadState* state, u64 divisor) {
     // TODO: make this use the above function too, see __divti4
     ASSERT(divisor != 0);
     __int128_t dividend = ((__int128_t)state->ctx.gprs[X86_REF_RDX - X86_REF_RAX] << 64) | state->ctx.gprs[X86_REF_RAX - X86_REF_RAX];
-    u64 quotient = dividend / (i64)divisor;
+    if ((i64)divisor == -1 && dividend == (__int128_t)((__uint128_t)1 << 127)) {
+        return true;
+    }
+    __int128_t quotient = dividend / (i64)divisor;
+    if (quotient > INT64_MAX || quotient < INT64_MIN) {
+        return true;
+    }
     u64 remainder = dividend % (i64)divisor;
-    state->ctx.gprs[X86_REF_RAX - X86_REF_RAX] = quotient;
+    state->ctx.gprs[X86_REF_RAX - X86_REF_RAX] = (u64)quotient;
     state->ctx.gprs[X86_REF_RDX - X86_REF_RAX] = remainder;
+    return false;
 }
 
 void felix86_divu128(ThreadState* state, u64 divisor) {

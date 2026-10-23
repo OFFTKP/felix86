@@ -27,7 +27,7 @@
     return value >= -2048 && value <= 2047;
 }
 
-void felix86_div128(struct ThreadState* state, u64 divisor);
+bool felix86_div128(struct ThreadState* state, u64 divisor);
 void felix86_divu128(struct ThreadState* state, u64 divisor);
 
 void felix86_iret(struct ThreadState* state, bool iretq);

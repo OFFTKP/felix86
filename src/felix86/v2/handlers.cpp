@@ -101,6 +101,13 @@ static void EmitUD(Recompiler& rec, Assembler& as) {
     rec.stopCompiling();
 }
 
+static void EmitDivideError(Assembler& as) {
+    as.SD(x0, 0, x0);
+    as.SLTIU(x0, x0, FELIX86_HINT_DIVZERO);
+    as.C_UNDEF();
+    as.C_UNDEF();
+}
+
 static void CMOV(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond,
                  bool needs_invert) {
     biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
@@ -3058,7 +3065,7 @@ FAST_HANDLE(DIV) {
     // we don't need to move src to scratch because the rdx and rax in all these cases are in scratches
     biscuit::GPR src = rec.getGPR(&operands[0]);
 
-    if (g_config.divzero_check) {
+    if (!g_config.unsafe_math) {
         biscuit::Label after;
         as.BNEZ(src, &after);
         as.SD(x0, 0, x0);
@@ -3078,6 +3085,14 @@ FAST_HANDLE(DIV) {
         biscuit::GPR quotient = rec.scratch();
         biscuit::GPR ax = rec.getGPR(X86_REF_RAX, X86_SIZE_WORD);
 
+        if (!g_config.unsafe_math) {
+            biscuit::Label no_overflow;
+            as.SRLI(mod, ax, 8);
+            as.BLTU(mod, src, &no_overflow);
+            EmitDivideError(as);
+            as.Bind(&no_overflow);
+        }
+
         as.DIVUW(quotient, ax, src);
         as.MULW(mod, quotient, src);
         as.SUBW(mod, ax, mod);
@@ -3090,6 +3105,14 @@ FAST_HANDLE(DIV) {
         biscuit::GPR product = rec.scratch();
         biscuit::GPR ax = rec.getGPR(X86_REF_RAX, X86_SIZE_WORD);
         biscuit::GPR dx = rec.getGPR(X86_REF_RDX, X86_SIZE_WORD);
+
+        if (!g_config.unsafe_math) {
+            biscuit::Label no_overflow;
+            as.BLTU(dx, src, &no_overflow);
+            EmitDivideError(as);
+            as.Bind(&no_overflow);
+        }
+
         as.SLLIW(dx, dx, 16);
         as.OR(dx, dx, ax);
 
@@ -3105,6 +3128,15 @@ FAST_HANDLE(DIV) {
         biscuit::GPR product = rec.scratch();
         biscuit::GPR eax = rec.getGPR(X86_REF_RAX, X86_SIZE_DWORD);
         biscuit::GPR edx = rec.getGPR(X86_REF_RDX, X86_SIZE_QWORD);
+
+        if (!g_config.unsafe_math) {
+            biscuit::Label no_overflow;
+            as.ZEXTW(product, edx);
+            as.BLTU(product, src, &no_overflow);
+            EmitDivideError(as);
+            as.Bind(&no_overflow);
+        }
+
         as.SLLI(edx, edx, 32);
         as.OR(edx, edx, eax);
 
@@ -3148,6 +3180,10 @@ FAST_HANDLE(DIV) {
         as.J(&end);
 
         as.Bind(&do_128bit);
+        biscuit::Label no_overflow;
+        as.BLTU(rdx, src, &no_overflow);
+        EmitDivideError(as);
+        as.Bind(&no_overflow);
         rec.writebackState();
         as.MV(a1, src);
         as.MV(a0, rec.threadStatePointer());
@@ -3168,7 +3204,7 @@ FAST_HANDLE(IDIV) {
     x86_size_e size = rec.getSize(&operands[0]);
     biscuit::GPR src = rec.getGPR(&operands[0]);
 
-    if (g_config.divzero_check) {
+    if (!g_config.unsafe_math) {
         biscuit::Label after;
         as.BNEZ(src, &after);
         as.SD(x0, 0, x0);
@@ -3193,6 +3229,15 @@ FAST_HANDLE(IDIV) {
         rec.sextb(divisor, src);
 
         as.DIVW(ax, ax_sext, divisor);
+
+        if (!g_config.unsafe_math) {
+            biscuit::Label no_overflow;
+            rec.sextb(mod, ax);
+            as.BEQ(mod, ax, &no_overflow);
+            EmitDivideError(as);
+            as.Bind(&no_overflow);
+        }
+
         as.MULW(mod, ax, divisor);
         as.SUBW(mod, ax_sext, mod);
 
@@ -3213,6 +3258,15 @@ FAST_HANDLE(IDIV) {
         rec.sexth(src_sext, src);
 
         as.DIVW(ax, dx, src_sext);
+
+        if (!g_config.unsafe_math) {
+            biscuit::Label no_overflow;
+            rec.sexth(product, ax);
+            as.BEQ(product, ax, &no_overflow);
+            EmitDivideError(as);
+            as.Bind(&no_overflow);
+        }
+
         as.MULW(product, ax, src_sext);
         as.SUBW(dx, dx, product);
 
@@ -3225,17 +3279,28 @@ FAST_HANDLE(IDIV) {
         biscuit::GPR product = rec.scratch();
         biscuit::GPR eax = rec.getGPR(X86_REF_RAX, X86_SIZE_DWORD);
         biscuit::GPR edx = rec.getGPR(X86_REF_RDX, X86_SIZE_QWORD);
-        as.SLLI(edx, edx, 32);
-        as.OR(edx, edx, eax);
+        biscuit::GPR dividend = g_config.unsafe_math ? edx : rec.scratch();
+        biscuit::GPR quotient = g_config.unsafe_math ? eax : rec.scratch();
+        as.SLLI(dividend, edx, 32);
+        as.OR(dividend, dividend, eax);
 
         as.ADDIW(src_sext, src, 0);
 
-        as.DIV(eax, edx, src_sext);
-        as.MUL(product, eax, src_sext);
-        as.SUB(edx, edx, product);
+        as.DIV(quotient, dividend, src_sext);
 
-        rec.setGPR(X86_REF_RAX, X86_SIZE_DWORD, eax);
-        rec.setGPR(X86_REF_RDX, X86_SIZE_DWORD, edx);
+        if (!g_config.unsafe_math) {
+            biscuit::Label no_overflow;
+            as.ADDIW(product, quotient, 0);
+            as.BEQ(product, quotient, &no_overflow);
+            EmitDivideError(as);
+            as.Bind(&no_overflow);
+        }
+
+        as.MUL(product, quotient, src_sext);
+        as.SUB(dividend, dividend, product);
+
+        rec.setGPR(X86_REF_RAX, X86_SIZE_DWORD, quotient);
+        rec.setGPR(X86_REF_RDX, X86_SIZE_DWORD, dividend);
         break;
     }
     case X86_SIZE_QWORD: {
@@ -3259,6 +3324,17 @@ FAST_HANDLE(IDIV) {
         biscuit::GPR mod = rec.scratch();
         biscuit::GPR div = rec.scratch();
 
+        if (!g_config.unsafe_math) {
+            biscuit::Label no_overflow;
+            as.ADDI(mod, src, 1);
+            as.BNEZ(mod, &no_overflow);
+            as.LI(mod, 1);
+            as.SLLI(mod, mod, 63);
+            as.BNE(rax, mod, &no_overflow);
+            EmitDivideError(as);
+            as.Bind(&no_overflow);
+        }
+
         as.DIV(div, rax, src);
         as.MUL(mod, div, src);
         as.SUB(mod, rax, mod);
@@ -3276,7 +3352,14 @@ FAST_HANDLE(IDIV) {
         as.MV(a1, src);
         as.MV(a0, rec.threadStatePointer());
         rec.callPointer(offsetof(ThreadState, felix86_div128));
+        biscuit::Label no_overflow;
+        biscuit::GPR overflow = rec.scratch();
+        as.MV(overflow, a0);
         rec.restoreState();
+        as.BEQZ(overflow, &no_overflow);
+        EmitDivideError(as);
+        as.Bind(&no_overflow);
+        rec.popScratch();
 
         as.Bind(&end);
         break;
