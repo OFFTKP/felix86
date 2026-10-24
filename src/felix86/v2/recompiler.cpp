@@ -18,6 +18,7 @@
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
+#include "felix86/common/volatile.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/mmap.hpp"
 #include "felix86/hle/ptrace.hpp"
@@ -934,7 +935,7 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
 
     resetScratch();
 
-    if (g_config.optimization_pass && g_config.always_tso && !g_is_single_thread && !Extensions::TSO) {
+    if (g_config.optimization_pass && (g_config.always_tso || g_config.volatile_metadata) && !g_is_single_thread && !Extensions::TSO) {
         Optimizer::native_pass((u8*)block_meta.host_address, (u64)as.GetCursorPointer() - block_meta.host_address);
     }
 
@@ -3256,8 +3257,8 @@ biscuit::GPR Recompiler::getCond(int cond) {
 }
 
 bool Recompiler::needsTsoFence() const {
-    return g_config.always_tso && !g_is_single_thread && !Extensions::TSO &&
-           !(g_config.no_tso_stack && current_instruction_on_stack && !g_config.paranoid);
+    return (g_config.always_tso || (g_config.volatile_metadata && g_volatile.AdrIsVolatile(current_rip))) && !g_is_single_thread &&
+           !Extensions::TSO && !(g_config.no_tso_stack && current_instruction_on_stack && !g_config.paranoid);
 }
 
 void Recompiler::readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size) {

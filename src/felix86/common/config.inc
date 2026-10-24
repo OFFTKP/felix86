@@ -74,6 +74,7 @@ X(Performance, bool, opcode_fusing, false, FELIX86_FUSE_OPCODES, "Try to fuse so
 X(Performance, bool, inline_syscalls, true, FELIX86_INLINE_SYSCALLS, "Use ECALL directly instead of a function for some syscalls")
 X(Performance, bool, unsafe_math, false, FELIX86_UNSAFE_MATH, "Don't accurately calculate minps/minpd/maxps/maxpd instructions when it comes to NaNs, don't accurately calculate round/cvtx2x instructions when it comes to overflows/NaNs/infinities, don't raise a signal on div/idiv division by zero or quotient overflow")
 X(Performance, bool, always_tso, false, FELIX86_ALWAYS_TSO, "Use fences to emulate TSO on every memory read/write -- Will cause slowdown but may fix some games")
+X(Performance, bool, volatile_metadata, false, FELIX86_VOLATILE_METADATA, "Use fences to emulate TSO on memory read/write based on volatile metadata (currently only works when executing a PE directly)")
 X(Performance, bool, no_tso_stack, true, FELIX86_NO_TSO_STACK, "Don't emulate TSO on stack accesses")
 X(Performance, bool, protect_pages, true, FELIX86_PROTECT_PAGES, "Protect pages to catch self-modifying code, disabling may perform better in some games but break others")
 X(Performance, bool, auto_compress, false, FELIX86_AUTO_COMPRESS, "Automatically compress instructions whenever possible which may slightly improve performance")

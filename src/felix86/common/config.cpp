@@ -413,6 +413,29 @@ bool Config::loadProfile(Config& config, const std::filesystem::path& profile) {
     return true;
 }
 
+bool Config::isWine() {
+    std::string name = std::filesystem::path(g_params.executable_path.string()).filename();
+    return name == "wine-preloader" || name == "wine64-preloader" || name == "wine" || name == "wine64";
+}
+
+std::filesystem::path Config::getProgramPath() {
+    if (g_params.argv.empty()) {
+        return "";
+    }
+
+    for (size_t i = 0; i < g_params.argv.size(); i++) {
+        auto path = std::filesystem::path(i == 0 ? g_params.executable_path.string() : g_params.argv[i]);
+        std::string name = path.filename();
+        if (name == "wine-preloader" || name == "wine64-preloader") {
+            i++;
+        } else if (name != "wine" && name != "wine64") {
+            return path;
+        }
+    }
+
+    return "";
+}
+
 std::string Config::getProgramName() {
     if (g_params.argv.empty()) {
         return "";
