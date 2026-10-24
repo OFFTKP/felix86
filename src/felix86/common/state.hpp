@@ -293,6 +293,7 @@ struct UserContext {
     u16 fpu_sw{};
     u8 fpu_tw = 0;
     u8 fpu_top{};
+    u64 fpu_ip{};
     u64 orig_rax{};
 
     u64 debug_register[4]{};

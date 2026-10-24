@@ -2470,7 +2470,7 @@
             "CSRRW           zero, t2, 0x2(2)",
             "ANDI            t3, ra, 0xffffffc0(-64)",
             "SW              t3, state, 0x348(840)",
-            "SB              t2, state, 0x394(916)"
+            "SB              t2, state, 0x39c(924)"
         ],
         "disassembly": "ldmxcsr [rdi]"
     },
@@ -2488,7 +2488,7 @@
             "SB              zero, state, 0x350(848)",
             "SB              zero, state, 0x351(849)",
             "ADDIW           ra, zero, 0x1(1)",
-            "SB              ra, state, 0x390(912)"
+            "SB              ra, state, 0x398(920)"
         ],
         "disassembly": "emms"
     }

@@ -827,6 +827,7 @@ struct Recompiler {
             mmx_reg_cache[i].dirty = false;
         }
         pushed_this_block = 0;
+        deferred_fip = 0;
     }
 
     void markX87RegAs32Bit(biscuit::FPR reg) {
@@ -1028,6 +1029,7 @@ private:
     LMUL current_grouping = LMUL::M1;
     bool current_mode32 = false;
     bool current_decoder_initialized = false;
+    u64 deferred_fip = 0;
 
     biscuit::GPR cached_lea = x0;
     const ZydisDecodedOperand* cached_lea_operand;

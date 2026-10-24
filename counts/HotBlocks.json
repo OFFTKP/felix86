@@ -1245,12 +1245,12 @@
         ]
     },
     "tombraider1": {
-        "instruction_count": 163,
+        "instruction_count": 165,
         "expected_asm": [
             "SD              zero, state, 0xfffffff8(-8)",
             "ADDIW           ra, zero, 0x1(1)",
-            "SB              ra, state, 0x390(912)",
-            "LBU             ra, state, 0x398(920)",
+            "SB              ra, state, 0x398(920)",
+            "LBU             ra, state, 0x3a0(928)",
             "CSRRW           zero, ra, 0x2(2)",
             "FLW             ft6, rcx, 0x0(0)",
             "FLW             ft8, rax, 0x0(0)",
@@ -1397,6 +1397,8 @@
             "SRLI            of, of, 0x1f(31)",
             "XOR             of, of, t3",
             "ANDI            of, of, 0x1(1)",
+            "ADDI            ra, rip, 0xe8(232)",
+            "SD              ra, state, 0x358(856)",
             "XOR             ra, sf, of",
             "OR              ra, ra, zf",
             "BNE             zero, ra, 0x14(20)",

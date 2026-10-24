@@ -791,7 +791,7 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
         auto& [instruction, operands] = instructions[current_instruction_index];
 
         bool is_mmx = is_mmx_operand(operands[0]) || is_mmx_operand(operands[1]);
-        bool is_x87 = instruction.meta.isa_ext == ZYDIS_ISA_EXT_X87;
+        bool is_x87 = instruction.meta.isa_ext == ZYDIS_ISA_EXT_X87 || instruction.mnemonic == ZYDIS_MNEMONIC_FISTTP;
         bool is_sse = is_sse_or_avx_operand(operands[0]) || is_sse_or_avx_operand(operands[1]);
 
         bool push_pop_reg = (instruction.mnemonic == ZYDIS_MNEMONIC_PUSH || instruction.mnemonic == ZYDIS_MNEMONIC_POP) &&
@@ -852,6 +852,13 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
                                    mnemonic == ZYDIS_MNEMONIC_FXSAVE64 || mnemonic == ZYDIS_MNEMONIC_FXRSTOR || mnemonic == ZYDIS_MNEMONIC_FXRSTOR64;
             if (!is_save_restore && local_x87_state != x87State::x87) {
                 switchToX87();
+            }
+
+            bool dont_change = mnemonic == ZYDIS_MNEMONIC_FNCLEX || mnemonic == ZYDIS_MNEMONIC_FLDCW || mnemonic == ZYDIS_MNEMONIC_FNSTCW ||
+                               mnemonic == ZYDIS_MNEMONIC_FNSTSW || mnemonic == ZYDIS_MNEMONIC_FNSTENV || mnemonic == ZYDIS_MNEMONIC_FLDENV ||
+                               mnemonic == ZYDIS_MNEMONIC_FWAIT || mnemonic == ZYDIS_MNEMONIC_FNSAVE || mnemonic == ZYDIS_MNEMONIC_FRSTOR;
+            if (!dont_change) {
+                deferred_fip = rip;
             }
         }
 
@@ -1051,6 +1058,14 @@ void Recompiler::flushX87() {
         popScratch();
     }
     popScratchFPR();
+
+    if (deferred_fip != 0) {
+        biscuit::GPR temp = scratch();
+        addi(temp, allocatedGPR(X86_REF_RIP), deferred_fip - getCurrentRipregValue());
+        as.SD(temp, offsetof(ThreadState, ctx.fpu_ip), Recompiler::threadStatePointer());
+        popScratch();
+    }
+
     resetX87();
 }
 
