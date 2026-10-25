@@ -1349,6 +1349,30 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
     case felix86_ptrace_request::felix86_PTRACE_SETREGS: {
         return set_regs(tracer_mode32, remote_state, data);
     }
+    case felix86_ptrace_request::felix86_PTRACE_GETFPREGS: {
+        if (tracer_mode32) {
+            fsave_frame_32 frame{};
+            felix86_fsave_32(remote_state->ctx, &frame);
+            memcpy(data, &frame, sizeof(frame));
+        } else {
+            fxsave_frame frame{};
+            felix86_fxsave(remote_state->ctx, &frame);
+            memcpy(data, &frame, sizeof(frame));
+        }
+        return 0;
+    }
+    case felix86_ptrace_request::felix86_PTRACE_SETFPREGS: {
+        if (tracer_mode32) {
+            fsave_frame_32 frame;
+            memcpy(&frame, data, sizeof(frame));
+            felix86_frstor_32(remote_state->ctx, &frame);
+        } else {
+            fxsave_frame frame;
+            memcpy(&frame, data, sizeof(frame));
+            felix86_fxrstor(remote_state->ctx, &frame);
+        }
+        return 0;
+    }
     default: {
         WARN("Unimplemented operation: %x", (int)op);
         return -EIO;
