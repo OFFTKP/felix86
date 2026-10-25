@@ -593,6 +593,26 @@ static u32 get_reg_trapno(u64 host_pc, int sig, siginfo_t* info, ucontext_t* uct
 }
 
 // arch/x86/kernel/signal.c, get_sigframe function prepares the signal frame
+static sigset_t frame_signal_mask(ThreadState* state) {
+    sigset_t old_mask;
+    Signals::sigprocmask(state, SIG_SETMASK, nullptr, &old_mask);
+    if (state->restore_saved_signal_mask) {
+        old_mask = state->saved_signal_mask;
+        state->restore_saved_signal_mask = false;
+    }
+    return old_mask;
+}
+
+static void restore_saved_signal_mask(ThreadState* state, ucontext_t* uctx) {
+    if (!state->restore_saved_signal_mask) {
+        return;
+    }
+
+    state->restore_saved_signal_mask = false;
+    Signals::sigprocmask(state, SIG_SETMASK, &state->saved_signal_mask, nullptr);
+    sigandset(&uctx->uc_sigmask, &state->signal_mask, Signals::hostSignalMask());
+}
+
 static void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state, siginfo_t* guest_info, ucontext_t* host_context) {
     u64 rsp = state->GetGpr(X86_REF_RSP);
     rsp = rsp - 128; // red zone
@@ -640,8 +660,7 @@ static void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state
         state->alt_stack.ss_flags = SS_DISABLE;
     }
 
-    sigset_t old_mask;
-    Signals::sigprocmask(state, SIG_SETMASK, nullptr, &old_mask);
+    sigset_t old_mask = frame_signal_mask(state);
     frame->uc.uc_sigmask = old_mask;
 
     // Now we need to copy the state to the frame
@@ -794,8 +813,7 @@ static void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* st
         state->alt_stack.ss_size = 0;
         state->alt_stack.ss_flags = SS_DISABLE;
     }
-    sigset_t old_mask;
-    Signals::sigprocmask(state, SIG_SETMASK, nullptr, &old_mask);
+    sigset_t old_mask = frame_signal_mask(state);
     frame->uc.uc_sigmask = old_mask;
     frame->uc.uc_mcontext.fpstate = (u32)(u64)fpstate;
     frame->uc.uc_mcontext.oldmask = (u32)old_mask.__val[0];
@@ -888,8 +906,7 @@ static void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state
     frame->sc.cr2 = sig == SIGSEGV ? (u32)(u64)guest_info->si_addr : 0;
     frame->sc.trapno = get_reg_trapno(get_pc(host_context), sig, guest_info, host_context);
     frame->sc.err = get_reg_err(sig, guest_info, host_context);
-    sigset_t old_mask;
-    Signals::sigprocmask(state, SIG_SETMASK, nullptr, &old_mask);
+    sigset_t old_mask = frame_signal_mask(state);
     frame->sc.oldmask = old_mask.__val[0];
     ASSERT((u64)frame < UINT32_MAX);
     memcpy(frame->retcode, &code, sizeof(code));
@@ -1171,6 +1188,7 @@ static void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uct
         if (sig == 0) {
             // Reload the registers from ThreadState as it may have been changed remotely by the tracer
             set_pc(uctx, state->recompiler->getRestoreState());
+            restore_saved_signal_mask(state, uctx);
             GUESTPTRACELOG("Skipping signal %d", old_sig);
             return;
         } else if (old_sig != sig) {
@@ -1227,6 +1245,7 @@ static void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uct
     }
     case SignalBehavior::Ignore: {
         SIGLOG("Signal %d with ignore behavior, skipping...", sig);
+        restore_saved_signal_mask(state, uctx);
         return;
     }
     }

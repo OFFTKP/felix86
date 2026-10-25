@@ -378,6 +378,8 @@ struct ThreadState {
 
     // TODO: make it a u64
     sigset_t signal_mask{};
+    sigset_t saved_signal_mask{};
+    bool restore_saved_signal_mask = false;
 
     u32 gdt[32]{};
 
