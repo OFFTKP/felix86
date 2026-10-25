@@ -1852,7 +1852,9 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             break;
         }
 
-        result = SYSCALL(rt_sigsuspend, &host_mask, sizeof(host_mask));
+        do {
+            result = SYSCALL(rt_sigsuspend, &host_mask, sizeof(host_mask));
+        } while (result == -EINTR && !state->effective_deferred_signals);
         state->signal_mask.__val[0] = old_mask.__val[0];
         ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old_host_mask, nullptr, sizeof(old_host_mask)) == 0);
         SIGLOG("rt_sigsuspend returned with %d", (int)result);
@@ -1988,7 +1990,9 @@ void felix86_syscall(felix86_frame* frame) {
                 result = -EINTR;
                 break;
             }
-            result = SYSCALL(rt_sigsuspend, &old, sizeof(old));
+            do {
+                result = SYSCALL(rt_sigsuspend, &old, sizeof(old));
+            } while (result == -EINTR && !state->effective_deferred_signals);
             ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old, nullptr, sizeof(old)) == 0);
             SIGLOG("pause returned with %d", (int)result);
             break;
@@ -2391,7 +2395,9 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                 result = -EINTR;
                 break;
             }
-            result = SYSCALL(rt_sigsuspend, &old, sizeof(old));
+            do {
+                result = SYSCALL(rt_sigsuspend, &old, sizeof(old));
+            } while (result == -EINTR && !state->effective_deferred_signals);
             ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old, nullptr, sizeof(old)) == 0);
             SIGLOG("pause returned with %d", (int)result);
             break;
