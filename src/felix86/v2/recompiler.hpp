@@ -27,6 +27,8 @@
 #define FELIX86_HINT_NOT_READ 0x15
 #define FELIX86_HINT_NOT_EXEC 0xec
 
+#define FELIX86_ERESTARTNOINTR 513
+
 constexpr int scan_ahead_count = 64;
 
 enum class SequenceResult {

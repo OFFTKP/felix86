@@ -263,7 +263,7 @@ void Recompiler::emitInterruptibleSyscallFunction() {
     as.Bind(&eintr);
 
     interruptible_syscall_func_eintr = as.GetCursorPointer();
-    as.LI(a0, -EINTR);
+    as.LI(a0, -FELIX86_ERESTARTNOINTR);
     as.RET();
 }
 
