@@ -855,7 +855,7 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
             info.op = PTRACE_SYSCALL_INFO_EXIT;
             info.exit.is_error = remote_state->ptrace_data.syscall_info.is_error;
             info.exit.rval = remote_state->ptrace_data.syscall_info.ret;
-            ret_size = 40; // TODO: verify this size
+            ret_size = 33; // TODO: verify this size
             break;
         }
         default: {
@@ -865,7 +865,7 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
         }
         }
 
-        size_t copy_size = std::min(ret_size, sizeof(x86_ptrace_syscall_info));
+        size_t copy_size = std::min({ret_size, sizeof(x86_ptrace_syscall_info), (size_t)addr});
         memcpy(data, &info, copy_size);
         return ret_size;
     }
