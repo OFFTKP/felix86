@@ -1836,7 +1836,6 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         sigdelset(&new_mask, SIGSTOP);
 
         u64 host_mask = new_mask.__val[0] & Signals::hostSignalMask()->__val[0];
-        u64 old_host_mask = old_mask.__val[0] & Signals::hostSignalMask()->__val[0];
 
         u64 full = -1ull;
         ASSERT(syscall(SYS_rt_sigprocmask, SIG_BLOCK, &full, nullptr, sizeof(full)) == 0);
@@ -1845,8 +1844,9 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         state->effective_deferred_signals |= state->deferred_signals & ~new_mask.__val[0];
         if (state->effective_deferred_signals) {
             ASSERT(::mprotect(state->getDeferredFaultPage(), 4096, PROT_NONE) == 0);
-            state->signal_mask.__val[0] = old_mask.__val[0];
-            ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old_host_mask, nullptr, sizeof(old_host_mask)) == 0);
+            state->saved_signal_mask = old_mask;
+            state->restore_saved_signal_mask = true;
+            ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &host_mask, nullptr, sizeof(host_mask)) == 0);
             SIGLOG("rt_sigsuspend returning without waiting, a deferred signal is already deliverable");
             result = -EINTR;
             break;
@@ -1855,8 +1855,9 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         do {
             result = SYSCALL(rt_sigsuspend, &host_mask, sizeof(host_mask));
         } while (result == -EINTR && !state->effective_deferred_signals);
-        state->signal_mask.__val[0] = old_mask.__val[0];
-        ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old_host_mask, nullptr, sizeof(old_host_mask)) == 0);
+        state->saved_signal_mask = old_mask;
+        state->restore_saved_signal_mask = true;
+        ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &host_mask, nullptr, sizeof(host_mask)) == 0);
         SIGLOG("rt_sigsuspend returned with %d", (int)result);
         // Will set RAX to EINTR and the actual signal will be handled in the safepoint after the syscall
         break;
