@@ -85,15 +85,17 @@ private:
 
 #define SYSCALL(name, ...) (syscall(x64_to_riscv(felix86_x86_64_##name), ##__VA_ARGS__))
 
-static i64 interruptible_syscall(ThreadState* state, u64 nr, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5, u64 arg6) {
+long interruptible_syscall(long nr, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5, u64 arg6) {
+    ThreadState* state = ThreadState::Get();
     i64 result = state->recompiler->interruptibleSyscall(&state->effective_deferred_signals, nr, arg1, arg2, arg3, arg4, arg5, arg6);
-    if (result == -1) {
-        errno = EPERM;
+    if (result < 0 && result >= -4095) {
+        errno = -result;
+        return -1;
     }
     return result;
 }
 
-#define INTERRUPTIBLE_SYSCALL(name, ...) (interruptible_syscall(state, x64_to_riscv(felix86_x86_64_##name), ##__VA_ARGS__))
+#define INTERRUPTIBLE_SYSCALL(name, ...) (interruptible_syscall(x64_to_riscv(felix86_x86_64_##name), ##__VA_ARGS__))
 
 // TODO: move me elsewhere
 static bool try_strace_ioctl(int rdi, u64 rsi, u64 rdx, u64 result) {
@@ -1931,7 +1933,8 @@ void felix86_syscall(felix86_frame* frame) {
     ASSERT(frame->magic == felix86_frame::expected_magic);
     ThreadState* state = frame->state;
     bool mode32 = state->ctx.Mode32();
-    state->should_restart_syscall = false;
+    state->restart_syscall_always = false;
+    state->restart_syscall_if_sa_restart = false;
     u64 syscall_number = state->GetGpr(X86_REF_RAX);
     state->ctx.orig_rax = syscall_number;
     u64 args[6];
@@ -2231,10 +2234,15 @@ void felix86_syscall(felix86_frame* frame) {
         }
     }
 
+    if (result == -FELIX86_ERESTARTNOINTR) {
+        state->restart_syscall_always = true;
+        result = -EINTR;
+    } else if (state->in_restartable_syscall && result == -EINTR) {
+        state->restart_syscall_if_sa_restart = true;
+    }
     state->in_restartable_syscall = false;
-    if (state->should_restart_syscall) {
+    if (state->restart_syscall_always || state->restart_syscall_if_sa_restart) {
         state->ctx.orig_rax = syscall_number;
-        WARN("Syscall %s interrupted by signal, restarting", x64_get_name(syscall_number));
     }
 
     state->SetGpr(X86_REF_RAX, result);
@@ -2254,7 +2262,8 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
     if (!mode32) {
         WARN("Executing 32-bit syscall %lu on 64-bit process", syscall_number);
     }
-    state->should_restart_syscall = false;
+    state->restart_syscall_always = false;
+    state->restart_syscall_if_sa_restart = false;
     state->ctx.orig_rax = syscall_number;
     u64 args[6];
     read_syscall_args(state, syscall32_arg_regs, args);
@@ -3558,10 +3567,15 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         }
     }
 
+    if (result == -FELIX86_ERESTARTNOINTR) {
+        state->restart_syscall_always = true;
+        result = -EINTR;
+    } else if (state->in_restartable_syscall && result == -EINTR) {
+        state->restart_syscall_if_sa_restart = true;
+    }
     state->in_restartable_syscall = false;
-    if (state->should_restart_syscall) {
+    if (state->restart_syscall_always || state->restart_syscall_if_sa_restart) {
         state->ctx.orig_rax = syscall_number;
-        WARN("Syscall %s interrupted by signal, restarting", x86_get_name(syscall_number));
     }
 
     state->SetGpr(X86_REF_RAX, result);

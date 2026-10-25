@@ -1290,24 +1290,10 @@ static void defer_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx
     // If we were in a safepoint, the signal would've been handled
     ASSERT(sig >= 1 && sig <= 64);
     int index = sig - 1;
-    u32 ecall;
-    {
-        Assembler tas((u8*)&ecall, sizeof(u32));
-        tas.ECALL();
-    }
     u64 pc = get_pc(ctx);
-    RegisteredSignal* signal = SignalHandlerTable::getRegisteredSignal(state->signal_table, sig);
-    if (state->in_restartable_syscall && (signal->flags & SA_RESTART) && *((u32*)(pc - 4)) == ecall &&
-        get_regs(ctx)[biscuit::a0.Index()] == (u64)-EINTR) {
-        state->should_restart_syscall = true;
-    }
-
     bool signal_masked = state->signal_mask.__val[0] & (1ull << index);
     if (!signal_masked && state->recompiler->isInInterruptibleSyscall(pc)) {
         set_pc(ctx, (u64)state->recompiler->getInterruptibleSyscallEintrAddress());
-        if (state->in_restartable_syscall && (signal->flags & SA_RESTART)) {
-            state->should_restart_syscall = true;
-        }
     }
 
     state->deferred_signals |= 1ull << index;
@@ -1403,29 +1389,6 @@ static bool handle_safepoint(ThreadState* current_state, siginfo_t* info, uconte
         return false;
     }
 
-    if (current_state->should_restart_syscall) {
-        // Check if previous instruction is FELIX86_HINT_SAFEPOINT_SYSCALL, i.e. if this safepoint is right after a syscall
-        u32 expected_previous_instruction;
-        {
-            Assembler tas((u8*)&expected_previous_instruction, sizeof(u32));
-            tas.SLTIU(x0, x0, FELIX86_HINT_SAFEPOINT_SYSCALL);
-        }
-
-        u32 actual_previous_instruction = *(u32*)(pc - 4);
-        u64* regs = get_regs(context);
-        if (expected_previous_instruction == actual_previous_instruction) {
-            // Set RIP to RIP - 2 to go back to the syscall instruction and restore the RAX
-            // We do this in the context and then prepare_guest_signal will pick it up
-            regs[Recompiler::allocatedGPR(X86_REF_RIP).Index()] -= 2;
-            u8* data = (u8*)regs[Recompiler::allocatedGPR(X86_REF_RIP).Index()];
-            ASSERT((data[0] == 0x0f && data[1] == 0x05) || (data[0] == 0xcd && data[1] == 0x80));
-            regs[Recompiler::allocatedGPR(X86_REF_RAX).Index()] = current_state->ctx.orig_rax;
-        } else {
-            ASSERT_MSG(false, "state->should_restart_syscall set but not at a syscall safepoint?");
-        }
-        current_state->should_restart_syscall = false;
-    }
-
     // Mask signals until we are done messing with these
     u64 full = -1ull, old;
     ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &full, &old, sizeof(u64)) == 0);
@@ -1436,6 +1399,31 @@ static bool handle_safepoint(ThreadState* current_state, siginfo_t* info, uconte
     // standard signals are serviced first, and real-time signals follow a least to most order
     // Thus we just get the least significant set bit
     int sig = __builtin_ctzll(current_state->effective_deferred_signals);
+
+    if (current_state->restart_syscall_always || current_state->restart_syscall_if_sa_restart) {
+        // Check if previous instruction is FELIX86_HINT_SAFEPOINT_SYSCALL, i.e. if this safepoint is right after a syscall
+        u32 expected_previous_instruction;
+        {
+            Assembler tas((u8*)&expected_previous_instruction, sizeof(u32));
+            tas.SLTIU(x0, x0, FELIX86_HINT_SAFEPOINT_SYSCALL);
+        }
+
+        u32 actual_previous_instruction = *(u32*)(pc - 4);
+        RegisteredSignal* signal = SignalHandlerTable::getRegisteredSignal(current_state->signal_table, sig + 1);
+        bool restart = current_state->restart_syscall_always || (signal->flags & SA_RESTART);
+        if (restart) {
+            ASSERT_MSG(expected_previous_instruction == actual_previous_instruction, "Not at syscall safepoint?");
+            u64* regs = get_regs(context);
+            // Set RIP to RIP - 2 to go back to the syscall instruction and restore the RAX
+            // We do this in the context and then prepare_guest_signal will pick it up
+            regs[Recompiler::allocatedGPR(X86_REF_RIP).Index()] -= 2;
+            u8* data = (u8*)regs[Recompiler::allocatedGPR(X86_REF_RIP).Index()];
+            ASSERT((data[0] == 0x0f && data[1] == 0x05) || (data[0] == 0xcd && data[1] == 0x80));
+            regs[Recompiler::allocatedGPR(X86_REF_RAX).Index()] = current_state->ctx.orig_rax;
+        }
+        current_state->restart_syscall_always = false;
+        current_state->restart_syscall_if_sa_restart = false;
+    }
 
     // Since we block signals, race here due to another signal being deferred is not possible
     siginfo_t guest_info;
