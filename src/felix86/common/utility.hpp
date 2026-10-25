@@ -41,8 +41,6 @@ void flush_icache(u64 start, u64 end);
 
 void flush_icache_global(u64 start, u64 end);
 
-int guest_breakpoint(const char* name, u64 address);
-
 int clear_breakpoints();
 
 void print_address(u64 address);

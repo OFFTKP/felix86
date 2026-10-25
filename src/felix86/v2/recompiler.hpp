@@ -284,10 +284,6 @@ struct Recompiler {
         single_step = mode;
     }
 
-    SingleStepMode getSingleStepMode() {
-        return single_step;
-    }
-
     bool isSingleStepping() const {
         return g_config.single_step || single_step != SingleStepMode::None;
     }
@@ -549,10 +545,6 @@ struct Recompiler {
 
     u64 getImmediate(ZydisDecodedOperand* operand);
 
-    auto& getBlockMap() {
-        return block_metadata;
-    }
-
     auto& getHostPcMap() {
         return host_pc_map;
     }
@@ -570,10 +562,6 @@ struct Recompiler {
 
     u64 getCompileNext() {
         return compile_next_handler;
-    }
-
-    u64 getExitDispatcher() {
-        return (u64)exit_dispatcher;
     }
 
     u64 getCompiledBlock(ThreadState* state, u64 rip) {
