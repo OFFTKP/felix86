@@ -1886,6 +1886,44 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
     return result;
 }
 
+static constexpr x86_ref_e syscall64_arg_regs[6] = {X86_REF_RDI, X86_REF_RSI, X86_REF_RDX, X86_REF_R10, X86_REF_R8, X86_REF_R9};
+static constexpr x86_ref_e syscall32_arg_regs[6] = {X86_REF_RBX, X86_REF_RCX, X86_REF_RDX, X86_REF_RSI, X86_REF_RDI, X86_REF_RBP};
+
+static void read_syscall_args(ThreadState* state, const x86_ref_e (&regs)[6], u64 (&args)[6]) {
+    for (int i = 0; i < 6; i++) {
+        args[i] = state->GetGpr(regs[i]);
+    }
+}
+
+static void syscall_enter_stop(ThreadState* state, const x86_ref_e (&regs)[6], u64& syscall_number, u64 (&args)[6]) {
+    if (!Ptrace::stops_on_syscall(state)) {
+        return;
+    }
+
+    Ptrace::raise_syscall_enter_stop(state, syscall_number, args);
+
+    syscall_number = state->GetGpr(X86_REF_RAX);
+    // TODO: test this? syscall enter -> interruptible syscall -> send signal -> check orig_rax
+    state->ctx.orig_rax = syscall_number;
+    read_syscall_args(state, regs, args);
+}
+
+static void syscall_exit_stop(ThreadState* state, ssize_t result) {
+    if (Ptrace::stops_on_syscall(state)) {
+        Ptrace::raise_syscall_exit_stop(state, result);
+    }
+}
+
+static void strace_syscall(std::string trace, ssize_t result) {
+    trace += " = ";
+    if (result < 0) {
+        trace += std::to_string(result);
+    } else {
+        trace += fmt::format("0x{:x}", (u64)result);
+    }
+    STRACE("%s", trace.c_str());
+}
+
 void felix86_syscall(felix86_frame* frame) {
     ASSERT(frame->magic == felix86_frame::expected_magic);
     ThreadState* state = frame->state;
@@ -1893,41 +1931,15 @@ void felix86_syscall(felix86_frame* frame) {
     state->should_restart_syscall = false;
     u64 syscall_number = state->GetGpr(X86_REF_RAX);
     state->ctx.orig_rax = syscall_number;
-    u64 arg1 = state->GetGpr(X86_REF_RDI);
-    u64 arg2 = state->GetGpr(X86_REF_RSI);
-    u64 arg3 = state->GetGpr(X86_REF_RDX);
-    u64 arg4 = state->GetGpr(X86_REF_R10);
-    u64 arg5 = state->GetGpr(X86_REF_R8);
-    u64 arg6 = state->GetGpr(X86_REF_R9);
-
-    if (Ptrace::is_traced(state)) {
-        PtraceData& data = state->ptrace_data;
-        if (data.injected.cont_type == PTRACE_SYSCALL) {
-            int sig = SIGTRAP;
-            siginfo_t info;
-            memset(&info, 0, sizeof(siginfo_t));
-            info.si_signo = SIGTRAP;
-            info.si_code = SIGTRAP | 0x80; // TODO: check when do we insert 0x80 here
-            data.syscall_info.args[0] = arg1;
-            data.syscall_info.args[1] = arg2;
-            data.syscall_info.args[2] = arg3;
-            data.syscall_info.args[3] = arg4;
-            data.syscall_info.args[4] = arg5;
-            data.syscall_info.args[5] = arg6;
-            data.syscall_info.nr = syscall_number;
-            Ptrace::raise_stop(StopType::SyscallEnterStop, sig, &info);
-
-            syscall_number = state->GetGpr(X86_REF_RAX);
-            // TODO: test this? syscall enter -> interruptible syscall -> send signal -> check orig_rax
-            state->ctx.orig_rax = syscall_number;
-            arg1 = state->GetGpr(X86_REF_RDI);
-            arg2 = state->GetGpr(X86_REF_RSI);
-            arg3 = state->GetGpr(X86_REF_RDX);
-            arg4 = state->GetGpr(X86_REF_R10);
-            arg5 = state->GetGpr(X86_REF_R8);
-            arg6 = state->GetGpr(X86_REF_R9);
-        }
-    }
+    u64 args[6];
+    read_syscall_args(state, syscall64_arg_regs, args);
+    syscall_enter_stop(state, syscall64_arg_regs, syscall_number, args);
+    u64 arg1 = args[0];
+    u64 arg2 = args[1];
+    u64 arg3 = args[2];
+    u64 arg4 = args[3];
+    u64 arg5 = args[4];
+    u64 arg6 = args[5];
 
     bool is_common = is_x64_common(syscall_number);
     Result result;
@@ -2222,29 +2234,10 @@ void felix86_syscall(felix86_frame* frame) {
 
     state->SetGpr(X86_REF_RAX, result);
 
-    if (Ptrace::is_traced(state)) {
-        PtraceData& data = state->ptrace_data;
-        if (data.injected.cont_type == PTRACE_SYSCALL) {
-            int sig = SIGTRAP;
-            siginfo_t info;
-            memset(&info, 0, sizeof(siginfo_t));
-            info.si_signo = SIGTRAP;
-            info.si_code = SIGTRAP | 0x80; // TODO: check when do we insert 0x80 here
-            data.syscall_info.ret = result;
-            data.syscall_info.is_error = result < 0; // TODO: properly implement
-            Ptrace::raise_stop(StopType::SyscallExitStop, sig, &info);
-        }
-    }
+    syscall_exit_stop(state, result);
 
     if (g_config.strace || (g_config.strace_errors && (i64)result < 0)) {
-        std::string trace = trace64(syscall_number, arg1, arg2, arg3, arg4, arg5, arg6);
-        trace += " = ";
-        if (result < 0) {
-            trace += std::to_string(result);
-        } else {
-            trace += fmt::format("0x{:x}", (u64)result);
-        }
-        STRACE("%s", trace.c_str());
+        strace_syscall(trace64(syscall_number, arg1, arg2, arg3, arg4, arg5, arg6), result);
     }
 }
 
@@ -2258,48 +2251,20 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
     }
     state->should_restart_syscall = false;
     state->ctx.orig_rax = syscall_number;
-    u64 arg1 = state->GetGpr(X86_REF_RBX);
-    u64 arg2 = state->GetGpr(X86_REF_RCX);
-    u64 arg3 = state->GetGpr(X86_REF_RDX);
-    u64 arg4 = state->GetGpr(X86_REF_RSI);
-    u64 arg5 = state->GetGpr(X86_REF_RDI);
-    u64 arg6 = state->GetGpr(X86_REF_RBP);
+    u64 args[6];
+    read_syscall_args(state, syscall32_arg_regs, args);
 
-    ASSERT(!(arg1 & ~0xFFFF'FFFF));
-    ASSERT(!(arg2 & ~0xFFFF'FFFF));
-    ASSERT(!(arg3 & ~0xFFFF'FFFF));
-    ASSERT(!(arg4 & ~0xFFFF'FFFF));
-    ASSERT(!(arg5 & ~0xFFFF'FFFF));
-    ASSERT(!(arg6 & ~0xFFFF'FFFF));
-
-    if (Ptrace::is_traced(state)) {
-        PtraceData& data = state->ptrace_data;
-        if (data.injected.cont_type == PTRACE_SYSCALL) {
-            int sig = SIGTRAP;
-            siginfo_t info;
-            memset(&info, 0, sizeof(siginfo_t));
-            info.si_signo = SIGTRAP;
-            info.si_code = SIGTRAP | 0x80; // TODO: check when do we insert 0x80 here
-            data.syscall_info.args[0] = arg1;
-            data.syscall_info.args[1] = arg2;
-            data.syscall_info.args[2] = arg3;
-            data.syscall_info.args[3] = arg4;
-            data.syscall_info.args[4] = arg5;
-            data.syscall_info.args[5] = arg6;
-            data.syscall_info.nr = syscall_number;
-            Ptrace::raise_stop(StopType::SyscallEnterStop, sig, &info);
-
-            syscall_number = state->GetGpr(X86_REF_RAX);
-            // TODO: test this? syscall enter -> interruptible syscall -> send signal -> check orig_rax
-            state->ctx.orig_rax = syscall_number;
-            arg1 = state->GetGpr(X86_REF_RBX);
-            arg2 = state->GetGpr(X86_REF_RCX);
-            arg3 = state->GetGpr(X86_REF_RDX);
-            arg4 = state->GetGpr(X86_REF_RSI);
-            arg5 = state->GetGpr(X86_REF_RDI);
-            arg6 = state->GetGpr(X86_REF_RBP);
-        }
+    for (u64 arg : args) {
+        ASSERT(!(arg & ~0xFFFF'FFFF));
     }
+
+    syscall_enter_stop(state, syscall32_arg_regs, syscall_number, args);
+    u64 arg1 = args[0];
+    u64 arg2 = args[1];
+    u64 arg3 = args[2];
+    u64 arg4 = args[3];
+    u64 arg5 = args[4];
+    u64 arg6 = args[5];
 
     switch (syscall_number) {
     case felix86_x86_32_futex:
@@ -3594,28 +3559,9 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
 
     state->SetGpr(X86_REF_RAX, result);
 
-    if (Ptrace::is_traced(state)) {
-        PtraceData& data = state->ptrace_data;
-        if (data.injected.cont_type == PTRACE_SYSCALL) {
-            int sig = SIGTRAP;
-            siginfo_t info;
-            memset(&info, 0, sizeof(siginfo_t));
-            info.si_signo = SIGTRAP;
-            info.si_code = SIGTRAP | 0x80; // TODO: check when do we insert 0x80 here
-            data.syscall_info.ret = result;
-            data.syscall_info.is_error = result < 0; // TODO: properly implement
-            Ptrace::raise_stop(StopType::SyscallExitStop, sig, &info);
-        }
-    }
+    syscall_exit_stop(state, result);
 
     if (g_config.strace || (g_config.strace_errors && (i64)result < 0)) {
-        std::string trace = trace32(syscall_number, arg1, arg2, arg3, arg4, arg5, arg6);
-        trace += " = ";
-        if (result < 0) {
-            trace += std::to_string(result);
-        } else {
-            trace += fmt::format("0x{:x}", (u64)result);
-        }
-        STRACE("%s", trace.c_str());
+        strace_syscall(trace32(syscall_number, arg1, arg2, arg3, arg4, arg5, arg6), result);
     }
 }

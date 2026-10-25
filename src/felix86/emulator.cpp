@@ -457,14 +457,7 @@ void Emulator::Start() {
             }
 
             if (main_state->ptrace_data.injected.cont_type == PTRACE_SYSCALL) {
-                int sig = SIGTRAP;
-                siginfo_t info;
-                memset(&info, 0, sizeof(siginfo_t));
-                info.si_signo = SIGTRAP;
-                info.si_code = SIGTRAP | 0x80; // TODO: check when do we insert 0x80 here
-                main_state->ptrace_data.syscall_info.ret = 0;
-                main_state->ptrace_data.syscall_info.is_error = false;
-                Ptrace::raise_stop(StopType::SyscallExitStop, sig, &info);
+                Ptrace::raise_syscall_exit_stop(main_state, 0);
             } else if (main_state->ptrace_data.injected.cont_type != PTRACE_CONT) {
                 WARN("Not PTRACE_CONT after execve-stop");
             }
