@@ -12,6 +12,8 @@ static_assert(sizeof(XmmReg) == 32);
 struct Xmm128 {
     u64 val[2];
 
+    Xmm128() = default;
+
     Xmm128(const XmmReg& other) {
         val[0] = other.data[0];
         val[1] = other.data[1];
