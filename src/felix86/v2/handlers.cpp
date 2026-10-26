@@ -101,6 +101,16 @@ static void EmitUD(Recompiler& rec, Assembler& as) {
     rec.stopCompiling();
 }
 
+static void EmitGP(Assembler& as) {
+    as.SD(x0, 0, x0);
+    // This hint will tell the handle_synchronous signal handler to change si_code from SEGV_MAPERR to SI_KERNEL
+    // which is the behavior on x86
+    as.SLTIU(x0, x0, FELIX86_HINT_GP);
+    // Unreachable
+    as.C_UNDEF();
+    as.C_UNDEF();
+}
+
 static void EmitDivideError(Assembler& as) {
     as.SD(x0, 0, x0);
     as.SLTIU(x0, x0, FELIX86_HINT_DIVZERO);
@@ -1874,6 +1884,80 @@ FAST_HANDLE(ARPL) {
     as.Bind(&skip);
 }
 
+static void LoadFarPointer(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands,
+                           ZydisRegister segment) {
+    WARN("This program uses %s at %016lx", ZydisMnemonicGetString(instruction.mnemonic), rip);
+    ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY);
+    x86_size_e offset_size = rec.zydisToSize(operands[0].reg.value);
+    int offset_bytes = operands[0].size / 8;
+    biscuit::GPR address = rec.lea(&operands[1]);
+    biscuit::GPR offset = rec.scratch();
+    biscuit::GPR selector = rec.scratch();
+    biscuit::GPR loaded = rec.scratch();
+    rec.readMemory(offset, address, 0, offset_size);
+    rec.readMemory(selector, address, offset_bytes, X86_SIZE_WORD);
+
+    rec.writebackState();
+    as.MV(a1, offset);
+    as.MV(a2, selector);
+    as.LI(a3, segment);
+    as.LI(a4, offset_bytes);
+    as.LI(a5, rec.zydisToRef(operands[0].reg.value));
+    as.MV(a0, rec.threadStatePointer());
+    rec.callPointer(offsetof(ThreadState, felix86_load_far_pointer));
+    as.MV(loaded, a0);
+    rec.restoreState();
+
+    biscuit::Label done;
+    as.BNEZ(loaded, &done);
+    EmitGP(as);
+    as.Bind(&done);
+}
+
+FAST_HANDLE(LSS) {
+    LoadFarPointer(rec, rip, as, instruction, operands, ZYDIS_REGISTER_SS);
+}
+
+FAST_HANDLE(LFS) {
+    LoadFarPointer(rec, rip, as, instruction, operands, ZYDIS_REGISTER_FS);
+}
+
+FAST_HANDLE(LGS) {
+    LoadFarPointer(rec, rip, as, instruction, operands, ZYDIS_REGISTER_GS);
+}
+
+FAST_HANDLE(LSL) {
+    WARN("This program uses %s at %016lx", ZydisMnemonicGetString(instruction.mnemonic), rip);
+    biscuit::GPR selector = rec.getGPR(&operands[1]);
+    rec.writebackState();
+    as.MV(a1, selector);
+    as.LI(a2, rec.zydisToRef(operands[0].reg.value));
+    as.LI(a3, operands[0].size / 8);
+    as.MV(a0, rec.threadStatePointer());
+    rec.callPointer(offsetof(ThreadState, felix86_lsl));
+    rec.restoreState();
+}
+
+FAST_HANDLE(WBINVD) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(INVD) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(FEMMS) {
+    EmitUD(rec, as);
+}
+
+FAST_HANDLE(FDISI8087_NOP) {}
+
+FAST_HANDLE(FENI8087_NOP) {}
+
+FAST_HANDLE(FSETPM287_NOP) {}
+
 FAST_HANDLE(UD2) {
     WARN_ONCE("UD2 instruction being compiled?");
     EmitUD(rec, as);
@@ -2072,6 +2156,30 @@ FAST_HANDLE(RET) {
     rec.stopCompiling();
 }
 
+FAST_HANDLE(IRET) {
+    biscuit::GPR new_cs = rec.scratch();
+    biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, X86_SIZE_QWORD);
+    rec.readMemory(new_cs, rsp, 2, X86_SIZE_WORD);
+    biscuit::GPR tmp = rec.scratch();
+    biscuit::Label cs_ok;
+    as.XORI(tmp, new_cs, 0x23);
+    as.BEQZ(tmp, &cs_ok);
+    as.XORI(tmp, new_cs, 0x33);
+    as.BEQZ(tmp, &cs_ok);
+    EmitGP(as);
+    as.Bind(&cs_ok);
+    rec.popScratch();
+    rec.popScratch();
+
+    rec.writebackState();
+    as.MV(a0, rec.threadStatePointer());
+    as.LI(a1, 2);
+    rec.callPointer(offsetof(ThreadState, felix86_iret));
+    rec.restoreState();
+    rec.backToDispatcher();
+    rec.stopCompiling();
+}
+
 FAST_HANDLE(IRETD) {
     biscuit::GPR new_cs = rec.scratch();
     biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, X86_SIZE_QWORD);
@@ -2092,7 +2200,7 @@ FAST_HANDLE(IRETD) {
 
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
-    as.LI(a1, 0);
+    as.LI(a1, 4);
     rec.callPointer(offsetof(ThreadState, felix86_iret));
     rec.restoreState();
     rec.backToDispatcher();
@@ -2120,7 +2228,7 @@ FAST_HANDLE(IRETQ) {
     ASSERT(!MODE32);
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
-    as.LI(a1, 1);
+    as.LI(a1, 8);
     rec.callPointer(offsetof(ThreadState, felix86_iret));
     rec.restoreState();
     rec.backToDispatcher();
