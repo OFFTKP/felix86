@@ -57,6 +57,15 @@ enum class FlagMode {
     NeverEmit,
 };
 
+enum class BranchCond {
+    EQ,
+    NE,
+    LTU,
+    GEU,
+    LT,
+    GE,
+};
+
 enum class SingleStepMode : u8 {
     None,
     TrapFlag,
@@ -255,6 +264,8 @@ struct Recompiler {
     void jumpAndLink(u64 rip, bool return_hint = false, bool skip_lookup = false);
 
     void jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false);
+
+    void jumpAndLinkConditional(BranchCond cond, biscuit::GPR lhs, biscuit::GPR rhs, u64 rip_true, u64 rip_false);
 
     void invalidateBlock(BlockMetadata* block, bool is_smc);
 

@@ -2993,7 +2993,41 @@ void Recompiler::jumpAndLink(u64 rip, bool return_link, bool skip_lookup) {
     ASSERT(as.GetCursorPointer() - start == 2 * 4);
 }
 
+template <typename Target>
+static void emitBranch(Assembler& as, BranchCond cond, biscuit::GPR lhs, biscuit::GPR rhs, Target target) {
+    switch (cond) {
+    case BranchCond::EQ: {
+        as.BEQ(lhs, rhs, target);
+        break;
+    }
+    case BranchCond::NE: {
+        as.BNE(lhs, rhs, target);
+        break;
+    }
+    case BranchCond::LTU: {
+        as.BLTU(lhs, rhs, target);
+        break;
+    }
+    case BranchCond::GEU: {
+        as.BGEU(lhs, rhs, target);
+        break;
+    }
+    case BranchCond::LT: {
+        as.BLT(lhs, rhs, target);
+        break;
+    }
+    case BranchCond::GE: {
+        as.BGE(lhs, rhs, target);
+        break;
+    }
+    }
+}
+
 void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false) {
+    jumpAndLinkConditional(BranchCond::NE, condition, x0, rip_true, rip_false);
+}
+
+void Recompiler::jumpAndLinkConditional(BranchCond cond, biscuit::GPR lhs, biscuit::GPR rhs, u64 rip_true, u64 rip_false) {
     OptimizationGuard guard(as, optimization_guard_counter);
     constexpr i64 max_instr_space = 80;
     i64 host_offset = current_block_metadata->host_address - (u64)as.GetCursorPointer();
@@ -3001,7 +3035,7 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
     if (rip_true == current_block_metadata->guest_address && host_offset > -4096 + max_instr_space) {
         biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
         as.MV(t5, x0);
-        ASSERT(condition != t5);
+        ASSERT(lhs != t5 && rhs != t5);
         if (getCurrentRipregValue() != rip_true) { // ripreg might've changed during the block, set it back to the start if so
             ASSERT(getCurrentRipregValue() > rip_true);
             u64 rip_true_offset = rip_true - getCurrentRipregValue();
@@ -3014,7 +3048,7 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
         }
         i64 host_offset = current_block_metadata->host_address - (u64)as.GetCursorPointer();
         ASSERT(IsValidBTypeImm(host_offset)); // max_instr_space should guarantee it
-        as.BNEZ(condition, host_offset);
+        emitBranch(as, cond, lhs, rhs, (i32)host_offset);
 
         u64 rip_false_offset = rip_false - getCurrentRipregValue();
         addi(ripreg, ripreg, rip_false_offset);
@@ -3029,7 +3063,7 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
     }
 
     Label true_label;
-    as.BNEZ(condition, &true_label);
+    emitBranch(as, cond, lhs, rhs, &true_label);
 
     biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
     u64 rip_false_offset = rip_false - getCurrentRipregValue();
