@@ -947,6 +947,8 @@ private:
 
     bool scanAhead(u64 rip);
 
+    u32 scanLandingBlock(ThreadState* state, u64 initial_rip, u64 rip_ahead);
+
     void expirePendingLinks(u64 rip);
 
     void inlineSyscall(int sysno, int argcount);
