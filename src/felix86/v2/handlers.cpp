@@ -4090,76 +4090,86 @@ FAST_HANDLE(CQO) {
     rec.setGPR(X86_REF_RDX, X86_SIZE_QWORD, sext);
 }
 
-static void JCC(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
+static void JCC(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, BranchCond cond,
+                biscuit::GPR lhs, biscuit::GPR rhs) {
     u64 immediate = rec.sextImmediate(rec.getImmediate(&operands[0]), operands[0].imm.size);
     u64 address_false = rip + instruction.length;
     u64 address_true = address_false + immediate;
-    rec.jumpAndLinkConditional(cond, address_true, address_false);
+    rec.jumpAndLinkConditional(cond, lhs, rhs, address_true, address_false);
     rec.stopCompiling();
 }
 
+static void JCC(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
+    JCC(rec, rip, as, instruction, operands, BranchCond::NE, cond, x0);
+}
+
+static void JCC_flags(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands) {
+    auto [reg, needs_invert] = rec.getCondNoInvert(instruction.opcode & 0xF);
+    JCC(rec, rip, as, instruction, operands, needs_invert ? BranchCond::EQ : BranchCond::NE, reg, x0);
+}
+
 FAST_HANDLE(JO) {
-    JCC(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    JCC_flags(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(JNO) {
-    JCC(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    JCC_flags(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(JB) {
-    JCC(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    JCC_flags(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(JNB) {
-    JCC(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    JCC_flags(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(JZ) {
-    JCC(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    JCC_flags(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(JNZ) {
-    JCC(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    JCC_flags(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(JBE) {
-    JCC(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    JCC_flags(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(JNBE) {
-    JCC(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    JCC_flags(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(JP) {
-    JCC(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    JCC_flags(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(JNP) {
-    JCC(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    JCC_flags(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(JS) {
-    JCC(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    JCC_flags(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(JNS) {
-    JCC(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    JCC_flags(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(JL) {
-    JCC(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    JCC_flags(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(JNL) {
-    JCC(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    JCC_flags(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(JLE) {
-    JCC(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    JCC_flags(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(JNLE) {
-    JCC(rec, rip, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+    JCC_flags(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(JRCXZ) {
