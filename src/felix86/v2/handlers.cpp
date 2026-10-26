@@ -3165,9 +3165,11 @@ FAST_HANDLE(LEA) {
     ASSERT(operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY);
     operands[1].mem.segment = ZYDIS_REGISTER_NONE;
     operands[1].attributes &= ~ZYDIS_ATTRIB_HAS_SEGMENT;
+    bool base_is_ip = operands[1].mem.base == ZYDIS_REGISTER_RIP || operands[1].mem.base == ZYDIS_REGISTER_EIP;
     bool can_use_dst_directly =
         operands[0].size != 16 &&
-        (operands[1].mem.base == ZYDIS_REGISTER_NONE || rec.zydisToRef(operands[0].reg.value) != rec.zydisToRef(operands[1].mem.base)) &&
+        (operands[1].mem.base == ZYDIS_REGISTER_NONE || base_is_ip ||
+         rec.zydisToRef(operands[0].reg.value) != rec.zydisToRef(operands[1].mem.base)) &&
         (operands[1].mem.index == ZYDIS_REGISTER_NONE || rec.zydisToRef(operands[0].reg.value) != rec.zydisToRef(operands[1].mem.index));
     biscuit::GPR forced_dst = !can_use_dst_directly ? x0 : rec.getGPR(&operands[0], X86_SIZE_QWORD);
     biscuit::GPR address = rec.lea(&operands[1], true, forced_dst);
@@ -4283,6 +4285,22 @@ FAST_HANDLE(CMOVNLE) {
 }
 
 FAST_HANDLE(MOVSXD) {
+    if (operands[0].size == 16) {
+        biscuit::GPR src;
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+            src = rec.scratch();
+            i64 imm;
+            biscuit::GPR address = rec.leaOffset(&operands[1], imm);
+            rec.readMemory(src, address, imm, X86_SIZE_WORD);
+        } else if (rec.zydisToRef(operands[1].reg.value) == rec.zydisToRef(operands[0].reg.value)) {
+            return;
+        } else {
+            src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+        }
+        rec.setGPR(&operands[0], src);
+        return;
+    }
+
     biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
     if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         i64 imm;
@@ -5790,13 +5808,30 @@ FAST_HANDLE(MOVSQ) {
     fast_MOVSB(rec, rip, as, instruction, operands);
 }
 
+static biscuit::GPR getStringRegister(Recompiler& rec, Assembler& as, x86_ref_e ref, x86_size_e address_width) {
+    if (MODE32 || address_width != X86_SIZE_DWORD) {
+        return rec.getGPR(ref, address_width);
+    }
+
+    biscuit::GPR reg = rec.allocatedGPR(ref);
+    as.ZEXTW(reg, reg);
+    return reg;
+}
+
+static void advanceStringRegister(Recompiler& rec, Assembler& as, biscuit::GPR reg, biscuit::GPR step, x86_size_e address_width) {
+    as.ADD(reg, reg, step);
+    if (!MODE32 && address_width == X86_SIZE_DWORD) {
+        as.ZEXTW(reg, reg);
+    }
+}
+
 FAST_HANDLE(CMPSB) {
     ASSERT(instruction.address_width > 16);
     u8 width = instruction.operand_width;
     x86_size_e address_width = rec.zydisToSize(instruction.address_width);
-    biscuit::GPR rdi = rec.getGPR(X86_REF_RDI, address_width);
-    biscuit::GPR rsi = rec.getGPR(X86_REF_RSI, address_width);
-    biscuit::GPR rcx = rec.getGPR(X86_REF_RCX, address_width);
+    biscuit::GPR rdi = getStringRegister(rec, as, X86_REF_RDI, address_width);
+    biscuit::GPR rsi = getStringRegister(rec, as, X86_REF_RSI, address_width);
+    biscuit::GPR rcx = getStringRegister(rec, as, X86_REF_RCX, address_width);
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR src1 = rec.scratch();
     biscuit::GPR src2 = rec.scratch();
@@ -5836,8 +5871,8 @@ FAST_HANDLE(CMPSB) {
 
     SetCmpFlags(rip, rec, as, src1, src2, result, size, false, HAS_REP /* always emit flags for rep */);
 
-    as.ADD(rdi, rdi, temp);
-    as.ADD(rsi, rsi, temp);
+    advanceStringRegister(rec, as, rdi, temp, address_width);
+    advanceStringRegister(rec, as, rsi, temp, address_width);
 
     if (HAS_REP) {
         rec.repzEpilogue(&loop_body, &loop_end, rcx, instruction.attributes & ZYDIS_ATTRIB_HAS_REPZ);
@@ -5867,8 +5902,8 @@ FAST_HANDLE(SCASB) {
     x86_size_e size = rec.zydisToSize(width);
     x86_size_e address_width = rec.zydisToSize(instruction.address_width);
     biscuit::GPR rax = rec.getGPR(X86_REF_RAX, size);
-    biscuit::GPR rdi = rec.getGPR(X86_REF_RDI, address_width);
-    biscuit::GPR rcx = rec.getGPR(X86_REF_RCX, address_width);
+    biscuit::GPR rdi = getStringRegister(rec, as, X86_REF_RDI, address_width);
+    biscuit::GPR rcx = getStringRegister(rec, as, X86_REF_RCX, address_width);
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR src2 = rec.scratch();
     biscuit::GPR result = rec.scratch();
@@ -5901,7 +5936,7 @@ FAST_HANDLE(SCASB) {
 
     SetCmpFlags(rip, rec, as, rax, src2, result, size, false, HAS_REP /* always emit flags for rep */);
 
-    as.ADD(rdi, rdi, temp);
+    advanceStringRegister(rec, as, rdi, temp, address_width);
 
     if (HAS_REP) {
         rec.repzEpilogue(&loop_body, &loop_end, rcx, instruction.attributes & ZYDIS_ATTRIB_HAS_REPZ);
