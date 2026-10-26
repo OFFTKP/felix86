@@ -405,29 +405,28 @@ static void* generate_guest_pointer(const char* name, u64 host_ptr) {
         return a_wasteful_page;
     }
 
+    u8 buffer[4096];
     const char* signature = thunk->signature;
     size_t sigsize = strlen(signature);
     size_t namesize = strlen(name);
-    ThreadState* state = ThreadState::Get();
-    // We can't put this code in code cache, because it needs to outlive potential code cache clears
-    u8* memory = state->x86_trampoline_storage;
-    // Our recompiler marks guest code as PROT_READ, we need to undo this as it may have marked previous trampolines
-    ::mprotect((u8*)((u64)memory & ~0xFFFull), 4096, PROT_READ | PROT_WRITE);
-
     // 0f 01 39 ; invlpg [rcx] ; see handlers.cpp -- invlpg (magic instruction that generates jump to host code)
     // 00 00 00 00 00 00 00 00 ; pointer we jump to
     // ... 00 ; signature const char*
     // c3 ; ret
-    memory[0] = 0x0f;
-    memory[1] = 0x01;
-    memory[2] = 0x39;
-    memcpy(&memory[3], &host_ptr, sizeof(u64));
-    memcpy(&memory[3 + 8], signature, sigsize);
-    memcpy(&memory[3 + 8 + sigsize + 1], name, namesize);
-    memory[3 + 8 + sigsize + 1 + namesize + 1] = 0xc3;
-    state->x86_trampoline_storage += 3 + 8 + sigsize + 1 + namesize + 1 + 1;
+    buffer[0] = 0x0f;
+    buffer[1] = 0x01;
+    buffer[2] = 0x39;
+    memcpy(&buffer[3], &host_ptr, sizeof(u64));
+    memcpy(&buffer[3 + 8], signature, sigsize);
+    buffer[3 + 8 + sigsize] = 0;
+    memcpy(&buffer[3 + 8 + sigsize + 1], name, namesize);
+    buffer[3 + 8 + sigsize + 1 + namesize] = 0;
+    buffer[3 + 8 + sigsize + 1 + namesize + 1] = 0xc3;
+    const u64 x86_size = 3 + 8 + sigsize + 1 + namesize + 1 + 1;
+    u8* const x86_code = g_thunk_storage.allocateX86Storage(x86_size);
+    memcpy(x86_code, buffer, x86_size);
     VERBOSE("Created guest-callable host pointer for %s: %lx", name, host_ptr);
-    return memory;
+    return x86_code;
 }
 
 static VkResult felix86_thunk_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo, const VkAllocationCallbacks*, VkInstance* pInstance) {
