@@ -70,7 +70,6 @@ X(Performance, u64, max_block_size, 300, FELIX86_MAX_BLOCK_SIZE, "Maximum x86 in
 X(Performance, bool, address_cache, true, FELIX86_ADDRESS_CACHE, "Use lower address bits to speed up block lookup")
 X(Performance, bool, return_address_hint, true, FELIX86_RETURN_ADDRESS_HINT, "Use return address hints for faster branch predictions. Requires the address cache to be enabled")
 X(Performance, bool, unsafe_flags, false, FELIX86_UNSAFE_FLAGS, "Assume flags are thrashed on every call/ret to avoid some calculations")
-X(Performance, bool, opcode_fusing, false, FELIX86_FUSE_OPCODES, "Try to fuse some x86 opcodes together if possible")
 X(Performance, bool, unsafe_math, false, FELIX86_UNSAFE_MATH, "Don't accurately calculate minps/minpd/maxps/maxpd instructions when it comes to NaNs, don't accurately calculate round/cvtx2x instructions when it comes to overflows/NaNs/infinities, don't raise a signal on div/idiv division by zero or quotient overflow")
 X(Performance, bool, always_tso, false, FELIX86_ALWAYS_TSO, "Use fences to emulate TSO on every memory read/write -- Will cause slowdown but may fix some games")
 X(Performance, bool, no_tso_stack, true, FELIX86_NO_TSO_STACK, "Don't emulate TSO on stack accesses")
