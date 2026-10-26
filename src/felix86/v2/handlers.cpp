@@ -4953,13 +4953,6 @@ FAST_HANDLE(SYSCALL) {
         Seccomp::emitFilters(as);
     }
 
-    if (!g_config.strace && g_config.inline_syscalls) {
-        bool inlined = rec.tryInlineSyscall();
-        if (inlined) {
-            return;
-        }
-    }
-
     u64 offset = rip - rec.getCurrentRipregValue();
     biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
     biscuit::GPR rcx = rec.allocatedGPR(X86_REF_RCX);
