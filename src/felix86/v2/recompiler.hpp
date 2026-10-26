@@ -30,6 +30,8 @@
 #define FELIX86_ERESTARTNOINTR 513
 
 constexpr int scan_ahead_count = 64;
+constexpr int scan_ahead_budget = 512;
+constexpr int scan_ahead_depth = 2;
 
 enum class SequenceResult {
     Compiled,
@@ -959,6 +961,8 @@ private:
     [[nodiscard]] u8* emitInvalidateCallerThunk();
 
     bool scanAhead(u64 rip);
+
+    u32 scanLandingBlock(ThreadState* state, u64 initial_rip, u64 rip_ahead, int depth, int& instrs_left);
 
     void expirePendingLinks(u64 rip);
 
