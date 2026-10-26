@@ -2355,7 +2355,7 @@ void Recompiler::exitDispatcher(felix86_frame* frame) {
     __builtin_unreachable();
 }
 
-u32 Recompiler::scanLandingBlock(ThreadState* state, u64 initial_rip, u64 rip_ahead) {
+u32 Recompiler::scanLandingBlock(ThreadState* state, u64 initial_rip, u64 rip_ahead, int depth, int& instrs_left) {
     bool jump_to_self = rip_ahead == initial_rip;
     ZydisDecodedInstruction instruction_ahead;
     ZydisDecodedOperand operands_ahead_storage[10];
@@ -2368,6 +2368,11 @@ u32 Recompiler::scanLandingBlock(ThreadState* state, u64 initial_rip, u64 rip_ah
     // If we go too high we risk messing our performance
     // TODO: some benchmarking may be in order
     for (size_t i = 0; i < scan_ahead_count; i++) {
+        if (instrs_left <= 0) {
+            break;
+        }
+        instrs_left--;
+
         ZydisMnemonic mnemonic;
         state->scan_ahead_address = rip_ahead;
         if (jump_to_self) {
@@ -2438,6 +2443,24 @@ u32 Recompiler::scanLandingBlock(ThreadState* state, u64 initial_rip, u64 rip_ah
                 continue;
             }
 
+            bool is_jcc = mnemonic >= ZYDIS_MNEMONIC_JB && mnemonic <= ZYDIS_MNEMONIC_JZ && mnemonic != ZYDIS_MNEMONIC_JMP &&
+                          mnemonic != ZYDIS_MNEMONIC_JKZD && mnemonic != ZYDIS_MNEMONIC_JKNZD;
+            if (is_jcc && depth > 0 && instrs_left > 0) {
+                if (!jump_to_self) {
+                    operands_ahead = operands_ahead_storage;
+                    decode(rip_ahead, instruction_ahead, operands_ahead);
+                }
+
+                if (operands_ahead[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+                    u64 displacement = sextImmediate(getImmediate(&operands_ahead[0]), operands_ahead[0].imm.size);
+                    u64 rip_false = rip_ahead + instruction_ahead.length;
+                    u64 rip_true = rip_false + displacement;
+                    u32 dead_after = scanLandingBlock(state, initial_rip, rip_false, depth - 1, instrs_left) &
+                                     scanLandingBlock(state, initial_rip, rip_true, depth - 1, instrs_left);
+                    return (changed_this_block | dead_after) & ~used_this_block;
+                }
+            }
+
             // Block ahead ended in <= 10 instructions so let's break
             break;
         }
@@ -2459,6 +2482,7 @@ bool Recompiler::scanAhead(u64 rip) {
     ZydisBookkeeping zydis_state{};
     std::vector<FlagAccessData::ScanAccess> scan_entries;
     bool decode_failed = false;
+    int instrs_left = scan_ahead_budget;
     current_scan_end = rip;
     while (true) {
         if (!instructions.empty() && getBreakpointIndex(rip) != -1) {
@@ -2599,7 +2623,7 @@ bool Recompiler::scanAhead(u64 rip) {
                         u64 immediate = sextImmediate(getImmediate(&operands[0]), operands[0].imm.size);
                         u64 rip_ahead = rip + instruction.length + immediate;
                         state->in_scan_ahead = true;
-                        thrashed_ahead = scanLandingBlock(state, initial_rip, rip_ahead);
+                        thrashed_ahead = scanLandingBlock(state, initial_rip, rip_ahead, scan_ahead_depth, instrs_left);
                         state->scan_ahead_address = 0;
                         state->in_scan_ahead = false;
                     } else if (instruction.mnemonic >= ZYDIS_MNEMONIC_JB && instruction.mnemonic <= ZYDIS_MNEMONIC_JZ) {
@@ -2610,7 +2634,8 @@ bool Recompiler::scanAhead(u64 rip) {
                         u64 rip_ahead_true = rip_ahead_false + immediate;
                         // For the flags to not be calculated they need to be overwritten in both paths
                         state->in_scan_ahead = true;
-                        thrashed_ahead = scanLandingBlock(state, initial_rip, rip_ahead_false) & scanLandingBlock(state, initial_rip, rip_ahead_true);
+                        thrashed_ahead = scanLandingBlock(state, initial_rip, rip_ahead_false, scan_ahead_depth, instrs_left) &
+                                         scanLandingBlock(state, initial_rip, rip_ahead_true, scan_ahead_depth, instrs_left);
                         state->scan_ahead_address = 0;
                         state->in_scan_ahead = false;
                     } else {
