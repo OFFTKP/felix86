@@ -5,8 +5,6 @@
 #include "felix86/hle/ptrace.hpp"
 #include "felix86/v2/recompiler.hpp"
 
-constexpr static size_t trampoline_storage_size = 1024 * 512;
-
 __attribute__((naked)) static void set_thread_state(ThreadState* state) {
 #ifdef __riscv
     asm volatile(R"(
@@ -69,14 +67,6 @@ ThreadState* ThreadState::Create(ThreadState* copy_state) {
         }
     }
 
-    state->riscv_trampoline_storage =
-        (u8*)mmap(nullptr, trampoline_storage_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    state->x86_trampoline_storage = (u8*)mmap(nullptr, trampoline_storage_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    state->riscv_trampoline_storage_start = state->riscv_trampoline_storage;
-    state->x86_trampoline_storage_start = state->x86_trampoline_storage;
-    ASSERT(state->riscv_trampoline_storage != MAP_FAILED);
-    ASSERT(state->x86_trampoline_storage != MAP_FAILED);
-
     auto lock = g_process_globals.states_lock.lock();
     g_process_globals.states.push_back(state);
     ThreadState::Set(state);
@@ -103,8 +93,6 @@ void ThreadState::Destroy(ThreadState* state) {
     } else {
         WARN("Thread state %d not found in global list", gettid());
     }
-    munmap(state->riscv_trampoline_storage_start, trampoline_storage_size);
-    munmap(state->x86_trampoline_storage_start, trampoline_storage_size);
     delete state->recompiler;
     const u64 total_size = address_cache_size + sizeof(ThreadState) + deferred_fault_page_offset;
     munmap(state->reservation_base, 2 * MB + total_size);

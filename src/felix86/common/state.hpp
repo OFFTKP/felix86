@@ -403,12 +403,6 @@ struct ThreadState {
     u64 scan_ahead_address = 0;
     sigjmp_buf scan_ahead_buffer{};
 
-    // For storing generated risc-v or x86 code that needs to outlive code cache clears
-    u8* riscv_trampoline_storage_start = nullptr;
-    u8* x86_trampoline_storage_start = nullptr;
-    u8* riscv_trampoline_storage = nullptr;
-    u8* x86_trampoline_storage = nullptr;
-
     bool use_precision_control = false;
 
     void* host_stack = nullptr;

@@ -9,6 +9,7 @@
 #include "felix86/common/process_lock.hpp"
 #include "felix86/common/shm_stats.hpp"
 #include "felix86/common/start_params.hpp"
+#include "felix86/common/thunk_storage.hpp"
 #include "felix86/common/types.hpp"
 
 struct Filesystem;
@@ -102,6 +103,7 @@ extern bool g_emit_stats;
 extern bool g_is_single_thread;
 extern int g_gnu_stack;
 extern std::string g_online_cpu_string;
+extern ThunkStorage g_thunk_storage;
 
 struct FakeMountNode {
     std::filesystem::path src_path;

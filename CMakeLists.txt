@@ -146,6 +146,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
 
 set(FELIX86_COMMON_SOURCES
+    src/felix86/common/binfmt.cpp
     src/felix86/common/config.cpp
     src/felix86/common/elf.cpp
     src/felix86/common/exit.cpp
@@ -162,9 +163,9 @@ set(FELIX86_COMMON_SOURCES
     src/felix86/common/shm_stats.cpp
     src/felix86/common/state.cpp
     src/felix86/common/strace.cpp
+    src/felix86/common/thunk_storage.cpp
     src/felix86/common/translate.cpp
     src/felix86/common/utility.cpp
-    src/felix86/common/binfmt.cpp
     src/felix86/common/x87.cpp
     src/felix86/common/xsave.cpp
     src/felix86/common/decoder.c
