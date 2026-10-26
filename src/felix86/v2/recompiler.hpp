@@ -608,10 +608,6 @@ struct Recompiler {
         return {};
     }
 
-    bool tryInlineSyscall();
-
-    void checkModifiesRax(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
-
     u8 stackPointerSize() {
         return current_mode32 ? 4 : 8;
     }
@@ -965,8 +961,6 @@ private:
     u32 scanLandingBlock(ThreadState* state, u64 initial_rip, u64 rip_ahead, int depth, int& instrs_left);
 
     void expirePendingLinks(u64 rip);
-
-    void inlineSyscall(int sysno, int argcount);
 
     int getBreakpointIndex(u64 rip);
 

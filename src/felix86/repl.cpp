@@ -188,7 +188,6 @@ void __attribute__((noreturn)) enter_repl() {
 
     Config::initialize();
     g_config.quiet = true;
-    g_config.inline_syscalls = false;
     g_config.scan_ahead_multi = false;
     Extensions::G = true;
     Extensions::Zba = true;
