@@ -101,6 +101,16 @@ static void EmitUD(Recompiler& rec, Assembler& as) {
     rec.stopCompiling();
 }
 
+static void EmitGP(Assembler& as) {
+    as.SD(x0, 0, x0);
+    // This hint will tell the handle_synchronous signal handler to change si_code from SEGV_MAPERR to SI_KERNEL
+    // which is the behavior on x86
+    as.SLTIU(x0, x0, FELIX86_HINT_GP);
+    // Unreachable
+    as.C_UNDEF();
+    as.C_UNDEF();
+}
+
 static void EmitDivideError(Assembler& as) {
     as.SD(x0, 0, x0);
     as.SLTIU(x0, x0, FELIX86_HINT_DIVZERO);
@@ -1874,6 +1884,80 @@ FAST_HANDLE(ARPL) {
     as.Bind(&skip);
 }
 
+static void LoadFarPointer(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands,
+                           ZydisRegister segment) {
+    WARN("This program uses %s at %016lx", ZydisMnemonicGetString(instruction.mnemonic), rip);
+    ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY);
+    x86_size_e offset_size = rec.zydisToSize(operands[0].reg.value);
+    int offset_bytes = operands[0].size / 8;
+    biscuit::GPR address = rec.lea(&operands[1]);
+    biscuit::GPR offset = rec.scratch();
+    biscuit::GPR selector = rec.scratch();
+    biscuit::GPR loaded = rec.scratch();
+    rec.readMemory(offset, address, 0, offset_size);
+    rec.readMemory(selector, address, offset_bytes, X86_SIZE_WORD);
+
+    rec.writebackState();
+    as.MV(a1, offset);
+    as.MV(a2, selector);
+    as.LI(a3, segment);
+    as.LI(a4, offset_bytes);
+    as.LI(a5, rec.zydisToRef(operands[0].reg.value));
+    as.MV(a0, rec.threadStatePointer());
+    rec.callPointer(offsetof(ThreadState, felix86_load_far_pointer));
+    as.MV(loaded, a0);
+    rec.restoreState();
+
+    biscuit::Label done;
+    as.BNEZ(loaded, &done);
+    EmitGP(as);
+    as.Bind(&done);
+}
+
+FAST_HANDLE(LSS) {
+    LoadFarPointer(rec, rip, as, instruction, operands, ZYDIS_REGISTER_SS);
+}
+
+FAST_HANDLE(LFS) {
+    LoadFarPointer(rec, rip, as, instruction, operands, ZYDIS_REGISTER_FS);
+}
+
+FAST_HANDLE(LGS) {
+    LoadFarPointer(rec, rip, as, instruction, operands, ZYDIS_REGISTER_GS);
+}
+
+FAST_HANDLE(LSL) {
+    WARN("This program uses %s at %016lx", ZydisMnemonicGetString(instruction.mnemonic), rip);
+    biscuit::GPR selector = rec.getGPR(&operands[1]);
+    rec.writebackState();
+    as.MV(a1, selector);
+    as.LI(a2, rec.zydisToRef(operands[0].reg.value));
+    as.LI(a3, operands[0].size / 8);
+    as.MV(a0, rec.threadStatePointer());
+    rec.callPointer(offsetof(ThreadState, felix86_lsl));
+    rec.restoreState();
+}
+
+FAST_HANDLE(WBINVD) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(INVD) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(FEMMS) {
+    EmitUD(rec, as);
+}
+
+FAST_HANDLE(FDISI8087_NOP) {}
+
+FAST_HANDLE(FENI8087_NOP) {}
+
+FAST_HANDLE(FSETPM287_NOP) {}
+
 FAST_HANDLE(UD2) {
     WARN_ONCE("UD2 instruction being compiled?");
     EmitUD(rec, as);
@@ -2072,6 +2156,30 @@ FAST_HANDLE(RET) {
     rec.stopCompiling();
 }
 
+FAST_HANDLE(IRET) {
+    biscuit::GPR new_cs = rec.scratch();
+    biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, X86_SIZE_QWORD);
+    rec.readMemory(new_cs, rsp, 2, X86_SIZE_WORD);
+    biscuit::GPR tmp = rec.scratch();
+    biscuit::Label cs_ok;
+    as.XORI(tmp, new_cs, 0x23);
+    as.BEQZ(tmp, &cs_ok);
+    as.XORI(tmp, new_cs, 0x33);
+    as.BEQZ(tmp, &cs_ok);
+    EmitGP(as);
+    as.Bind(&cs_ok);
+    rec.popScratch();
+    rec.popScratch();
+
+    rec.writebackState();
+    as.MV(a0, rec.threadStatePointer());
+    as.LI(a1, 2);
+    rec.callPointer(offsetof(ThreadState, felix86_iret));
+    rec.restoreState();
+    rec.backToDispatcher();
+    rec.stopCompiling();
+}
+
 FAST_HANDLE(IRETD) {
     biscuit::GPR new_cs = rec.scratch();
     biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, X86_SIZE_QWORD);
@@ -2092,7 +2200,7 @@ FAST_HANDLE(IRETD) {
 
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
-    as.LI(a1, 0);
+    as.LI(a1, 4);
     rec.callPointer(offsetof(ThreadState, felix86_iret));
     rec.restoreState();
     rec.backToDispatcher();
@@ -2120,7 +2228,7 @@ FAST_HANDLE(IRETQ) {
     ASSERT(!MODE32);
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
-    as.LI(a1, 1);
+    as.LI(a1, 8);
     rec.callPointer(offsetof(ThreadState, felix86_iret));
     rec.restoreState();
     rec.backToDispatcher();
@@ -3057,9 +3165,11 @@ FAST_HANDLE(LEA) {
     ASSERT(operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY);
     operands[1].mem.segment = ZYDIS_REGISTER_NONE;
     operands[1].attributes &= ~ZYDIS_ATTRIB_HAS_SEGMENT;
+    bool base_is_ip = operands[1].mem.base == ZYDIS_REGISTER_RIP || operands[1].mem.base == ZYDIS_REGISTER_EIP;
     bool can_use_dst_directly =
         operands[0].size != 16 &&
-        (operands[1].mem.base == ZYDIS_REGISTER_NONE || rec.zydisToRef(operands[0].reg.value) != rec.zydisToRef(operands[1].mem.base)) &&
+        (operands[1].mem.base == ZYDIS_REGISTER_NONE || base_is_ip ||
+         rec.zydisToRef(operands[0].reg.value) != rec.zydisToRef(operands[1].mem.base)) &&
         (operands[1].mem.index == ZYDIS_REGISTER_NONE || rec.zydisToRef(operands[0].reg.value) != rec.zydisToRef(operands[1].mem.index));
     biscuit::GPR forced_dst = !can_use_dst_directly ? x0 : rec.getGPR(&operands[0], X86_SIZE_QWORD);
     biscuit::GPR address = rec.lea(&operands[1], true, forced_dst);
@@ -4175,6 +4285,22 @@ FAST_HANDLE(CMOVNLE) {
 }
 
 FAST_HANDLE(MOVSXD) {
+    if (operands[0].size == 16) {
+        biscuit::GPR src;
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+            src = rec.scratch();
+            i64 imm;
+            biscuit::GPR address = rec.leaOffset(&operands[1], imm);
+            rec.readMemory(src, address, imm, X86_SIZE_WORD);
+        } else if (rec.zydisToRef(operands[1].reg.value) == rec.zydisToRef(operands[0].reg.value)) {
+            return;
+        } else {
+            src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+        }
+        rec.setGPR(&operands[0], src);
+        return;
+    }
+
     biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
     if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         i64 imm;
@@ -5682,13 +5808,30 @@ FAST_HANDLE(MOVSQ) {
     fast_MOVSB(rec, rip, as, instruction, operands);
 }
 
+static biscuit::GPR getStringRegister(Recompiler& rec, Assembler& as, x86_ref_e ref, x86_size_e address_width) {
+    if (MODE32 || address_width != X86_SIZE_DWORD) {
+        return rec.getGPR(ref, address_width);
+    }
+
+    biscuit::GPR reg = rec.allocatedGPR(ref);
+    as.ZEXTW(reg, reg);
+    return reg;
+}
+
+static void advanceStringRegister(Recompiler& rec, Assembler& as, biscuit::GPR reg, biscuit::GPR step, x86_size_e address_width) {
+    as.ADD(reg, reg, step);
+    if (!MODE32 && address_width == X86_SIZE_DWORD) {
+        as.ZEXTW(reg, reg);
+    }
+}
+
 FAST_HANDLE(CMPSB) {
     ASSERT(instruction.address_width > 16);
     u8 width = instruction.operand_width;
     x86_size_e address_width = rec.zydisToSize(instruction.address_width);
-    biscuit::GPR rdi = rec.getGPR(X86_REF_RDI, address_width);
-    biscuit::GPR rsi = rec.getGPR(X86_REF_RSI, address_width);
-    biscuit::GPR rcx = rec.getGPR(X86_REF_RCX, address_width);
+    biscuit::GPR rdi = getStringRegister(rec, as, X86_REF_RDI, address_width);
+    biscuit::GPR rsi = getStringRegister(rec, as, X86_REF_RSI, address_width);
+    biscuit::GPR rcx = getStringRegister(rec, as, X86_REF_RCX, address_width);
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR src1 = rec.scratch();
     biscuit::GPR src2 = rec.scratch();
@@ -5728,8 +5871,8 @@ FAST_HANDLE(CMPSB) {
 
     SetCmpFlags(rip, rec, as, src1, src2, result, size, false, HAS_REP /* always emit flags for rep */);
 
-    as.ADD(rdi, rdi, temp);
-    as.ADD(rsi, rsi, temp);
+    advanceStringRegister(rec, as, rdi, temp, address_width);
+    advanceStringRegister(rec, as, rsi, temp, address_width);
 
     if (HAS_REP) {
         rec.repzEpilogue(&loop_body, &loop_end, rcx, instruction.attributes & ZYDIS_ATTRIB_HAS_REPZ);
@@ -5759,8 +5902,8 @@ FAST_HANDLE(SCASB) {
     x86_size_e size = rec.zydisToSize(width);
     x86_size_e address_width = rec.zydisToSize(instruction.address_width);
     biscuit::GPR rax = rec.getGPR(X86_REF_RAX, size);
-    biscuit::GPR rdi = rec.getGPR(X86_REF_RDI, address_width);
-    biscuit::GPR rcx = rec.getGPR(X86_REF_RCX, address_width);
+    biscuit::GPR rdi = getStringRegister(rec, as, X86_REF_RDI, address_width);
+    biscuit::GPR rcx = getStringRegister(rec, as, X86_REF_RCX, address_width);
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR src2 = rec.scratch();
     biscuit::GPR result = rec.scratch();
@@ -5793,7 +5936,7 @@ FAST_HANDLE(SCASB) {
 
     SetCmpFlags(rip, rec, as, rax, src2, result, size, false, HAS_REP /* always emit flags for rep */);
 
-    as.ADD(rdi, rdi, temp);
+    advanceStringRegister(rec, as, rdi, temp, address_width);
 
     if (HAS_REP) {
         rec.repzEpilogue(&loop_body, &loop_end, rcx, instruction.attributes & ZYDIS_ATTRIB_HAS_REPZ);

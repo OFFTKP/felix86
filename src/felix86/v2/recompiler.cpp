@@ -112,8 +112,7 @@ static bool is_sse_or_avx_operand(const ZydisDecodedOperand& operand) {
 }
 
 static bool is_stack_operand(const ZydisDecodedOperand& operand) {
-    return operand.type == ZYDIS_OPERAND_TYPE_MEMORY && operand.mem.base != ZYDIS_REGISTER_NONE &&
-           Recompiler::zydisToRef(operand.mem.base) == X86_REF_RSP;
+    return operand.type == ZYDIS_OPERAND_TYPE_MEMORY && (operand.mem.base == ZYDIS_REGISTER_RSP || operand.mem.base == ZYDIS_REGISTER_ESP);
 }
 
 Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
@@ -2091,7 +2090,8 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp, 
     }
     bool has_disp = disp != 0;
 
-    if (!use_temp && forced_dst == x0 && !has_segment && !has_disp && operand->mem.base != ZYDIS_REGISTER_RIP) {
+    bool rip_relative = operand->mem.base == ZYDIS_REGISTER_RIP || operand->mem.base == ZYDIS_REGISTER_EIP;
+    if (!use_temp && forced_dst == x0 && !has_segment && !has_disp && !rip_relative) {
         if (has_base && !has_index) {
             return getGPR(operand->mem.base);
         }
@@ -2109,15 +2109,12 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp, 
 
     biscuit::GPR base, index;
 
-    if (operand->mem.base == ZYDIS_REGISTER_RIP) {
+    if (rip_relative) {
         ASSERT(!current_mode32);
         u64 offset_from_start = (current_rip - getCurrentRipregValue()) + current_instruction->length + (u64)disp;
         biscuit::GPR ripreg = getGPR(X86_REF_RIP, X86_SIZE_QWORD);
         addi(address, ripreg, offset_from_start);
-        return address;
-    }
-
-    if (!has_base && !has_index) {
+    } else if (!has_base && !has_index) {
         if (has_disp) {
             as.LI(address, disp);
         } else if (has_segment) {
@@ -2416,8 +2413,11 @@ bool Recompiler::scanAhead(u64 rip) {
 
         for (int i = 0; i < std::min((int)instruction.operand_count, 2); i++) {
             if (operands[i].type == ZYDIS_OPERAND_TYPE_MEMORY && (operands[i].actions & ZYDIS_OPERAND_ACTION_MASK_WRITE) &&
-                operands[i].mem.base == ZYDIS_REGISTER_RIP) {
+                (operands[i].mem.base == ZYDIS_REGISTER_RIP || operands[i].mem.base == ZYDIS_REGISTER_EIP)) {
                 u64 target = rip + instruction.length + operands[i].mem.disp.value;
+                if (operands[i].mem.base == ZYDIS_REGISTER_EIP) {
+                    target = (u32)target;
+                }
                 if (target >= rip + instruction.length) {
                     lowest_rip_write = std::min(lowest_rip_write, target);
                 }
