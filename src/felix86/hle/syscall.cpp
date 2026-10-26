@@ -1955,11 +1955,33 @@ void felix86_syscall(felix86_frame* frame) {
     case felix86_x86_64_waitid:
     case felix86_x86_64_wait4:
     case felix86_x86_64_open:
+    case felix86_x86_64_openat:
+    case felix86_x86_64_openat2:
+    case felix86_x86_64_creat:
     case felix86_x86_64_read:
     case felix86_x86_64_readv:
+    case felix86_x86_64_pread64:
+    case felix86_x86_64_preadv:
+    case felix86_x86_64_preadv2:
     case felix86_x86_64_write:
     case felix86_x86_64_writev:
-    case felix86_x86_64_ioctl: {
+    case felix86_x86_64_pwrite64:
+    case felix86_x86_64_pwritev:
+    case felix86_x86_64_pwritev2:
+    case felix86_x86_64_ioctl:
+    case felix86_x86_64_accept:
+    case felix86_x86_64_accept4:
+    case felix86_x86_64_connect:
+    case felix86_x86_64_recvfrom:
+    case felix86_x86_64_recvmsg:
+    case felix86_x86_64_recvmmsg:
+    case felix86_x86_64_sendto:
+    case felix86_x86_64_sendmsg:
+    case felix86_x86_64_sendmmsg:
+    case felix86_x86_64_flock:
+    case felix86_x86_64_fcntl:
+    case felix86_x86_64_splice:
+    case felix86_x86_64_sendfile: {
         state->in_restartable_syscall = true;
         break;
     }
@@ -2254,6 +2276,29 @@ void felix86_syscall(felix86_frame* frame) {
     }
 }
 
+enum {
+    SYS_SOCKET = 1,
+    SYS_BIND = 2,
+    SYS_CONNECT = 3,
+    SYS_LISTEN = 4,
+    SYS_ACCEPT = 5,
+    SYS_GETSOCKNAME = 6,
+    SYS_GETPEERNAME = 7,
+    SYS_SOCKETPAIR = 8,
+    SYS_SEND = 9,
+    SYS_RECV = 10,
+    SYS_SENDTO = 11,
+    SYS_RECVFROM = 12,
+    SYS_SHUTDOWN = 13,
+    SYS_SETSOCKOPT = 14,
+    SYS_GETSOCKOPT = 15,
+    SYS_SENDMSG = 16,
+    SYS_RECVMSG = 17,
+    SYS_ACCEPT4 = 18,
+    SYS_RECVMMSG = 19,
+    SYS_SENDMMSG = 20,
+};
+
 void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
     ASSERT(frame->magic == felix86_frame::expected_magic);
     ThreadState* state = frame->state;
@@ -2287,12 +2332,58 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
     case felix86_x86_32_waitpid:
     case felix86_x86_32_wait4:
     case felix86_x86_32_open:
+    case felix86_x86_32_openat:
+    case felix86_x86_32_openat2:
+    case felix86_x86_32_creat:
     case felix86_x86_32_read:
     case felix86_x86_32_readv:
+    case felix86_x86_32_ia32_pread64:
+    case felix86_x86_32_preadv:
+    case felix86_x86_32_preadv2:
     case felix86_x86_32_write:
     case felix86_x86_32_writev:
-    case felix86_x86_32_ioctl: {
+    case felix86_x86_32_ia32_pwrite64:
+    case felix86_x86_32_pwritev:
+    case felix86_x86_32_pwritev2:
+    case felix86_x86_32_ioctl:
+    case felix86_x86_32_accept4:
+    case felix86_x86_32_connect:
+    case felix86_x86_32_recvfrom:
+    case felix86_x86_32_recvmsg:
+    case felix86_x86_32_recvmmsg:
+    case felix86_x86_32_recvmmsg_time32:
+    case felix86_x86_32_sendto:
+    case felix86_x86_32_sendmsg:
+    case felix86_x86_32_sendmmsg:
+    case felix86_x86_32_flock:
+    case felix86_x86_32_fcntl:
+    case felix86_x86_32_fcntl64:
+    case felix86_x86_32_splice:
+    case felix86_x86_32_sendfile:
+    case felix86_x86_32_sendfile64: {
         state->in_restartable_syscall = true;
+        break;
+    }
+    case felix86_x86_32_socketcall: {
+        switch (arg1) {
+        case SYS_CONNECT:
+        case SYS_ACCEPT:
+        case SYS_SEND:
+        case SYS_RECV:
+        case SYS_SENDTO:
+        case SYS_RECVFROM:
+        case SYS_SENDMSG:
+        case SYS_RECVMSG:
+        case SYS_ACCEPT4:
+        case SYS_RECVMMSG:
+        case SYS_SENDMMSG: {
+            state->in_restartable_syscall = true;
+            break;
+        }
+        default: {
+            break;
+        }
+        }
         break;
     }
     default: {
@@ -3405,29 +3496,6 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_socketcall: { // Funny syscall before the functions were separated
-            enum {
-                SYS_SOCKET = 1,
-                SYS_BIND = 2,
-                SYS_CONNECT = 3,
-                SYS_LISTEN = 4,
-                SYS_ACCEPT = 5,
-                SYS_GETSOCKNAME = 6,
-                SYS_GETPEERNAME = 7,
-                SYS_SOCKETPAIR = 8,
-                SYS_SEND = 9,
-                SYS_RECV = 10,
-                SYS_SENDTO = 11,
-                SYS_RECVFROM = 12,
-                SYS_SHUTDOWN = 13,
-                SYS_SETSOCKOPT = 14,
-                SYS_GETSOCKOPT = 15,
-                SYS_SENDMSG = 16,
-                SYS_RECVMSG = 17,
-                SYS_ACCEPT4 = 18,
-                SYS_RECVMMSG = 19,
-                SYS_SENDMMSG = 20,
-            };
-
             u32* args = (u32*)arg2;
             switch (arg1) {
             case SYS_SOCKET: {
