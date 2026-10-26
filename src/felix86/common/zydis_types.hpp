@@ -18,20 +18,22 @@ struct FlagAccessData {
         u64 rip;
         ZydisAccessedFlagsMask flags_used;
         ZydisAccessedFlagsMask flags_changed;
+        ZydisAccessedFlagsMask flags_live_out = 0;
     };
 
     struct FlagAccess {
         u64 rip;
         ZydisAccessedFlagsMask flags_needed;
+        ZydisAccessedFlagsMask flags_needed_after;
     };
 
     FlagAccessData() = default;
     explicit FlagAccessData(const std::vector<ScanAccess>& scan_entries) : initialized(true) {
         ZydisAccessedFlagsMask live = ALL_CPUFLAGS;
         for (int i = (int)scan_entries.size() - 1; i >= 0; i--) {
-            live &= ~scan_entries[i].flags_changed;
-            live |= scan_entries[i].flags_used;
-            flag_access.push_back({.rip = scan_entries[i].rip, .flags_needed = live});
+            ZydisAccessedFlagsMask after = live | scan_entries[i].flags_live_out;
+            live = (after & ~scan_entries[i].flags_changed) | scan_entries[i].flags_used;
+            flag_access.push_back({.rip = scan_entries[i].rip, .flags_needed = live, .flags_needed_after = after});
         }
         std::reverse(flag_access.begin(), flag_access.end());
     }
@@ -48,6 +50,16 @@ struct FlagAccessData {
 
         if (it != flag_access.end()) {
             return it->flags_needed & mask;
+        }
+
+        return mask;
+    }
+
+    ZydisAccessedFlagsMask getFlagsNeededAfterInstruction(u64 rip, ZydisAccessedFlagsMask mask) const {
+        ASSERT(initialized);
+        auto it = std::lower_bound(flag_access.begin(), flag_access.end(), rip, [](const FlagAccess& fa, u64 r) { return fa.rip < r; });
+        if (it != flag_access.end() && it->rip == rip) {
+            return it->flags_needed_after & mask;
         }
 
         return mask;

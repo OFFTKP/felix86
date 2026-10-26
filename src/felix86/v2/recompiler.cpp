@@ -2678,6 +2678,16 @@ bool Recompiler::shouldEmitFlag(u64 rip, x86_ref_e ref) {
     return current_flag_access.getFlagsNeeded(rip, mask) != 0;
 }
 
+bool Recompiler::anyFlagNeededAfter(u64 rip) {
+    if (flag_mode == FlagMode::AlwaysEmit || g_config.single_step) {
+        return true;
+    } else if (flag_mode == FlagMode::NeverEmit) {
+        return false;
+    }
+
+    return current_flag_access.getFlagsNeededAfterInstruction(rip, ALL_CPUFLAGS) != 0;
+}
+
 void Recompiler::updateOverflowSub(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size_e) {
     int size = getBitSize(size_e);
     biscuit::GPR of = flag(X86_REF_OF);

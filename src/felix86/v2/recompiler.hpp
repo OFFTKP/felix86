@@ -232,6 +232,8 @@ struct Recompiler {
 
     bool shouldEmitFlag(u64 current_rip, x86_ref_e ref);
 
+    bool anyFlagNeededAfter(u64 rip);
+
     void zext(biscuit::GPR dest, biscuit::GPR src, x86_size_e size);
 
     u64 zextImmediate(u64 imm, ZyanU8 size);
