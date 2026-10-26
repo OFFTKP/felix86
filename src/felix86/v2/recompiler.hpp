@@ -1008,8 +1008,6 @@ private:
 
     int fpu_scratch_index = 0;
 
-    int rax_value = -1;
-
     std::vector<InstructionData> instructions;
     ZydisDecodedInstruction* current_instruction;
     ZydisDecodedOperand* current_operands;

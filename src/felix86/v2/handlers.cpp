@@ -144,6 +144,16 @@ static void CMOV(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstructio
     rec.setGPR(&operands[0], result);
 }
 
+static biscuit::GPR getCmpRhsUnsigned(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands) {
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+        biscuit::GPR imm = rec.scratch();
+        as.LI(imm, rec.zextImmediate(operands[1].imm.value.u, operands[0].size));
+        return imm;
+    }
+
+    return rec.getGPR(&operands[1]);
+}
+
 static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands) {
     // Sometimes we hit instructions like
     //     cmp ...
@@ -171,6 +181,10 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
     }
 
     auto [next_instruction, next_operands] = *opt;
+    if (next_operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        return false;
+    }
+
     switch (next_instruction->mnemonic) {
     case ZYDIS_MNEMONIC_CMOVL: {
         biscuit::GPR cond = rec.scratch();
@@ -263,7 +277,7 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
     case ZYDIS_MNEMONIC_CMOVB: {
         biscuit::GPR cond = rec.scratch();
         biscuit::GPR lhs = rec.getGPR(&operands[0]);
-        biscuit::GPR rhs = rec.getGPR(&operands[1]);
+        biscuit::GPR rhs = getCmpRhsUnsigned(rec, as, operands);
         as.SLTU(cond, lhs, rhs);
         rec.resetScratch();
         rec.scratch();
@@ -274,7 +288,7 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
     case ZYDIS_MNEMONIC_CMOVBE: {
         biscuit::GPR cond = rec.scratch();
         biscuit::GPR lhs = rec.getGPR(&operands[0]);
-        biscuit::GPR rhs = rec.getGPR(&operands[1]);
+        biscuit::GPR rhs = getCmpRhsUnsigned(rec, as, operands);
         as.SGTU(cond, lhs, rhs);
         as.XORI(cond, cond, 1);
         rec.resetScratch();
@@ -286,7 +300,7 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
     case ZYDIS_MNEMONIC_CMOVNB: {
         biscuit::GPR cond = rec.scratch();
         biscuit::GPR lhs = rec.getGPR(&operands[0]);
-        biscuit::GPR rhs = rec.getGPR(&operands[1]);
+        biscuit::GPR rhs = getCmpRhsUnsigned(rec, as, operands);
         as.SLTU(cond, lhs, rhs);
         as.XORI(cond, cond, 1);
         rec.resetScratch();
@@ -298,7 +312,7 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
     case ZYDIS_MNEMONIC_CMOVNBE: {
         biscuit::GPR cond = rec.scratch();
         biscuit::GPR lhs = rec.getGPR(&operands[0]);
-        biscuit::GPR rhs = rec.getGPR(&operands[1]);
+        biscuit::GPR rhs = getCmpRhsUnsigned(rec, as, operands);
         as.SGTU(cond, lhs, rhs);
         rec.resetScratch();
         rec.scratch();
