@@ -15484,12 +15484,34 @@ static void VROUND(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruct
         as.FSRM(old_rounding, new_rounding);
     }
 
-    as.VFCVT_X_F(temp, src);
-    as.VFCVT_F_X(result, temp);
+    if (g_config.unsafe_math || true) {
+        as.VFCVT_X_F(temp, src);
+        as.VFCVT_F_X(result, temp);
 
-    // There's sign differences when rounding towards zero. For example, round(-0.5) becomes -0.0 in x86, 0.0 in RISC-V
-    // So we restore the sign bit after rounding
-    as.VFSGNJ(result, result, src);
+        // There's sign differences when rounding towards zero. For example, round(-0.5) becomes -0.0 in x86, 0.0 in RISC-V
+        // So we restore the sign bit after rounding
+        as.VFSGNJ(result, result, src);
+    } else {
+        // Extract the exponent bits.
+        biscuit::Vec mask = rec.scratchVec();
+        biscuit::Vec rounded = rec.scratchVec();
+        as.VSRL(mask, src, 23);
+        as.VAND(mask, mask, 255);
+
+        // If the exponent bits are greater than or equal to 150, it means the float is either infinite, NAN, or an integer, so ignore rounding
+        // to more accurately mimic x86 VROUND behaviour. Make a mask of which vector elements satisfy this.
+        as.VMSGEU(v0, mask, 150);
+
+        as.VFCVT_X_F(temp, src);
+        as.VFCVT_F_X(rounded, temp);
+
+        // There's sign differences when rounding towards zero. For example, round(-0.5) becomes -0.0 in x86, 0.0 in RISC-V
+        // So we restore the sign bit after rounding
+        as.VFSGNJ(rounded, rounded, src);
+
+        as.VMERGE(result, rounded, src);
+        rec.v0Modified();
+    }
 
     rec.setVec(&operands[0], result);
     if (!dyn_round) {
