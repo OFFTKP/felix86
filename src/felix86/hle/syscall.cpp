@@ -2918,9 +2918,14 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         }
         case felix86_x86_32_get_thread_area: {
             x86_user_desc* udesc = (x86_user_desc*)arg1;
-            int index = udesc->entry_number;
+            u32 index = udesc->entry_number;
+            if (index < 12 || index > 14) {
+                result = -EINVAL;
+                break;
+            }
 
             *udesc = {};
+            udesc->entry_number = index;
             udesc->base_addr = state->gdt[index];
 
             if (udesc->base_addr != 0) {
