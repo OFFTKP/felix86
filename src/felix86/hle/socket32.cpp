@@ -336,6 +336,18 @@ int getsockopt32(int fd, int level, int optname, char* optval, u32* optlen) {
         return ::getsockopt(fd, level, optname, optval, optlen);
     } else {
         switch (optname) {
+        case SO_RCVTIMEO_OLD:
+        case SO_SNDTIMEO_OLD: {
+            struct timeval host_timeval;
+            socklen_t host_optlen = sizeof(host_timeval);
+            int result = ::getsockopt(fd, level, optname, &host_timeval, &host_optlen);
+            if (result == 0) {
+                x86_timeval guest_timeval = host_timeval;
+                *optlen = std::min<u32>(*optlen, sizeof(x86_timeval));
+                memcpy(optval, &guest_timeval, *optlen);
+            }
+            return result;
+        }
         case SO_DEBUG:
         case SO_REUSEADDR:
         case SO_TYPE:
@@ -404,6 +416,8 @@ int getsockopt32(int fd, int level, int optname, char* optval, u32* optlen) {
         case SO_NETNS_COOKIE:
         case SO_BUF_LOCK:
         case SO_RESERVE_MEM:
+        case SO_TXREHASH:
+        case SO_RCVMARK:
         case SO_PASSPIDFD:
         case SO_PEERPIDFD: {
             return ::getsockopt(fd, level, optname, optval, optlen);
