@@ -966,6 +966,8 @@ private:
 
     bool checkIfBreakpoint(u64 rip);
 
+    void emitBreakpoint(u64 rip, u64 start_pc, u8 instruction_length);
+
     static void invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_block);
 
     biscuit::Assembler as{};

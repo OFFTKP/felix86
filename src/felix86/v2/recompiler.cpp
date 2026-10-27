@@ -714,7 +714,7 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
     current_mode32 = mode32;
     current_decoder_initialized = false; // TODO: don't invalidate if same mode32 as before
     BlockMetadata& block_meta = getBlockMetadata(rip);
-    bool is_self_validating = g_config.self_validating_blocks && shouldSelfValidate(block_meta) && getBreakpointIndex(rip) == -1;
+    bool is_self_validating = g_config.self_validating_blocks && shouldSelfValidate(block_meta) && !checkIfBreakpoint(rip);
     if (is_self_validating) {
         current_block_self_validating = true;
         self_validating_start = rip;
@@ -811,8 +811,8 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
             as.GetCodeBuffer().Emit32(0); // UNIMP instruction
         }
 
-        bool is_breakpoint = checkIfBreakpoint(rip);
-        if (is_breakpoint) {
+        if (checkIfBreakpoint(rip)) {
+            emitBreakpoint(rip, start_pc, instruction.length);
             break;
         }
 
@@ -1652,10 +1652,12 @@ int Recompiler::getBreakpointIndex(u64 rip) {
 }
 
 bool Recompiler::checkIfBreakpoint(u64 rip) {
+    return getBreakpointIndex(rip) != -1;
+}
+
+void Recompiler::emitBreakpoint(u64 rip, u64 start_pc, u8 instruction_length) {
     int i = getBreakpointIndex(rip);
-    if (i == -1) {
-        return false;
-    }
+    ASSERT(i != -1);
 
     writebackState();
     as.MV(a0, Recompiler::threadStatePointer());
@@ -1665,7 +1667,11 @@ bool Recompiler::checkIfBreakpoint(u64 rip) {
     restoreState();
     backToDispatcher();
     stopCompiling();
-    return true;
+
+    u64 size = (u64)as.GetCursorPointer() - start_pc;
+    ASSERT(size < 1 << 12);
+    current_block_metadata->translation_sizes[current_instruction_index].x86_instruction_size = instruction_length;
+    current_block_metadata->translation_sizes[current_instruction_index].riscv_instructions_size = size;
 }
 
 biscuit::FPR Recompiler::getElementFPR(ZydisDecodedOperand* operand, x86_size_e size, int element) {
@@ -2481,7 +2487,7 @@ bool Recompiler::scanAhead(u64 rip) {
     int instrs_left = scan_ahead_budget;
     current_scan_end = rip;
     while (true) {
-        if (!instructions.empty() && getBreakpointIndex(rip) != -1) {
+        if (!instructions.empty() && checkIfBreakpoint(rip)) {
             current_block_big = true;
             break;
         }
