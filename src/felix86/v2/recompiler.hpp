@@ -541,11 +541,11 @@ struct Recompiler {
     void vzeroTopBits(biscuit::Vec dst, biscuit::Vec src);
 
     void v0Modified() {
-        v0_has_mask = false;
+        block_state.v0_has_mask = false;
     }
 
     bool v0HasMask() {
-        return v0_has_mask;
+        return block_state.v0_has_mask;
     }
 
     void setLockHandled() {
@@ -657,9 +657,9 @@ struct Recompiler {
     void clearAddressCache();
 
     void resetVectorState() {
-        current_sew = SEW::E1024;
-        current_vlen = 0;
-        current_grouping = LMUL::M1;
+        block_state.sew = SEW::E1024;
+        block_state.vlen = 0;
+        block_state.grouping = LMUL::M1;
     }
 
     void call(u64 target) {
@@ -736,7 +736,7 @@ struct Recompiler {
 
     // return true if SEW and VL add up to 128 bits
     bool isCurrentLength128() {
-        switch (current_grouping) {
+        switch (block_state.grouping) {
         case LMUL::M1: {
             break;
         }
@@ -751,18 +751,18 @@ struct Recompiler {
         }
         }
 
-        switch (current_sew) {
+        switch (block_state.sew) {
         case biscuit::SEW::E64: {
-            return current_vlen == 2;
+            return block_state.vlen == 2;
         }
         case biscuit::SEW::E32: {
-            return current_vlen == 4;
+            return block_state.vlen == 4;
         }
         case biscuit::SEW::E16: {
-            return current_vlen == 8;
+            return block_state.vlen == 8;
         }
         case biscuit::SEW::E8: {
-            return current_vlen == 16;
+            return block_state.vlen == 16;
         }
         default: {
             break;
@@ -774,22 +774,22 @@ struct Recompiler {
 
     // Return true if SEW and VL add up to 256 bits
     bool isCurrentLength256() {
-        if (current_grouping != LMUL::M1) {
+        if (block_state.grouping != LMUL::M1) {
             return false;
         }
 
-        switch (current_sew) {
+        switch (block_state.sew) {
         case biscuit::SEW::E64: {
-            return current_vlen == 4;
+            return block_state.vlen == 4;
         }
         case biscuit::SEW::E32: {
-            return current_vlen == 8;
+            return block_state.vlen == 8;
         }
         case biscuit::SEW::E16: {
-            return current_vlen == 16;
+            return block_state.vlen == 16;
         }
         case biscuit::SEW::E8: {
-            return current_vlen == 32;
+            return block_state.vlen == 32;
         }
         default: {
             break;
@@ -884,31 +884,31 @@ struct Recompiler {
     }
 
     void setFsrmSSE(bool is_sse) {
-        fsrm_sse = is_sse;
+        block_state.fsrm_sse = is_sse;
     }
 
     bool isFsrmSSE() {
-        return fsrm_sse;
+        return block_state.fsrm_sse;
     }
 
     void skipNext();
 
     u64 getCurrentRipregValue() {
-        return current_ripreg_value;
+        return block_state.ripreg_value;
     }
 
     void setCurrentRipregValue(u64 value) {
-        current_ripreg_value = value;
+        block_state.ripreg_value = value;
     }
 
     std::optional<std::pair<ZydisDecodedInstruction*, ZydisDecodedOperand*>> getNextInstruction();
 
     i16 getCurrentPushpopOffset() {
-        return current_pushpop_offset;
+        return block_state.pushpop_offset;
     }
 
     void setCurrentPushpopOffset(i16 value) {
-        current_pushpop_offset = value;
+        block_state.pushpop_offset = value;
     }
 
     void flushPushpop() {
@@ -999,8 +999,19 @@ private:
 
     bool compiling{};
 
-    // Whether we already set ThreadState::x87_state to a value or not
-    x87State local_x87_state = x87State::Unknown;
+    struct BlockState {
+        u64 ripreg_value;
+        i16 pushpop_offset = 0;
+        SEW sew = SEW::E1024;
+        u8 vlen = 0;
+        LMUL grouping = LMUL::M1;
+        // Whether we already set ThreadState::x87_state to a value or not
+        x87State x87_state = x87State::Unknown;
+        bool fsrm_sse = true;
+        bool v0_has_mask = false;
+    };
+
+    BlockState block_state;
 
     int scratch_index = 0;
 
@@ -1012,9 +1023,7 @@ private:
     ZydisDecodedInstruction* current_instruction;
     ZydisDecodedOperand* current_operands;
     u64 current_rip;
-    u64 current_ripreg_value;
     u64 current_instruction_index = 0;
-    i16 current_pushpop_offset = 0;
     bool current_instruction_on_stack = false;
     bool current_block_big = false;
     FlagAccessData current_flag_access{};
@@ -1023,9 +1032,6 @@ private:
     u64 current_scan_end = 0;
     u64 self_validating_start = 0;
     std::vector<u8> self_validating_bytes{};
-    SEW current_sew = SEW::E1024;
-    u8 current_vlen = 0;
-    LMUL current_grouping = LMUL::M1;
     bool current_mode32 = false;
     bool current_decoder_initialized = false;
     u64 deferred_fip = 0;
@@ -1033,7 +1039,6 @@ private:
     biscuit::GPR cached_lea = x0;
     const ZydisDecodedOperand* cached_lea_operand;
 
-    bool fsrm_sse = true;
 
     bool lock_handled = false;
 
@@ -1058,7 +1063,6 @@ private:
 
     bool relocatable = false;
 
-    bool v0_has_mask = false;
 
     InterruptibleSyscallFunc interruptible_syscall_func = nullptr;
     void* interruptible_syscall_func_ecall = nullptr;

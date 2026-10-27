@@ -827,8 +827,8 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
             }
             ran_mmx_once = true;
             WARN_ONCE("This program makes use of MMX");
-            if (local_x87_state != x87State::MMX) {
-                if (local_x87_state == x87State::x87) {
+            if (block_state.x87_state != x87State::MMX) {
+                if (block_state.x87_state == x87State::x87) {
                     flushX87();
                 }
                 switchToMMX();
@@ -841,7 +841,7 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
         }
 
         if (is_x87) {
-            if (local_x87_state == x87State::MMX) {
+            if (block_state.x87_state == x87State::MMX) {
                 WARN("x87 and MMX mixed in a block?");
                 flushX87();
             }
@@ -849,7 +849,7 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
             ZydisMnemonic mnemonic = instruction.mnemonic;
             bool is_save_restore = mnemonic == ZYDIS_MNEMONIC_FNSAVE || mnemonic == ZYDIS_MNEMONIC_FRSTOR || mnemonic == ZYDIS_MNEMONIC_FXSAVE ||
                                    mnemonic == ZYDIS_MNEMONIC_FXSAVE64 || mnemonic == ZYDIS_MNEMONIC_FXRSTOR || mnemonic == ZYDIS_MNEMONIC_FXRSTOR64;
-            if (!is_save_restore && local_x87_state != x87State::x87) {
+            if (!is_save_restore && block_state.x87_state != x87State::x87) {
                 switchToX87();
             }
 
@@ -934,7 +934,7 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
     }
 
     current_block_metadata = nullptr;
-    local_x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
+    block_state.x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
 
     if (is_self_validating) {
         ASSERT(rip > start_rip && rip - start_rip <= self_validating_bytes.size());
@@ -1167,13 +1167,13 @@ void Recompiler::resetBlockState(u64 rip) {
     resetScratch();
     resetX87();
     resetVectorState();
-    local_x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
-    fsrm_sse = true;                     // dispatcher loads SSE rounding mode as a default
-    v0_has_mask = false;
+    block_state.x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
+    block_state.fsrm_sse = true;               // dispatcher loads SSE rounding mode as a default
+    block_state.v0_has_mask = false;
 
-    current_ripreg_value = rip; // may change in a syscall to check for safepoints, or after a set amount of instructions in the future
+    block_state.ripreg_value = rip; // may change in a syscall to check for safepoints, or after a set amount of instructions in the future
     current_instruction_index = 0;
-    current_pushpop_offset = 0;
+    block_state.pushpop_offset = 0;
 }
 
 void Recompiler::flushBlockState(u64 rip) {
@@ -1782,9 +1782,9 @@ void Recompiler::vsplat(biscuit::Vec vec, u64 imm) {
 
 void Recompiler::vzeroTopBits(biscuit::Vec dst, biscuit::Vec src) {
     setVectorState(SEW::E64, 4);
-    if (!v0_has_mask) {
+    if (!block_state.v0_has_mask) {
         as.VMV(v0, -4); // 0b1100
-        v0_has_mask = true;
+        block_state.v0_has_mask = true;
     }
     as.VMERGE(dst, src, 0);
 }
@@ -1922,9 +1922,9 @@ void Recompiler::setVec(const ZydisDecodedOperand* operand, biscuit::Vec vec) {
             break;
         }
         case 128: {
-            if (Extensions::Zicclsm && current_sew == SEW::E32 && current_vlen == 4 && current_grouping == LMUL::M1) {
+            if (Extensions::Zicclsm && block_state.sew == SEW::E32 && block_state.vlen == 4 && block_state.grouping == LMUL::M1) {
                 as.VSE32(vec, address);
-            } else if (Extensions::Zicclsm && current_sew == SEW::E64 && current_vlen == 2 && current_grouping == LMUL::M1) {
+            } else if (Extensions::Zicclsm && block_state.sew == SEW::E64 && block_state.vlen == 2 && block_state.grouping == LMUL::M1) {
                 as.VSE64(vec, address);
             } else {
                 setVectorState(SEW::E8, 128 / 8);
@@ -1933,14 +1933,14 @@ void Recompiler::setVec(const ZydisDecodedOperand* operand, biscuit::Vec vec) {
             break;
         }
         case 64: {
-            if (Extensions::Zicclsm && current_grouping == LMUL::M1 && current_vlen * (8u << (u32)current_sew) >= 64) {
-                if (current_vlen == 1) {
+            if (Extensions::Zicclsm && block_state.grouping == LMUL::M1 && block_state.vlen * (8u << (u32)block_state.sew) >= 64) {
+                if (block_state.vlen == 1) {
                     as.VSE64(vec, address);
-                } else if (current_vlen == 2) {
+                } else if (block_state.vlen == 2) {
                     as.VSE32(vec, address);
-                } else if (current_vlen == 4) {
+                } else if (block_state.vlen == 4) {
                     as.VSE16(vec, address);
-                } else if (current_vlen == 8) {
+                } else if (block_state.vlen == 8) {
                     as.VSE8(vec, address);
                 } else {
                     setVectorState(SEW::E8, 64 / 8);
@@ -1953,12 +1953,12 @@ void Recompiler::setVec(const ZydisDecodedOperand* operand, biscuit::Vec vec) {
             break;
         }
         case 32: {
-            if (Extensions::Zicclsm && current_grouping == LMUL::M1 && current_vlen * (8u << (u32)current_sew) >= 32) {
-                if (current_vlen == 1) {
+            if (Extensions::Zicclsm && block_state.grouping == LMUL::M1 && block_state.vlen * (8u << (u32)block_state.sew) >= 32) {
+                if (block_state.vlen == 1) {
                     as.VSE32(vec, address);
-                } else if (current_vlen == 2) {
+                } else if (block_state.vlen == 2) {
                     as.VSE16(vec, address);
-                } else if (current_vlen == 4) {
+                } else if (block_state.vlen == 4) {
                     as.VSE8(vec, address);
                 } else {
                     setVectorState(SEW::E8, 32 / 8);
@@ -1983,13 +1983,13 @@ void Recompiler::setVec(const ZydisDecodedOperand* operand, biscuit::Vec vec) {
 }
 
 bool Recompiler::setVectorState(SEW sew, int vlen, LMUL grouping) {
-    if (current_sew == sew && current_vlen == vlen && current_grouping == grouping && !g_config.paranoid) {
+    if (block_state.sew == sew && block_state.vlen == vlen && block_state.grouping == grouping && !g_config.paranoid) {
         return false;
     }
 
-    current_sew = sew;
-    current_vlen = vlen;
-    current_grouping = grouping;
+    block_state.sew = sew;
+    block_state.vlen = vlen;
+    block_state.grouping = grouping;
 
     // TODO: One day when we have chips that perform better with VTA::Yes, enable it
     // TODO: If we don't enable AVX, or if vectors only go up to 128, enable tail/mask agnostic for most cases
@@ -2295,7 +2295,7 @@ void Recompiler::restoreState() {
     as.LBU(of, offsetof(ThreadState, ctx.of), threadStatePointer());
 
     // Restore the rounding mode
-    loadRoundingMode(fsrm_sse);
+    loadRoundingMode(block_state.fsrm_sse);
 
     as.FENCETSO();
 
@@ -3397,7 +3397,7 @@ void Recompiler::readMemory(biscuit::Vec vec, biscuit::GPR address, int size) {
         break;
     }
     case 32: {
-        if (Extensions::Zicclsm && current_sew == SEW::E32 && current_vlen == 1 && current_grouping == LMUL::M1) {
+        if (Extensions::Zicclsm && block_state.sew == SEW::E32 && block_state.vlen == 1 && block_state.grouping == LMUL::M1) {
             as.VLE32(vec, address);
         } else {
             setVectorState(SEW::E8, 4);
@@ -3406,7 +3406,7 @@ void Recompiler::readMemory(biscuit::Vec vec, biscuit::GPR address, int size) {
         break;
     }
     case 64: {
-        if (Extensions::Zicclsm && current_sew == SEW::E64 && current_vlen == 1 && current_grouping == LMUL::M1) {
+        if (Extensions::Zicclsm && block_state.sew == SEW::E64 && block_state.vlen == 1 && block_state.grouping == LMUL::M1) {
             as.VLE64(vec, address);
         } else {
             setVectorState(SEW::E8, 8);
@@ -3415,9 +3415,9 @@ void Recompiler::readMemory(biscuit::Vec vec, biscuit::GPR address, int size) {
         break;
     }
     case 128: {
-        if (Extensions::Zicclsm && current_sew == SEW::E64 && current_vlen == 2 && current_grouping == LMUL::M1) {
+        if (Extensions::Zicclsm && block_state.sew == SEW::E64 && block_state.vlen == 2 && block_state.grouping == LMUL::M1) {
             as.VLE64(vec, address);
-        } else if (Extensions::Zicclsm && current_sew == SEW::E32 && current_vlen == 4 && current_grouping == LMUL::M1) {
+        } else if (Extensions::Zicclsm && block_state.sew == SEW::E32 && block_state.vlen == 4 && block_state.grouping == LMUL::M1) {
             as.VLE32(vec, address);
         } else {
             setVectorState(SEW::E8, 16);
@@ -3426,9 +3426,9 @@ void Recompiler::readMemory(biscuit::Vec vec, biscuit::GPR address, int size) {
         break;
     }
     case 256: {
-        if (Extensions::Zicclsm && current_sew == SEW::E64 && current_vlen == 4 && current_grouping == LMUL::M1) {
+        if (Extensions::Zicclsm && block_state.sew == SEW::E64 && block_state.vlen == 4 && block_state.grouping == LMUL::M1) {
             as.VLE64(vec, address);
-        } else if (Extensions::Zicclsm && current_sew == SEW::E32 && current_vlen == 8 && current_grouping == LMUL::M1) {
+        } else if (Extensions::Zicclsm && block_state.sew == SEW::E32 && block_state.vlen == 8 && block_state.grouping == LMUL::M1) {
             as.VLE32(vec, address);
         } else {
             setVectorState(SEW::E8, 32);
@@ -3956,7 +3956,7 @@ void Recompiler::switchToMMX() {
     as.SB(val, offsetof(ThreadState, ctx.x87_state), threadStatePointer());
     popScratch();
 
-    local_x87_state = x87State::MMX;
+    block_state.x87_state = x87State::MMX;
 }
 
 void Recompiler::switchToX87() {
@@ -3965,7 +3965,7 @@ void Recompiler::switchToX87() {
     as.SB(val, offsetof(ThreadState, ctx.x87_state), threadStatePointer());
     popScratch();
 
-    local_x87_state = x87State::x87;
+    block_state.x87_state = x87State::x87;
 }
 
 void Recompiler::addressCacheLookup(biscuit::GPR guest_address, void on_hit(Assembler&, biscuit::GPR), bool use_ra) {
