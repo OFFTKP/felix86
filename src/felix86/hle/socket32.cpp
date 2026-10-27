@@ -192,6 +192,12 @@ int recvmmsg32(int fd, x86_mmsghdr* messages, u32 n, int flags, x86_timespec* ti
         host_timeout_ptr = &host_timeout;
     }
 
+    size_t total_iovecs = 0;
+    for (u32 i = 0; i < n; i++) {
+        total_iovecs += messages[i].header.msg_iovlen;
+    }
+    host_iovecs.reserve(total_iovecs);
+
     for (u32 i = 0; i < n; i++) {
         struct msghdr& host_msghdr = host_mmsgs[i].msg_hdr;
         x86_msghdr& guest_msghdr = messages[i].header;
@@ -215,7 +221,7 @@ int recvmmsg32(int fd, x86_mmsghdr* messages, u32 n, int flags, x86_timespec* ti
     int result = ::recvmmsg(fd, host_mmsgs.data(), n, flags, host_timeout_ptr);
 
     if (result != -1) {
-        for (u32 i = 0; i < n; i++) {
+        for (int i = 0; i < result; i++) {
             struct msghdr& host_msghdr = host_mmsgs[i].msg_hdr;
             x86_msghdr& guest_msghdr = messages[i].header;
             for (size_t i = 0; i < guest_msghdr.msg_iovlen; ++i) {
