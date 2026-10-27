@@ -15780,7 +15780,7 @@ static void VROUND(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruct
         } else {
             mantissa_bits = 52;
             exponent_mask = 2047;
-            exponent_max = 1076;
+            exponent_max = 1075;
         }
 
         // Extract the exponent bits.
