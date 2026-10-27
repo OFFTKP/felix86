@@ -2739,6 +2739,17 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             result = SYSCALL(process_vm_writev, arg1, lvec_host.data(), liovcnt, rvec_host.data(), riovcnt, arg6);
             break;
         }
+        case felix86_x86_32_timer_create: {
+            sigevent host_sigevent;
+            sigevent* host_sigevent_ptr = nullptr;
+            x86_sigevent* guest_sigevent = (x86_sigevent*)arg2;
+            if (guest_sigevent) {
+                host_sigevent = *guest_sigevent;
+                host_sigevent_ptr = &host_sigevent;
+            }
+            result = SYSCALL(timer_create, arg1, host_sigevent_ptr, arg3);
+            break;
+        }
         case felix86_x86_32_clock_settime32: {
             if (arg2) {
                 struct timespec time;
