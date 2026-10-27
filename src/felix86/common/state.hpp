@@ -559,6 +559,10 @@ struct ThreadState {
             }
         }
 
+        if (index < 12 || index > 14) {
+            return -EINVAL;
+        }
+
         gdt[index] = udesc->base_addr;
         udesc->entry_number = index;
 
