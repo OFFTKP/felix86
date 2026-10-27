@@ -154,6 +154,192 @@ static biscuit::GPR getCmpRhsUnsigned(Recompiler& rec, Assembler& as, ZydisDecod
     return rec.getGPR(&operands[1]);
 }
 
+static void JCC(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, BranchCond cond,
+                biscuit::GPR lhs, biscuit::GPR rhs) {
+    u64 immediate = rec.sextImmediate(rec.getImmediate(&operands[0]), operands[0].imm.size);
+    u64 address_false = rip + instruction.length;
+    u64 address_true = address_false + immediate;
+    rec.jumpAndLinkConditional(cond, lhs, rhs, address_true, address_false);
+    rec.stopCompiling();
+}
+
+enum class FusedCompare {
+    Equal,
+    Unsigned,
+    Signed,
+};
+
+struct FusedJcc {
+    BranchCond cond;
+    FusedCompare kind;
+    bool swap = false;
+};
+
+static std::optional<FusedJcc> getFusedJcc(ZydisMnemonic mnemonic, bool is_test) {
+    switch (mnemonic) {
+    case ZYDIS_MNEMONIC_JZ: {
+        return FusedJcc{BranchCond::EQ, FusedCompare::Equal};
+    }
+    case ZYDIS_MNEMONIC_JNZ: {
+        return FusedJcc{BranchCond::NE, FusedCompare::Equal};
+    }
+    case ZYDIS_MNEMONIC_JB: {
+        if (is_test) {
+            return std::nullopt;
+        }
+        return FusedJcc{BranchCond::LTU, FusedCompare::Unsigned};
+    }
+    case ZYDIS_MNEMONIC_JNB: {
+        if (is_test) {
+            return std::nullopt;
+        }
+        return FusedJcc{BranchCond::GEU, FusedCompare::Unsigned};
+    }
+    case ZYDIS_MNEMONIC_JBE: {
+        if (is_test) {
+            return FusedJcc{BranchCond::EQ, FusedCompare::Equal};
+        }
+        return FusedJcc{BranchCond::GEU, FusedCompare::Unsigned, true};
+    }
+    case ZYDIS_MNEMONIC_JNBE: {
+        if (is_test) {
+            return FusedJcc{BranchCond::NE, FusedCompare::Equal};
+        }
+        return FusedJcc{BranchCond::LTU, FusedCompare::Unsigned, true};
+    }
+    case ZYDIS_MNEMONIC_JS: {
+        if (!is_test) {
+            return std::nullopt;
+        }
+        return FusedJcc{BranchCond::LT, FusedCompare::Signed};
+    }
+    case ZYDIS_MNEMONIC_JNS: {
+        if (!is_test) {
+            return std::nullopt;
+        }
+        return FusedJcc{BranchCond::GE, FusedCompare::Signed};
+    }
+    case ZYDIS_MNEMONIC_JL: {
+        return FusedJcc{BranchCond::LT, FusedCompare::Signed};
+    }
+    case ZYDIS_MNEMONIC_JNL: {
+        return FusedJcc{BranchCond::GE, FusedCompare::Signed};
+    }
+    case ZYDIS_MNEMONIC_JLE: {
+        return FusedJcc{BranchCond::GE, FusedCompare::Signed, true};
+    }
+    case ZYDIS_MNEMONIC_JNLE: {
+        return FusedJcc{BranchCond::LT, FusedCompare::Signed, true};
+    }
+    default: {
+        return std::nullopt;
+    }
+    }
+}
+
+static void getFusedOperands(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, bool is_test, const FusedJcc& fused, biscuit::GPR& lhs,
+                             biscuit::GPR& rhs) {
+    x86_size_e size = rec.getSize(&operands[0]);
+    bool same_register = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER &&
+                         operands[0].reg.value == operands[1].reg.value;
+    bool is_imm = operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE;
+    rhs = x0;
+
+    if (is_test) {
+        lhs = rec.getGPR(&operands[0]);
+        if (is_imm) {
+            u64 imm = rec.zextImmediate(operands[1].imm.value.u, operands[0].size);
+            biscuit::GPR result = rec.scratch();
+            if (IsValidSigned12BitImm((i64)imm)) {
+                as.ANDI(result, lhs, (i64)imm);
+            } else {
+                as.LI(result, imm);
+                as.AND(result, lhs, result);
+            }
+            lhs = result;
+        } else if (!same_register) {
+            biscuit::GPR src = rec.getGPR(&operands[1]);
+            biscuit::GPR result = rec.scratch();
+            as.AND(result, lhs, src);
+            lhs = result;
+        }
+
+        if (fused.kind == FusedCompare::Signed && size != X86_SIZE_QWORD) {
+            biscuit::GPR result = rec.scratch();
+            rec.sext(result, lhs, size == X86_SIZE_BYTE_HIGH ? X86_SIZE_BYTE : size);
+            lhs = result;
+        }
+    } else if (fused.kind == FusedCompare::Equal) {
+        lhs = rec.getGPR(&operands[0]);
+        if (is_imm) {
+            u64 imm = rec.zextImmediate(operands[1].imm.value.u, operands[0].size);
+            if (imm != 0) {
+                biscuit::GPR result = rec.scratch();
+                if (IsValidSigned12BitImm(-(i64)imm)) {
+                    as.ADDI(result, lhs, -(i64)imm);
+                    lhs = result;
+                } else {
+                    as.LI(result, imm);
+                    rhs = result;
+                }
+            }
+        } else if (same_register) {
+            lhs = x0;
+        } else {
+            rhs = rec.getGPR(&operands[1]);
+        }
+    } else {
+        bool is_signed = fused.kind == FusedCompare::Signed;
+        lhs = is_signed ? rec.getGPRSigned(&operands[0], false) : rec.getGPR(&operands[0]);
+        if (is_imm) {
+            u64 imm = is_signed ? rec.sextImmediate(operands[1].imm.value.u, operands[0].size)
+                                : rec.zextImmediate(operands[1].imm.value.u, operands[0].size);
+            if (imm != 0) {
+                rhs = rec.scratch();
+                as.LI(rhs, imm);
+            }
+        } else if (same_register) {
+            rhs = lhs;
+        } else {
+            rhs = is_signed ? rec.getGPRSigned(&operands[1], false) : rec.getGPR(&operands[1]);
+        }
+    }
+
+    if (fused.swap) {
+        std::swap(lhs, rhs);
+    }
+}
+
+static bool AttemptJccFusing(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands,
+                             bool is_test) {
+    auto opt = rec.getNextInstruction();
+    if (!opt) {
+        return false;
+    }
+
+    auto [next_instruction, next_operands] = *opt;
+    std::optional<FusedJcc> fused = getFusedJcc(next_instruction->mnemonic, is_test);
+    if (!fused) {
+        return false;
+    }
+
+    u64 next_rip = rip + instruction.length;
+    if (rec.anyFlagNeededAfter(next_rip)) {
+        return false;
+    }
+
+    rec.flushX87();
+    rec.resetScratch();
+
+    biscuit::GPR lhs;
+    biscuit::GPR rhs;
+    getFusedOperands(rec, as, operands, is_test, *fused, lhs, rhs);
+
+    JCC(rec, next_rip, as, *next_instruction, next_operands, fused->cond, lhs, rhs);
+    rec.skipNext();
+    return true;
+}
+
 static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands) {
     // Sometimes we hit instructions like
     //     cmp ...
@@ -1190,7 +1376,13 @@ FAST_HANDLE(ADC) {
 }
 
 FAST_HANDLE(CMP) {
-    if (g_config.opcode_fusing && !g_config.single_step && !g_config.paranoid) {
+    if (!g_config.single_step && !g_config.paranoid) {
+        if (AttemptJccFusing(rec, rip, as, instruction, operands, false)) {
+            return;
+        }
+    }
+
+    if (!g_config.single_step && !g_config.paranoid) {
         if (AttemptCmpFusing(rec, rip, as, instruction, operands)) {
             return;
         }
@@ -3514,6 +3706,12 @@ FAST_HANDLE(IDIV) {
 }
 
 FAST_HANDLE(TEST) {
+    if (!g_config.single_step && !g_config.paranoid) {
+        if (AttemptJccFusing(rec, rip, as, instruction, operands, true)) {
+            return;
+        }
+    }
+
     bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
     bool needs_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
     bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
@@ -4102,15 +4300,6 @@ FAST_HANDLE(CQO) {
     biscuit::GPR rax = rec.getGPR(X86_REF_RAX, X86_SIZE_QWORD);
     as.SRAI(sext, rax, 63);
     rec.setGPR(X86_REF_RDX, X86_SIZE_QWORD, sext);
-}
-
-static void JCC(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, BranchCond cond,
-                biscuit::GPR lhs, biscuit::GPR rhs) {
-    u64 immediate = rec.sextImmediate(rec.getImmediate(&operands[0]), operands[0].imm.size);
-    u64 address_false = rip + instruction.length;
-    u64 address_true = address_false + immediate;
-    rec.jumpAndLinkConditional(cond, lhs, rhs, address_true, address_false);
-    rec.stopCompiling();
 }
 
 static void JCC(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
