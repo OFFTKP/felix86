@@ -15756,7 +15756,7 @@ static void VROUND(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruct
         as.FSRM(old_rounding, new_rounding);
     }
 
-    if (g_config.unsafe_math || true) {
+    if (g_config.unsafe_math) {
         as.VFCVT_X_F(temp, src);
         as.VFCVT_F_X(result, temp);
 
@@ -15764,15 +15764,39 @@ static void VROUND(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruct
         // So we restore the sign bit after rounding
         as.VFSGNJ(result, result, src);
     } else {
-        // Extract the exponent bits.
         biscuit::Vec mask = rec.scratchVec();
         biscuit::Vec rounded = rec.scratchVec();
-        as.VSRL(mask, src, 23);
-        as.VAND(mask, mask, 255);
+        biscuit::GPR exponent_mask_gpr = rec.scratch();
+        biscuit::GPR exponent_max_gpr = rec.scratch();
+
+        int mantissa_bits;
+        int exponent_mask;
+        int exponent_max;
+
+        if (sew == SEW::E32) {
+            mantissa_bits = 23;
+            exponent_mask = 255;
+            exponent_max = 150;
+        } else {
+            mantissa_bits = 52;
+            exponent_mask = 2047;
+            exponent_max = 1076;
+        }
+
+        // Extract the exponent bits.
+        as.LUI(exponent_mask_gpr, exponent_mask);
+        if (mantissa_bits <= 31) {
+            as.VSRL(mask, src, mantissa_bits);
+        } else {
+            as.VSRL(mask, src, 31);
+            as.VSRL(mask, src, mantissa_bits - 31);
+        }
+        as.VAND(mask, mask, exponent_mask_gpr);
 
         // If the exponent bits are greater than or equal to 150, it means the float is either infinite, NAN, or an integer, so ignore rounding
         // to more accurately mimic x86 VROUND behaviour. Make a mask of which vector elements satisfy this.
-        as.VMSGEU(v0, mask, 150);
+        as.LUI(exponent_max_gpr, exponent_max - 1);
+        as.VMSGTU(v0, mask, exponent_max_gpr);
 
         as.VFCVT_X_F(temp, src);
         as.VFCVT_F_X(rounded, temp);
