@@ -2750,7 +2750,20 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_sigprocmask: {
-            result = Signals::sigprocmask(state, arg1, (sigset_t*)arg2, (sigset_t*)arg3);
+            u32* guest_set = (u32*)arg2;
+            u32* guest_old_set = (u32*)arg3;
+            sigset_t host_set{};
+            sigset_t host_old_set{};
+            if (guest_set) {
+                if ((int)arg1 == SIG_SETMASK) {
+                    host_set = state->signal_mask;
+                }
+                host_set.__val[0] = (host_set.__val[0] & ~0xFFFF'FFFFull) | *guest_set;
+            }
+            result = Signals::sigprocmask(state, arg1, guest_set ? &host_set : nullptr, guest_old_set ? &host_old_set : nullptr);
+            if (result == 0 && guest_old_set) {
+                *guest_old_set = host_old_set.__val[0];
+            }
             break;
         }
         case felix86_x86_32_mmap: {
