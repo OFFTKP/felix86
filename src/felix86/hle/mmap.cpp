@@ -135,7 +135,7 @@ void* Mapper::remap32(void* old_address, u64 old_size, u64 new_size, int flags, 
         freelist.deallocate((u64)result, new_size);
         void* mapping = freelist.allocate((u64)result, new_size);
         move_tracked_region((u64)old_address, old_size, (u64)result, new_size, !(flags & MREMAP_DONTUNMAP));
-        ASSERT(result == new_address);
+        ASSERT(!(flags & MREMAP_FIXED) || result == new_address);
         ASSERT(mapping == result);
 
         return result;
