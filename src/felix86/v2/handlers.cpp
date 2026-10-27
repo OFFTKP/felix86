@@ -15784,18 +15784,18 @@ static void VROUND(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruct
         }
 
         // Extract the exponent bits.
-        as.LUI(exponent_mask_gpr, exponent_mask);
+        as.LI(exponent_mask_gpr, exponent_mask);
         if (mantissa_bits <= 31) {
             as.VSRL(mask, src, mantissa_bits);
         } else {
             as.VSRL(mask, src, 31);
-            as.VSRL(mask, src, mantissa_bits - 31);
+            as.VSRL(mask, mask, mantissa_bits - 31);
         }
         as.VAND(mask, mask, exponent_mask_gpr);
 
         // If the exponent bits are greater than or equal to 150, it means the float is either infinite, NAN, or an integer, so ignore rounding
         // to more accurately mimic x86 VROUND behaviour. Make a mask of which vector elements satisfy this.
-        as.LUI(exponent_max_gpr, exponent_max - 1);
+        as.LI(exponent_max_gpr, exponent_max - 1);
         as.VMSGTU(v0, mask, exponent_max_gpr);
 
         as.VFCVT_X_F(temp, src);
