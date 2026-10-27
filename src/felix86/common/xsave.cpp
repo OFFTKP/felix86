@@ -76,6 +76,10 @@ void felix86_fsave_16(const UserContext& ctx, void* address) {
     data->cw = ctx.fpu_cw;
     data->tw = tw_8_to_16(ctx.st, ctx.fpu_tw);
     data->sw = (ctx.fpu_top << 11) | (ctx.fpu_sw & ~(0b111 << 11));
+    data->fip = ctx.fpu_ip;
+    data->fcs = 0;
+    data->fdp = 0;
+    data->fds = 0;
 
     if (g_config.reduced_precision) {
         // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
@@ -109,6 +113,10 @@ void felix86_fsave_32(const UserContext& ctx, void* address) {
     data->cw = ctx.fpu_cw;
     data->tw = tw_8_to_16(ctx.st, ctx.fpu_tw);
     data->sw = (ctx.fpu_top << 11) | (ctx.fpu_sw & ~(0b111 << 11));
+    data->fip = ctx.fpu_ip;
+    data->unused = 0;
+    data->fdp = 0;
+    data->fds = 0;
 
     if (g_config.reduced_precision) {
         // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
@@ -127,6 +135,7 @@ void felix86_frstor_16(UserContext& ctx, void* address) {
     ctx.fpu_cw = data->cw;
     ctx.fpu_tw = tw_16_to_8(data->tw);
     ctx.fpu_sw = data->sw;
+    ctx.fpu_ip = data->fip;
     ctx.rmode_x87 = rounding_mode(x86RoundingMode((ctx.fpu_cw >> 10) & 0b11));
 
     for (int i = 0; i < 8; i++) {
@@ -151,6 +160,7 @@ void felix86_frstor_32(UserContext& ctx, void* address) {
     ctx.fpu_cw = data->cw;
     ctx.fpu_tw = tw_16_to_8(data->tw);
     ctx.fpu_sw = data->sw;
+    ctx.fpu_ip = data->fip;
     ctx.rmode_x87 = rounding_mode(x86RoundingMode((ctx.fpu_cw >> 10) & 0b11));
 
     for (int i = 0; i < 8; i++) {
@@ -168,7 +178,7 @@ void felix86_frstor_32(UserContext& ctx, void* address) {
     }
 }
 
-void felix86_fxsave(const UserContext& ctx, void* address, bool save_x87, bool save_xmm, bool save_mxcsr) {
+void felix86_fxsave(const UserContext& ctx, void* address, bool save_x87, bool save_xmm, bool save_mxcsr, bool rex_w) {
     bool is_mmx = (x87State)ctx.x87_state == x87State::MMX;
     bool is_x87 = (x87State)ctx.x87_state == x87State::x87;
     fxsave_frame* data = (fxsave_frame*)address;
@@ -202,6 +212,9 @@ void felix86_fxsave(const UserContext& ctx, void* address, bool save_x87, bool s
         data->ftw = ctx.fpu_tw;
         data->fcw = ctx.fpu_cw;
         data->fsw = (ctx.fpu_top << 11) | (ctx.fpu_sw & ~(0b111 << 11));
+        data->fop = 0;
+        data->fip = (mode32 || !rex_w) ? (u32)ctx.fpu_ip : ctx.fpu_ip;
+        data->fdp = 0;
 
         if (g_config.reduced_precision) {
             // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
@@ -218,7 +231,7 @@ void felix86_fxsave(const UserContext& ctx, void* address, bool save_x87, bool s
     }
 }
 
-void felix86_fxrstor(UserContext& ctx, void* address, bool restore_x87, bool restore_xmm, bool restore_mxcsr) {
+void felix86_fxrstor(UserContext& ctx, void* address, bool restore_x87, bool restore_xmm, bool restore_mxcsr, bool rex_w) {
     fxsave_frame* data = (fxsave_frame*)address;
 
     bool mode32 = ThreadState::Get()->ctx.Mode32();
@@ -234,6 +247,7 @@ void felix86_fxrstor(UserContext& ctx, void* address, bool restore_x87, bool res
         ctx.fpu_cw = data->fcw;
         ctx.fpu_sw = data->fsw;
         ctx.fpu_top = (data->fsw >> 11) & 7;
+        ctx.fpu_ip = (mode32 || !rex_w) ? (u32)data->fip : data->fip;
 
         for (int i = 0; i < 8; i++) {
             Float80& st = ctx.st[(ctx.fpu_top + i) & 0b111];
@@ -262,7 +276,7 @@ bool felix86_xsave_contains_ymms() {
     return is_feature_enabled(x86_feature::AVX) && is_feature_enabled(x86_feature::OSXSAVE);
 }
 
-void felix86_xsave(const UserContext& ctx, void* address, bool save_all) {
+void felix86_xsave(const UserContext& ctx, void* address, bool save_all, bool rex_w) {
     if ((u64)address & 63) {
         // This would cause #GP, so warn
         WARN("Improperly aligned xsave area: %lx", (u64)address);
@@ -272,7 +286,7 @@ void felix86_xsave(const UserContext& ctx, void* address, bool save_all) {
     bool save_xmm = (rfbm & 0b010) || save_all;
     bool save_avx = (rfbm & 0b100) || save_all;
     bool save_mxcsr = save_xmm || save_avx;
-    felix86_fxsave(ctx, address, save_x87, save_xmm, save_mxcsr);
+    felix86_fxsave(ctx, address, save_x87, save_xmm, save_mxcsr, rex_w);
     if (save_all || rfbm != 0) {
         xsave_header* header = (xsave_header*)((u8*)address + sizeof(fxsave_frame));
         header->xstate_bv = save_all ? get_xfeature_enabled_mask() : (rfbm & get_xfeature_enabled_mask());
@@ -290,6 +304,7 @@ void felix86_x87_init(UserContext& ctx) {
     ctx.fpu_sw = 0;
     ctx.fpu_tw = 0;
     ctx.fpu_top = 0;
+    ctx.fpu_ip = 0;
     for (int i = 0; i < 8; i++) {
         ctx.st[i] = Float80{};
     }
@@ -297,7 +312,7 @@ void felix86_x87_init(UserContext& ctx) {
     ctx.rmode_x87 = rounding_mode(x86RoundingMode((ctx.fpu_cw >> 10) & 0b11));
 }
 
-void felix86_xrstor(UserContext& ctx, void* address, bool restore_all) {
+void felix86_xrstor(UserContext& ctx, void* address, bool restore_all, bool rex_w) {
     u64 rfbm = (u64)(u32)ctx.gprs[X86_REF_RDX] << 32 | (u32)ctx.gprs[X86_REF_RAX];
     u64 xcr0 = get_xfeature_enabled_mask();
     u64 hdr_bv = 0;
@@ -312,7 +327,7 @@ void felix86_xrstor(UserContext& ctx, void* address, bool restore_all) {
     bool restore_xmm = req_xmm && (restore_all || (hdr_bv & 0b010)) && (xcr0 & 0b010);
     bool restore_avx = req_avx && (restore_all || (hdr_bv & 0b100)) && (xcr0 & 0b100);
     bool restore_mxcsr = req_xmm;
-    felix86_fxrstor(ctx, address, restore_x87, restore_xmm, restore_mxcsr);
+    felix86_fxrstor(ctx, address, restore_x87, restore_xmm, restore_mxcsr, rex_w);
     if (felix86_xsave_contains_ymms() && restore_avx) {
         ymm_hi* ymm_storage = (ymm_hi*)((u8*)address + sizeof(fxsave_frame) + sizeof(xsave_header));
         for (int i = 0; i < 16; i++) {
@@ -342,6 +357,10 @@ void felix86_fstenv_16(ThreadState* state, u64 address) {
     env->cw = state->ctx.fpu_cw;
     env->tw = tw_8_to_16(state->ctx.st, state->ctx.fpu_tw);
     env->sw = (state->ctx.fpu_top << 11) | (state->ctx.fpu_sw & ~(0b111 << 11));
+    env->fip = state->ctx.fpu_ip;
+    env->fcs = 0;
+    env->fdp = 0;
+    env->fds = 0;
 }
 
 void felix86_fstenv_32(ThreadState* state, u64 address) {
@@ -349,6 +368,10 @@ void felix86_fstenv_32(ThreadState* state, u64 address) {
     env->cw = state->ctx.fpu_cw;
     env->tw = tw_8_to_16(state->ctx.st, state->ctx.fpu_tw);
     env->sw = (state->ctx.fpu_top << 11) | (state->ctx.fpu_sw & ~(0b111 << 11));
+    env->fip = state->ctx.fpu_ip;
+    env->unused = 0;
+    env->fdp = 0;
+    env->fds = 0;
 }
 
 void felix86_fldenv_16(struct ThreadState* state, u64 address) {
@@ -357,6 +380,7 @@ void felix86_fldenv_16(struct ThreadState* state, u64 address) {
     state->ctx.fpu_tw = tw_16_to_8(env->tw);
     state->ctx.fpu_sw = env->sw;
     state->ctx.fpu_top = (env->sw >> 11) & 0b111;
+    state->ctx.fpu_ip = env->fip;
     state->ctx.rmode_x87 = rounding_mode(x86RoundingMode((state->ctx.fpu_cw >> 10) & 0b11));
 }
 
@@ -366,5 +390,6 @@ void felix86_fldenv_32(struct ThreadState* state, u64 address) {
     state->ctx.fpu_tw = tw_16_to_8(env->tw);
     state->ctx.fpu_sw = env->sw;
     state->ctx.fpu_top = (env->sw >> 11) & 0b111;
+    state->ctx.fpu_ip = env->fip;
     state->ctx.rmode_x87 = rounding_mode(x86RoundingMode((state->ctx.fpu_cw >> 10) & 0b11));
 }

@@ -593,6 +593,26 @@ static u32 get_reg_trapno(u64 host_pc, int sig, siginfo_t* info, ucontext_t* uct
 }
 
 // arch/x86/kernel/signal.c, get_sigframe function prepares the signal frame
+static sigset_t frame_signal_mask(ThreadState* state) {
+    sigset_t old_mask;
+    Signals::sigprocmask(state, SIG_SETMASK, nullptr, &old_mask);
+    if (state->restore_saved_signal_mask) {
+        old_mask = state->saved_signal_mask;
+        state->restore_saved_signal_mask = false;
+    }
+    return old_mask;
+}
+
+static void restore_saved_signal_mask(ThreadState* state, ucontext_t* uctx) {
+    if (!state->restore_saved_signal_mask) {
+        return;
+    }
+
+    state->restore_saved_signal_mask = false;
+    Signals::sigprocmask(state, SIG_SETMASK, &state->saved_signal_mask, nullptr);
+    sigandset(&uctx->uc_sigmask, &state->signal_mask, Signals::hostSignalMask());
+}
+
 static void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state, siginfo_t* guest_info, ucontext_t* host_context) {
     u64 rsp = state->GetGpr(X86_REF_RSP);
     rsp = rsp - 128; // red zone
@@ -640,8 +660,7 @@ static void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state
         state->alt_stack.ss_flags = SS_DISABLE;
     }
 
-    sigset_t old_mask;
-    Signals::sigprocmask(state, SIG_SETMASK, nullptr, &old_mask);
+    sigset_t old_mask = frame_signal_mask(state);
     frame->uc.uc_sigmask = old_mask;
 
     // Now we need to copy the state to the frame
@@ -794,8 +813,7 @@ static void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* st
         state->alt_stack.ss_size = 0;
         state->alt_stack.ss_flags = SS_DISABLE;
     }
-    sigset_t old_mask;
-    Signals::sigprocmask(state, SIG_SETMASK, nullptr, &old_mask);
+    sigset_t old_mask = frame_signal_mask(state);
     frame->uc.uc_sigmask = old_mask;
     frame->uc.uc_mcontext.fpstate = (u32)(u64)fpstate;
     frame->uc.uc_mcontext.oldmask = (u32)old_mask.__val[0];
@@ -888,8 +906,7 @@ static void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state
     frame->sc.cr2 = sig == SIGSEGV ? (u32)(u64)guest_info->si_addr : 0;
     frame->sc.trapno = get_reg_trapno(get_pc(host_context), sig, guest_info, host_context);
     frame->sc.err = get_reg_err(sig, guest_info, host_context);
-    sigset_t old_mask;
-    Signals::sigprocmask(state, SIG_SETMASK, nullptr, &old_mask);
+    sigset_t old_mask = frame_signal_mask(state);
     frame->sc.oldmask = old_mask.__val[0];
     ASSERT((u64)frame < UINT32_MAX);
     memcpy(frame->retcode, &code, sizeof(code));
@@ -1171,6 +1188,7 @@ static void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uct
         if (sig == 0) {
             // Reload the registers from ThreadState as it may have been changed remotely by the tracer
             set_pc(uctx, state->recompiler->getRestoreState());
+            restore_saved_signal_mask(state, uctx);
             GUESTPTRACELOG("Skipping signal %d", old_sig);
             return;
         } else if (old_sig != sig) {
@@ -1227,6 +1245,7 @@ static void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uct
     }
     case SignalBehavior::Ignore: {
         SIGLOG("Signal %d with ignore behavior, skipping...", sig);
+        restore_saved_signal_mask(state, uctx);
         return;
     }
     }
@@ -1271,24 +1290,10 @@ static void defer_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx
     // If we were in a safepoint, the signal would've been handled
     ASSERT(sig >= 1 && sig <= 64);
     int index = sig - 1;
-    u32 ecall;
-    {
-        Assembler tas((u8*)&ecall, sizeof(u32));
-        tas.ECALL();
-    }
     u64 pc = get_pc(ctx);
-    RegisteredSignal* signal = SignalHandlerTable::getRegisteredSignal(state->signal_table, sig);
-    if (state->in_restartable_syscall && (signal->flags & SA_RESTART) && *((u32*)(pc - 4)) == ecall &&
-        get_regs(ctx)[biscuit::a0.Index()] == (u64)-EINTR) {
-        state->should_restart_syscall = true;
-    }
-
     bool signal_masked = state->signal_mask.__val[0] & (1ull << index);
     if (!signal_masked && state->recompiler->isInInterruptibleSyscall(pc)) {
         set_pc(ctx, (u64)state->recompiler->getInterruptibleSyscallEintrAddress());
-        if (state->in_restartable_syscall && (signal->flags & SA_RESTART)) {
-            state->should_restart_syscall = true;
-        }
     }
 
     state->deferred_signals |= 1ull << index;
@@ -1384,29 +1389,6 @@ static bool handle_safepoint(ThreadState* current_state, siginfo_t* info, uconte
         return false;
     }
 
-    if (current_state->should_restart_syscall) {
-        // Check if previous instruction is FELIX86_HINT_SAFEPOINT_SYSCALL, i.e. if this safepoint is right after a syscall
-        u32 expected_previous_instruction;
-        {
-            Assembler tas((u8*)&expected_previous_instruction, sizeof(u32));
-            tas.SLTIU(x0, x0, FELIX86_HINT_SAFEPOINT_SYSCALL);
-        }
-
-        u32 actual_previous_instruction = *(u32*)(pc - 4);
-        u64* regs = get_regs(context);
-        if (expected_previous_instruction == actual_previous_instruction) {
-            // Set RIP to RIP - 2 to go back to the syscall instruction and restore the RAX
-            // We do this in the context and then prepare_guest_signal will pick it up
-            regs[Recompiler::allocatedGPR(X86_REF_RIP).Index()] -= 2;
-            u8* data = (u8*)regs[Recompiler::allocatedGPR(X86_REF_RIP).Index()];
-            ASSERT((data[0] == 0x0f && data[1] == 0x05) || (data[0] == 0xcd && data[1] == 0x80));
-            regs[Recompiler::allocatedGPR(X86_REF_RAX).Index()] = current_state->ctx.orig_rax;
-        } else {
-            ASSERT_MSG(false, "state->should_restart_syscall set but not at a syscall safepoint?");
-        }
-        current_state->should_restart_syscall = false;
-    }
-
     // Mask signals until we are done messing with these
     u64 full = -1ull, old;
     ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &full, &old, sizeof(u64)) == 0);
@@ -1417,6 +1399,31 @@ static bool handle_safepoint(ThreadState* current_state, siginfo_t* info, uconte
     // standard signals are serviced first, and real-time signals follow a least to most order
     // Thus we just get the least significant set bit
     int sig = __builtin_ctzll(current_state->effective_deferred_signals);
+
+    if (current_state->restart_syscall_always || current_state->restart_syscall_if_sa_restart) {
+        // Check if previous instruction is FELIX86_HINT_SAFEPOINT_SYSCALL, i.e. if this safepoint is right after a syscall
+        u32 expected_previous_instruction;
+        {
+            Assembler tas((u8*)&expected_previous_instruction, sizeof(u32));
+            tas.SLTIU(x0, x0, FELIX86_HINT_SAFEPOINT_SYSCALL);
+        }
+
+        u32 actual_previous_instruction = *(u32*)(pc - 4);
+        RegisteredSignal* signal = SignalHandlerTable::getRegisteredSignal(current_state->signal_table, sig + 1);
+        bool restart = current_state->restart_syscall_always || (signal->flags & SA_RESTART);
+        if (restart) {
+            ASSERT_MSG(expected_previous_instruction == actual_previous_instruction, "Not at syscall safepoint?");
+            u64* regs = get_regs(context);
+            // Set RIP to RIP - 2 to go back to the syscall instruction and restore the RAX
+            // We do this in the context and then prepare_guest_signal will pick it up
+            regs[Recompiler::allocatedGPR(X86_REF_RIP).Index()] -= 2;
+            u8* data = (u8*)regs[Recompiler::allocatedGPR(X86_REF_RIP).Index()];
+            ASSERT((data[0] == 0x0f && data[1] == 0x05) || (data[0] == 0xcd && data[1] == 0x80));
+            regs[Recompiler::allocatedGPR(X86_REF_RAX).Index()] = current_state->ctx.orig_rax;
+        }
+        current_state->restart_syscall_always = false;
+        current_state->restart_syscall_if_sa_restart = false;
+    }
 
     // Since we block signals, race here due to another signal being deferred is not possible
     siginfo_t guest_info;

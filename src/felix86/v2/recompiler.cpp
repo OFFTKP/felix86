@@ -112,8 +112,7 @@ static bool is_sse_or_avx_operand(const ZydisDecodedOperand& operand) {
 }
 
 static bool is_stack_operand(const ZydisDecodedOperand& operand) {
-    return operand.type == ZYDIS_OPERAND_TYPE_MEMORY && operand.mem.base != ZYDIS_REGISTER_NONE &&
-           Recompiler::zydisToRef(operand.mem.base) == X86_REF_RSP;
+    return operand.type == ZYDIS_OPERAND_TYPE_MEMORY && (operand.mem.base == ZYDIS_REGISTER_RSP || operand.mem.base == ZYDIS_REGISTER_ESP);
 }
 
 Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
@@ -263,7 +262,7 @@ void Recompiler::emitInterruptibleSyscallFunction() {
     as.Bind(&eintr);
 
     interruptible_syscall_func_eintr = as.GetCursorPointer();
-    as.LI(a0, -EINTR);
+    as.LI(a0, -FELIX86_ERESTARTNOINTR);
     as.RET();
 }
 
@@ -791,7 +790,7 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
         auto& [instruction, operands] = instructions[current_instruction_index];
 
         bool is_mmx = is_mmx_operand(operands[0]) || is_mmx_operand(operands[1]);
-        bool is_x87 = instruction.meta.isa_ext == ZYDIS_ISA_EXT_X87;
+        bool is_x87 = instruction.meta.isa_ext == ZYDIS_ISA_EXT_X87 || instruction.mnemonic == ZYDIS_MNEMONIC_FISTTP;
         bool is_sse = is_sse_or_avx_operand(operands[0]) || is_sse_or_avx_operand(operands[1]);
 
         bool push_pop_reg = (instruction.mnemonic == ZYDIS_MNEMONIC_PUSH || instruction.mnemonic == ZYDIS_MNEMONIC_POP) &&
@@ -853,6 +852,13 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
             if (!is_save_restore && local_x87_state != x87State::x87) {
                 switchToX87();
             }
+
+            bool dont_change = mnemonic == ZYDIS_MNEMONIC_FNCLEX || mnemonic == ZYDIS_MNEMONIC_FLDCW || mnemonic == ZYDIS_MNEMONIC_FNSTCW ||
+                               mnemonic == ZYDIS_MNEMONIC_FNSTSW || mnemonic == ZYDIS_MNEMONIC_FNSTENV || mnemonic == ZYDIS_MNEMONIC_FLDENV ||
+                               mnemonic == ZYDIS_MNEMONIC_FWAIT || mnemonic == ZYDIS_MNEMONIC_FNSAVE || mnemonic == ZYDIS_MNEMONIC_FRSTOR;
+            if (!dont_change) {
+                deferred_fip = rip;
+            }
         }
 
         if (is_x87 && isFsrmSSE() && g_config.reduced_precision) {
@@ -872,10 +878,6 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
         }
 
         compileInstruction(instruction, operands, rip);
-
-        if (g_config.inline_syscalls) {
-            checkModifiesRax(instruction, operands);
-        }
 
         rip += instruction.length;
 
@@ -1051,6 +1053,14 @@ void Recompiler::flushX87() {
         popScratch();
     }
     popScratchFPR();
+
+    if (deferred_fip != 0) {
+        biscuit::GPR temp = scratch();
+        addi(temp, allocatedGPR(X86_REF_RIP), deferred_fip - getCurrentRipregValue());
+        as.SD(temp, offsetof(ThreadState, ctx.fpu_ip), Recompiler::threadStatePointer());
+        popScratch();
+    }
+
     resetX87();
 }
 
@@ -2076,7 +2086,8 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp, 
     }
     bool has_disp = disp != 0;
 
-    if (!use_temp && forced_dst == x0 && !has_segment && !has_disp && operand->mem.base != ZYDIS_REGISTER_RIP) {
+    bool rip_relative = operand->mem.base == ZYDIS_REGISTER_RIP || operand->mem.base == ZYDIS_REGISTER_EIP;
+    if (!use_temp && forced_dst == x0 && !has_segment && !has_disp && !rip_relative) {
         if (has_base && !has_index) {
             return getGPR(operand->mem.base);
         }
@@ -2094,15 +2105,12 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp, 
 
     biscuit::GPR base, index;
 
-    if (operand->mem.base == ZYDIS_REGISTER_RIP) {
+    if (rip_relative) {
         ASSERT(!current_mode32);
         u64 offset_from_start = (current_rip - getCurrentRipregValue()) + current_instruction->length + (u64)disp;
         biscuit::GPR ripreg = getGPR(X86_REF_RIP, X86_SIZE_QWORD);
         addi(address, ripreg, offset_from_start);
-        return address;
-    }
-
-    if (!has_base && !has_index) {
+    } else if (!has_base && !has_index) {
         if (has_disp) {
             as.LI(address, disp);
         } else if (has_segment) {
@@ -2343,6 +2351,124 @@ void Recompiler::exitDispatcher(felix86_frame* frame) {
     __builtin_unreachable();
 }
 
+u32 Recompiler::scanLandingBlock(ThreadState* state, u64 initial_rip, u64 rip_ahead, int depth, int& instrs_left) {
+    bool jump_to_self = rip_ahead == initial_rip;
+    ZydisDecodedInstruction instruction_ahead;
+    ZydisDecodedOperand operands_ahead_storage[10];
+    ZydisDecodedOperand* operands_ahead = operands_ahead_storage;
+    u32 changed_this_block = 0;
+    u32 used_this_block = 0;
+    u32 flags_we_care_about = ALL_CPUFLAGS;
+    // 64 is heuristically picked, some games have a big slide of SSE instructions that follow a cmp/jcc
+    // and usually this big of a number is good enough
+    // If we go too high we risk messing our performance
+    // TODO: some benchmarking may be in order
+    for (size_t i = 0; i < scan_ahead_count; i++) {
+        if (instrs_left <= 0) {
+            break;
+        }
+        instrs_left--;
+
+        ZydisMnemonic mnemonic;
+        state->scan_ahead_address = rip_ahead;
+        if (jump_to_self) {
+            // Jump to self, we already decoded the instructions
+            ASSERT(i < instructions.size());
+            instruction_ahead = instructions[i].first;
+            operands_ahead = instructions[i].second;
+            mnemonic = instruction_ahead.mnemonic;
+        } else {
+            mnemonic = decode(rip_ahead, instruction_ahead, nullptr, true);
+            if (mnemonic == ZYDIS_MNEMONIC_INVALID) {
+                // If this path is hit the instructions will be invalid
+                // One may assume this means that we can assume flags won't be used in this path
+                // But in reality it could be the case this path gets self-modified to use the flags
+                // Since this scenario that one path contains invalid instructions is very rare, we just emit
+                // all the flags to be safe
+                return 0u;
+            }
+        }
+        bool is_jump = instruction_ahead.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
+        bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET || mnemonic == ZYDIS_MNEMONIC_IRETD || mnemonic == ZYDIS_MNEMONIC_IRETQ;
+        bool is_call = mnemonic == ZYDIS_MNEMONIC_CALL;
+        bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2 || mnemonic == ZYDIS_MNEMONIC_VMCALL || mnemonic == ZYDIS_MNEMONIC_VMMCALL ||
+                          mnemonic == ZYDIS_MNEMONIC_VMFUNC || mnemonic == ZYDIS_MNEMONIC_OUTSB || mnemonic == ZYDIS_MNEMONIC_OUTSW ||
+                          mnemonic == ZYDIS_MNEMONIC_OUTSD || mnemonic == ZYDIS_MNEMONIC_INSB || mnemonic == ZYDIS_MNEMONIC_INSW ||
+                          mnemonic == ZYDIS_MNEMONIC_INSD;
+        bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
+        bool is_int3 = mnemonic == ZYDIS_MNEMONIC_INT3;
+
+        u32 changed = instruction_ahead.cpu_flags->modified | instruction_ahead.cpu_flags->set_0 | instruction_ahead.cpu_flags->set_1 |
+                      instruction_ahead.cpu_flags->undefined;
+        u32 used = instruction_ahead.cpu_flags->tested;
+        if (flag_passthrough(instruction_ahead)) {
+            // Act as if this instruction didn't change any flags, since it may not if shift == 0
+            changed = 0;
+        }
+
+        u32 used_not_previously_changed = used & ~changed_this_block;
+        used_this_block |= used_not_previously_changed;
+        changed_this_block |= changed;
+
+        u32 changed_and_not_used = changed_this_block & ~used_this_block;
+        if (changed_and_not_used == flags_we_care_about) {
+            // All flags changed already, break early
+            break;
+        }
+
+        if (is_call || is_ret) {
+            if (g_config.unsafe_flags && !g_config.paranoid) {
+                // Pretend call and ret overwrites all flags
+                changed_this_block = ALL_CPUFLAGS;
+            }
+
+            break;
+        }
+
+        if (is_jump || is_illegal || is_hlt || is_int3) {
+            // Check if we can follow the jump trivially
+            if (mnemonic == ZYDIS_MNEMONIC_JMP && !jump_to_self) {
+                operands_ahead = operands_ahead_storage;
+                decode(rip_ahead, instruction_ahead, operands_ahead);
+            }
+
+            if (mnemonic == ZYDIS_MNEMONIC_JMP && operands_ahead[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+                u64 displacement = sextImmediate(getImmediate(&operands_ahead[0]), operands_ahead[0].imm.size);
+                rip_ahead += instruction_ahead.length + displacement;
+                jump_to_self = false; // stop using our cached instructions
+                continue;
+            }
+
+            bool is_jcc = mnemonic >= ZYDIS_MNEMONIC_JB && mnemonic <= ZYDIS_MNEMONIC_JZ && mnemonic != ZYDIS_MNEMONIC_JMP &&
+                          mnemonic != ZYDIS_MNEMONIC_JKZD && mnemonic != ZYDIS_MNEMONIC_JKNZD;
+            if (is_jcc && depth > 0 && instrs_left > 0) {
+                if (!jump_to_self) {
+                    operands_ahead = operands_ahead_storage;
+                    decode(rip_ahead, instruction_ahead, operands_ahead);
+                }
+
+                if (operands_ahead[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+                    u64 displacement = sextImmediate(getImmediate(&operands_ahead[0]), operands_ahead[0].imm.size);
+                    u64 rip_false = rip_ahead + instruction_ahead.length;
+                    u64 rip_true = rip_false + displacement;
+                    u32 dead_after = scanLandingBlock(state, initial_rip, rip_false, depth - 1, instrs_left) &
+                                     scanLandingBlock(state, initial_rip, rip_true, depth - 1, instrs_left);
+                    return (changed_this_block | dead_after) & ~used_this_block;
+                }
+            }
+
+            // Block ahead ended in <= 10 instructions so let's break
+            break;
+        }
+
+        rip_ahead += instruction_ahead.length;
+    }
+
+    // Now every flag in the changed_this_block set but not in the used_this_block set
+    // doesn't have to be calculated, return this
+    return changed_this_block & ~used_this_block;
+}
+
 bool Recompiler::scanAhead(u64 rip) {
     current_block_big = false;
     bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
@@ -2352,6 +2478,7 @@ bool Recompiler::scanAhead(u64 rip) {
     ZydisBookkeeping zydis_state{};
     std::vector<FlagAccessData::ScanAccess> scan_entries;
     bool decode_failed = false;
+    int instrs_left = scan_ahead_budget;
     current_scan_end = rip;
     while (true) {
         if (!instructions.empty() && getBreakpointIndex(rip) != -1) {
@@ -2401,8 +2528,11 @@ bool Recompiler::scanAhead(u64 rip) {
 
         for (int i = 0; i < std::min((int)instruction.operand_count, 2); i++) {
             if (operands[i].type == ZYDIS_OPERAND_TYPE_MEMORY && (operands[i].actions & ZYDIS_OPERAND_ACTION_MASK_WRITE) &&
-                operands[i].mem.base == ZYDIS_REGISTER_RIP) {
+                (operands[i].mem.base == ZYDIS_REGISTER_RIP || operands[i].mem.base == ZYDIS_REGISTER_EIP)) {
                 u64 target = rip + instruction.length + operands[i].mem.disp.value;
+                if (operands[i].mem.base == ZYDIS_REGISTER_EIP) {
+                    target = (u32)target;
+                }
                 if (target >= rip + instruction.length) {
                     lowest_rip_write = std::min(lowest_rip_write, target);
                 }
@@ -2483,108 +2613,13 @@ bool Recompiler::scanAhead(u64 rip) {
                     // We need to see where the jump will land, and scan some of its instructions
                     // If all the landing places overwrite the flags (1 landing spot for jmp, 2 for jcc)
                     // then we can skip those flag calculations
-                    auto scan_landing_block = [&](u64 rip_ahead) {
-                        bool jump_to_self = rip_ahead == initial_rip;
-                        ZydisDecodedInstruction instruction_ahead;
-                        ZydisDecodedOperand operands_ahead_storage[10];
-                        ZydisDecodedOperand* operands_ahead = operands_ahead_storage;
-                        u32 changed_this_block = 0;
-                        u32 used_this_block = 0;
-                        u32 flags_we_care_about = ALL_CPUFLAGS;
-                        // 64 is heuristically picked, some games have a big slide of SSE instructions that follow a cmp/jcc
-                        // and usually this big of a number is good enough
-                        // If we go too high we risk messing our performance
-                        // TODO: some benchmarking may be in order
-                        for (size_t i = 0; i < scan_ahead_count; i++) {
-                            ZydisMnemonic mnemonic;
-                            state->scan_ahead_address = rip_ahead;
-                            if (jump_to_self) {
-                                // Jump to self, we already decoded the instructions
-                                ASSERT(i < instructions.size());
-                                instruction_ahead = instructions[i].first;
-                                operands_ahead = instructions[i].second;
-                                mnemonic = instruction_ahead.mnemonic;
-                            } else {
-                                mnemonic = decode(rip_ahead, instruction_ahead, nullptr, true);
-                                if (mnemonic == ZYDIS_MNEMONIC_INVALID) {
-                                    // If this path is hit the instructions will be invalid
-                                    // One may assume this means that we can assume flags won't be used in this path
-                                    // But in reality it could be the case this path gets self-modified to use the flags
-                                    // Since this scenario that one path contains invalid instructions is very rare, we just emit
-                                    // all the flags to be safe
-                                    return 0u;
-                                }
-                            }
-                            bool is_jump = instruction_ahead.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
-                            bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET || mnemonic == ZYDIS_MNEMONIC_IRETD || mnemonic == ZYDIS_MNEMONIC_IRETQ;
-                            bool is_call = mnemonic == ZYDIS_MNEMONIC_CALL;
-                            bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2 || mnemonic == ZYDIS_MNEMONIC_VMCALL ||
-                                              mnemonic == ZYDIS_MNEMONIC_VMMCALL || mnemonic == ZYDIS_MNEMONIC_VMFUNC ||
-                                              mnemonic == ZYDIS_MNEMONIC_OUTSB || mnemonic == ZYDIS_MNEMONIC_OUTSW ||
-                                              mnemonic == ZYDIS_MNEMONIC_OUTSD || mnemonic == ZYDIS_MNEMONIC_INSB ||
-                                              mnemonic == ZYDIS_MNEMONIC_INSW || mnemonic == ZYDIS_MNEMONIC_INSD;
-                            bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
-                            bool is_int3 = mnemonic == ZYDIS_MNEMONIC_INT3;
-
-                            u32 changed = instruction_ahead.cpu_flags->modified | instruction_ahead.cpu_flags->set_0 |
-                                          instruction_ahead.cpu_flags->set_1 | instruction_ahead.cpu_flags->undefined;
-                            u32 used = instruction_ahead.cpu_flags->tested;
-                            if (flag_passthrough(instruction_ahead)) {
-                                // Act as if this instruction didn't change any flags, since it may not if shift == 0
-                                changed = 0;
-                            }
-
-                            u32 used_not_previously_changed = used & ~changed_this_block;
-                            used_this_block |= used_not_previously_changed;
-                            changed_this_block |= changed;
-
-                            u32 changed_and_not_used = changed_this_block & ~used_this_block;
-                            if (changed_and_not_used == flags_we_care_about) {
-                                // All flags changed already, break early
-                                break;
-                            }
-
-                            if (is_call || is_ret) {
-                                if (g_config.unsafe_flags && !g_config.paranoid) {
-                                    // Pretend call and ret overwrites all flags
-                                    changed_this_block = ALL_CPUFLAGS;
-                                }
-
-                                break;
-                            }
-
-                            if (is_jump || is_illegal || is_hlt || is_int3) {
-                                // Check if we can follow the jump trivially
-                                if (mnemonic == ZYDIS_MNEMONIC_JMP && !jump_to_self) {
-                                    operands_ahead = operands_ahead_storage;
-                                    decode(rip_ahead, instruction_ahead, operands_ahead);
-                                }
-
-                                if (mnemonic == ZYDIS_MNEMONIC_JMP && operands_ahead[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-                                    u64 displacement = sextImmediate(getImmediate(&operands_ahead[0]), operands_ahead[0].imm.size);
-                                    rip_ahead += instruction_ahead.length + displacement;
-                                    jump_to_self = false; // stop using our cached instructions
-                                    continue;
-                                }
-
-                                // Block ahead ended in <= 10 instructions so let's break
-                                break;
-                            }
-
-                            rip_ahead += instruction_ahead.length;
-                        }
-
-                        // Now every flag in the changed_this_block set but not in the used_this_block set
-                        // doesn't have to be calculated, return this
-                        return changed_this_block & ~used_this_block;
-                    };
 
                     u32 thrashed_ahead;
                     if (mnemonic == ZYDIS_MNEMONIC_JMP) {
                         u64 immediate = sextImmediate(getImmediate(&operands[0]), operands[0].imm.size);
                         u64 rip_ahead = rip + instruction.length + immediate;
                         state->in_scan_ahead = true;
-                        thrashed_ahead = scan_landing_block(rip_ahead);
+                        thrashed_ahead = scanLandingBlock(state, initial_rip, rip_ahead, scan_ahead_depth, instrs_left);
                         state->scan_ahead_address = 0;
                         state->in_scan_ahead = false;
                     } else if (instruction.mnemonic >= ZYDIS_MNEMONIC_JB && instruction.mnemonic <= ZYDIS_MNEMONIC_JZ) {
@@ -2595,7 +2630,8 @@ bool Recompiler::scanAhead(u64 rip) {
                         u64 rip_ahead_true = rip_ahead_false + immediate;
                         // For the flags to not be calculated they need to be overwritten in both paths
                         state->in_scan_ahead = true;
-                        thrashed_ahead = scan_landing_block(rip_ahead_false) & scan_landing_block(rip_ahead_true);
+                        thrashed_ahead = scanLandingBlock(state, initial_rip, rip_ahead_false, scan_ahead_depth, instrs_left) &
+                                         scanLandingBlock(state, initial_rip, rip_ahead_true, scan_ahead_depth, instrs_left);
                         state->scan_ahead_address = 0;
                         state->in_scan_ahead = false;
                     } else {
@@ -2661,6 +2697,16 @@ bool Recompiler::shouldEmitFlag(u64 rip, x86_ref_e ref) {
     }
 
     return current_flag_access.getFlagsNeeded(rip, mask) != 0;
+}
+
+bool Recompiler::anyFlagNeededAfter(u64 rip) {
+    if (flag_mode == FlagMode::AlwaysEmit || g_config.single_step) {
+        return true;
+    } else if (flag_mode == FlagMode::NeverEmit) {
+        return false;
+    }
+
+    return current_flag_access.getFlagsNeededAfterInstruction(rip, ALL_CPUFLAGS) != 0;
 }
 
 void Recompiler::updateOverflowSub(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size_e) {
@@ -2978,7 +3024,41 @@ void Recompiler::jumpAndLink(u64 rip, bool return_link, bool skip_lookup) {
     ASSERT(as.GetCursorPointer() - start == 2 * 4);
 }
 
+template <typename Target>
+static void emitBranch(Assembler& as, BranchCond cond, biscuit::GPR lhs, biscuit::GPR rhs, Target target) {
+    switch (cond) {
+    case BranchCond::EQ: {
+        as.BEQ(lhs, rhs, target);
+        break;
+    }
+    case BranchCond::NE: {
+        as.BNE(lhs, rhs, target);
+        break;
+    }
+    case BranchCond::LTU: {
+        as.BLTU(lhs, rhs, target);
+        break;
+    }
+    case BranchCond::GEU: {
+        as.BGEU(lhs, rhs, target);
+        break;
+    }
+    case BranchCond::LT: {
+        as.BLT(lhs, rhs, target);
+        break;
+    }
+    case BranchCond::GE: {
+        as.BGE(lhs, rhs, target);
+        break;
+    }
+    }
+}
+
 void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false) {
+    jumpAndLinkConditional(BranchCond::NE, condition, x0, rip_true, rip_false);
+}
+
+void Recompiler::jumpAndLinkConditional(BranchCond cond, biscuit::GPR lhs, biscuit::GPR rhs, u64 rip_true, u64 rip_false) {
     OptimizationGuard guard(as, optimization_guard_counter);
     constexpr i64 max_instr_space = 80;
     i64 host_offset = current_block_metadata->host_address - (u64)as.GetCursorPointer();
@@ -2986,7 +3066,7 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
     if (rip_true == current_block_metadata->guest_address && host_offset > -4096 + max_instr_space) {
         biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
         as.MV(t5, x0);
-        ASSERT(condition != t5);
+        ASSERT(lhs != t5 && rhs != t5);
         if (getCurrentRipregValue() != rip_true) { // ripreg might've changed during the block, set it back to the start if so
             ASSERT(getCurrentRipregValue() > rip_true);
             u64 rip_true_offset = rip_true - getCurrentRipregValue();
@@ -2999,7 +3079,7 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
         }
         i64 host_offset = current_block_metadata->host_address - (u64)as.GetCursorPointer();
         ASSERT(IsValidBTypeImm(host_offset)); // max_instr_space should guarantee it
-        as.BNEZ(condition, host_offset);
+        emitBranch(as, cond, lhs, rhs, (i32)host_offset);
 
         u64 rip_false_offset = rip_false - getCurrentRipregValue();
         addi(ripreg, ripreg, rip_false_offset);
@@ -3014,7 +3094,7 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
     }
 
     Label true_label;
-    as.BNEZ(condition, &true_label);
+    emitBranch(as, cond, lhs, rhs, &true_label);
 
     biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
     u64 rip_false_offset = rip_false - getCurrentRipregValue();
@@ -3804,182 +3884,6 @@ void Recompiler::invalidateRangeGlobal(u64 start, u64 end, const char* reason, b
         }
         // Flush the entire affected range in one syscall
         flush_icache_global(min, max);
-    }
-}
-
-bool Recompiler::tryInlineSyscall() {
-    if (g_config.paranoid) {
-        return false;
-    }
-
-    if (current_mode32) {
-        // Unimplemented for now
-        return false;
-    }
-
-    // TODO: currently inlined syscalls are disabled because ecall seems to thrash more regs than we expect
-    // and it wouldn't be any more worth to writeback entire state probably
-    return false;
-
-    switch (rax_value) {
-#define CASE(sysno, argcount)                                                                                                                        \
-    case felix86_x86_64_##sysno:                                                                                                                     \
-        inlineSyscall(x64_to_riscv(felix86_x86_64_##sysno), argcount);                                                                               \
-        return true
-
-        CASE(setuid, 1);
-        CASE(write, 3);
-        CASE(getgid, 0);
-        CASE(fsync, 1);
-        CASE(fallocate, 4);
-        CASE(clock_getres, 2);
-        CASE(setsid, 0);
-        CASE(io_setup, 2);
-        CASE(semctl, 4);
-        CASE(sched_getattr, 4);
-        CASE(getpriority, 2);
-        CASE(waitid, 5);
-        CASE(sendto, 6);
-        CASE(getsockopt, 5);
-        CASE(sched_setaffinity, 3);
-        CASE(getegid, 0);
-        CASE(perf_event_open, 5);
-        CASE(connect, 3);
-        CASE(writev, 3);
-        CASE(ppoll, 5);
-        CASE(tgkill, 3);
-        CASE(geteuid, 0);
-        CASE(socket, 3);
-        CASE(setsockopt, 5);
-        CASE(capget, 2);
-        CASE(get_mempolicy, 5);
-        CASE(getpgid, 1);
-        CASE(setreuid, 2);
-        CASE(setfsuid, 1);
-        CASE(io_submit, 3);
-        CASE(wait4, 4);
-        CASE(sched_getaffinity, 3);
-        CASE(recvmsg, 3);
-        CASE(munlock, 2);
-        CASE(accept, 3);
-        CASE(io_cancel, 3);
-        CASE(io_destroy, 1);
-        CASE(sched_rr_get_interval, 2);
-        CASE(pipe2, 2);
-        CASE(getppid, 0);
-        CASE(pread64, 4);
-        CASE(getsid, 1);
-        CASE(socketpair, 4);
-        CASE(bind, 3);
-        CASE(nanosleep, 2);
-        CASE(prctl, 5);
-        CASE(getdents64, 3);
-        CASE(clock_gettime, 2);
-        CASE(semtimedop, 4);
-        CASE(recvfrom, 6);
-        CASE(setpgid, 2);
-        CASE(clock_nanosleep, 4);
-        CASE(mincore, 3);
-        CASE(readv, 3);
-        CASE(mlock, 2);
-        CASE(pselect6, 6);
-        CASE(set_robust_list, 2);
-        CASE(listen, 2);
-        CASE(mprotect, 3);
-        CASE(sched_yield, 0);
-        CASE(sched_setattr, 3);
-        CASE(read, 3);
-        CASE(pwrite64, 4);
-        CASE(madvise, 3);
-        CASE(inotify_init1, 1);
-        CASE(ptrace, 4);
-        CASE(gettid, 0);
-        CASE(getresuid, 3);
-        CASE(getrandom, 3);
-        CASE(getpeername, 3);
-        CASE(eventfd2, 2);
-        CASE(setgid, 1);
-        CASE(setregid, 2);
-        CASE(getuid, 0);
-        CASE(lookup_dcookie, 3);
-        CASE(setfsgid, 1);
-        CASE(exit_group, 1);
-        CASE(getresgid, 3);
-        CASE(sched_getscheduler, 1);
-        CASE(flock, 2);
-        CASE(mbind, 6);
-        CASE(getsockname, 3);
-        CASE(futex, 6);
-        CASE(sendmsg, 3);
-        CASE(kill, 2);
-        CASE(dup3, 3);
-        CASE(accept4, 4);
-        CASE(getpid, 0);
-        CASE(prlimit64, 4);
-        CASE(gettimeofday, 2);
-
-#undef CASE
-    default: {
-        return false;
-    }
-    }
-}
-
-void Recompiler::inlineSyscall(int sysno, int argcount) {
-    // TODO: this doesn't work, I guess kernel thrashes some regs?
-    // biscuit::GPR old_a0 = scratch();
-    // biscuit::GPR old_a1 = scratch();
-    // biscuit::GPR old_a7 = scratch();
-    // as.MV(old_a0, a0);
-    // as.MV(old_a1, a1);
-    // as.MV(old_a7, a7);
-    // as.LI(a7, sysno);
-    // as.ECALL();
-    // setGPR(X86_REF_RAX, X86_SIZE_QWORD, a0);
-    // as.MV(a0, old_a0);
-    // as.MV(a1, old_a1);
-    // as.MV(a7, old_a7);
-    UNIMPLEMENTED();
-}
-
-void Recompiler::checkModifiesRax(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands) {
-    u8 opcount = instruction.operand_count;
-
-    if (instruction.mnemonic == ZYDIS_MNEMONIC_MOV) {
-        bool is_rax = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER &&
-                      (operands[0].reg.value == ZYDIS_REGISTER_RAX || operands[0].reg.value == ZYDIS_REGISTER_EAX);
-        bool is_imm = operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE;
-        if (is_rax && is_imm) {
-            // We don't care to zero extend this in the EAX case as any negative number wouldn't be a valid syscall anyway
-            // Compilers won't emit a write to ax/al/ah because that would keep the upper bits
-            rax_value = operands[1].imm.value.s;
-            return;
-        }
-    }
-
-    // If any of the operands modifies RAX/EAX/AX/AL/AH we discard its old value by setting it to -1, which will not
-    // inline to any syscall
-    for (int i = 0; i < opcount; i++) {
-        if (operands[i].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-            bool is_rax = false;
-            switch (operands[i].reg.value) {
-            case ZYDIS_REGISTER_AL:
-            case ZYDIS_REGISTER_AH:
-            case ZYDIS_REGISTER_AX:
-            case ZYDIS_REGISTER_EAX:
-            case ZYDIS_REGISTER_RAX:
-                is_rax = true;
-                break;
-            default: {
-                break;
-            }
-            }
-            bool modified = operands[i].actions & ZYDIS_OPERAND_ACTION_MASK_WRITE;
-            if (is_rax && modified) {
-                rax_value = -1;
-                return;
-            }
-        }
     }
 }
 

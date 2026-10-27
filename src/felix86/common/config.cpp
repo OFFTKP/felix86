@@ -124,7 +124,6 @@ bool Config::initialize(bool ignore_envs) {
                     extreme_config.address_cache = true;
                     extreme_config.unsafe_flags = true;
                     extreme_config.opcode_fusing = true;
-                    extreme_config.inline_syscalls = true;
                     extreme_config.unsafe_math = true;
                     extreme_config.always_tso = false;
                     extreme_config.protect_pages = true;
@@ -140,7 +139,6 @@ bool Config::initialize(bool ignore_envs) {
                     safe_config.address_cache = true;
                     safe_config.unsafe_flags = false;
                     safe_config.opcode_fusing = false;
-                    safe_config.inline_syscalls = false;
                     safe_config.unsafe_math = false;
                     safe_config.always_tso = true;
                     safe_config.protect_pages = true;
@@ -158,7 +156,6 @@ bool Config::initialize(bool ignore_envs) {
                     paranoid_config.address_cache = false;
                     paranoid_config.unsafe_flags = false;
                     paranoid_config.opcode_fusing = false;
-                    paranoid_config.inline_syscalls = false;
                     paranoid_config.unsafe_math = false;
                     paranoid_config.always_tso = true;
                     paranoid_config.protect_pages = true;

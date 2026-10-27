@@ -27,7 +27,11 @@
 #define FELIX86_HINT_NOT_READ 0x15
 #define FELIX86_HINT_NOT_EXEC 0xec
 
+#define FELIX86_ERESTARTNOINTR 513
+
 constexpr int scan_ahead_count = 64;
+constexpr int scan_ahead_budget = 512;
+constexpr int scan_ahead_depth = 2;
 
 enum class SequenceResult {
     Compiled,
@@ -53,6 +57,15 @@ enum class FlagMode {
     Default,
     AlwaysEmit,
     NeverEmit,
+};
+
+enum class BranchCond {
+    EQ,
+    NE,
+    LTU,
+    GEU,
+    LT,
+    GE,
 };
 
 enum class SingleStepMode : u8 {
@@ -230,6 +243,8 @@ struct Recompiler {
 
     bool shouldEmitFlag(u64 current_rip, x86_ref_e ref);
 
+    bool anyFlagNeededAfter(u64 rip);
+
     void zext(biscuit::GPR dest, biscuit::GPR src, x86_size_e size);
 
     u64 zextImmediate(u64 imm, ZyanU8 size);
@@ -253,6 +268,8 @@ struct Recompiler {
     void jumpAndLink(u64 rip, bool return_hint = false, bool skip_lookup = false);
 
     void jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false);
+
+    void jumpAndLinkConditional(BranchCond cond, biscuit::GPR lhs, biscuit::GPR rhs, u64 rip_true, u64 rip_false);
 
     void invalidateBlock(BlockMetadata* block, bool is_smc);
 
@@ -282,10 +299,6 @@ struct Recompiler {
 
     void setSingleStepMode(SingleStepMode mode) {
         single_step = mode;
-    }
-
-    SingleStepMode getSingleStepMode() {
-        return single_step;
     }
 
     bool isSingleStepping() const {
@@ -549,10 +562,6 @@ struct Recompiler {
 
     u64 getImmediate(ZydisDecodedOperand* operand);
 
-    auto& getBlockMap() {
-        return block_metadata;
-    }
-
     auto& getHostPcMap() {
         return host_pc_map;
     }
@@ -570,10 +579,6 @@ struct Recompiler {
 
     u64 getCompileNext() {
         return compile_next_handler;
-    }
-
-    u64 getExitDispatcher() {
-        return (u64)exit_dispatcher;
     }
 
     u64 getCompiledBlock(ThreadState* state, u64 rip) {
@@ -602,10 +607,6 @@ struct Recompiler {
         UNREACHABLE();
         return {};
     }
-
-    bool tryInlineSyscall();
-
-    void checkModifiesRax(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
 
     u8 stackPointerSize() {
         return current_mode32 ? 4 : 8;
@@ -827,6 +828,7 @@ struct Recompiler {
             mmx_reg_cache[i].dirty = false;
         }
         pushed_this_block = 0;
+        deferred_fip = 0;
     }
 
     void markX87RegAs32Bit(biscuit::FPR reg) {
@@ -956,9 +958,9 @@ private:
 
     bool scanAhead(u64 rip);
 
-    void expirePendingLinks(u64 rip);
+    u32 scanLandingBlock(ThreadState* state, u64 initial_rip, u64 rip_ahead, int depth, int& instrs_left);
 
-    void inlineSyscall(int sysno, int argcount);
+    void expirePendingLinks(u64 rip);
 
     int getBreakpointIndex(u64 rip);
 
@@ -1006,8 +1008,6 @@ private:
 
     int fpu_scratch_index = 0;
 
-    int rax_value = -1;
-
     std::vector<InstructionData> instructions;
     ZydisDecodedInstruction* current_instruction;
     ZydisDecodedOperand* current_operands;
@@ -1028,6 +1028,7 @@ private:
     LMUL current_grouping = LMUL::M1;
     bool current_mode32 = false;
     bool current_decoder_initialized = false;
+    u64 deferred_fip = 0;
 
     biscuit::GPR cached_lea = x0;
     const ZydisDecodedOperand* cached_lea_operand;

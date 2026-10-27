@@ -255,7 +255,9 @@ typedef enum : u8 {
     X(felix86_x87_FBLD)                                                                                                                              \
     X(felix86_x87_FBSTP)                                                                                                                             \
     X(felix86_x87_FXAM)                                                                                                                              \
-    X(felix86_exit_dispatcher)
+    X(felix86_exit_dispatcher)                                                                                                                       \
+    X(felix86_load_far_pointer)                                                                                                                      \
+    X(felix86_lsl)
 
 struct UserContext {
     u64 gprs[16]{};
@@ -293,6 +295,7 @@ struct UserContext {
     u16 fpu_sw{};
     u8 fpu_tw = 0;
     u8 fpu_top{};
+    u64 fpu_ip{};
     u64 orig_rax{};
 
     u64 debug_register[4]{};
@@ -377,6 +380,8 @@ struct ThreadState {
 
     // TODO: make it a u64
     sigset_t signal_mask{};
+    sigset_t saved_signal_mask{};
+    bool restore_saved_signal_mask = false;
 
     u32 gdt[32]{};
 
@@ -390,7 +395,8 @@ struct ThreadState {
     std::array<siginfo_t, 31> deferred_standard_info{};
     std::array<SignalQueueNode*, 33> deferred_realtime_info{};
     bool in_restartable_syscall = false;
-    bool should_restart_syscall = false;
+    bool restart_syscall_if_sa_restart = false;
+    bool restart_syscall_always = false;
     bool in_rmw_function = false;
 
     bool force_defer_synchronous = false;
@@ -398,12 +404,6 @@ struct ThreadState {
     bool in_scan_ahead = false;
     u64 scan_ahead_address = 0;
     sigjmp_buf scan_ahead_buffer{};
-
-    // For storing generated risc-v or x86 code that needs to outlive code cache clears
-    u8* riscv_trampoline_storage_start = nullptr;
-    u8* x86_trampoline_storage_start = nullptr;
-    u8* riscv_trampoline_storage = nullptr;
-    u8* x86_trampoline_storage = nullptr;
 
     bool use_precision_control = false;
 

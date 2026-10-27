@@ -8,6 +8,8 @@ void felix86_syscall(felix86_frame* state);
 
 void felix86_syscall32(felix86_frame* state, u32 rip_next);
 
+long interruptible_syscall(long nr, u64 arg1 = 0, u64 arg2 = 0, u64 arg3 = 0, u64 arg4 = 0, u64 arg5 = 0, u64 arg6 = 0);
+
 enum {
 #define X(name, id) felix86_x86_32_##name = id,
 #include "felix86/hle/syscalls_x86_32.inc"

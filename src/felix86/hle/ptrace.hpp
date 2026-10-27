@@ -119,4 +119,7 @@ int wait4(pid_t pid, int* status, int flags, struct rusage* ru);
 i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data);
 void raise_stop(StopType stop, int& sig, siginfo_t* guest_info, int event = 0, u64 event_msg = 0);
 bool is_traced(ThreadState* state);
+bool stops_on_syscall(ThreadState* state);
+void raise_syscall_enter_stop(ThreadState* state, u64 nr, const u64 (&args)[6]);
+void raise_syscall_exit_stop(ThreadState* state, i64 result);
 } // namespace Ptrace

@@ -4,6 +4,8 @@
 #include <sys/ioctl.h>
 #include <sys/prctl.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
+#include <unistd.h>
 #include "Zydis/Decoder.h"
 #include "Zydis/Disassembler.h"
 #include "biscuit/cpuinfo.hpp"
@@ -148,14 +150,21 @@ static inline uint64_t libdivide_128_div_64_to_64(uint64_t numhi, uint64_t numlo
     return ((uint64_t)q1 << 32) | q0;
 }
 
-void felix86_div128(ThreadState* state, u64 divisor) {
+bool felix86_div128(ThreadState* state, u64 divisor) {
     // TODO: make this use the above function too, see __divti4
     ASSERT(divisor != 0);
     __int128_t dividend = ((__int128_t)state->ctx.gprs[X86_REF_RDX - X86_REF_RAX] << 64) | state->ctx.gprs[X86_REF_RAX - X86_REF_RAX];
-    u64 quotient = dividend / (i64)divisor;
+    if ((i64)divisor == -1 && dividend == (__int128_t)((__uint128_t)1 << 127)) {
+        return true;
+    }
+    __int128_t quotient = dividend / (i64)divisor;
+    if (quotient > INT64_MAX || quotient < INT64_MIN) {
+        return true;
+    }
     u64 remainder = dividend % (i64)divisor;
-    state->ctx.gprs[X86_REF_RAX - X86_REF_RAX] = quotient;
+    state->ctx.gprs[X86_REF_RAX - X86_REF_RAX] = (u64)quotient;
     state->ctx.gprs[X86_REF_RDX - X86_REF_RAX] = remainder;
+    return false;
 }
 
 void felix86_divu128(ThreadState* state, u64 divisor) {
@@ -286,8 +295,7 @@ int clear_breakpoints() {
     return count;
 }
 
-void felix86_iret(struct ThreadState* state, bool iretq) {
-    int size = !iretq ? 4 : 8;
+void felix86_iret(struct ThreadState* state, u64 size) {
     u64 rsp = state->ctx.gprs[X86_REF_RSP];
     u8* rsp_ptr = (u8*)rsp;
     u64 rip = 0, rflags = 0, cs = 0, ss = 0, new_rsp = 0;
@@ -296,13 +304,17 @@ void felix86_iret(struct ThreadState* state, bool iretq) {
     memcpy(&rflags, rsp_ptr + (size * 2), size);
 
     if (state->ctx.Mode32()) {
-        state->SetGpr(X86_REF_RSP, rsp + 3 * sizeof(u32));
+        state->SetGpr(X86_REF_RSP, rsp + 3 * size);
     } else {
         memcpy(&new_rsp, rsp_ptr + (size * 3), size);
         memcpy(&ss, rsp_ptr + (size * 4), size);
         state->SetGpr(X86_REF_RSP, new_rsp);
         ss &= 0xFFFF;
         felix86_set_segment(state, ss, ZYDIS_REGISTER_SS);
+    }
+
+    if (size == 2) {
+        rflags = (state->ctx.GetFlags() & ~0xFFFFull) | (rflags & 0xFFFF);
     }
 
     u64 mask = 0x3F7BD7;
@@ -1160,6 +1172,84 @@ void felix86_set_segment(ThreadState* state, u64 value, int segment) {
         UNREACHABLE();
         break;
     }
+    }
+}
+
+static bool is_present_tls_entry(ThreadState* state, u16 index) {
+    return index >= 12 && index <= 14 && state->gdt[index] != 0;
+}
+
+static bool is_loadable_selector(ThreadState* state, u16 selector, u64 segment) {
+    u16 index = selector >> 3;
+    if (selector & 4) {
+        return false;
+    }
+
+    if (index == 0) {
+        return segment != ZYDIS_REGISTER_SS;
+    }
+
+    bool tls = is_present_tls_entry(state, index);
+    if (segment == ZYDIS_REGISTER_SS) {
+        return (index == 5 || tls) && (selector & 3) == 3;
+    }
+
+    return index == 4 || index == 5 || index == 6 || index == 15 || tls;
+}
+
+u64 felix86_load_far_pointer(ThreadState* state, u64 offset, u64 selector, u64 segment, u64 operand_size, u64 ref) {
+    selector &= 0xFFFF;
+    if (!is_loadable_selector(state, selector, segment)) {
+        return 0;
+    }
+
+    felix86_set_segment(state, selector, segment);
+    x86_ref_e gpr = (x86_ref_e)ref;
+    switch (operand_size) {
+    case 2: {
+        state->SetGpr(gpr, (state->GetGpr(gpr) & ~0xFFFFull) | (offset & 0xFFFF));
+        break;
+    }
+    case 4: {
+        state->SetGpr(gpr, offset & 0xFFFFFFFF);
+        break;
+    }
+    default: {
+        state->SetGpr(gpr, offset);
+        break;
+    }
+    }
+    return 1;
+}
+
+void felix86_lsl(ThreadState* state, u64 selector, u64 ref, u64 operand_size) {
+    selector &= 0xFFFF;
+    u16 index = selector >> 3;
+    bool valid = false;
+    u32 limit = 0;
+    if (!(selector & 4) && index != 0) {
+        if (index == 4 || index == 5 || index == 6 || is_present_tls_entry(state, index)) {
+            valid = true;
+            limit = 0xFFFFFFFF;
+        } else if (index == 15) {
+            unsigned cpu = 0;
+            unsigned node = 0;
+            syscall(SYS_getcpu, &cpu, &node, nullptr);
+            valid = true;
+            limit = (node << 12) | (cpu & 0xFFF);
+        }
+    }
+
+    state->ctx.zf = valid;
+    if (!valid) {
+        return;
+    }
+
+    x86_ref_e gpr = (x86_ref_e)ref;
+    if (operand_size == 2) {
+        state->SetGpr(gpr, (state->GetGpr(gpr) & ~0xFFFFull) | (limit & 0xFFFF));
+    } else {
+        state->SetGpr(gpr, limit);
     }
 }
 

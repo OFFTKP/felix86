@@ -20,6 +20,14 @@ static inline void mprotect_assert(void* address, u64 size, int prot) {
     ASSERT_MSG(::mprotect(address, size, prot) == 0, "mprotect failed on address %lx with size %lx and prot %d", (u64)address, size, prot);
 }
 
+static inline bool is_thunk_storage(u8* address) {
+    u8* riscv_start = g_thunk_storage.getRiscvStorageStart();
+    u8* riscv_end = g_thunk_storage.getRiscvStorageEnd();
+    u8* x86_start = g_thunk_storage.getX86StorageStart();
+    u8* x86_end = g_thunk_storage.getX86StorageEnd();
+    return (address >= riscv_start && address < riscv_end) || (address >= x86_start && address < x86_end);
+}
+
 void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offset) {
     size = (size + 0xFFFull) & ~0xFFFull;
     auto guard = rwlock.lock_write();
@@ -735,6 +743,10 @@ bool Mapper::check_smc_trackers(u64 address, u64 size, const std::vector<u32>& o
 }
 
 void Mapper::mark_ro(u64 address, u64 size) {
+    if (is_thunk_storage((u8*)address)) {
+        return;
+    }
+
     if (g_config.guest_memory_tracking_enabled) {
         const u64 start_page = address & ~0xFFFull;
         const u64 end_page = (address + size - 1) & ~0xFFFull;
@@ -778,6 +790,10 @@ void Mapper::mark_ro(u64 address, u64 size) {
 }
 
 void Mapper::mark_rw(u64 address, u64 size) {
+    if (is_thunk_storage((u8*)address)) {
+        return;
+    }
+
     if (g_config.guest_memory_tracking_enabled) {
         auto lock = ro_host_pages_rwlock.lock_write();
         const u64 start_page = address & ~0xFFFull;
