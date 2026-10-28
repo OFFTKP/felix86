@@ -37,6 +37,7 @@ enum class SequenceResult {
     Compiled,
     Modified,
     Overran,
+    SideExitOutOfRange,
 };
 
 struct AllocatedX87Reg {
@@ -250,6 +251,12 @@ struct Recompiler {
     bool shouldEmitFlag(u64 current_rip, x86_ref_e ref);
 
     bool anyFlagNeededAfter(u64 rip);
+
+    u64 getCurrentScanEnd() {
+        return current_scan_end;
+    }
+
+    void emitSideExit(BranchCond cond, biscuit::GPR lhs, biscuit::GPR rhs, u64 rip_true);
 
     void zext(biscuit::GPR dest, biscuit::GPR src, x86_size_e size);
 
@@ -974,6 +981,12 @@ private:
 
     void emitBreakpoint(u64 rip, u64 start_pc, u8 instruction_length);
 
+    bool emitSideExitStubs();
+
+    void discardSideExits();
+
+    bool canCompileSpeculatively(const ZydisDecodedInstruction& instruction, const ZydisDecodedOperand* operands);
+
     static void invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_block);
 
     biscuit::Assembler as{};
@@ -1038,6 +1051,18 @@ private:
     BlockMetadata* current_block_metadata{};
     bool current_block_self_validating = false;
     u64 current_scan_end = 0;
+
+    struct SideExit {
+        biscuit::Label label;
+        ptrdiff_t branch_offset;
+        u64 target;
+        u64 ripreg_value;
+    };
+
+    std::vector<SideExit> side_exits;
+
+    bool superblocks_disabled = false;
+
     u64 self_validating_start = 0;
     std::vector<u8> self_validating_bytes{};
     bool current_mode32 = false;
@@ -1046,7 +1071,6 @@ private:
 
     biscuit::GPR cached_lea = x0;
     const ZydisDecodedOperand* cached_lea_operand;
-
 
     bool lock_handled = false;
 
@@ -1070,7 +1094,6 @@ private:
     int pushed_this_block = 0;
 
     bool relocatable = false;
-
 
     InterruptibleSyscallFunc interruptible_syscall_func = nullptr;
     void* interruptible_syscall_func_ecall = nullptr;

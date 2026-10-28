@@ -159,6 +159,11 @@ static void JCC(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction
     u64 immediate = rec.sextImmediate(rec.getImmediate(&operands[0]), operands[0].imm.size);
     u64 address_false = rip + instruction.length;
     u64 address_true = address_false + immediate;
+    if (address_false != rec.getCurrentScanEnd()) {
+        rec.emitSideExit(cond, lhs, rhs, address_true);
+        return;
+    }
+
     rec.jumpAndLinkConditional(cond, lhs, rhs, address_true, address_false);
     rec.stopCompiling();
 }
@@ -18823,6 +18828,19 @@ FAST_HANDLE(VFMSUBADD231PD) {
 }
 
 #undef FMA
+
+bool Handlers::isImplemented(ZydisMnemonic mnemonic) {
+    switch (mnemonic) {
+#define X(name)                                                                                                                                      \
+    case ZYDIS_MNEMONIC_##name:                                                                                                                      \
+        return ptr_##name != UnimplementedHandler;
+#include "mnemonics.inc"
+#undef X
+    default: {
+        return false;
+    }
+    }
+}
 
 void Handlers::initialize() {
 #define X(name) Handlers::ptr_##name = fast_##name;

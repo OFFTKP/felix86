@@ -76,6 +76,7 @@ X(Performance, bool, no_tso_stack, true, FELIX86_NO_TSO_STACK, "Don't emulate TS
 X(Performance, bool, protect_pages, true, FELIX86_PROTECT_PAGES, "Protect pages to catch self-modifying code, disabling may perform better in some games but break others")
 X(Performance, bool, auto_compress, false, FELIX86_AUTO_COMPRESS, "Automatically compress instructions whenever possible which may slightly improve performance")
 X(Performance, bool, scan_ahead_multi, true, FELIX86_SCAN_AHEAD_MULTI, "Scan ahead to multiple blocks when possible, avoiding even more flag calculations")
+X(Performance, bool, superblocks, true, FELIX86_SUPERBLOCKS, "Don't stop compiling on JCC, improves performance")
 X(Performance, bool, no_address_overflow, true, FELIX86_NO_ADDRESS_OVERFLOW, "Assume addresses won't overflow in 32-bit apps, which allows for some optimizations")
 X(Performance, bool, group_loadstore, true, FELIX86_GROUP_LOADSTORE, "Load/store SIMD state in groups of eight, may improve performance")
 X(Performance, u64, reduced_precision, 0, FELIX86_REDUCED_PRECISION, "Set to 1 to use 64-bit floats for x86's 80-bit floats. Set to 2 to use 32-bit or 64-bit floats. May improve performance dramatically in older or 32-bit games.")
