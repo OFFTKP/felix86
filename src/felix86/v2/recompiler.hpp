@@ -200,6 +200,12 @@ struct Recompiler {
 
     biscuit::GPR getGPRSigned(const ZydisDecodedOperand* operand, bool dont_sext32 = false);
 
+    bool isDirty32(biscuit::GPR reg, x86_size_e size);
+
+    biscuit::GPR zextIfDirty32(biscuit::GPR reg, x86_size_e size);
+
+    biscuit::GPR zextIfDirty32(biscuit::GPR reg, x86_size_e size, biscuit::GPR into);
+
     biscuit::Vec getVec(const ZydisDecodedOperand* operand);
 
     biscuit::Vec getVec(ZydisRegister reg);
@@ -528,7 +534,7 @@ struct Recompiler {
 
     void writeMemory(biscuit::GPR src, biscuit::GPR address, i64 offset, x86_size_e size);
 
-    void repPrologue(Label* loop_end, biscuit::GPR rcx);
+    void repPrologue(Label* loop_end, biscuit::GPR rcx, x86_size_e address_width);
 
     void repEpilogue(Label* loop_body, biscuit::GPR rcx);
 
@@ -634,7 +640,7 @@ struct Recompiler {
 
     void updateCarryAdd(biscuit::GPR lhs, biscuit::GPR result, x86_size_e size);
 
-    void updateCarrySub(biscuit::GPR lhs, biscuit::GPR rhs);
+    void updateCarrySub(biscuit::GPR lhs, biscuit::GPR rhs, x86_size_e size);
 
     void updateAuxiliaryAdd(biscuit::GPR lhs, biscuit::GPR result);
 
