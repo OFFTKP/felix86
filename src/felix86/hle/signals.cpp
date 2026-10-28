@@ -1068,6 +1068,9 @@ void Signals::sigreturn(ThreadState* state, bool rt) {
         u64 csgsfs = frame->uc.uc_mcontext.gregs[REG_CSGSFS];
         state->ctx.cs = csgsfs & 0xFFFF;
         state->ctx.ss = (csgsfs >> 48) & 0xFFFF;
+        if (state->ctx.Mode32()) {
+            state->SetGpr(X86_REF_RSP, (u32)state->GetGpr(X86_REF_RSP));
+        }
 
         SIGLOG("------- 64-bit rt_sigreturn TID: %d returning to RIP=%lx -------", gettid(), state->GetRip());
 

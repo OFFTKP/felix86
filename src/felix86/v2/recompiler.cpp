@@ -1578,6 +1578,29 @@ biscuit::GPR Recompiler::getGPRSigned(x86_ref_e ref, x86_size_e size, bool dont_
     }
 }
 
+bool Recompiler::isDirty32(biscuit::GPR reg, x86_size_e size) {
+    return size == X86_SIZE_DWORD && current_mode32 && !isScratch(reg);
+}
+
+biscuit::GPR Recompiler::zextIfDirty32(biscuit::GPR reg, x86_size_e size) {
+    if (!isDirty32(reg, size)) {
+        return reg;
+    }
+
+    biscuit::GPR clean = scratch();
+    as.ZEXTW(clean, reg);
+    return clean;
+}
+
+biscuit::GPR Recompiler::zextIfDirty32(biscuit::GPR reg, x86_size_e size, biscuit::GPR into) {
+    if (!isDirty32(reg, size)) {
+        return reg;
+    }
+
+    as.ZEXTW(into, reg);
+    return into;
+}
+
 biscuit::GPR Recompiler::getGPRSigned(const ZydisDecodedOperand* operand, bool dont_sext32) {
     switch (operand->type) {
     case ZYDIS_OPERAND_TYPE_REGISTER: {
@@ -2095,11 +2118,11 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp, 
     bool rip_relative = operand->mem.base == ZYDIS_REGISTER_RIP || operand->mem.base == ZYDIS_REGISTER_EIP;
     if (!use_temp && forced_dst == x0 && !has_segment && !has_disp && !rip_relative) {
         if (has_base && !has_index) {
-            return getGPR(operand->mem.base);
+            return zextIfDirty32(getGPR(operand->mem.base), zydisToSize(operand->mem.base));
         }
 
         if (!has_base && has_index && operand->mem.scale == 1) {
-            return getGPR(operand->mem.index);
+            return zextIfDirty32(getGPR(operand->mem.index), zydisToSize(operand->mem.index));
         }
     }
 
@@ -2835,13 +2858,25 @@ void Recompiler::updateAuxiliarySbb(biscuit::GPR lhs, biscuit::GPR rhs, biscuit:
 
 void Recompiler::updateCarryAdd(biscuit::GPR lhs, biscuit::GPR result, x86_size_e size) {
     biscuit::GPR cf = flag(X86_REF_CF);
+    biscuit::GPR clean_lhs = zextIfDirty32(lhs, size);
     zext(cf, result, size);
-    as.SLTU(cf, cf, lhs);
+    as.SLTU(cf, cf, clean_lhs);
+    if (clean_lhs != lhs) {
+        popScratch();
+    }
 }
 
-void Recompiler::updateCarrySub(biscuit::GPR lhs, biscuit::GPR rhs) {
+void Recompiler::updateCarrySub(biscuit::GPR lhs, biscuit::GPR rhs, x86_size_e size) {
     biscuit::GPR cf = flag(X86_REF_CF);
-    as.SLTU(cf, lhs, rhs);
+    biscuit::GPR clean_lhs = zextIfDirty32(lhs, size);
+    biscuit::GPR clean_rhs = zextIfDirty32(rhs, size);
+    as.SLTU(cf, clean_lhs, clean_rhs);
+    if (clean_rhs != rhs) {
+        popScratch();
+    }
+    if (clean_lhs != lhs) {
+        popScratch();
+    }
 }
 
 void Recompiler::updateCarryAdc(biscuit::GPR lhs, biscuit::GPR result, biscuit::GPR result_2, x86_size_e size) {
@@ -2849,8 +2884,12 @@ void Recompiler::updateCarryAdc(biscuit::GPR lhs, biscuit::GPR result, biscuit::
     biscuit::GPR temp = scratch();
     zext(temp, result_2, size);
     as.SLTU(temp, temp, cf);
+    biscuit::GPR clean_lhs = zextIfDirty32(lhs, size);
     zext(cf, result, size);
-    as.SLTU(cf, cf, lhs);
+    as.SLTU(cf, cf, clean_lhs);
+    if (clean_lhs != lhs) {
+        popScratch();
+    }
     as.OR(cf, cf, temp);
     popScratch();
 }
@@ -3498,9 +3537,17 @@ x86_size_e Recompiler::zydisToSize(ZyanU8 size) {
     }
 }
 
-void Recompiler::repPrologue(Label* loop_end, biscuit::GPR rcx) {
+void Recompiler::repPrologue(Label* loop_end, biscuit::GPR rcx, x86_size_e address_width) {
     // Signal handling would get tricky if we had to account for this looping mess of an instruction
-    as.BEQZ(rcx, loop_end);
+    if (isDirty32(rcx, address_width)) {
+        biscuit::GPR count = scratch();
+        as.ZEXTW(count, rcx);
+        as.BEQZ(count, loop_end);
+        popScratch();
+        as.ZEXTW(rcx, rcx);
+    } else {
+        as.BEQZ(rcx, loop_end);
+    }
 }
 
 void Recompiler::repEpilogue(Label* loop_body, biscuit::GPR rcx) {

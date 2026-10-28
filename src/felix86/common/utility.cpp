@@ -1132,6 +1132,10 @@ void felix86_set_segment(ThreadState* state, u64 value, int segment) {
             WARN("Invalid cs %lx during %lx", state->ctx.cs, state->ctx.rip);
         }
 
+        if (state->ctx.Mode32()) {
+            state->SetGpr(X86_REF_RSP, (u32)state->GetGpr(X86_REF_RSP));
+        }
+
         if (old_cs != new_cs) {
             VERBOSE("Mode32 switched during %lx", state->ctx.rip);
             // Technically there could be a code segment that runs on both 32-bit and 64-bit
