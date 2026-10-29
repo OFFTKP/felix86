@@ -40,7 +40,7 @@
             "ADDI            rsp, rsp, 0x8(8)",
             "ADDI            rip, t1, 0x0(0)",
             "LD              t6, sp, 0x18(24)",
-            "JALR            zero, t6, 0x0(0)"
+            "JALR            t5, t6, 0x0(0)"
         ]
     },
     "crysis2": {
@@ -115,11 +115,11 @@
             "ADDI            rsp, rsp, 0x8(8)",
             "ADDI            rip, t1, 0x0(0)",
             "LD              t6, sp, 0x18(24)",
-            "JALR            zero, t6, 0x0(0)"
+            "JALR            t5, t6, 0x0(0)"
         ]
     },
     "crysis3": {
-        "instruction_count": 270,
+        "instruction_count": 269,
         "expected_asm": [
             "SD              zero, state, 0xfffffff8(-8)",
             "ADD             ra, rbp, r11",
@@ -388,13 +388,12 @@
             "ADDI            t5, zero, 0x0(0)",
             "BEQ             zf, zero, 0xfffffbdc(-1060)",
             "ADDI            rip, rip, 0x1d2(466)",
-            "AUIPC           t5, 0x0(0)",
             "LD              t6, sp, 0x18(24)",
-            "JALR            zero, t6, 0x0(0)"
+            "JALR            t5, t6, 0x0(0)"
         ]
     },
     "tekken1": {
-        "instruction_count": 294,
+        "instruction_count": 293,
         "expected_asm": [
             "SD              zero, state, 0xfffffff8(-8)",
             "LUI             t1, 0xb3(179)",
@@ -687,13 +686,12 @@
             "ADDI            t5, zero, 0x0(0)",
             "BEQ             zf, zero, 0xfffffb7c(-1156)",
             "ADDI            rip, rip, 0x223(547)",
-            "AUIPC           t5, 0x0(0)",
             "LD              t6, sp, 0x18(24)",
-            "JALR            zero, t6, 0x0(0)"
+            "JALR            t5, t6, 0x0(0)"
         ]
     },
     "7z1": {
-        "instruction_count": 91,
+        "instruction_count": 89,
         "expected_asm": [
             "SD              zero, state, 0xfffffff8(-8)",
             "ADD.UW          rdi, rax, zero",
@@ -775,21 +773,19 @@
             "SRLI            of, of, 0x1f(31)",
             "XOR             of, of, t3",
             "ANDI            of, of, 0x1(1)",
-            "BEQ             cf, zero, 0x14(20)",
+            "BEQ             cf, zero, 0x10(16)",
             "ADDI            rip, rip, 0x49(73)",
-            "AUIPC           t5, 0x0(0)",
             "LD              t6, sp, 0x18(24)",
-            "JALR            zero, t6, 0x0(0)",
+            "JALR            t5, t6, 0x0(0)",
             "LUI             ra, 0xc(12)",
             "ADDIW           ra, ra, 0xfffffeef(-273)",
             "ADD             rip, rip, ra",
-            "AUIPC           t5, 0x0(0)",
             "LD              t6, sp, 0x18(24)",
-            "JALR            zero, t6, 0x0(0)"
+            "JALR            t5, t6, 0x0(0)"
         ]
     },
     "overcooked1": {
-        "instruction_count": 295,
+        "instruction_count": 294,
         "expected_asm": [
             "SD              zero, state, 0xfffffff8(-8)",
             "ADDI            ra, rdi, 0xfffffff8(-8)",
@@ -1083,13 +1079,12 @@
             "BEQ             zf, zero, 0xfffffb7c(-1156)",
             "ADDI            rip, rip, 0x16f(367)",
             "ADD.UW          rip, rip, zero",
-            "AUIPC           t5, 0x0(0)",
             "LD              t6, sp, 0x18(24)",
-            "JALR            zero, t6, 0x0(0)"
+            "JALR            t5, t6, 0x0(0)"
         ]
     },
     "overcooked2": {
-        "instruction_count": 174,
+        "instruction_count": 173,
         "expected_asm": [
             "SD              zero, state, 0xfffffff8(-8)",
             "ADD.UW          ra, rbp, zero",
@@ -1262,13 +1257,12 @@
             "BEQ             ra, zero, 0xfffffd60(-672)",
             "ADDI            rip, rip, 0xc4(196)",
             "ADD.UW          rip, rip, zero",
-            "AUIPC           t5, 0x0(0)",
             "LD              t6, sp, 0x18(24)",
-            "JALR            zero, t6, 0x0(0)"
+            "JALR            t5, t6, 0x0(0)"
         ]
     },
     "tombraider1": {
-        "instruction_count": 165,
+        "instruction_count": 163,
         "expected_asm": [
             "SD              zero, state, 0xfffffff8(-8)",
             "ADDIW           ra, zero, 0x1(1)",
@@ -1424,17 +1418,15 @@
             "SD              ra, state, 0x358(856)",
             "XOR             ra, sf, of",
             "OR              ra, ra, zf",
-            "BNE             ra, zero, 0x14(20)",
+            "BNE             ra, zero, 0x10(16)",
             "ADDI            rip, rip, 0xf4(244)",
-            "AUIPC           t5, 0x0(0)",
             "LD              t6, sp, 0x18(24)",
-            "JALR            zero, t6, 0x0(0)",
+            "JALR            t5, t6, 0x0(0)",
             "LUI             t1, 0xb71(2929)",
             "ADDIW           t1, t1, 0x402(1026)",
             "ADD             rip, rip, t1",
-            "AUIPC           t5, 0x0(0)",
             "LD              t6, sp, 0x18(24)",
-            "JALR            zero, t6, 0x0(0)"
+            "JALR            t5, t6, 0x0(0)"
         ]
     }
 }
