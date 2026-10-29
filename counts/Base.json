@@ -15480,7 +15480,7 @@
             "CSRRW           zero, t2, 0x2(2)",
             "FENCE          ",
             "LD              t6, sp, 0x18(24)",
-            "JALR            zero, t6, 0x0(0)"
+            "JALR            t5, t6, 0x0(0)"
         ],
         "disassembly": "popfq"
     },

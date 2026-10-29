@@ -2270,7 +2270,11 @@ FAST_HANDLE(CALL) {
             rec.zext(ripreg, ripreg, X86_SIZE_DWORD);
             address = (u32)address;
         }
-        as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
+        if (rec.canEmitRetStub()) {
+            as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
+        } else {
+            // No need for AUIPC if not an RSB CALL, as the JAL will link t5
+        }
         rec.jumpAndLink(address, rec.canEmitRetStub());
         break;
     }
@@ -2286,7 +2290,6 @@ FAST_HANDLE(CALL) {
             ASSERT(return_rip <= UINT32_MAX);
         }
         u64 stub = (u64)as.GetCursorPointer();
-        as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
         // Don't make the ret stub jump go to address cache, as it would jump to itself
         rec.jumpAndLink(return_rip, false, true);
         rec.getBlockMetadata(return_rip).ret_stub = stub;
@@ -3352,7 +3355,6 @@ FAST_HANDLE(JMP) {
             rec.zext(ripreg, ripreg, X86_SIZE_DWORD);
             address = (u32)address;
         }
-        as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
         rec.jumpAndLink(address);
         rec.stopCompiling();
         break;

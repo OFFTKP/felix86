@@ -416,8 +416,7 @@ u8* Recompiler::emitInvalidateCallerThunk() {
 // of code that invalidates the block and also unlinks the caller. See invalidate_caller_thunk.
 // This comes with the slight downside that every place that links to a block needs to set t5 to its own address
 // so that when we reach invalidate_caller_thunk, we know who the caller is.
-// Note that we don't use JAL to set t5, because that would conflict with us wanting to use JAL with the return address reg
-// for rsb optimizations later down the line
+// When possible, we use JAL to link to t5. In other cases we use AUIPC.
 void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_block) {
     u64 rip = state->ctx.rip;
     BlockMetadata& metadata = state->recompiler->getBlockMetadata(rip);
@@ -440,18 +439,32 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_
 
     if (linked_block) {
         // This was jumped to by a link. We need to unlink the caller so it doesn't jump here again.
+        u8* cursor = state->recompiler->as.GetCursorPointer();
+        ASSERT_MSG(linked_block > state->recompiler->start_of_code_cache && linked_block <= cursor, "%p < %p <= %p",
+                   state->recompiler->start_of_code_cache, linked_block, cursor);
+
+        u32 auipc, addi;
+        {
+            Assembler tas((u8*)&auipc, sizeof(u32));
+            tas.AUIPC(t5, 0);
+        }
+        {
+            Assembler tas((u8*)&addi, sizeof(u32));
+            tas.ADDI(t5, t5, 8);
+        }
+
+        u32 previous_instruction = *(u32*)(linked_block - sizeof(u32));
+        u32 previous_opcode = previous_instruction & 0x7f;
+        u32 previous_rd = (previous_instruction >> 7) & 0x1f;
+        bool linked_by_jump = ((previous_opcode == 0x6f || previous_opcode == 0x67) && previous_rd == t5.Index()) || previous_instruction == addi;
         // The second argument (which we got from t5) is going to be one instruction before the link point
         // To confirm this, we can check that it truly is an AUIPC(t5, 0):
-        u32 instruction = 0;
-        Assembler tas((u8*)&instruction, 4);
-        tas.AUIPC(t5, 0);
-        ASSERT(instruction == *(u32*)linked_block);
+        bool linked_after_auipc = linked_block < cursor && *(u32*)linked_block == auipc;
+        ASSERT_MSG(linked_by_jump != linked_after_auipc, "Bad link at %p", linked_block);
 
-        // The link location should be an instruction after the AUIPC...
-        u8* link_location = linked_block + sizeof(u32);
-        u8* cursor = state->recompiler->as.GetCursorPointer();
-        ASSERT_MSG(linked_block >= state->recompiler->start_of_code_cache && linked_block < cursor, "%p <= %p < %p",
-                   state->recompiler->start_of_code_cache, linked_block, cursor);
+        // In RSB CALL we use AUIPC, as JAL link register is taken by x1, in other cases we use JAL or AUIPC+ADDI so t5
+        // points right after the link location
+        u8* link_location = linked_by_jump ? linked_block - 2 * sizeof(u32) : linked_block + sizeof(u32);
 
         // And here we need to mark the block for linking again. This will either link if the block is already compiled
         // or jump back to dispatcher that will link when the block gets compiled.
@@ -461,7 +474,7 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_
         u32 link_instruction = *(u32*)(link_location + sizeof(u32));
         bool return_hint = ((link_instruction >> 7) & 0x1f) == ra.Index();
         // Don't make the ret stub jump go to address cache, as it would jump to itself
-        bool is_ret_stub = metadata.ret_stub == (u64)linked_block;
+        bool is_ret_stub = metadata.ret_stub == (u64)link_location;
         state->recompiler->jumpAndLink(rip, return_hint, is_ret_stub);
         state->recompiler->as.SetCursorPointer(cursor);
         flush_icache((u64)link_location, (u64)link_location + 4096);
@@ -923,7 +936,6 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
     if (current_block_big) {
         VERBOSE("Block at %lx exceeded max instruction count", start_rip);
         flushBlockState(rip);
-        as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
         jumpAndLink(rip);
     }
 
@@ -2354,7 +2366,7 @@ void Recompiler::backToDispatcher(bool return_hint, bool skip_lookup) {
         if (return_hint)
             as.JALR(x1, lo12, t6);
         else
-            as.JR(t6, lo12);
+            as.JALR(t5, lo12, t6); // t5 is used to mark a link location, see invalidateAt
     } else {
         ASSERT(isScratch(t6));
 #pragma GCC diagnostic push
@@ -2367,7 +2379,7 @@ void Recompiler::backToDispatcher(bool return_hint, bool skip_lookup) {
         if (return_hint)
             as.JALR(x1, 0, t6);
         else
-            as.JR(t6);
+            as.JALR(t5, 0, t6);
     }
 }
 
@@ -3040,14 +3052,16 @@ void Recompiler::jumpAndLink(u64 rip, bool return_link, bool skip_lookup) {
 
         u64 offset = target - (u64)as.GetCursorPointer();
         if (IsValidJTypeImm(offset - 4)) {
-            as.NOP();
             if (offset - 4 == 4) {
-                as.NOP();
+                as.AUIPC(t5, 0);
+                // Point t5 where the JAL would point
+                as.ADDI(t5, t5, 8);
             } else {
+                as.NOP();
                 if (return_link)
                     as.JAL(x1, offset - 4);
                 else
-                    as.J(offset - 4);
+                    as.JAL(t5, offset - 4);
             }
         } else {
             // Too far for a regular jump, use AUIPC+JR
@@ -3061,7 +3075,7 @@ void Recompiler::jumpAndLink(u64 rip, bool return_link, bool skip_lookup) {
             if (return_link)
                 as.JALR(x1, lo12, t4);
             else
-                as.JR(t4, lo12);
+                as.JALR(t5, lo12, t4);
         }
     }
 
@@ -3133,7 +3147,6 @@ void Recompiler::jumpAndLinkConditional(BranchCond cond, biscuit::GPR lhs, biscu
             rip_false = (u32)rip_false;
         }
 
-        as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
         jumpAndLink(rip_false);
         return;
     }
@@ -3149,7 +3162,6 @@ void Recompiler::jumpAndLinkConditional(BranchCond cond, biscuit::GPR lhs, biscu
         rip_false = (u32)rip_false;
     }
 
-    as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
     jumpAndLink(rip_false);
 
     as.Bind(&true_label);
@@ -3160,7 +3172,6 @@ void Recompiler::jumpAndLinkConditional(BranchCond cond, biscuit::GPR lhs, biscu
         rip_true = (u32)rip_true;
     }
 
-    as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
     jumpAndLink(rip_true);
 }
 
