@@ -10682,7 +10682,11 @@ FAST_HANDLE(PHSUBSW) {
 }
 
 FAST_HANDLE(PCLMULQDQ) {
-    ASSERT(Extensions::Zvbc);
+    if (!Extensions::Zvbc) {
+        EmitUD(rec, as);
+        return;
+    }
+
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
     biscuit::Vec temp = rec.scratchVec();
@@ -10712,7 +10716,11 @@ FAST_HANDLE(PCLMULQDQ) {
 }
 
 FAST_HANDLE(CRC32) {
-    ASSERT(Extensions::Zbc);
+    if (!Extensions::Zbc) {
+        EmitUD(rec, as);
+        return;
+    }
+
     // Read: https://mails.dpdk.org/archives/dev/2024-August/299978.html
     constexpr u64 p = 0x105EC76F1;
     constexpr u64 mu = 0x4869EC38DEA713F1ul;
@@ -12399,7 +12407,7 @@ FAST_HANDLE(AESENC) {
         as.VAESEM_VV(dst, src);
         rec.setVec(&operands[0], dst);
     } else {
-        ERROR("Hit AESENC instruction but system does not support Zvkned extension");
+        EmitUD(rec, as);
     }
 }
 
@@ -12412,7 +12420,7 @@ FAST_HANDLE(AESENCLAST) {
         as.VAESEF_VV(dst, src);
         rec.setVec(&operands[0], dst);
     } else {
-        ERROR("Hit AESENCLAST instruction but system does not support Zvkned extension");
+        EmitUD(rec, as);
     }
 }
 
@@ -12443,7 +12451,7 @@ FAST_HANDLE(AESDEC) {
         as.VXOR(dst, vtemp, src);
         rec.setVec(&operands[0], dst);
     } else {
-        ERROR("Hit AESDEC instruction but system does not support Zvkned extension");
+        EmitUD(rec, as);
     }
 }
 
@@ -12456,7 +12464,7 @@ FAST_HANDLE(AESDECLAST) {
         as.VAESDF_VV(dst, src);
         rec.setVec(&operands[0], dst);
     } else {
-        ERROR("Hit AESDECLAST instruction but system does not support Zvkned extension");
+        EmitUD(rec, as);
     }
 }
 
@@ -12473,7 +12481,7 @@ FAST_HANDLE(AESIMC) {
         as.VAESDM_VV(dst, src);
         rec.setVec(&operands[0], dst);
     } else {
-        ERROR("Hit AESIMC instruction but system does not support Zvkned extension");
+        EmitUD(rec, as);
     }
 }
 
@@ -14929,7 +14937,7 @@ FAST_HANDLE(VAESENC) {
         as.VAESEM_VV(result, src2);
         rec.setVec(&operands[0], result);
     } else {
-        ERROR("Hit VAESENC instruction but system does not support Zvkned extension");
+        EmitUD(rec, as);
     }
 }
 
@@ -14944,7 +14952,7 @@ FAST_HANDLE(VAESENCLAST) {
         as.VAESEF_VV(result, src2);
         rec.setVec(&operands[0], result);
     } else {
-        ERROR("Hit VAESENCLAST instruction but system does not support Zvkned extension");
+        EmitUD(rec, as);
     }
 }
 
@@ -14969,7 +14977,7 @@ FAST_HANDLE(VAESDEC) {
         as.VXOR(srctemp, vtemp, src2);
         rec.setVec(&operands[0], srctemp);
     } else {
-        ERROR("Hit VAESDEC instruction but system does not support Zvkned extension");
+        EmitUD(rec, as);
     }
 }
 
@@ -14984,7 +14992,7 @@ FAST_HANDLE(VAESDECLAST) {
         as.VAESDF_VV(result, src2);
         rec.setVec(&operands[0], result);
     } else {
-        ERROR("Hit VAESDECLAST instruction but system does not support Zvkned extension");
+        EmitUD(rec, as);
     }
 }
 
@@ -15001,7 +15009,7 @@ FAST_HANDLE(VAESIMC) {
         as.VAESDM_VV(dst, src);
         rec.setVec(&operands[0], dst);
     } else {
-        ERROR("Hit VAESIMC instruction but system does not support Zvkned extension");
+        EmitUD(rec, as);
     }
 }
 
@@ -16880,7 +16888,11 @@ FAST_HANDLE(VPGATHERQQ) {
 }
 
 FAST_HANDLE(VPCLMULQDQ) {
-    ASSERT(Extensions::Zvbc);
+    if (!Extensions::Zvbc) {
+        EmitUD(rec, as);
+        return;
+    }
+
     biscuit::Vec src1 = rec.getVec(&operands[1]);
     biscuit::Vec src2 = rec.getVec(&operands[2]);
     biscuit::Vec temp = rec.scratchVec();
