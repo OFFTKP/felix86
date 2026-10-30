@@ -1,4 +1,5 @@
 #include <csignal>
+#include <filesystem>
 #include <span>
 #include <vector>
 #include <elf.h>
@@ -13,8 +14,10 @@
 #include <sys/prctl.h>
 #include <sys/random.h>
 #include <sys/ucontext.h>
+#include "felix86/common/config.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/common/pe.hpp"
 #include "felix86/common/script.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
@@ -384,6 +387,14 @@ void Emulator::Start() {
                 ASSERT(fchdir(g_rootfs_fd) == 0);
             }
         }
+    }
+
+    if (g_config.isWine() && g_config.volatile_metadata) {
+        if (!PE::RegisterVolatileMemory(g_config.getProgramPath())) {
+            WARN("Failed to parse any volatile data from Wine executable, disabling volatile metadata for this session");
+            // If no volatile metadata was found, ignore this configuration.
+            g_config.volatile_metadata = false;
+        };
     }
 
     main_state->signal_table = SignalHandlerTable::create(nullptr);
