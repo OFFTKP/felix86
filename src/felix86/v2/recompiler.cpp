@@ -609,12 +609,17 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
 
         start = (u64)as.GetCursorPointer();
         result = compileSequence(state->ctx.Mode32(), rip, &protect_end);
-        if (result == SequenceResult::Overran) {
+        if (result == SequenceResult::SideExitOutOfRange) {
+            ASSERT(!superblocks_disabled);
+            // Retry without superblocks, as the block gets too big and the side exits out of range
+            superblocks_disabled = true;
+        } else if (result == SequenceResult::Overran) {
             ASSERT_MSG(++overruns < 16, "Block at %016lx keeps compiling past its protected pages", rip);
         } else if (result == SequenceResult::Modified) {
             addSmcHit(getBlockMetadata(rip));
         }
     } while (result != SequenceResult::Compiled);
+    superblocks_disabled = false;
 
     if (single_step == SingleStepMode::PtraceSinglestep) {
         single_step = SingleStepMode::None;
@@ -638,6 +643,9 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
 
     if (g_config.gdb) {
         size_t inst_count = block_meta.translation_sizes.size();
+        while (inst_count > 0 && block_meta.translation_sizes[inst_count - 1].x86_instruction_size == 0) {
+            inst_count--;
+        }
         felix86_jit_block_t* gdb_block = GDBJIT::createBlock(inst_count);
         u64 host_address = block_meta.host_address;
         u64 guest_address = start_rip;
@@ -939,6 +947,14 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
         jumpAndLink(rip);
     }
 
+    if (!side_exits.empty()) {
+        if (!emitSideExitStubs()) {
+            current_block_metadata = nullptr;
+            // Retry compilation. This should be rare
+            return SequenceResult::SideExitOutOfRange;
+        }
+    }
+
     resetScratch();
 
     if (g_config.optimization_pass && g_config.always_tso && !g_is_single_thread && !Extensions::TSO) {
@@ -1186,6 +1202,7 @@ void Recompiler::resetBlockState(u64 rip) {
     block_state.ripreg_value = rip; // may change in a syscall to check for safepoints, or after a set amount of instructions in the future
     current_instruction_index = 0;
     block_state.pushpop_offset = 0;
+    side_exits.clear();
 }
 
 void Recompiler::flushBlockState(u64 rip) {
@@ -2520,6 +2537,9 @@ bool Recompiler::scanAhead(u64 rip) {
     std::vector<FlagAccessData::ScanAccess> scan_entries;
     bool decode_failed = false;
     int instrs_left = scan_ahead_budget;
+    bool saw_x87_or_mmx = false;
+    int side_exit_count = 0;
+    const u64 start_page = rip & ~0xFFFull;
     current_scan_end = rip;
     while (true) {
         if (!instructions.empty() && checkIfBreakpoint(rip)) {
@@ -2527,9 +2547,24 @@ bool Recompiler::scanAhead(u64 rip) {
             break;
         }
 
+        if (side_exit_count > 0 && ((rip & ~0xFFFull) != start_page || rip + ZYDIS_MAX_INSTRUCTION_LENGTH > start_page + 0x1000)) {
+            // We don't want to speculatively compile into the next page, that gets into headaches because the protections
+            // may be different and we don't really wanna have to worry about that or have to check
+            current_block_big = true;
+            break;
+        }
+
         instructions.push_back({});
         auto& [instruction, operands] = instructions.back();
         ZydisMnemonic mnemonic = decode(rip, instruction, operands, true);
+        if (side_exit_count > 0 && (mnemonic == ZYDIS_MNEMONIC_INVALID || !canCompileSpeculatively(instruction, operands))) {
+            // Also stop speculatively compiling on weird or invalid instructions as we may be compiling garbage
+            instructions.pop_back();
+            current_scan_end = rip;
+            current_block_big = true;
+            break;
+        }
+
         if (mnemonic == ZYDIS_MNEMONIC_INVALID) {
             instruction.mnemonic = ZYDIS_MNEMONIC_UD2;
             mnemonic = ZYDIS_MNEMONIC_UD2;
@@ -2542,6 +2577,12 @@ bool Recompiler::scanAhead(u64 rip) {
 
         if (is_single_step) {
             break;
+        }
+
+        if (instruction.meta.isa_ext == ZYDIS_ISA_EXT_X87 || mnemonic == ZYDIS_MNEMONIC_FISTTP || is_mmx_operand(operands[0]) ||
+            is_mmx_operand(operands[1])) {
+            // Disable superblocks on x87 for now
+            saw_x87_or_mmx = true;
         }
 
         bool too_big = instructions.size() > std::min(g_config.max_block_size, (u64)500);
@@ -2642,6 +2683,7 @@ bool Recompiler::scanAhead(u64 rip) {
         }
 
         if (is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3) {
+            volatile bool extend_block = false;
             if (g_config.scan_ahead_multi && !g_config.paranoid && !current_block_self_validating && !is_ret && !is_call && !is_illegal && !is_hlt &&
                 !is_int3 && operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
                 // In some cases, the program may deliberately jump to a bad location
@@ -2655,7 +2697,7 @@ bool Recompiler::scanAhead(u64 rip) {
                     // If all the landing places overwrite the flags (1 landing spot for jmp, 2 for jcc)
                     // then we can skip those flag calculations
 
-                    u32 thrashed_ahead;
+                    u32 thrashed_ahead = 0;
                     if (mnemonic == ZYDIS_MNEMONIC_JMP) {
                         u64 immediate = sextImmediate(getImmediate(&operands[0]), operands[0].imm.size);
                         u64 rip_ahead = rip + instruction.length + immediate;
@@ -2669,12 +2711,26 @@ bool Recompiler::scanAhead(u64 rip) {
                         u64 immediate = sextImmediate(getImmediate(&operands[0]), operands[0].imm.size);
                         u64 rip_ahead_false = rip + instruction.length;
                         u64 rip_ahead_true = rip_ahead_false + immediate;
-                        // For the flags to not be calculated they need to be overwritten in both paths
-                        state->in_scan_ahead = true;
-                        thrashed_ahead = scanLandingBlock(state, initial_rip, rip_ahead_false, scan_ahead_depth, instrs_left) &
-                                         scanLandingBlock(state, initial_rip, rip_ahead_true, scan_ahead_depth, instrs_left);
-                        state->scan_ahead_address = 0;
-                        state->in_scan_ahead = false;
+                        bool is_cxz = instruction.mnemonic == ZYDIS_MNEMONIC_JCXZ || instruction.mnemonic == ZYDIS_MNEMONIC_JECXZ ||
+                                      instruction.mnemonic == ZYDIS_MNEMONIC_JRCXZ;
+                        bool can_extend = g_config.superblocks && !superblocks_disabled && !too_big && !saw_x87_or_mmx && !is_cxz &&
+                                          side_exit_count < 16 && instructions.size() < 128;
+                        if (can_extend) {
+                            state->in_scan_ahead = true;
+                            u32 thrashed_true = scanLandingBlock(state, initial_rip, rip_ahead_true, scan_ahead_depth, instrs_left);
+                            state->scan_ahead_address = 0;
+                            state->in_scan_ahead = false;
+                            ASSERT(!scan_entries.empty() && scan_entries.back().rip == rip);
+                            scan_entries.back().flags_live_out = ALL_CPUFLAGS & ~thrashed_true;
+                            extend_block = true;
+                        } else {
+                            // For the flags to not be calculated they need to be overwritten in both paths
+                            state->in_scan_ahead = true;
+                            thrashed_ahead = scanLandingBlock(state, initial_rip, rip_ahead_false, scan_ahead_depth, instrs_left) &
+                                             scanLandingBlock(state, initial_rip, rip_ahead_true, scan_ahead_depth, instrs_left);
+                            state->scan_ahead_address = 0;
+                            state->in_scan_ahead = false;
+                        }
                     } else {
                         break;
                     }
@@ -2683,7 +2739,9 @@ bool Recompiler::scanAhead(u64 rip) {
                     // trick the instruction handlers into not emitting this flag
                     // If the JCC actually uses the flag, that's fine because the flag access will be after the usage
                     // so the instruction handler will emit that flag
-                    scan_entries.push_back({.rip = rip, .flags_used = 0, .flags_changed = (thrashed_ahead & ALL_CPUFLAGS)});
+                    if (!extend_block) {
+                        scan_entries.push_back({.rip = rip, .flags_used = 0, .flags_changed = (thrashed_ahead & ALL_CPUFLAGS)});
+                    }
                 } else {
                     // The scan ahead faulted
                     state->in_scan_ahead = false;
@@ -2693,6 +2751,12 @@ bool Recompiler::scanAhead(u64 rip) {
                     // unblock the SIGSEGV signal that the signal handler blocked on fault
                     ASSERT(syscall(SYS_rt_sigprocmask, SIG_UNBLOCK, &sigsegv, nullptr, sizeof(u64)) == 0);
                 }
+            }
+
+            if (extend_block) {
+                side_exit_count++;
+                rip += instruction.length;
+                continue;
             }
 
             break;
@@ -3173,6 +3237,165 @@ void Recompiler::jumpAndLinkConditional(BranchCond cond, biscuit::GPR lhs, biscu
     }
 
     jumpAndLink(rip_true);
+}
+
+void Recompiler::emitSideExit(BranchCond cond, biscuit::GPR lhs, biscuit::GPR rhs, u64 rip_true) {
+    OptimizationGuard guard(as, optimization_guard_counter);
+    if (getCurrentPushpopOffset() != 0) {
+        flushPushpop();
+    }
+
+    constexpr i64 max_instr_space = 80;
+    i64 host_offset = current_block_metadata->host_address - (u64)as.GetCursorPointer();
+    if (rip_true == current_block_metadata->guest_address && host_offset > -4096 + max_instr_space) {
+        biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
+        as.MV(t5, x0);
+        ASSERT(lhs != t5 && rhs != t5);
+        if (getCurrentRipregValue() != rip_true) {
+            ASSERT(getCurrentRipregValue() > rip_true);
+            addi(ripreg, ripreg, rip_true - getCurrentRipregValue());
+            if (current_mode32) {
+                zext(ripreg, ripreg, X86_SIZE_DWORD);
+            }
+            setCurrentRipregValue(current_mode32 ? (u32)rip_true : rip_true);
+        }
+        host_offset = current_block_metadata->host_address - (u64)as.GetCursorPointer();
+        ASSERT(IsValidBTypeImm(host_offset));
+        emitBranch(as, cond, lhs, rhs, (i32)host_offset);
+        return;
+    }
+
+    SideExit& side_exit = side_exits.emplace_back();
+    side_exit.branch_offset = as.GetCodeBuffer().GetCursorOffset();
+    side_exit.target = rip_true;
+    side_exit.ripreg_value = getCurrentRipregValue();
+    emitBranch(as, cond, lhs, rhs, &side_exit.label);
+}
+
+bool Recompiler::emitSideExitStubs() {
+    OptimizationGuard guard(as, optimization_guard_counter);
+    biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
+    for (SideExit& side_exit : side_exits) {
+        if (!IsValidBTypeImm(as.GetCodeBuffer().GetCursorOffset() - side_exit.branch_offset)) {
+            discardSideExits();
+            return false;
+        }
+
+        as.Bind(&side_exit.label);
+        u64 target = side_exit.target;
+        addi(ripreg, ripreg, target - side_exit.ripreg_value);
+        if (current_mode32) {
+            zext(ripreg, ripreg, X86_SIZE_DWORD);
+            target = (u32)target;
+        }
+
+        jumpAndLink(target);
+    }
+    side_exits.clear();
+    return true;
+}
+
+void Recompiler::discardSideExits() {
+    u8* cursor = as.GetCursorPointer();
+    for (SideExit& side_exit : side_exits) {
+        if (!side_exit.label.IsBound()) {
+            // Allow the label to be safely discarded by hackily binding it into itself
+            as.RewindBuffer(side_exit.branch_offset);
+            as.Bind(&side_exit.label);
+            as.SetCursorPointer(cursor);
+        }
+    }
+    side_exits.clear();
+}
+
+// Disable speculative compilation for a few classes of instructions. Particularly, things we don't implement or things
+// that would trigger assertions. Code after JCC may never run on e.g. DRM software, so if we speculatively compile code
+// after a JCC it may be garbage that triggers these.
+// TODO: Eventually, we should ensure that no handler can assert no matter what and probably remove at least part of this function
+bool Recompiler::canCompileSpeculatively(const ZydisDecodedInstruction& instruction, const ZydisDecodedOperand* operands) {
+    if (!Handlers::isImplemented(instruction.mnemonic)) {
+        return false;
+    }
+
+    if (instruction.meta.branch_type == ZYDIS_BRANCH_TYPE_FAR) {
+        return false;
+    }
+
+    switch (instruction.meta.category) {
+    case ZYDIS_CATEGORY_SYSTEM:
+    case ZYDIS_CATEGORY_SYSCALL:
+    case ZYDIS_CATEGORY_INTERRUPT:
+    case ZYDIS_CATEGORY_IO:
+    case ZYDIS_CATEGORY_IOSTRINGOP:
+    case ZYDIS_CATEGORY_SEGOP:
+    case ZYDIS_CATEGORY_X87_ALU:
+    case ZYDIS_CATEGORY_MMX: {
+        return false;
+    }
+    default: {
+        break;
+    }
+    }
+
+    switch (instruction.mnemonic) {
+    case ZYDIS_MNEMONIC_CPUID:
+    case ZYDIS_MNEMONIC_IRET:
+    case ZYDIS_MNEMONIC_IRETD:
+    case ZYDIS_MNEMONIC_IRETQ:
+    case ZYDIS_MNEMONIC_SERIALIZE:
+    case ZYDIS_MNEMONIC_INVLPG: {
+        return false;
+    }
+    default: {
+        break;
+    }
+    }
+
+    if (instruction.encoding != ZYDIS_INSTRUCTION_ENCODING_LEGACY && instruction.encoding != ZYDIS_INSTRUCTION_ENCODING_VEX) {
+        return false;
+    }
+
+    if (instruction.encoding == ZYDIS_INSTRUCTION_ENCODING_VEX && (Extensions::VLEN < 256 || g_config.no_avx)) {
+        return false;
+    }
+
+    if (instruction.address_width == 16) {
+        return false;
+    }
+
+    bool sse_disabled = (g_config.no_sse2 && instruction.meta.isa_set == ZYDIS_ISA_SET_SSE2) ||
+                        (g_config.no_sse3 && instruction.meta.isa_set == ZYDIS_ISA_SET_SSE3) ||
+                        (g_config.no_ssse3 && instruction.meta.isa_set == ZYDIS_ISA_SET_SSSE3) ||
+                        ((g_config.no_sse4_1 || g_config.no_sse4_2) && instruction.meta.isa_set == ZYDIS_ISA_SET_SSE4);
+    if (sse_disabled) {
+        return false;
+    }
+
+    for (int i = 0; i < instruction.operand_count; i++) {
+        const ZydisDecodedOperand& operand = operands[i];
+        if (operand.type == ZYDIS_OPERAND_TYPE_REGISTER) {
+            switch (ZydisRegisterGetClass(operand.reg.value)) {
+            case ZYDIS_REGCLASS_SEGMENT:
+            case ZYDIS_REGCLASS_CONTROL:
+            case ZYDIS_REGCLASS_DEBUG:
+            case ZYDIS_REGCLASS_MASK:
+            case ZYDIS_REGCLASS_BOUND:
+            case ZYDIS_REGCLASS_TABLE:
+            case ZYDIS_REGCLASS_TEST:
+            case ZYDIS_REGCLASS_TMM:
+            case ZYDIS_REGCLASS_MMX:
+            case ZYDIS_REGCLASS_X87:
+            case ZYDIS_REGCLASS_ZMM: {
+                return false;
+            }
+            default: {
+                break;
+            }
+            }
+        }
+    }
+
+    return true;
 }
 
 void Recompiler::expirePendingLinks(u64 rip) {
