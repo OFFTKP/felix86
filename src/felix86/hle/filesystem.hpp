@@ -179,10 +179,6 @@ struct Filesystem {
         return interpreter;
     }
 
-    const std::filesystem::path& GetExecutablePath() {
-        return executable_path;
-    }
-
     static bool FakeMount(const std::filesystem::path& mount_me, const std::filesystem::path& dst);
 
     static void SetRootfs(const std::filesystem::path& path);

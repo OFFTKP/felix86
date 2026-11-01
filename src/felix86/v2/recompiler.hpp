@@ -27,7 +27,11 @@
 #define FELIX86_HINT_NOT_READ 0x15
 #define FELIX86_HINT_NOT_EXEC 0xec
 
+#define FELIX86_ERESTARTNOINTR 513
+
 constexpr int scan_ahead_count = 64;
+constexpr int scan_ahead_budget = 512;
+constexpr int scan_ahead_depth = 2;
 
 enum class SequenceResult {
     Compiled,
@@ -53,6 +57,15 @@ enum class FlagMode {
     Default,
     AlwaysEmit,
     NeverEmit,
+};
+
+enum class BranchCond {
+    EQ,
+    NE,
+    LTU,
+    GEU,
+    LT,
+    GE,
 };
 
 enum class SingleStepMode : u8 {
@@ -187,6 +200,12 @@ struct Recompiler {
 
     biscuit::GPR getGPRSigned(const ZydisDecodedOperand* operand, bool dont_sext32 = false);
 
+    bool isDirty32(biscuit::GPR reg, x86_size_e size);
+
+    biscuit::GPR zextIfDirty32(biscuit::GPR reg, x86_size_e size);
+
+    biscuit::GPR zextIfDirty32(biscuit::GPR reg, x86_size_e size, biscuit::GPR into);
+
     biscuit::Vec getVec(const ZydisDecodedOperand* operand);
 
     biscuit::Vec getVec(ZydisRegister reg);
@@ -230,6 +249,8 @@ struct Recompiler {
 
     bool shouldEmitFlag(u64 current_rip, x86_ref_e ref);
 
+    bool anyFlagNeededAfter(u64 rip);
+
     void zext(biscuit::GPR dest, biscuit::GPR src, x86_size_e size);
 
     u64 zextImmediate(u64 imm, ZyanU8 size);
@@ -253,6 +274,8 @@ struct Recompiler {
     void jumpAndLink(u64 rip, bool return_hint = false, bool skip_lookup = false);
 
     void jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false);
+
+    void jumpAndLinkConditional(BranchCond cond, biscuit::GPR lhs, biscuit::GPR rhs, u64 rip_true, u64 rip_false);
 
     void invalidateBlock(BlockMetadata* block, bool is_smc);
 
@@ -282,10 +305,6 @@ struct Recompiler {
 
     void setSingleStepMode(SingleStepMode mode) {
         single_step = mode;
-    }
-
-    SingleStepMode getSingleStepMode() {
-        return single_step;
     }
 
     bool isSingleStepping() const {
@@ -515,7 +534,7 @@ struct Recompiler {
 
     void writeMemory(biscuit::GPR src, biscuit::GPR address, i64 offset, x86_size_e size);
 
-    void repPrologue(Label* loop_end, biscuit::GPR rcx);
+    void repPrologue(Label* loop_end, biscuit::GPR rcx, x86_size_e address_width);
 
     void repEpilogue(Label* loop_body, biscuit::GPR rcx);
 
@@ -528,11 +547,11 @@ struct Recompiler {
     void vzeroTopBits(biscuit::Vec dst, biscuit::Vec src);
 
     void v0Modified() {
-        v0_has_mask = false;
+        block_state.v0_has_mask = false;
     }
 
     bool v0HasMask() {
-        return v0_has_mask;
+        return block_state.v0_has_mask;
     }
 
     void setLockHandled() {
@@ -548,10 +567,6 @@ struct Recompiler {
     biscuit::GPR getFlags();
 
     u64 getImmediate(ZydisDecodedOperand* operand);
-
-    auto& getBlockMap() {
-        return block_metadata;
-    }
 
     auto& getHostPcMap() {
         return host_pc_map;
@@ -570,10 +585,6 @@ struct Recompiler {
 
     u64 getCompileNext() {
         return compile_next_handler;
-    }
-
-    u64 getExitDispatcher() {
-        return (u64)exit_dispatcher;
     }
 
     u64 getCompiledBlock(ThreadState* state, u64 rip) {
@@ -603,10 +614,6 @@ struct Recompiler {
         return {};
     }
 
-    bool tryInlineSyscall();
-
-    void checkModifiesRax(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
-
     u8 stackPointerSize() {
         return current_mode32 ? 4 : 8;
     }
@@ -633,7 +640,7 @@ struct Recompiler {
 
     void updateCarryAdd(biscuit::GPR lhs, biscuit::GPR result, x86_size_e size);
 
-    void updateCarrySub(biscuit::GPR lhs, biscuit::GPR rhs);
+    void updateCarrySub(biscuit::GPR lhs, biscuit::GPR rhs, x86_size_e size);
 
     void updateAuxiliaryAdd(biscuit::GPR lhs, biscuit::GPR result);
 
@@ -656,9 +663,9 @@ struct Recompiler {
     void clearAddressCache();
 
     void resetVectorState() {
-        current_sew = SEW::E1024;
-        current_vlen = 0;
-        current_grouping = LMUL::M1;
+        block_state.sew = SEW::E1024;
+        block_state.vlen = 0;
+        block_state.grouping = LMUL::M1;
     }
 
     void call(u64 target) {
@@ -735,7 +742,7 @@ struct Recompiler {
 
     // return true if SEW and VL add up to 128 bits
     bool isCurrentLength128() {
-        switch (current_grouping) {
+        switch (block_state.grouping) {
         case LMUL::M1: {
             break;
         }
@@ -750,18 +757,18 @@ struct Recompiler {
         }
         }
 
-        switch (current_sew) {
+        switch (block_state.sew) {
         case biscuit::SEW::E64: {
-            return current_vlen == 2;
+            return block_state.vlen == 2;
         }
         case biscuit::SEW::E32: {
-            return current_vlen == 4;
+            return block_state.vlen == 4;
         }
         case biscuit::SEW::E16: {
-            return current_vlen == 8;
+            return block_state.vlen == 8;
         }
         case biscuit::SEW::E8: {
-            return current_vlen == 16;
+            return block_state.vlen == 16;
         }
         default: {
             break;
@@ -773,22 +780,22 @@ struct Recompiler {
 
     // Return true if SEW and VL add up to 256 bits
     bool isCurrentLength256() {
-        if (current_grouping != LMUL::M1) {
+        if (block_state.grouping != LMUL::M1) {
             return false;
         }
 
-        switch (current_sew) {
+        switch (block_state.sew) {
         case biscuit::SEW::E64: {
-            return current_vlen == 4;
+            return block_state.vlen == 4;
         }
         case biscuit::SEW::E32: {
-            return current_vlen == 8;
+            return block_state.vlen == 8;
         }
         case biscuit::SEW::E16: {
-            return current_vlen == 16;
+            return block_state.vlen == 16;
         }
         case biscuit::SEW::E8: {
-            return current_vlen == 32;
+            return block_state.vlen == 32;
         }
         default: {
             break;
@@ -827,6 +834,7 @@ struct Recompiler {
             mmx_reg_cache[i].dirty = false;
         }
         pushed_this_block = 0;
+        deferred_fip = 0;
     }
 
     void markX87RegAs32Bit(biscuit::FPR reg) {
@@ -882,31 +890,31 @@ struct Recompiler {
     }
 
     void setFsrmSSE(bool is_sse) {
-        fsrm_sse = is_sse;
+        block_state.fsrm_sse = is_sse;
     }
 
     bool isFsrmSSE() {
-        return fsrm_sse;
+        return block_state.fsrm_sse;
     }
 
     void skipNext();
 
     u64 getCurrentRipregValue() {
-        return current_ripreg_value;
+        return block_state.ripreg_value;
     }
 
     void setCurrentRipregValue(u64 value) {
-        current_ripreg_value = value;
+        block_state.ripreg_value = value;
     }
 
     std::optional<std::pair<ZydisDecodedInstruction*, ZydisDecodedOperand*>> getNextInstruction();
 
     i16 getCurrentPushpopOffset() {
-        return current_pushpop_offset;
+        return block_state.pushpop_offset;
     }
 
     void setCurrentPushpopOffset(i16 value) {
-        current_pushpop_offset = value;
+        block_state.pushpop_offset = value;
     }
 
     void flushPushpop() {
@@ -956,13 +964,15 @@ private:
 
     bool scanAhead(u64 rip);
 
-    void expirePendingLinks(u64 rip);
+    u32 scanLandingBlock(ThreadState* state, u64 initial_rip, u64 rip_ahead, int depth, int& instrs_left);
 
-    void inlineSyscall(int sysno, int argcount);
+    void expirePendingLinks(u64 rip);
 
     int getBreakpointIndex(u64 rip);
 
     bool checkIfBreakpoint(u64 rip);
+
+    void emitBreakpoint(u64 rip, u64 start_pc, u8 instruction_length);
 
     static void invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_block);
 
@@ -997,8 +1007,19 @@ private:
 
     bool compiling{};
 
-    // Whether we already set ThreadState::x87_state to a value or not
-    x87State local_x87_state = x87State::Unknown;
+    struct BlockState {
+        u64 ripreg_value;
+        i16 pushpop_offset = 0;
+        SEW sew = SEW::E1024;
+        u8 vlen = 0;
+        LMUL grouping = LMUL::M1;
+        // Whether we already set ThreadState::x87_state to a value or not
+        x87State x87_state = x87State::Unknown;
+        bool fsrm_sse = true;
+        bool v0_has_mask = false;
+    };
+
+    BlockState block_state;
 
     int scratch_index = 0;
 
@@ -1006,15 +1027,11 @@ private:
 
     int fpu_scratch_index = 0;
 
-    int rax_value = -1;
-
     std::vector<InstructionData> instructions;
     ZydisDecodedInstruction* current_instruction;
     ZydisDecodedOperand* current_operands;
     u64 current_rip;
-    u64 current_ripreg_value;
     u64 current_instruction_index = 0;
-    i16 current_pushpop_offset = 0;
     bool current_instruction_on_stack = false;
     bool current_block_big = false;
     FlagAccessData current_flag_access{};
@@ -1023,16 +1040,13 @@ private:
     u64 current_scan_end = 0;
     u64 self_validating_start = 0;
     std::vector<u8> self_validating_bytes{};
-    SEW current_sew = SEW::E1024;
-    u8 current_vlen = 0;
-    LMUL current_grouping = LMUL::M1;
     bool current_mode32 = false;
     bool current_decoder_initialized = false;
+    u64 deferred_fip = 0;
 
     biscuit::GPR cached_lea = x0;
     const ZydisDecodedOperand* cached_lea_operand;
 
-    bool fsrm_sse = true;
 
     bool lock_handled = false;
 
@@ -1057,7 +1071,6 @@ private:
 
     bool relocatable = false;
 
-    bool v0_has_mask = false;
 
     InterruptibleSyscallFunc interruptible_syscall_func = nullptr;
     void* interruptible_syscall_func_ecall = nullptr;

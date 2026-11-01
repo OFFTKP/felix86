@@ -113,8 +113,7 @@ static bool is_sse_or_avx_operand(const ZydisDecodedOperand& operand) {
 }
 
 static bool is_stack_operand(const ZydisDecodedOperand& operand) {
-    return operand.type == ZYDIS_OPERAND_TYPE_MEMORY && operand.mem.base != ZYDIS_REGISTER_NONE &&
-           Recompiler::zydisToRef(operand.mem.base) == X86_REF_RSP;
+    return operand.type == ZYDIS_OPERAND_TYPE_MEMORY && (operand.mem.base == ZYDIS_REGISTER_RSP || operand.mem.base == ZYDIS_REGISTER_ESP);
 }
 
 Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
@@ -264,7 +263,7 @@ void Recompiler::emitInterruptibleSyscallFunction() {
     as.Bind(&eintr);
 
     interruptible_syscall_func_eintr = as.GetCursorPointer();
-    as.LI(a0, -EINTR);
+    as.LI(a0, -FELIX86_ERESTARTNOINTR);
     as.RET();
 }
 
@@ -418,8 +417,7 @@ u8* Recompiler::emitInvalidateCallerThunk() {
 // of code that invalidates the block and also unlinks the caller. See invalidate_caller_thunk.
 // This comes with the slight downside that every place that links to a block needs to set t5 to its own address
 // so that when we reach invalidate_caller_thunk, we know who the caller is.
-// Note that we don't use JAL to set t5, because that would conflict with us wanting to use JAL with the return address reg
-// for rsb optimizations later down the line
+// When possible, we use JAL to link to t5. In other cases we use AUIPC.
 void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_block) {
     u64 rip = state->ctx.rip;
     BlockMetadata& metadata = state->recompiler->getBlockMetadata(rip);
@@ -442,18 +440,32 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_
 
     if (linked_block) {
         // This was jumped to by a link. We need to unlink the caller so it doesn't jump here again.
+        u8* cursor = state->recompiler->as.GetCursorPointer();
+        ASSERT_MSG(linked_block > state->recompiler->start_of_code_cache && linked_block <= cursor, "%p < %p <= %p",
+                   state->recompiler->start_of_code_cache, linked_block, cursor);
+
+        u32 auipc, addi;
+        {
+            Assembler tas((u8*)&auipc, sizeof(u32));
+            tas.AUIPC(t5, 0);
+        }
+        {
+            Assembler tas((u8*)&addi, sizeof(u32));
+            tas.ADDI(t5, t5, 8);
+        }
+
+        u32 previous_instruction = *(u32*)(linked_block - sizeof(u32));
+        u32 previous_opcode = previous_instruction & 0x7f;
+        u32 previous_rd = (previous_instruction >> 7) & 0x1f;
+        bool linked_by_jump = ((previous_opcode == 0x6f || previous_opcode == 0x67) && previous_rd == t5.Index()) || previous_instruction == addi;
         // The second argument (which we got from t5) is going to be one instruction before the link point
         // To confirm this, we can check that it truly is an AUIPC(t5, 0):
-        u32 instruction = 0;
-        Assembler tas((u8*)&instruction, 4);
-        tas.AUIPC(t5, 0);
-        ASSERT(instruction == *(u32*)linked_block);
+        bool linked_after_auipc = linked_block < cursor && *(u32*)linked_block == auipc;
+        ASSERT_MSG(linked_by_jump != linked_after_auipc, "Bad link at %p", linked_block);
 
-        // The link location should be an instruction after the AUIPC...
-        u8* link_location = linked_block + sizeof(u32);
-        u8* cursor = state->recompiler->as.GetCursorPointer();
-        ASSERT_MSG(linked_block >= state->recompiler->start_of_code_cache && linked_block < cursor, "%p <= %p < %p",
-                   state->recompiler->start_of_code_cache, linked_block, cursor);
+        // In RSB CALL we use AUIPC, as JAL link register is taken by x1, in other cases we use JAL or AUIPC+ADDI so t5
+        // points right after the link location
+        u8* link_location = linked_by_jump ? linked_block - 2 * sizeof(u32) : linked_block + sizeof(u32);
 
         // And here we need to mark the block for linking again. This will either link if the block is already compiled
         // or jump back to dispatcher that will link when the block gets compiled.
@@ -463,7 +475,7 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_
         u32 link_instruction = *(u32*)(link_location + sizeof(u32));
         bool return_hint = ((link_instruction >> 7) & 0x1f) == ra.Index();
         // Don't make the ret stub jump go to address cache, as it would jump to itself
-        bool is_ret_stub = metadata.ret_stub == (u64)linked_block;
+        bool is_ret_stub = metadata.ret_stub == (u64)link_location;
         state->recompiler->jumpAndLink(rip, return_hint, is_ret_stub);
         state->recompiler->as.SetCursorPointer(cursor);
         flush_icache((u64)link_location, (u64)link_location + 4096);
@@ -716,7 +728,7 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
     current_mode32 = mode32;
     current_decoder_initialized = false; // TODO: don't invalidate if same mode32 as before
     BlockMetadata& block_meta = getBlockMetadata(rip);
-    bool is_self_validating = g_config.self_validating_blocks && shouldSelfValidate(block_meta) && getBreakpointIndex(rip) == -1;
+    bool is_self_validating = g_config.self_validating_blocks && shouldSelfValidate(block_meta) && !checkIfBreakpoint(rip);
     if (is_self_validating) {
         current_block_self_validating = true;
         self_validating_start = rip;
@@ -792,7 +804,7 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
         auto& [instruction, operands] = instructions[current_instruction_index];
 
         bool is_mmx = is_mmx_operand(operands[0]) || is_mmx_operand(operands[1]);
-        bool is_x87 = instruction.meta.isa_ext == ZYDIS_ISA_EXT_X87;
+        bool is_x87 = instruction.meta.isa_ext == ZYDIS_ISA_EXT_X87 || instruction.mnemonic == ZYDIS_MNEMONIC_FISTTP;
         bool is_sse = is_sse_or_avx_operand(operands[0]) || is_sse_or_avx_operand(operands[1]);
 
         bool push_pop_reg = (instruction.mnemonic == ZYDIS_MNEMONIC_PUSH || instruction.mnemonic == ZYDIS_MNEMONIC_POP) &&
@@ -813,8 +825,8 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
             as.GetCodeBuffer().Emit32(0); // UNIMP instruction
         }
 
-        bool is_breakpoint = checkIfBreakpoint(rip);
-        if (is_breakpoint) {
+        if (checkIfBreakpoint(rip)) {
+            emitBreakpoint(rip, start_pc, instruction.length);
             break;
         }
 
@@ -829,8 +841,8 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
             }
             ran_mmx_once = true;
             WARN_ONCE("This program makes use of MMX");
-            if (local_x87_state != x87State::MMX) {
-                if (local_x87_state == x87State::x87) {
+            if (block_state.x87_state != x87State::MMX) {
+                if (block_state.x87_state == x87State::x87) {
                     flushX87();
                 }
                 switchToMMX();
@@ -843,7 +855,7 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
         }
 
         if (is_x87) {
-            if (local_x87_state == x87State::MMX) {
+            if (block_state.x87_state == x87State::MMX) {
                 WARN("x87 and MMX mixed in a block?");
                 flushX87();
             }
@@ -851,8 +863,15 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
             ZydisMnemonic mnemonic = instruction.mnemonic;
             bool is_save_restore = mnemonic == ZYDIS_MNEMONIC_FNSAVE || mnemonic == ZYDIS_MNEMONIC_FRSTOR || mnemonic == ZYDIS_MNEMONIC_FXSAVE ||
                                    mnemonic == ZYDIS_MNEMONIC_FXSAVE64 || mnemonic == ZYDIS_MNEMONIC_FXRSTOR || mnemonic == ZYDIS_MNEMONIC_FXRSTOR64;
-            if (!is_save_restore && local_x87_state != x87State::x87) {
+            if (!is_save_restore && block_state.x87_state != x87State::x87) {
                 switchToX87();
+            }
+
+            bool dont_change = mnemonic == ZYDIS_MNEMONIC_FNCLEX || mnemonic == ZYDIS_MNEMONIC_FLDCW || mnemonic == ZYDIS_MNEMONIC_FNSTCW ||
+                               mnemonic == ZYDIS_MNEMONIC_FNSTSW || mnemonic == ZYDIS_MNEMONIC_FNSTENV || mnemonic == ZYDIS_MNEMONIC_FLDENV ||
+                               mnemonic == ZYDIS_MNEMONIC_FWAIT || mnemonic == ZYDIS_MNEMONIC_FNSAVE || mnemonic == ZYDIS_MNEMONIC_FRSTOR;
+            if (!dont_change) {
+                deferred_fip = rip;
             }
         }
 
@@ -873,10 +892,6 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
         }
 
         compileInstruction(instruction, operands, rip);
-
-        if (g_config.inline_syscalls) {
-            checkModifiesRax(instruction, operands);
-        }
 
         rip += instruction.length;
 
@@ -922,7 +937,6 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
     if (current_block_big) {
         VERBOSE("Block at %lx exceeded max instruction count", start_rip);
         flushBlockState(rip);
-        as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
         jumpAndLink(rip);
     }
 
@@ -933,7 +947,7 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
     }
 
     current_block_metadata = nullptr;
-    local_x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
+    block_state.x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
 
     if (is_self_validating) {
         ASSERT(rip > start_rip && rip - start_rip <= self_validating_bytes.size());
@@ -1052,6 +1066,14 @@ void Recompiler::flushX87() {
         popScratch();
     }
     popScratchFPR();
+
+    if (deferred_fip != 0) {
+        biscuit::GPR temp = scratch();
+        addi(temp, allocatedGPR(X86_REF_RIP), deferred_fip - getCurrentRipregValue());
+        as.SD(temp, offsetof(ThreadState, ctx.fpu_ip), Recompiler::threadStatePointer());
+        popScratch();
+    }
+
     resetX87();
 }
 
@@ -1158,13 +1180,13 @@ void Recompiler::resetBlockState(u64 rip) {
     resetScratch();
     resetX87();
     resetVectorState();
-    local_x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
-    fsrm_sse = true;                     // dispatcher loads SSE rounding mode as a default
-    v0_has_mask = false;
+    block_state.x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
+    block_state.fsrm_sse = true;               // dispatcher loads SSE rounding mode as a default
+    block_state.v0_has_mask = false;
 
-    current_ripreg_value = rip; // may change in a syscall to check for safepoints, or after a set amount of instructions in the future
+    block_state.ripreg_value = rip; // may change in a syscall to check for safepoints, or after a set amount of instructions in the future
     current_instruction_index = 0;
-    current_pushpop_offset = 0;
+    block_state.pushpop_offset = 0;
 }
 
 void Recompiler::flushBlockState(u64 rip) {
@@ -1569,6 +1591,29 @@ biscuit::GPR Recompiler::getGPRSigned(x86_ref_e ref, x86_size_e size, bool dont_
     }
 }
 
+bool Recompiler::isDirty32(biscuit::GPR reg, x86_size_e size) {
+    return size == X86_SIZE_DWORD && current_mode32 && !isScratch(reg);
+}
+
+biscuit::GPR Recompiler::zextIfDirty32(biscuit::GPR reg, x86_size_e size) {
+    if (!isDirty32(reg, size)) {
+        return reg;
+    }
+
+    biscuit::GPR clean = scratch();
+    as.ZEXTW(clean, reg);
+    return clean;
+}
+
+biscuit::GPR Recompiler::zextIfDirty32(biscuit::GPR reg, x86_size_e size, biscuit::GPR into) {
+    if (!isDirty32(reg, size)) {
+        return reg;
+    }
+
+    as.ZEXTW(into, reg);
+    return into;
+}
+
 biscuit::GPR Recompiler::getGPRSigned(const ZydisDecodedOperand* operand, bool dont_sext32) {
     switch (operand->type) {
     case ZYDIS_OPERAND_TYPE_REGISTER: {
@@ -1643,10 +1688,12 @@ int Recompiler::getBreakpointIndex(u64 rip) {
 }
 
 bool Recompiler::checkIfBreakpoint(u64 rip) {
+    return getBreakpointIndex(rip) != -1;
+}
+
+void Recompiler::emitBreakpoint(u64 rip, u64 start_pc, u8 instruction_length) {
     int i = getBreakpointIndex(rip);
-    if (i == -1) {
-        return false;
-    }
+    ASSERT(i != -1);
 
     writebackState();
     as.MV(a0, Recompiler::threadStatePointer());
@@ -1656,7 +1703,11 @@ bool Recompiler::checkIfBreakpoint(u64 rip) {
     restoreState();
     backToDispatcher();
     stopCompiling();
-    return true;
+
+    u64 size = (u64)as.GetCursorPointer() - start_pc;
+    ASSERT(size < 1 << 12);
+    current_block_metadata->translation_sizes[current_instruction_index].x86_instruction_size = instruction_length;
+    current_block_metadata->translation_sizes[current_instruction_index].riscv_instructions_size = size;
 }
 
 biscuit::FPR Recompiler::getElementFPR(ZydisDecodedOperand* operand, x86_size_e size, int element) {
@@ -1773,9 +1824,9 @@ void Recompiler::vsplat(biscuit::Vec vec, u64 imm) {
 
 void Recompiler::vzeroTopBits(biscuit::Vec dst, biscuit::Vec src) {
     setVectorState(SEW::E64, 4);
-    if (!v0_has_mask) {
+    if (!block_state.v0_has_mask) {
         as.VMV(v0, -4); // 0b1100
-        v0_has_mask = true;
+        block_state.v0_has_mask = true;
     }
     as.VMERGE(dst, src, 0);
 }
@@ -1913,9 +1964,9 @@ void Recompiler::setVec(const ZydisDecodedOperand* operand, biscuit::Vec vec) {
             break;
         }
         case 128: {
-            if (Extensions::Zicclsm && current_sew == SEW::E32 && current_vlen == 4 && current_grouping == LMUL::M1) {
+            if (Extensions::Zicclsm && block_state.sew == SEW::E32 && block_state.vlen == 4 && block_state.grouping == LMUL::M1) {
                 as.VSE32(vec, address);
-            } else if (Extensions::Zicclsm && current_sew == SEW::E64 && current_vlen == 2 && current_grouping == LMUL::M1) {
+            } else if (Extensions::Zicclsm && block_state.sew == SEW::E64 && block_state.vlen == 2 && block_state.grouping == LMUL::M1) {
                 as.VSE64(vec, address);
             } else {
                 setVectorState(SEW::E8, 128 / 8);
@@ -1924,14 +1975,14 @@ void Recompiler::setVec(const ZydisDecodedOperand* operand, biscuit::Vec vec) {
             break;
         }
         case 64: {
-            if (Extensions::Zicclsm && current_grouping == LMUL::M1 && current_vlen * (8u << (u32)current_sew) >= 64) {
-                if (current_vlen == 1) {
+            if (Extensions::Zicclsm && block_state.grouping == LMUL::M1 && block_state.vlen * (8u << (u32)block_state.sew) >= 64) {
+                if (block_state.vlen == 1) {
                     as.VSE64(vec, address);
-                } else if (current_vlen == 2) {
+                } else if (block_state.vlen == 2) {
                     as.VSE32(vec, address);
-                } else if (current_vlen == 4) {
+                } else if (block_state.vlen == 4) {
                     as.VSE16(vec, address);
-                } else if (current_vlen == 8) {
+                } else if (block_state.vlen == 8) {
                     as.VSE8(vec, address);
                 } else {
                     setVectorState(SEW::E8, 64 / 8);
@@ -1944,12 +1995,12 @@ void Recompiler::setVec(const ZydisDecodedOperand* operand, biscuit::Vec vec) {
             break;
         }
         case 32: {
-            if (Extensions::Zicclsm && current_grouping == LMUL::M1 && current_vlen * (8u << (u32)current_sew) >= 32) {
-                if (current_vlen == 1) {
+            if (Extensions::Zicclsm && block_state.grouping == LMUL::M1 && block_state.vlen * (8u << (u32)block_state.sew) >= 32) {
+                if (block_state.vlen == 1) {
                     as.VSE32(vec, address);
-                } else if (current_vlen == 2) {
+                } else if (block_state.vlen == 2) {
                     as.VSE16(vec, address);
-                } else if (current_vlen == 4) {
+                } else if (block_state.vlen == 4) {
                     as.VSE8(vec, address);
                 } else {
                     setVectorState(SEW::E8, 32 / 8);
@@ -1974,13 +2025,13 @@ void Recompiler::setVec(const ZydisDecodedOperand* operand, biscuit::Vec vec) {
 }
 
 bool Recompiler::setVectorState(SEW sew, int vlen, LMUL grouping) {
-    if (current_sew == sew && current_vlen == vlen && current_grouping == grouping && !g_config.paranoid) {
+    if (block_state.sew == sew && block_state.vlen == vlen && block_state.grouping == grouping && !g_config.paranoid) {
         return false;
     }
 
-    current_sew = sew;
-    current_vlen = vlen;
-    current_grouping = grouping;
+    block_state.sew = sew;
+    block_state.vlen = vlen;
+    block_state.grouping = grouping;
 
     // TODO: One day when we have chips that perform better with VTA::Yes, enable it
     // TODO: If we don't enable AVX, or if vectors only go up to 128, enable tail/mask agnostic for most cases
@@ -2077,13 +2128,14 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp, 
     }
     bool has_disp = disp != 0;
 
-    if (!use_temp && forced_dst == x0 && !has_segment && !has_disp && operand->mem.base != ZYDIS_REGISTER_RIP) {
+    bool rip_relative = operand->mem.base == ZYDIS_REGISTER_RIP || operand->mem.base == ZYDIS_REGISTER_EIP;
+    if (!use_temp && forced_dst == x0 && !has_segment && !has_disp && !rip_relative) {
         if (has_base && !has_index) {
-            return getGPR(operand->mem.base);
+            return zextIfDirty32(getGPR(operand->mem.base), zydisToSize(operand->mem.base));
         }
 
         if (!has_base && has_index && operand->mem.scale == 1) {
-            return getGPR(operand->mem.index);
+            return zextIfDirty32(getGPR(operand->mem.index), zydisToSize(operand->mem.index));
         }
     }
 
@@ -2095,15 +2147,12 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp, 
 
     biscuit::GPR base, index;
 
-    if (operand->mem.base == ZYDIS_REGISTER_RIP) {
+    if (rip_relative) {
         ASSERT(!current_mode32);
         u64 offset_from_start = (current_rip - getCurrentRipregValue()) + current_instruction->length + (u64)disp;
         biscuit::GPR ripreg = getGPR(X86_REF_RIP, X86_SIZE_QWORD);
         addi(address, ripreg, offset_from_start);
-        return address;
-    }
-
-    if (!has_base && !has_index) {
+    } else if (!has_base && !has_index) {
         if (has_disp) {
             as.LI(address, disp);
         } else if (has_segment) {
@@ -2288,7 +2337,7 @@ void Recompiler::restoreState() {
     as.LBU(of, offsetof(ThreadState, ctx.of), threadStatePointer());
 
     // Restore the rounding mode
-    loadRoundingMode(fsrm_sse);
+    loadRoundingMode(block_state.fsrm_sse);
 
     as.FENCETSO();
 
@@ -2318,7 +2367,7 @@ void Recompiler::backToDispatcher(bool return_hint, bool skip_lookup) {
         if (return_hint)
             as.JALR(x1, lo12, t6);
         else
-            as.JR(t6, lo12);
+            as.JALR(t5, lo12, t6); // t5 is used to mark a link location, see invalidateAt
     } else {
         ASSERT(isScratch(t6));
 #pragma GCC diagnostic push
@@ -2331,7 +2380,7 @@ void Recompiler::backToDispatcher(bool return_hint, bool skip_lookup) {
         if (return_hint)
             as.JALR(x1, 0, t6);
         else
-            as.JR(t6);
+            as.JALR(t5, 0, t6);
     }
 }
 
@@ -2344,6 +2393,124 @@ void Recompiler::exitDispatcher(felix86_frame* frame) {
     __builtin_unreachable();
 }
 
+u32 Recompiler::scanLandingBlock(ThreadState* state, u64 initial_rip, u64 rip_ahead, int depth, int& instrs_left) {
+    bool jump_to_self = rip_ahead == initial_rip;
+    ZydisDecodedInstruction instruction_ahead;
+    ZydisDecodedOperand operands_ahead_storage[10];
+    ZydisDecodedOperand* operands_ahead = operands_ahead_storage;
+    u32 changed_this_block = 0;
+    u32 used_this_block = 0;
+    u32 flags_we_care_about = ALL_CPUFLAGS;
+    // 64 is heuristically picked, some games have a big slide of SSE instructions that follow a cmp/jcc
+    // and usually this big of a number is good enough
+    // If we go too high we risk messing our performance
+    // TODO: some benchmarking may be in order
+    for (size_t i = 0; i < scan_ahead_count; i++) {
+        if (instrs_left <= 0) {
+            break;
+        }
+        instrs_left--;
+
+        ZydisMnemonic mnemonic;
+        state->scan_ahead_address = rip_ahead;
+        if (jump_to_self) {
+            // Jump to self, we already decoded the instructions
+            ASSERT(i < instructions.size());
+            instruction_ahead = instructions[i].first;
+            operands_ahead = instructions[i].second;
+            mnemonic = instruction_ahead.mnemonic;
+        } else {
+            mnemonic = decode(rip_ahead, instruction_ahead, nullptr, true);
+            if (mnemonic == ZYDIS_MNEMONIC_INVALID) {
+                // If this path is hit the instructions will be invalid
+                // One may assume this means that we can assume flags won't be used in this path
+                // But in reality it could be the case this path gets self-modified to use the flags
+                // Since this scenario that one path contains invalid instructions is very rare, we just emit
+                // all the flags to be safe
+                return 0u;
+            }
+        }
+        bool is_jump = instruction_ahead.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
+        bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET || mnemonic == ZYDIS_MNEMONIC_IRETD || mnemonic == ZYDIS_MNEMONIC_IRETQ;
+        bool is_call = mnemonic == ZYDIS_MNEMONIC_CALL;
+        bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2 || mnemonic == ZYDIS_MNEMONIC_VMCALL || mnemonic == ZYDIS_MNEMONIC_VMMCALL ||
+                          mnemonic == ZYDIS_MNEMONIC_VMFUNC || mnemonic == ZYDIS_MNEMONIC_OUTSB || mnemonic == ZYDIS_MNEMONIC_OUTSW ||
+                          mnemonic == ZYDIS_MNEMONIC_OUTSD || mnemonic == ZYDIS_MNEMONIC_INSB || mnemonic == ZYDIS_MNEMONIC_INSW ||
+                          mnemonic == ZYDIS_MNEMONIC_INSD;
+        bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
+        bool is_int3 = mnemonic == ZYDIS_MNEMONIC_INT3;
+
+        u32 changed = instruction_ahead.cpu_flags->modified | instruction_ahead.cpu_flags->set_0 | instruction_ahead.cpu_flags->set_1 |
+                      instruction_ahead.cpu_flags->undefined;
+        u32 used = instruction_ahead.cpu_flags->tested;
+        if (flag_passthrough(instruction_ahead)) {
+            // Act as if this instruction didn't change any flags, since it may not if shift == 0
+            changed = 0;
+        }
+
+        u32 used_not_previously_changed = used & ~changed_this_block;
+        used_this_block |= used_not_previously_changed;
+        changed_this_block |= changed;
+
+        u32 changed_and_not_used = changed_this_block & ~used_this_block;
+        if (changed_and_not_used == flags_we_care_about) {
+            // All flags changed already, break early
+            break;
+        }
+
+        if (is_call || is_ret) {
+            if (g_config.unsafe_flags && !g_config.paranoid) {
+                // Pretend call and ret overwrites all flags
+                changed_this_block = ALL_CPUFLAGS;
+            }
+
+            break;
+        }
+
+        if (is_jump || is_illegal || is_hlt || is_int3) {
+            // Check if we can follow the jump trivially
+            if (mnemonic == ZYDIS_MNEMONIC_JMP && !jump_to_self) {
+                operands_ahead = operands_ahead_storage;
+                decode(rip_ahead, instruction_ahead, operands_ahead);
+            }
+
+            if (mnemonic == ZYDIS_MNEMONIC_JMP && operands_ahead[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+                u64 displacement = sextImmediate(getImmediate(&operands_ahead[0]), operands_ahead[0].imm.size);
+                rip_ahead += instruction_ahead.length + displacement;
+                jump_to_self = false; // stop using our cached instructions
+                continue;
+            }
+
+            bool is_jcc = mnemonic >= ZYDIS_MNEMONIC_JB && mnemonic <= ZYDIS_MNEMONIC_JZ && mnemonic != ZYDIS_MNEMONIC_JMP &&
+                          mnemonic != ZYDIS_MNEMONIC_JKZD && mnemonic != ZYDIS_MNEMONIC_JKNZD;
+            if (is_jcc && depth > 0 && instrs_left > 0) {
+                if (!jump_to_self) {
+                    operands_ahead = operands_ahead_storage;
+                    decode(rip_ahead, instruction_ahead, operands_ahead);
+                }
+
+                if (operands_ahead[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+                    u64 displacement = sextImmediate(getImmediate(&operands_ahead[0]), operands_ahead[0].imm.size);
+                    u64 rip_false = rip_ahead + instruction_ahead.length;
+                    u64 rip_true = rip_false + displacement;
+                    u32 dead_after = scanLandingBlock(state, initial_rip, rip_false, depth - 1, instrs_left) &
+                                     scanLandingBlock(state, initial_rip, rip_true, depth - 1, instrs_left);
+                    return (changed_this_block | dead_after) & ~used_this_block;
+                }
+            }
+
+            // Block ahead ended in <= 10 instructions so let's break
+            break;
+        }
+
+        rip_ahead += instruction_ahead.length;
+    }
+
+    // Now every flag in the changed_this_block set but not in the used_this_block set
+    // doesn't have to be calculated, return this
+    return changed_this_block & ~used_this_block;
+}
+
 bool Recompiler::scanAhead(u64 rip) {
     current_block_big = false;
     bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
@@ -2353,9 +2520,10 @@ bool Recompiler::scanAhead(u64 rip) {
     ZydisBookkeeping zydis_state{};
     std::vector<FlagAccessData::ScanAccess> scan_entries;
     bool decode_failed = false;
+    int instrs_left = scan_ahead_budget;
     current_scan_end = rip;
     while (true) {
-        if (!instructions.empty() && getBreakpointIndex(rip) != -1) {
+        if (!instructions.empty() && checkIfBreakpoint(rip)) {
             current_block_big = true;
             break;
         }
@@ -2402,8 +2570,11 @@ bool Recompiler::scanAhead(u64 rip) {
 
         for (int i = 0; i < std::min((int)instruction.operand_count, 2); i++) {
             if (operands[i].type == ZYDIS_OPERAND_TYPE_MEMORY && (operands[i].actions & ZYDIS_OPERAND_ACTION_MASK_WRITE) &&
-                operands[i].mem.base == ZYDIS_REGISTER_RIP) {
+                (operands[i].mem.base == ZYDIS_REGISTER_RIP || operands[i].mem.base == ZYDIS_REGISTER_EIP)) {
                 u64 target = rip + instruction.length + operands[i].mem.disp.value;
+                if (operands[i].mem.base == ZYDIS_REGISTER_EIP) {
+                    target = (u32)target;
+                }
                 if (target >= rip + instruction.length) {
                     lowest_rip_write = std::min(lowest_rip_write, target);
                 }
@@ -2484,108 +2655,13 @@ bool Recompiler::scanAhead(u64 rip) {
                     // We need to see where the jump will land, and scan some of its instructions
                     // If all the landing places overwrite the flags (1 landing spot for jmp, 2 for jcc)
                     // then we can skip those flag calculations
-                    auto scan_landing_block = [&](u64 rip_ahead) {
-                        bool jump_to_self = rip_ahead == initial_rip;
-                        ZydisDecodedInstruction instruction_ahead;
-                        ZydisDecodedOperand operands_ahead_storage[10];
-                        ZydisDecodedOperand* operands_ahead = operands_ahead_storage;
-                        u32 changed_this_block = 0;
-                        u32 used_this_block = 0;
-                        u32 flags_we_care_about = ALL_CPUFLAGS;
-                        // 64 is heuristically picked, some games have a big slide of SSE instructions that follow a cmp/jcc
-                        // and usually this big of a number is good enough
-                        // If we go too high we risk messing our performance
-                        // TODO: some benchmarking may be in order
-                        for (size_t i = 0; i < scan_ahead_count; i++) {
-                            ZydisMnemonic mnemonic;
-                            state->scan_ahead_address = rip_ahead;
-                            if (jump_to_self) {
-                                // Jump to self, we already decoded the instructions
-                                ASSERT(i < instructions.size());
-                                instruction_ahead = instructions[i].first;
-                                operands_ahead = instructions[i].second;
-                                mnemonic = instruction_ahead.mnemonic;
-                            } else {
-                                mnemonic = decode(rip_ahead, instruction_ahead, nullptr, true);
-                                if (mnemonic == ZYDIS_MNEMONIC_INVALID) {
-                                    // If this path is hit the instructions will be invalid
-                                    // One may assume this means that we can assume flags won't be used in this path
-                                    // But in reality it could be the case this path gets self-modified to use the flags
-                                    // Since this scenario that one path contains invalid instructions is very rare, we just emit
-                                    // all the flags to be safe
-                                    return 0u;
-                                }
-                            }
-                            bool is_jump = instruction_ahead.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
-                            bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET || mnemonic == ZYDIS_MNEMONIC_IRETD || mnemonic == ZYDIS_MNEMONIC_IRETQ;
-                            bool is_call = mnemonic == ZYDIS_MNEMONIC_CALL;
-                            bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2 || mnemonic == ZYDIS_MNEMONIC_VMCALL ||
-                                              mnemonic == ZYDIS_MNEMONIC_VMMCALL || mnemonic == ZYDIS_MNEMONIC_VMFUNC ||
-                                              mnemonic == ZYDIS_MNEMONIC_OUTSB || mnemonic == ZYDIS_MNEMONIC_OUTSW ||
-                                              mnemonic == ZYDIS_MNEMONIC_OUTSD || mnemonic == ZYDIS_MNEMONIC_INSB ||
-                                              mnemonic == ZYDIS_MNEMONIC_INSW || mnemonic == ZYDIS_MNEMONIC_INSD;
-                            bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
-                            bool is_int3 = mnemonic == ZYDIS_MNEMONIC_INT3;
-
-                            u32 changed = instruction_ahead.cpu_flags->modified | instruction_ahead.cpu_flags->set_0 |
-                                          instruction_ahead.cpu_flags->set_1 | instruction_ahead.cpu_flags->undefined;
-                            u32 used = instruction_ahead.cpu_flags->tested;
-                            if (flag_passthrough(instruction_ahead)) {
-                                // Act as if this instruction didn't change any flags, since it may not if shift == 0
-                                changed = 0;
-                            }
-
-                            u32 used_not_previously_changed = used & ~changed_this_block;
-                            used_this_block |= used_not_previously_changed;
-                            changed_this_block |= changed;
-
-                            u32 changed_and_not_used = changed_this_block & ~used_this_block;
-                            if (changed_and_not_used == flags_we_care_about) {
-                                // All flags changed already, break early
-                                break;
-                            }
-
-                            if (is_call || is_ret) {
-                                if (g_config.unsafe_flags && !g_config.paranoid) {
-                                    // Pretend call and ret overwrites all flags
-                                    changed_this_block = ALL_CPUFLAGS;
-                                }
-
-                                break;
-                            }
-
-                            if (is_jump || is_illegal || is_hlt || is_int3) {
-                                // Check if we can follow the jump trivially
-                                if (mnemonic == ZYDIS_MNEMONIC_JMP && !jump_to_self) {
-                                    operands_ahead = operands_ahead_storage;
-                                    decode(rip_ahead, instruction_ahead, operands_ahead);
-                                }
-
-                                if (mnemonic == ZYDIS_MNEMONIC_JMP && operands_ahead[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-                                    u64 displacement = sextImmediate(getImmediate(&operands_ahead[0]), operands_ahead[0].imm.size);
-                                    rip_ahead += instruction_ahead.length + displacement;
-                                    jump_to_self = false; // stop using our cached instructions
-                                    continue;
-                                }
-
-                                // Block ahead ended in <= 10 instructions so let's break
-                                break;
-                            }
-
-                            rip_ahead += instruction_ahead.length;
-                        }
-
-                        // Now every flag in the changed_this_block set but not in the used_this_block set
-                        // doesn't have to be calculated, return this
-                        return changed_this_block & ~used_this_block;
-                    };
 
                     u32 thrashed_ahead;
                     if (mnemonic == ZYDIS_MNEMONIC_JMP) {
                         u64 immediate = sextImmediate(getImmediate(&operands[0]), operands[0].imm.size);
                         u64 rip_ahead = rip + instruction.length + immediate;
                         state->in_scan_ahead = true;
-                        thrashed_ahead = scan_landing_block(rip_ahead);
+                        thrashed_ahead = scanLandingBlock(state, initial_rip, rip_ahead, scan_ahead_depth, instrs_left);
                         state->scan_ahead_address = 0;
                         state->in_scan_ahead = false;
                     } else if (instruction.mnemonic >= ZYDIS_MNEMONIC_JB && instruction.mnemonic <= ZYDIS_MNEMONIC_JZ) {
@@ -2596,7 +2672,8 @@ bool Recompiler::scanAhead(u64 rip) {
                         u64 rip_ahead_true = rip_ahead_false + immediate;
                         // For the flags to not be calculated they need to be overwritten in both paths
                         state->in_scan_ahead = true;
-                        thrashed_ahead = scan_landing_block(rip_ahead_false) & scan_landing_block(rip_ahead_true);
+                        thrashed_ahead = scanLandingBlock(state, initial_rip, rip_ahead_false, scan_ahead_depth, instrs_left) &
+                                         scanLandingBlock(state, initial_rip, rip_ahead_true, scan_ahead_depth, instrs_left);
                         state->scan_ahead_address = 0;
                         state->in_scan_ahead = false;
                     } else {
@@ -2662,6 +2739,16 @@ bool Recompiler::shouldEmitFlag(u64 rip, x86_ref_e ref) {
     }
 
     return current_flag_access.getFlagsNeeded(rip, mask) != 0;
+}
+
+bool Recompiler::anyFlagNeededAfter(u64 rip) {
+    if (flag_mode == FlagMode::AlwaysEmit || g_config.single_step) {
+        return true;
+    } else if (flag_mode == FlagMode::NeverEmit) {
+        return false;
+    }
+
+    return current_flag_access.getFlagsNeededAfterInstruction(rip, ALL_CPUFLAGS) != 0;
 }
 
 void Recompiler::updateOverflowSub(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size_e) {
@@ -2784,13 +2871,25 @@ void Recompiler::updateAuxiliarySbb(biscuit::GPR lhs, biscuit::GPR rhs, biscuit:
 
 void Recompiler::updateCarryAdd(biscuit::GPR lhs, biscuit::GPR result, x86_size_e size) {
     biscuit::GPR cf = flag(X86_REF_CF);
+    biscuit::GPR clean_lhs = zextIfDirty32(lhs, size);
     zext(cf, result, size);
-    as.SLTU(cf, cf, lhs);
+    as.SLTU(cf, cf, clean_lhs);
+    if (clean_lhs != lhs) {
+        popScratch();
+    }
 }
 
-void Recompiler::updateCarrySub(biscuit::GPR lhs, biscuit::GPR rhs) {
+void Recompiler::updateCarrySub(biscuit::GPR lhs, biscuit::GPR rhs, x86_size_e size) {
     biscuit::GPR cf = flag(X86_REF_CF);
-    as.SLTU(cf, lhs, rhs);
+    biscuit::GPR clean_lhs = zextIfDirty32(lhs, size);
+    biscuit::GPR clean_rhs = zextIfDirty32(rhs, size);
+    as.SLTU(cf, clean_lhs, clean_rhs);
+    if (clean_rhs != rhs) {
+        popScratch();
+    }
+    if (clean_lhs != lhs) {
+        popScratch();
+    }
 }
 
 void Recompiler::updateCarryAdc(biscuit::GPR lhs, biscuit::GPR result, biscuit::GPR result_2, x86_size_e size) {
@@ -2798,8 +2897,12 @@ void Recompiler::updateCarryAdc(biscuit::GPR lhs, biscuit::GPR result, biscuit::
     biscuit::GPR temp = scratch();
     zext(temp, result_2, size);
     as.SLTU(temp, temp, cf);
+    biscuit::GPR clean_lhs = zextIfDirty32(lhs, size);
     zext(cf, result, size);
-    as.SLTU(cf, cf, lhs);
+    as.SLTU(cf, cf, clean_lhs);
+    if (clean_lhs != lhs) {
+        popScratch();
+    }
     as.OR(cf, cf, temp);
     popScratch();
 }
@@ -2950,14 +3053,16 @@ void Recompiler::jumpAndLink(u64 rip, bool return_link, bool skip_lookup) {
 
         u64 offset = target - (u64)as.GetCursorPointer();
         if (IsValidJTypeImm(offset - 4)) {
-            as.NOP();
             if (offset - 4 == 4) {
-                as.NOP();
+                as.AUIPC(t5, 0);
+                // Point t5 where the JAL would point
+                as.ADDI(t5, t5, 8);
             } else {
+                as.NOP();
                 if (return_link)
                     as.JAL(x1, offset - 4);
                 else
-                    as.J(offset - 4);
+                    as.JAL(t5, offset - 4);
             }
         } else {
             // Too far for a regular jump, use AUIPC+JR
@@ -2971,7 +3076,7 @@ void Recompiler::jumpAndLink(u64 rip, bool return_link, bool skip_lookup) {
             if (return_link)
                 as.JALR(x1, lo12, t4);
             else
-                as.JR(t4, lo12);
+                as.JALR(t5, lo12, t4);
         }
     }
 
@@ -2979,7 +3084,41 @@ void Recompiler::jumpAndLink(u64 rip, bool return_link, bool skip_lookup) {
     ASSERT(as.GetCursorPointer() - start == 2 * 4);
 }
 
+template <typename Target>
+static void emitBranch(Assembler& as, BranchCond cond, biscuit::GPR lhs, biscuit::GPR rhs, Target target) {
+    switch (cond) {
+    case BranchCond::EQ: {
+        as.BEQ(lhs, rhs, target);
+        break;
+    }
+    case BranchCond::NE: {
+        as.BNE(lhs, rhs, target);
+        break;
+    }
+    case BranchCond::LTU: {
+        as.BLTU(lhs, rhs, target);
+        break;
+    }
+    case BranchCond::GEU: {
+        as.BGEU(lhs, rhs, target);
+        break;
+    }
+    case BranchCond::LT: {
+        as.BLT(lhs, rhs, target);
+        break;
+    }
+    case BranchCond::GE: {
+        as.BGE(lhs, rhs, target);
+        break;
+    }
+    }
+}
+
 void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false) {
+    jumpAndLinkConditional(BranchCond::NE, condition, x0, rip_true, rip_false);
+}
+
+void Recompiler::jumpAndLinkConditional(BranchCond cond, biscuit::GPR lhs, biscuit::GPR rhs, u64 rip_true, u64 rip_false) {
     OptimizationGuard guard(as, optimization_guard_counter);
     constexpr i64 max_instr_space = 80;
     i64 host_offset = current_block_metadata->host_address - (u64)as.GetCursorPointer();
@@ -2987,7 +3126,7 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
     if (rip_true == current_block_metadata->guest_address && host_offset > -4096 + max_instr_space) {
         biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
         as.MV(t5, x0);
-        ASSERT(condition != t5);
+        ASSERT(lhs != t5 && rhs != t5);
         if (getCurrentRipregValue() != rip_true) { // ripreg might've changed during the block, set it back to the start if so
             ASSERT(getCurrentRipregValue() > rip_true);
             u64 rip_true_offset = rip_true - getCurrentRipregValue();
@@ -3000,7 +3139,7 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
         }
         i64 host_offset = current_block_metadata->host_address - (u64)as.GetCursorPointer();
         ASSERT(IsValidBTypeImm(host_offset)); // max_instr_space should guarantee it
-        as.BNEZ(condition, host_offset);
+        emitBranch(as, cond, lhs, rhs, (i32)host_offset);
 
         u64 rip_false_offset = rip_false - getCurrentRipregValue();
         addi(ripreg, ripreg, rip_false_offset);
@@ -3009,13 +3148,12 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
             rip_false = (u32)rip_false;
         }
 
-        as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
         jumpAndLink(rip_false);
         return;
     }
 
     Label true_label;
-    as.BNEZ(condition, &true_label);
+    emitBranch(as, cond, lhs, rhs, &true_label);
 
     biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
     u64 rip_false_offset = rip_false - getCurrentRipregValue();
@@ -3025,7 +3163,6 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
         rip_false = (u32)rip_false;
     }
 
-    as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
     jumpAndLink(rip_false);
 
     as.Bind(&true_label);
@@ -3036,7 +3173,6 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
         rip_true = (u32)rip_true;
     }
 
-    as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
     jumpAndLink(rip_true);
 }
 
@@ -3318,7 +3454,7 @@ void Recompiler::readMemory(biscuit::Vec vec, biscuit::GPR address, int size) {
         break;
     }
     case 32: {
-        if (Extensions::Zicclsm && current_sew == SEW::E32 && current_vlen == 1 && current_grouping == LMUL::M1) {
+        if (Extensions::Zicclsm && block_state.sew == SEW::E32 && block_state.vlen == 1 && block_state.grouping == LMUL::M1) {
             as.VLE32(vec, address);
         } else {
             setVectorState(SEW::E8, 4);
@@ -3327,7 +3463,7 @@ void Recompiler::readMemory(biscuit::Vec vec, biscuit::GPR address, int size) {
         break;
     }
     case 64: {
-        if (Extensions::Zicclsm && current_sew == SEW::E64 && current_vlen == 1 && current_grouping == LMUL::M1) {
+        if (Extensions::Zicclsm && block_state.sew == SEW::E64 && block_state.vlen == 1 && block_state.grouping == LMUL::M1) {
             as.VLE64(vec, address);
         } else {
             setVectorState(SEW::E8, 8);
@@ -3336,9 +3472,9 @@ void Recompiler::readMemory(biscuit::Vec vec, biscuit::GPR address, int size) {
         break;
     }
     case 128: {
-        if (Extensions::Zicclsm && current_sew == SEW::E64 && current_vlen == 2 && current_grouping == LMUL::M1) {
+        if (Extensions::Zicclsm && block_state.sew == SEW::E64 && block_state.vlen == 2 && block_state.grouping == LMUL::M1) {
             as.VLE64(vec, address);
-        } else if (Extensions::Zicclsm && current_sew == SEW::E32 && current_vlen == 4 && current_grouping == LMUL::M1) {
+        } else if (Extensions::Zicclsm && block_state.sew == SEW::E32 && block_state.vlen == 4 && block_state.grouping == LMUL::M1) {
             as.VLE32(vec, address);
         } else {
             setVectorState(SEW::E8, 16);
@@ -3347,9 +3483,9 @@ void Recompiler::readMemory(biscuit::Vec vec, biscuit::GPR address, int size) {
         break;
     }
     case 256: {
-        if (Extensions::Zicclsm && current_sew == SEW::E64 && current_vlen == 4 && current_grouping == LMUL::M1) {
+        if (Extensions::Zicclsm && block_state.sew == SEW::E64 && block_state.vlen == 4 && block_state.grouping == LMUL::M1) {
             as.VLE64(vec, address);
-        } else if (Extensions::Zicclsm && current_sew == SEW::E32 && current_vlen == 8 && current_grouping == LMUL::M1) {
+        } else if (Extensions::Zicclsm && block_state.sew == SEW::E32 && block_state.vlen == 8 && block_state.grouping == LMUL::M1) {
             as.VLE32(vec, address);
         } else {
             setVectorState(SEW::E8, 32);
@@ -3413,9 +3549,17 @@ x86_size_e Recompiler::zydisToSize(ZyanU8 size) {
     }
 }
 
-void Recompiler::repPrologue(Label* loop_end, biscuit::GPR rcx) {
+void Recompiler::repPrologue(Label* loop_end, biscuit::GPR rcx, x86_size_e address_width) {
     // Signal handling would get tricky if we had to account for this looping mess of an instruction
-    as.BEQZ(rcx, loop_end);
+    if (isDirty32(rcx, address_width)) {
+        biscuit::GPR count = scratch();
+        as.ZEXTW(count, rcx);
+        as.BEQZ(count, loop_end);
+        popScratch();
+        as.ZEXTW(rcx, rcx);
+    } else {
+        as.BEQZ(rcx, loop_end);
+    }
 }
 
 void Recompiler::repEpilogue(Label* loop_body, biscuit::GPR rcx) {
@@ -3808,182 +3952,6 @@ void Recompiler::invalidateRangeGlobal(u64 start, u64 end, const char* reason, b
     }
 }
 
-bool Recompiler::tryInlineSyscall() {
-    if (g_config.paranoid) {
-        return false;
-    }
-
-    if (current_mode32) {
-        // Unimplemented for now
-        return false;
-    }
-
-    // TODO: currently inlined syscalls are disabled because ecall seems to thrash more regs than we expect
-    // and it wouldn't be any more worth to writeback entire state probably
-    return false;
-
-    switch (rax_value) {
-#define CASE(sysno, argcount)                                                                                                                        \
-    case felix86_x86_64_##sysno:                                                                                                                     \
-        inlineSyscall(x64_to_riscv(felix86_x86_64_##sysno), argcount);                                                                               \
-        return true
-
-        CASE(setuid, 1);
-        CASE(write, 3);
-        CASE(getgid, 0);
-        CASE(fsync, 1);
-        CASE(fallocate, 4);
-        CASE(clock_getres, 2);
-        CASE(setsid, 0);
-        CASE(io_setup, 2);
-        CASE(semctl, 4);
-        CASE(sched_getattr, 4);
-        CASE(getpriority, 2);
-        CASE(waitid, 5);
-        CASE(sendto, 6);
-        CASE(getsockopt, 5);
-        CASE(sched_setaffinity, 3);
-        CASE(getegid, 0);
-        CASE(perf_event_open, 5);
-        CASE(connect, 3);
-        CASE(writev, 3);
-        CASE(ppoll, 5);
-        CASE(tgkill, 3);
-        CASE(geteuid, 0);
-        CASE(socket, 3);
-        CASE(setsockopt, 5);
-        CASE(capget, 2);
-        CASE(get_mempolicy, 5);
-        CASE(getpgid, 1);
-        CASE(setreuid, 2);
-        CASE(setfsuid, 1);
-        CASE(io_submit, 3);
-        CASE(wait4, 4);
-        CASE(sched_getaffinity, 3);
-        CASE(recvmsg, 3);
-        CASE(munlock, 2);
-        CASE(accept, 3);
-        CASE(io_cancel, 3);
-        CASE(io_destroy, 1);
-        CASE(sched_rr_get_interval, 2);
-        CASE(pipe2, 2);
-        CASE(getppid, 0);
-        CASE(pread64, 4);
-        CASE(getsid, 1);
-        CASE(socketpair, 4);
-        CASE(bind, 3);
-        CASE(nanosleep, 2);
-        CASE(prctl, 5);
-        CASE(getdents64, 3);
-        CASE(clock_gettime, 2);
-        CASE(semtimedop, 4);
-        CASE(recvfrom, 6);
-        CASE(setpgid, 2);
-        CASE(clock_nanosleep, 4);
-        CASE(mincore, 3);
-        CASE(readv, 3);
-        CASE(mlock, 2);
-        CASE(pselect6, 6);
-        CASE(set_robust_list, 2);
-        CASE(listen, 2);
-        CASE(mprotect, 3);
-        CASE(sched_yield, 0);
-        CASE(sched_setattr, 3);
-        CASE(read, 3);
-        CASE(pwrite64, 4);
-        CASE(madvise, 3);
-        CASE(inotify_init1, 1);
-        CASE(ptrace, 4);
-        CASE(gettid, 0);
-        CASE(getresuid, 3);
-        CASE(getrandom, 3);
-        CASE(getpeername, 3);
-        CASE(eventfd2, 2);
-        CASE(setgid, 1);
-        CASE(setregid, 2);
-        CASE(getuid, 0);
-        CASE(lookup_dcookie, 3);
-        CASE(setfsgid, 1);
-        CASE(exit_group, 1);
-        CASE(getresgid, 3);
-        CASE(sched_getscheduler, 1);
-        CASE(flock, 2);
-        CASE(mbind, 6);
-        CASE(getsockname, 3);
-        CASE(futex, 6);
-        CASE(sendmsg, 3);
-        CASE(kill, 2);
-        CASE(dup3, 3);
-        CASE(accept4, 4);
-        CASE(getpid, 0);
-        CASE(prlimit64, 4);
-        CASE(gettimeofday, 2);
-
-#undef CASE
-    default: {
-        return false;
-    }
-    }
-}
-
-void Recompiler::inlineSyscall(int sysno, int argcount) {
-    // TODO: this doesn't work, I guess kernel thrashes some regs?
-    // biscuit::GPR old_a0 = scratch();
-    // biscuit::GPR old_a1 = scratch();
-    // biscuit::GPR old_a7 = scratch();
-    // as.MV(old_a0, a0);
-    // as.MV(old_a1, a1);
-    // as.MV(old_a7, a7);
-    // as.LI(a7, sysno);
-    // as.ECALL();
-    // setGPR(X86_REF_RAX, X86_SIZE_QWORD, a0);
-    // as.MV(a0, old_a0);
-    // as.MV(a1, old_a1);
-    // as.MV(a7, old_a7);
-    UNIMPLEMENTED();
-}
-
-void Recompiler::checkModifiesRax(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands) {
-    u8 opcount = instruction.operand_count;
-
-    if (instruction.mnemonic == ZYDIS_MNEMONIC_MOV) {
-        bool is_rax = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER &&
-                      (operands[0].reg.value == ZYDIS_REGISTER_RAX || operands[0].reg.value == ZYDIS_REGISTER_EAX);
-        bool is_imm = operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE;
-        if (is_rax && is_imm) {
-            // We don't care to zero extend this in the EAX case as any negative number wouldn't be a valid syscall anyway
-            // Compilers won't emit a write to ax/al/ah because that would keep the upper bits
-            rax_value = operands[1].imm.value.s;
-            return;
-        }
-    }
-
-    // If any of the operands modifies RAX/EAX/AX/AL/AH we discard its old value by setting it to -1, which will not
-    // inline to any syscall
-    for (int i = 0; i < opcount; i++) {
-        if (operands[i].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-            bool is_rax = false;
-            switch (operands[i].reg.value) {
-            case ZYDIS_REGISTER_AL:
-            case ZYDIS_REGISTER_AH:
-            case ZYDIS_REGISTER_AX:
-            case ZYDIS_REGISTER_EAX:
-            case ZYDIS_REGISTER_RAX:
-                is_rax = true;
-                break;
-            default: {
-                break;
-            }
-            }
-            bool modified = operands[i].actions & ZYDIS_OPERAND_ACTION_MASK_WRITE;
-            if (is_rax && modified) {
-                rax_value = -1;
-                return;
-            }
-        }
-    }
-}
-
 biscuit::FPR Recompiler::pushX87() {
     if (x87_reg_cache[7].loaded) {
         WARN("Pushing while ST7 was previously used in block");
@@ -4053,7 +4021,7 @@ void Recompiler::switchToMMX() {
     as.SB(val, offsetof(ThreadState, ctx.x87_state), threadStatePointer());
     popScratch();
 
-    local_x87_state = x87State::MMX;
+    block_state.x87_state = x87State::MMX;
 }
 
 void Recompiler::switchToX87() {
@@ -4062,7 +4030,7 @@ void Recompiler::switchToX87() {
     as.SB(val, offsetof(ThreadState, ctx.x87_state), threadStatePointer());
     popScratch();
 
-    local_x87_state = x87State::x87;
+    block_state.x87_state = x87State::x87;
 }
 
 void Recompiler::addressCacheLookup(biscuit::GPR guest_address, void on_hit(Assembler&, biscuit::GPR), bool use_ra) {

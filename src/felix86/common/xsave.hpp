@@ -12,6 +12,8 @@ static_assert(sizeof(XmmReg) == 32);
 struct Xmm128 {
     u64 val[2];
 
+    Xmm128() = default;
+
     Xmm128(const XmmReg& other) {
         val[0] = other.data[0];
         val[1] = other.data[1];
@@ -102,17 +104,17 @@ void felix86_fsave_16(const UserContext& ctx, void* address);
 
 void felix86_fsave_32(const UserContext& ctx, void* address);
 
-void felix86_fxsave(const UserContext& ctx, void* address, bool save_x87 = true, bool save_xmm = true, bool save_mxcsr = true);
+void felix86_fxsave(const UserContext& ctx, void* address, bool save_x87 = true, bool save_xmm = true, bool save_mxcsr = true, bool rex_w = true);
 
-void felix86_xsave(const UserContext& ctx, void* address, bool save_all);
+void felix86_xsave(const UserContext& ctx, void* address, bool save_all, bool rex_w = true);
 
 void felix86_frstor_16(UserContext& ctx, void* address);
 
 void felix86_frstor_32(UserContext& ctx, void* address);
 
-void felix86_fxrstor(UserContext& ctx, void* address, bool restore_x87 = true, bool restore_xmm = true, bool restore_mxcsr = true);
+void felix86_fxrstor(UserContext& ctx, void* address, bool restore_x87 = true, bool restore_xmm = true, bool restore_mxcsr = true, bool rex_w = true);
 
-void felix86_xrstor(UserContext& ctx, void* address, bool restore_all);
+void felix86_xrstor(UserContext& ctx, void* address, bool restore_all, bool rex_w = true);
 
 void felix86_x87_init(UserContext& ctx);
 

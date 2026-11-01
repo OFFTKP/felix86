@@ -791,7 +791,6 @@ int main(int argc, char** argv) {
     Config::initialize();
     initialize_globals();
     g_process_globals.initialize();
-    g_config.inline_syscalls = false;
     g_config.scan_ahead_multi = false;
     g_config.protect_pages = false;
     g_config.max_block_size = -1ull;

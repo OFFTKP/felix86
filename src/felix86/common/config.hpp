@@ -26,7 +26,6 @@ struct Config {
 #undef X
 
     static bool initialize(bool ignore_envs = false);
-    static const char* getDescription(const char* name);
     const char* getEnvironment() {
         return __environment.c_str();
     }

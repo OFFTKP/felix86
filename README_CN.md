@@ -10,7 +10,7 @@ felix86 是一款 Linux 用户空间模拟器，可在 RISC-V 处理器上运行
 执行以下命令：
 
 ```bash
-bash <(curl -s https://install.felix86.com)
+curl -fsSL https://install.felix86.com | bash
 ```
 
 该命令将下载并执行脚本，自动安装 felix86 及您选择的根文件系统。

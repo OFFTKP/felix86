@@ -11,6 +11,11 @@
         FEXTestLoader::RunTest("ASM/FEX_bugs/" #name ".asm");                                                                                        \
     }
 
+#define FEX_BUG_TEST32(name)                                                                                                                         \
+    CATCH_TEST_CASE("32Bit_" #name, "[felix86_bugs]") {                                                                                              \
+        FEXTestLoader::RunTest("32Bit_ASM/FEX_bugs/" #name ".asm");                                                                                  \
+    }
+
 FEX_BUG_TEST(fxsave_bug)
 FEX_BUG_TEST(fxrstor_bug)
 FEX_BUG_TEST(FSCALE_zero_inf)
@@ -81,6 +86,11 @@ FEX_BUG_TEST(vgather_xmm4)
 FEX_BUG_TEST(vmov_size_test)
 // FEX_BUG_TEST(x87_integer_indefinite)
 FEX_BUG_TEST(xor_flags)
+FEX_BUG_TEST32(fsave_finit_ip)
+FEX_BUG_TEST32(fsave_rstore_ip)
+FEX_BUG_TEST32(fxsave_rstore_ip)
+FEX_BUG_TEST32(x87_FIP)
+// FEX_BUG_TEST32(x87_FIP_reduced)
 BUG_TEST(dl_aux_init_stuck)
 BUG_TEST(roundss)
 BUG_TEST(bsr_reg)

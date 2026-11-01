@@ -855,7 +855,7 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
             info.op = PTRACE_SYSCALL_INFO_EXIT;
             info.exit.is_error = remote_state->ptrace_data.syscall_info.is_error;
             info.exit.rval = remote_state->ptrace_data.syscall_info.ret;
-            ret_size = 40; // TODO: verify this size
+            ret_size = 33; // TODO: verify this size
             break;
         }
         default: {
@@ -865,7 +865,7 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
         }
         }
 
-        size_t copy_size = std::min(ret_size, sizeof(x86_ptrace_syscall_info));
+        size_t copy_size = std::min({ret_size, sizeof(x86_ptrace_syscall_info), (size_t)addr});
         memcpy(data, &info, copy_size);
         return ret_size;
     }
@@ -1349,6 +1349,30 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
     case felix86_ptrace_request::felix86_PTRACE_SETREGS: {
         return set_regs(tracer_mode32, remote_state, data);
     }
+    case felix86_ptrace_request::felix86_PTRACE_GETFPREGS: {
+        if (tracer_mode32) {
+            fsave_frame_32 frame{};
+            felix86_fsave_32(remote_state->ctx, &frame);
+            memcpy(data, &frame, sizeof(frame));
+        } else {
+            fxsave_frame frame{};
+            felix86_fxsave(remote_state->ctx, &frame);
+            memcpy(data, &frame, sizeof(frame));
+        }
+        return 0;
+    }
+    case felix86_ptrace_request::felix86_PTRACE_SETFPREGS: {
+        if (tracer_mode32) {
+            fsave_frame_32 frame;
+            memcpy(&frame, data, sizeof(frame));
+            felix86_frstor_32(remote_state->ctx, &frame);
+        } else {
+            fxsave_frame frame;
+            memcpy(&frame, data, sizeof(frame));
+            felix86_fxrstor(remote_state->ctx, &frame);
+        }
+        return 0;
+    }
     default: {
         WARN("Unimplemented operation: %x", (int)op);
         return -EIO;
@@ -1442,7 +1466,36 @@ void raise_stop(StopType stop, int& sig, siginfo_t* guest_info, int event, u64 e
     }
 }
 
+static void raise_syscall_stop(StopType stop) {
+    int sig = SIGTRAP;
+    siginfo_t info;
+    memset(&info, 0, sizeof(siginfo_t));
+    info.si_signo = SIGTRAP;
+    info.si_code = SIGTRAP | 0x80; // TODO: check when do we insert 0x80 here
+    raise_stop(stop, sig, &info);
+}
+
+void raise_syscall_enter_stop(ThreadState* state, u64 nr, const u64 (&args)[6]) {
+    PtraceData& data = state->ptrace_data;
+    for (int i = 0; i < 6; i++) {
+        data.syscall_info.args[i] = args[i];
+    }
+    data.syscall_info.nr = nr;
+    raise_syscall_stop(StopType::SyscallEnterStop);
+}
+
+void raise_syscall_exit_stop(ThreadState* state, i64 result) {
+    PtraceData& data = state->ptrace_data;
+    data.syscall_info.ret = result;
+    data.syscall_info.is_error = result < 0; // TODO: properly implement
+    raise_syscall_stop(StopType::SyscallExitStop);
+}
+
 bool is_traced(ThreadState* state) {
     return state->ptrace_data.constants.tracer_pid != 0;
+}
+
+bool stops_on_syscall(ThreadState* state) {
+    return is_traced(state) && state->ptrace_data.injected.cont_type == PTRACE_SYSCALL;
 }
 } // namespace Ptrace

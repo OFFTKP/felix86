@@ -192,6 +192,12 @@ int recvmmsg32(int fd, x86_mmsghdr* messages, u32 n, int flags, x86_timespec* ti
         host_timeout_ptr = &host_timeout;
     }
 
+    size_t total_iovecs = 0;
+    for (u32 i = 0; i < n; i++) {
+        total_iovecs += messages[i].header.msg_iovlen;
+    }
+    host_iovecs.reserve(total_iovecs);
+
     for (u32 i = 0; i < n; i++) {
         struct msghdr& host_msghdr = host_mmsgs[i].msg_hdr;
         x86_msghdr& guest_msghdr = messages[i].header;
@@ -215,7 +221,7 @@ int recvmmsg32(int fd, x86_mmsghdr* messages, u32 n, int flags, x86_timespec* ti
     int result = ::recvmmsg(fd, host_mmsgs.data(), n, flags, host_timeout_ptr);
 
     if (result != -1) {
-        for (u32 i = 0; i < n; i++) {
+        for (int i = 0; i < result; i++) {
             struct msghdr& host_msghdr = host_mmsgs[i].msg_hdr;
             x86_msghdr& guest_msghdr = messages[i].header;
             for (size_t i = 0; i < guest_msghdr.msg_iovlen; ++i) {
@@ -330,6 +336,18 @@ int getsockopt32(int fd, int level, int optname, char* optval, u32* optlen) {
         return ::getsockopt(fd, level, optname, optval, optlen);
     } else {
         switch (optname) {
+        case SO_RCVTIMEO_OLD:
+        case SO_SNDTIMEO_OLD: {
+            struct timeval host_timeval;
+            socklen_t host_optlen = sizeof(host_timeval);
+            int result = ::getsockopt(fd, level, optname, &host_timeval, &host_optlen);
+            if (result == 0) {
+                x86_timeval guest_timeval = host_timeval;
+                *optlen = std::min<u32>(*optlen, sizeof(x86_timeval));
+                memcpy(optval, &guest_timeval, *optlen);
+            }
+            return result;
+        }
         case SO_DEBUG:
         case SO_REUSEADDR:
         case SO_TYPE:
@@ -398,6 +416,8 @@ int getsockopt32(int fd, int level, int optname, char* optval, u32* optlen) {
         case SO_NETNS_COOKIE:
         case SO_BUF_LOCK:
         case SO_RESERVE_MEM:
+        case SO_TXREHASH:
+        case SO_RCVMARK:
         case SO_PASSPIDFD:
         case SO_PEERPIDFD: {
             return ::getsockopt(fd, level, optname, optval, optlen);

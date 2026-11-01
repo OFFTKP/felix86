@@ -5,7 +5,6 @@
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/hle/abi.hpp"
-#include "felix86/hle/mmap.hpp"
 #include "felix86/hle/signals.hpp"
 #include "felix86/v2/recompiler.hpp"
 
@@ -435,11 +434,9 @@ static void enter_dispatcher_for_callback(ThreadState* state) {
 
 void* ABIMadness::hostToGuestTrampoline(const char* signature, const void* guest_function) {
     // We need custom guest code and custom host code
-    ThreadState* state = ThreadState::Get();
-    u8* const x86_code = state->x86_trampoline_storage;
+    u8* const x86_code = g_thunk_storage.allocateX86Storage(16);
     u8* curr = x86_code;
-    // Our recompiler marks guest code as PROT_READ, we need to undo this as it may have marked previous trampolines
-    ::mprotect((u8*)((u64)x86_code & ~0xFFFull), 4096, PROT_READ | PROT_WRITE);
+
     // mov rax, u64
     curr[0] = 0x48;
     curr[1] = 0xb8;
@@ -461,13 +458,8 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, const void* guest
     curr[0] = 0xf4;
     curr += 1;
 
-    state->x86_trampoline_storage = curr;
-
-    u8* riscv_code = state->riscv_trampoline_storage;
-
-    // Now create our RISC-V portion later in a separate page because the
-    // x86 code is going to become read-only when it gets recompiled
-    biscuit::Assembler as(riscv_code, 4096);
+    u8 staging_buffer[4096];
+    biscuit::Assembler as(staging_buffer, 4096);
     void* trampoline = as.GetCursorPointer();
     as.ADDI(sp, sp, -32);
     as.SD(ra, 24, sp);
@@ -632,8 +624,10 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, const void* guest
     as.ADDI(sp, sp, 32);
     as.RET();
 
-    state->riscv_trampoline_storage = as.GetCursorPointer();
+    const u64 riscv_size = as.GetCodeBuffer().GetSizeInBytes();
+    u8* const riscv_mem = g_thunk_storage.allocateRiscvStorage(riscv_size);
+    memcpy(riscv_mem, staging_buffer, riscv_size);
 
-    flush_icache((u64)trampoline, (u64)as.GetCursorPointer());
-    return trampoline;
+    flush_icache_global((u64)riscv_mem, (u64)riscv_mem + riscv_size);
+    return riscv_mem;
 }

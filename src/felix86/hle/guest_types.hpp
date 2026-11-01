@@ -116,6 +116,29 @@ struct x86_user_desc {
     u32 usable : 1 = 0;
 };
 
+struct x86_sigevent {
+    u32 sigev_value;
+    int sigev_signo;
+    int sigev_notify;
+    int sigev_tid;
+
+    x86_sigevent(const sigevent& host_sigevent) {
+        sigev_value = (u64)host_sigevent.sigev_value.sival_ptr;
+        sigev_signo = host_sigevent.sigev_signo;
+        sigev_notify = host_sigevent.sigev_notify;
+        sigev_tid = host_sigevent._sigev_un._tid;
+    }
+
+    operator sigevent() const {
+        sigevent host_sigevent{};
+        host_sigevent.sigev_value.sival_ptr = (void*)(u64)sigev_value;
+        host_sigevent.sigev_signo = sigev_signo;
+        host_sigevent.sigev_notify = sigev_notify;
+        host_sigevent._sigev_un._tid = sigev_tid;
+        return host_sigevent;
+    }
+};
+
 struct x86_rlimit {
     x86_rlimit(const rlimit& rlimit) {
         rlim_cur = rlimit.rlim_cur;

@@ -27,10 +27,14 @@
     return value >= -2048 && value <= 2047;
 }
 
-void felix86_div128(struct ThreadState* state, u64 divisor);
+bool felix86_div128(struct ThreadState* state, u64 divisor);
 void felix86_divu128(struct ThreadState* state, u64 divisor);
 
-void felix86_iret(struct ThreadState* state, bool iretq);
+void felix86_iret(struct ThreadState* state, u64 size);
+
+u64 felix86_load_far_pointer(struct ThreadState* state, u64 offset, u64 selector, u64 segment, u64 operand_size, u64 ref);
+
+void felix86_lsl(struct ThreadState* state, u64 selector, u64 ref, u64 operand_size);
 
 u64 sext(u64 value, u8 size);
 u64 sext_if_64(u64 value, u8 size_e);
@@ -40,8 +44,6 @@ std::string get_perf_symbol(u64 address);
 void flush_icache(u64 start, u64 end);
 
 void flush_icache_global(u64 start, u64 end);
-
-int guest_breakpoint(const char* name, u64 address);
 
 int clear_breakpoints();
 

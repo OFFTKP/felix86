@@ -10,7 +10,7 @@ felix86 is a Linux userspace emulator that allows you to run x86 and x86-64 prog
 Run the following command:
 
 ```bash
-bash <(curl -fsSL https://install.felix86.com)
+curl -fsSL https://install.felix86.com | bash
 ```
 
 This command downloads and runs a script which installs felix86 and a rootfs of your choice.
