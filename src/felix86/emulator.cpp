@@ -1,4 +1,5 @@
 #include <csignal>
+#include <cstdio>
 #include <filesystem>
 #include <span>
 #include <vector>
@@ -6,6 +7,7 @@
 #include <fcntl.h>
 #include <fmt/base.h>
 #include <fmt/format.h>
+#include <linux/limits.h>
 #include <linux/prctl.h>
 #include <stdlib.h>
 #include <sys/auxv.h>
@@ -390,11 +392,26 @@ void Emulator::Start() {
     }
 
     if (g_config.isWine() && g_config.volatile_metadata) {
-        if (!PE::RegisterVolatileMemory(g_config.getProgramPath())) {
-            WARN("Failed to parse any volatile data from Wine executable, disabling volatile metadata for this session");
-            // If no volatile metadata was found, ignore this configuration.
+        // In the case the current executable is wine and volatile metadata is enabled, then assume
+        // Proton is being used from Steam. In the case of Proton, the CWD when running the main
+        // game executable will always be the same folder as the executable, so there is no need
+        // to transform the Windows path passed into Wine into a path understood to us in Linux,
+        // instead just extract the executable name and use the current working directory.
+
+        char cwd[PATH_MAX];
+        memset(cwd, 0, sizeof(cwd));
+        Filesystem::Getcwd(cwd, sizeof(cwd));
+        std::string program_name = g_config.getProgramName();
+
+        char path[PATH_MAX];
+        snprintf(path, sizeof(path), "%s/%s", cwd, program_name.c_str());
+        auto resolved_path = Filesystem::resolve(path, true);
+
+        if (!std::filesystem::exists(resolved_path.full_path()) || !PE::RegisterVolatileMemory(resolved_path.full_path())) {
+            // If no volatile metadata was found, ignore this configuration and always enable TSO as appropriate fallback.
             g_config.volatile_metadata = false;
-        };
+            g_config.always_tso = true;
+        }
     }
 
     main_state->signal_table = SignalHandlerTable::create(nullptr);

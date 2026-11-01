@@ -451,13 +451,14 @@ bool PE::RegisterVolatileMemory(const std::filesystem::path& path) {
 
             fseek(file, offset, SEEK_SET);
             VolatileData data{};
-            if (size > (u32)sizeof(VolatileData) || fread(&data, size, 1, file) != 1) {
+            size = std::min(size, (u32)sizeof(VolatileData));
+            if (fread(&data, size, 1, file) != 1) {
                 fclose(file);
                 return false;
             }
 
-            bool found_access = false;
-            bool found_range = false;
+            bool found_access = data.VolatileAccessTableSize == 0;
+            bool found_range = data.VolatileInfoRangeTableSize == 0;
             u64 offset_range = 0;
             u64 offset_access = 0;
             for (int s = 0; s < coff.NumberOfSections; ++s) {
