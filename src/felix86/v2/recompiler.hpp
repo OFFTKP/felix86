@@ -14,6 +14,7 @@
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/common/zydis_types.hpp"
+#include "felix86/v2/allocations.hpp"
 
 #define FELIX86_HINT_SAFEPOINT_SYSCALL 0xa5
 #define FELIX86_HINT_GP 0x86
@@ -336,141 +337,6 @@ struct Recompiler {
 
     static x86_size_e zydisToSize(ZyanU8 size);
 
-    // Get the allocated register for the given register reference
-    static constexpr biscuit::GPR allocatedGPR(x86_ref_e reg) {
-        // RDI, RSI, RDX, R10, R8, R9 are allocated to a0, a1, a2, a3, a4, a5 to match the syscall abi and save some swapping instructions
-        // !!! --- WARN: If any allocations are changed here, change them in the docs as well
-        switch (reg) {
-        case X86_REF_RIP: {
-            return biscuit::s11;
-        }
-        case X86_REF_RAX: {
-            return biscuit::x5;
-        }
-        case X86_REF_RCX: {
-            return biscuit::x26;
-        }
-        case X86_REF_RDX: {
-            return biscuit::x12; // a2
-        }
-        case X86_REF_RBX: {
-            return biscuit::x8;
-        }
-        case X86_REF_RSP: {
-            return biscuit::x9;
-        }
-        case X86_REF_RBP: {
-            return biscuit::x18;
-        }
-        case X86_REF_RSI: {
-            return biscuit::x11; // a1 -- TODO: one day match abi for 32-bit version also
-        }
-        case X86_REF_RDI: {
-            return biscuit::x10; // a0
-        }
-        case X86_REF_R8: {
-            return biscuit::x14; // a4
-        }
-        case X86_REF_R9: {
-            return biscuit::x15; // a5
-        }
-        case X86_REF_R10: {
-            return biscuit::x13; // a3
-        }
-        case X86_REF_R11: {
-            return biscuit::x16;
-        }
-        case X86_REF_R12: {
-            return biscuit::x17;
-        }
-        case X86_REF_R13: {
-            return biscuit::x22;
-        }
-        case X86_REF_R14: {
-            return biscuit::x19;
-        }
-        case X86_REF_R15: {
-            return biscuit::x20;
-        }
-        case X86_REF_CF: {
-            return biscuit::x21;
-        }
-        case X86_REF_ZF: {
-            return biscuit::x23;
-        }
-        case X86_REF_SF: {
-            return biscuit::x24;
-        }
-        case X86_REF_OF: {
-            return biscuit::x25;
-        }
-        default: {
-            UNREACHABLE();
-            return x0;
-        }
-        }
-    }
-
-    static constexpr biscuit::Vec allocatedXMM(x86_ref_e reg) {
-        switch (reg) {
-        // !!! --- WARN: If any allocations are changed here, change them in the docs as well
-        case X86_REF_XMM0: {
-            // Important to start on a vector register divisible by eight so maximum vector grouping works when we save/restore the entire state,
-            // but also not use v0 because that's used for the mask register
-            return biscuit::v16;
-        }
-        case X86_REF_XMM1: {
-            return biscuit::v17;
-        }
-        case X86_REF_XMM2: {
-            return biscuit::v18;
-        }
-        case X86_REF_XMM3: {
-            return biscuit::v19;
-        }
-        case X86_REF_XMM4: {
-            return biscuit::v20;
-        }
-        case X86_REF_XMM5: {
-            return biscuit::v21;
-        }
-        case X86_REF_XMM6: {
-            return biscuit::v22;
-        }
-        case X86_REF_XMM7: {
-            return biscuit::v23;
-        }
-        case X86_REF_XMM8: {
-            return biscuit::v24;
-        }
-        case X86_REF_XMM9: {
-            return biscuit::v25;
-        }
-        case X86_REF_XMM10: {
-            return biscuit::v26;
-        }
-        case X86_REF_XMM11: {
-            return biscuit::v27;
-        }
-        case X86_REF_XMM12: {
-            return biscuit::v28;
-        }
-        case X86_REF_XMM13: {
-            return biscuit::v29;
-        }
-        case X86_REF_XMM14: {
-            return biscuit::v30;
-        }
-        case X86_REF_XMM15: {
-            return biscuit::v31;
-        }
-        default: {
-            UNREACHABLE();
-            break;
-        }
-        }
-    }
-
     static constexpr x86_ref_e ymmToXmm(x86_ref_e reg) {
         ASSERT(reg >= X86_REF_YMM0 && reg <= X86_REF_YMM15);
         return x86_ref_e(X86_REF_XMM0 + (reg - X86_REF_YMM0));
@@ -479,10 +345,10 @@ struct Recompiler {
     biscuit::Vec allocatedVec(x86_ref_e reg) {
         switch (reg) {
         case X86_REF_XMM0 ... X86_REF_XMM15: {
-            return allocatedXMM(reg);
+            return Allocations::allocatedXMM(reg);
         }
         case X86_REF_YMM0 ... X86_REF_YMM15: {
-            return allocatedXMM(ymmToXmm(reg));
+            return Allocations::allocatedXMM(ymmToXmm(reg));
         }
         case X86_REF_MM0 ... X86_REF_MM7: {
             int index = reg - X86_REF_MM0;

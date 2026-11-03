@@ -625,15 +625,15 @@ double measure(const Test& test, const Width& width, bool throughput) {
     }
     for (int ref = X86_REF_RAX; ref <= X86_REF_R15; ref++) {
         u64 value = ref == X86_REF_RAX ? 0x3f3f3f3f3f3f3f3full : ref == X86_REF_RDX ? 0 : 0x8181818181818181ull;
-        as.LI(Recompiler::allocatedGPR((x86_ref_e)ref), value);
+        as.LI(Allocations::allocatedGPR((x86_ref_e)ref), value);
     }
     for (x86_ref_e ref : {X86_REF_CF, X86_REF_ZF, X86_REF_SF, X86_REF_OF}) {
-        as.MV(Recompiler::allocatedGPR(ref), x0);
+        as.MV(Allocations::allocatedGPR(ref), x0);
     }
     as.VSETVLI(tmp, x0, SEW::E64, LMUL::M1);
     as.LI(tmp, 0x3FC000003FC00000ull);
     for (int ref = X86_REF_XMM0; ref <= X86_REF_XMM15; ref++) {
-        as.VMV(Recompiler::allocatedXMM((x86_ref_e)ref), tmp);
+        as.VMV(Allocations::allocatedXMM((x86_ref_e)ref), tmp);
     }
     as.LI(tmp, loops);
     as.SD(tmp, offsetof(Frame, counter), biscuit::sp);
