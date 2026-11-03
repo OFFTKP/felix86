@@ -278,7 +278,7 @@ void GuestToHostMarshaller::emitPrologue(biscuit::Assembler& as) {
         if (marshalling.x86.type == x86_location::stack) {
             // State is written back before jumping to trampoline but it should still hold
             // the correct value here
-            address_reg = Recompiler::allocatedGPR(X86_REF_RSP);
+            address_reg = Allocations::RSP();
             offset = marshalling.x86.value.stack_position;
         } else {
             address_reg = Recompiler::threadStatePointer();

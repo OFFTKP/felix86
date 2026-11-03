@@ -14,6 +14,8 @@ using HandlerPtr = void (*)(Recompiler& rec, u64 rip, biscuit::Assembler& as, Zy
 struct Handlers {
     static void initialize();
 
+    static bool isImplemented(ZydisMnemonic mnemonic);
+
 #define X(name) static HandlerPtr ptr_##name;
 #include "mnemonics.inc"
 #undef X
