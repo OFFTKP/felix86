@@ -314,7 +314,7 @@ void Recompiler::emitDispatcher() {
     compile_next_handler = (u64)as.GetCursorPointer();
 
     if (g_config.address_cache) {
-        biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
+        biscuit::GPR ripreg = Allocations::RIP();
         addressCacheLookup(ripreg, [](Assembler& as, biscuit::GPR new_rip) { as.JR(new_rip); });
     }
 
@@ -1084,7 +1084,7 @@ void Recompiler::flushX87() {
 
     if (deferred_fip != 0) {
         biscuit::GPR temp = scratch();
-        addi(temp, allocatedGPR(X86_REF_RIP), deferred_fip - getCurrentRipregValue());
+        addi(temp, Allocations::RIP(), deferred_fip - getCurrentRipregValue());
         as.SD(temp, offsetof(ThreadState, ctx.fpu_ip), Recompiler::threadStatePointer());
         popScratch();
     }
@@ -1209,7 +1209,7 @@ void Recompiler::flushBlockState(u64 rip) {
     resetScratch();
     flushPushpop();
     flushX87();
-    biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
+    biscuit::GPR ripreg = Allocations::RIP();
     u64 offset = rip - getCurrentRipregValue();
     setCurrentRipregValue(rip);
     addi(ripreg, ripreg, offset);
@@ -1569,7 +1569,7 @@ biscuit::GPR Recompiler::getGPR(const ZydisDecodedOperand* operand) {
 }
 
 biscuit::GPR Recompiler::getGPRSigned(x86_ref_e ref, x86_size_e size, bool dont_sext32) {
-    biscuit::GPR gpr = allocatedGPR(ref);
+    biscuit::GPR gpr = Allocations::allocatedGPR(ref);
 
     switch (size) {
     case X86_SIZE_BYTE: {
@@ -1774,7 +1774,7 @@ biscuit::GPR Recompiler::flag(x86_ref_e ref) {
         return reg;
     }
 
-    biscuit::GPR reg = allocatedGPR(ref);
+    biscuit::GPR reg = Allocations::allocatedGPR(ref);
     return reg;
 }
 
@@ -1784,7 +1784,7 @@ biscuit::GPR Recompiler::getGPR(const ZydisDecodedOperand* operand, x86_size_e s
 }
 
 biscuit::GPR Recompiler::getGPR(x86_ref_e ref, x86_size_e size) {
-    biscuit::GPR gpr = allocatedGPR(ref);
+    biscuit::GPR gpr = Allocations::allocatedGPR(ref);
 
     switch (size) {
     case X86_SIZE_BYTE: {
@@ -1855,7 +1855,7 @@ biscuit::Vec Recompiler::getVec(x86_ref_e ref) {
 void Recompiler::setGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
     switch (size) {
     case X86_SIZE_BYTE: {
-        ASSERT(reg != allocatedGPR(ref));
+        ASSERT(reg != Allocations::allocatedGPR(ref));
         biscuit::GPR dest = getGPR(ref, X86_SIZE_QWORD);
         biscuit::GPR gpr8 = scratch();
         as.ANDI(gpr8, reg, 0xff);
@@ -1865,7 +1865,7 @@ void Recompiler::setGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
         break;
     }
     case X86_SIZE_BYTE_HIGH: {
-        ASSERT(reg != allocatedGPR(ref));
+        ASSERT(reg != Allocations::allocatedGPR(ref));
         biscuit::GPR dest = getGPR(ref, X86_SIZE_QWORD);
         biscuit::GPR gpr8 = scratch();
         as.ANDI(gpr8, reg, 0xFF);
@@ -1877,7 +1877,7 @@ void Recompiler::setGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
         break;
     }
     case X86_SIZE_WORD: {
-        ASSERT(reg != allocatedGPR(ref));
+        ASSERT(reg != Allocations::allocatedGPR(ref));
         biscuit::GPR dest = getGPR(ref, X86_SIZE_QWORD);
         biscuit::GPR gpr16 = scratch();
         as.ZEXTH(gpr16, reg);
@@ -1888,13 +1888,13 @@ void Recompiler::setGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
         break;
     }
     case X86_SIZE_DWORD: {
-        biscuit::GPR dest = allocatedGPR(ref); // don't need to load as the entire register is overwritten
+        biscuit::GPR dest = Allocations::allocatedGPR(ref); // don't need to load as the entire register is overwritten
         // TODO: in 32-bit mode we prob don't need to zero extend and we can do the same as 64-bit movs
         as.ZEXTW(dest, reg);
         break;
     }
     case X86_SIZE_QWORD: {
-        biscuit::GPR dest = allocatedGPR(ref); // don't need to load as the entire register is overwritten
+        biscuit::GPR dest = Allocations::allocatedGPR(ref); // don't need to load as the entire register is overwritten
         if (dest != reg)
             as.MV(dest, reg);
         break;
@@ -2184,20 +2184,20 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp, 
         // Load the displacement first
         as.LI(address, disp);
         if (has_base) {
-            base = allocatedGPR(zydisToRef(operand->mem.base));
+            base = Allocations::allocatedGPR(zydisToRef(operand->mem.base));
             as.ADD(address, address, base);
         }
         if (has_index) {
-            index = allocatedGPR(zydisToRef(operand->mem.index));
+            index = Allocations::allocatedGPR(zydisToRef(operand->mem.index));
             shadd(address, address, index, operand->mem.scale);
         }
     } else {
         biscuit::GPR sum = address;
         if (has_index) {
-            index = allocatedGPR(zydisToRef(operand->mem.index));
+            index = Allocations::allocatedGPR(zydisToRef(operand->mem.index));
             u8 scale = operand->mem.scale;
             if (has_base) {
-                base = allocatedGPR(zydisToRef(operand->mem.base));
+                base = Allocations::allocatedGPR(zydisToRef(operand->mem.base));
                 shadd(address, base, index, scale);
             } else if (scale == 1) {
                 sum = index;
@@ -2206,7 +2206,7 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp, 
                 as.SLLI(address, index, std::countr_zero(scale));
             }
         } else {
-            sum = allocatedGPR(zydisToRef(operand->mem.base));
+            sum = Allocations::allocatedGPR(zydisToRef(operand->mem.base));
         }
 
         if (has_disp) {
@@ -2254,12 +2254,12 @@ void Recompiler::writebackState() {
     flushPushpop();
     flushX87();
 
-    biscuit::GPR rip = allocatedGPR(X86_REF_RIP);
+    biscuit::GPR rip = Allocations::RIP();
     as.SD(rip, offsetof(ThreadState, ctx.rip), threadStatePointer());
 
     for (int i = 0; i < 16; i++) {
         x86_ref_e ref = (x86_ref_e)(X86_REF_RAX + i);
-        as.SD(allocatedGPR(ref), offsetof(ThreadState, ctx.gprs) + i * sizeof(u64), threadStatePointer());
+        as.SD(Allocations::allocatedGPR(ref), offsetof(ThreadState, ctx.gprs) + i * sizeof(u64), threadStatePointer());
     }
 
     biscuit::GPR address = scratch();
@@ -2288,10 +2288,10 @@ void Recompiler::writebackState() {
         }
     }
 
-    biscuit::GPR cf = allocatedGPR(X86_REF_CF);
-    biscuit::GPR zf = allocatedGPR(X86_REF_ZF);
-    biscuit::GPR sf = allocatedGPR(X86_REF_SF);
-    biscuit::GPR of = allocatedGPR(X86_REF_OF);
+    biscuit::GPR cf = Allocations::CF();
+    biscuit::GPR zf = Allocations::ZF();
+    biscuit::GPR sf = Allocations::SF();
+    biscuit::GPR of = Allocations::OF();
 
     as.SB(cf, offsetof(ThreadState, ctx.cf), threadStatePointer());
     as.SB(zf, offsetof(ThreadState, ctx.zf), threadStatePointer());
@@ -2307,12 +2307,12 @@ void Recompiler::restoreState() {
     int saved_scratch_index = scratch_index;
     resetVectorState();
 
-    biscuit::GPR rip = allocatedGPR(X86_REF_RIP);
+    biscuit::GPR rip = Allocations::RIP();
     as.LD(rip, offsetof(ThreadState, ctx.rip), threadStatePointer());
 
     for (int i = 0; i < 16; i++) {
         x86_ref_e ref = (x86_ref_e)(X86_REF_RAX + i);
-        as.LD(allocatedGPR(ref), offsetof(ThreadState, ctx.gprs) + i * sizeof(u64), threadStatePointer());
+        as.LD(Allocations::allocatedGPR(ref), offsetof(ThreadState, ctx.gprs) + i * sizeof(u64), threadStatePointer());
     }
 
     biscuit::GPR address = scratch();
@@ -2342,10 +2342,10 @@ void Recompiler::restoreState() {
 
     popScratch();
 
-    biscuit::GPR cf = allocatedGPR(X86_REF_CF);
-    biscuit::GPR zf = allocatedGPR(X86_REF_ZF);
-    biscuit::GPR sf = allocatedGPR(X86_REF_SF);
-    biscuit::GPR of = allocatedGPR(X86_REF_OF);
+    biscuit::GPR cf = Allocations::CF();
+    biscuit::GPR zf = Allocations::ZF();
+    biscuit::GPR sf = Allocations::SF();
+    biscuit::GPR of = Allocations::OF();
 
     as.LBU(cf, offsetof(ThreadState, ctx.cf), threadStatePointer());
     as.LBU(zf, offsetof(ThreadState, ctx.zf), threadStatePointer());
@@ -3187,7 +3187,7 @@ void Recompiler::jumpAndLinkConditional(BranchCond cond, biscuit::GPR lhs, biscu
     i64 host_offset = current_block_metadata->host_address - (u64)as.GetCursorPointer();
     // Check if it is branch to self
     if (rip_true == current_block_metadata->guest_address && host_offset > -4096 + max_instr_space) {
-        biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
+        biscuit::GPR ripreg = Allocations::RIP();
         as.MV(t5, x0);
         ASSERT(lhs != t5 && rhs != t5);
         if (getCurrentRipregValue() != rip_true) { // ripreg might've changed during the block, set it back to the start if so
@@ -3218,7 +3218,7 @@ void Recompiler::jumpAndLinkConditional(BranchCond cond, biscuit::GPR lhs, biscu
     Label true_label;
     emitBranch(as, cond, lhs, rhs, &true_label);
 
-    biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
+    biscuit::GPR ripreg = Allocations::RIP();
     u64 rip_false_offset = rip_false - getCurrentRipregValue();
     addi(ripreg, ripreg, rip_false_offset);
     if (current_mode32) {
@@ -3248,7 +3248,7 @@ void Recompiler::emitSideExit(BranchCond cond, biscuit::GPR lhs, biscuit::GPR rh
     constexpr i64 max_instr_space = 80;
     i64 host_offset = current_block_metadata->host_address - (u64)as.GetCursorPointer();
     if (rip_true == current_block_metadata->guest_address && host_offset > -4096 + max_instr_space) {
-        biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
+        biscuit::GPR ripreg = Allocations::RIP();
         as.MV(t5, x0);
         ASSERT(lhs != t5 && rhs != t5);
         if (getCurrentRipregValue() != rip_true) {
@@ -3274,7 +3274,7 @@ void Recompiler::emitSideExit(BranchCond cond, biscuit::GPR lhs, biscuit::GPR rh
 
 bool Recompiler::emitSideExitStubs() {
     OptimizationGuard guard(as, optimization_guard_counter);
-    biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
+    biscuit::GPR ripreg = Allocations::RIP();
     for (SideExit& side_exit : side_exits) {
         if (!IsValidBTypeImm(as.GetCodeBuffer().GetCursorOffset() - side_exit.branch_offset)) {
             discardSideExits();
@@ -4093,7 +4093,7 @@ void Recompiler::emitSelfValidation(biscuit::Label* expected_bytes) {
     ASSERT(remaining != t5 && count != t5 && address_block != t5 && address_bytes != t5);
 
     Label loop, mismatch, valid;
-    as.MV(address_block, allocatedGPR(X86_REF_RIP));
+    as.MV(address_block, Allocations::RIP());
     as.LILabel(address_bytes, expected_bytes);
     as.LD(remaining, -8, address_bytes);
     as.Bind(&loop);

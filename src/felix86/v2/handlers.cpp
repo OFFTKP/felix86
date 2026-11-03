@@ -873,7 +873,7 @@ FAST_HANDLE(MOV) {
             case 16: {
                 // Saves a ZEXT doing it this way
                 biscuit::GPR tmp = rec.scratch();
-                biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
+                biscuit::GPR dst = Allocations::allocatedGPR(rec.zydisToRef(operands[0].reg.value));
                 biscuit::GPR src = rec.getGPR(&operands[1]);
                 as.SRLI(tmp, dst, 16);
                 as.SLLI(tmp, tmp, 16);
@@ -882,7 +882,7 @@ FAST_HANDLE(MOV) {
             }
             case 32:
             case 64: {
-                biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
+                biscuit::GPR dst = Allocations::allocatedGPR(rec.zydisToRef(operands[0].reg.value));
                 i64 offset;
                 biscuit::GPR address = rec.leaOffset(&operands[1], offset);
                 rec.readMemory(dst, address, offset, rec.zydisToSize(operands[0].size));
@@ -2201,7 +2201,7 @@ FAST_HANDLE(CALL) {
             WARN("Far call detected at %lx", rip);
             bool bit32 = operands[0].size == 32 + 16;
             biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
-            biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+            biscuit::GPR ripreg = Allocations::RIP();
             biscuit::GPR old_cs = rec.scratch();
             biscuit::GPR new_cs = rec.scratch();
             biscuit::GPR scratch = rec.scratch();
@@ -2241,7 +2241,7 @@ FAST_HANDLE(CALL) {
         }
     }
 
-    biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+    biscuit::GPR ripreg = Allocations::RIP();
 
     switch (operands[0].type) {
     case ZYDIS_OPERAND_TYPE_REGISTER:
@@ -2312,7 +2312,7 @@ FAST_HANDLE(RET) {
     if (instruction.opcode == 0xCB) {
         WARN("Far return detected at %lx", rip);
         bool bit32 = MODE32;
-        biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+        biscuit::GPR ripreg = Allocations::RIP();
         biscuit::GPR new_cs = rec.scratch();
         biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
         rec.readMemory(ripreg, rsp, 0, bit32 ? X86_SIZE_DWORD : X86_SIZE_QWORD);
@@ -2359,7 +2359,7 @@ FAST_HANDLE(RET) {
 
     rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
 
-    biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+    biscuit::GPR ripreg = Allocations::RIP();
     // Don't need to zero extend here as it's loaded as a DWORD
     as.MV(ripreg, scratch);
 
@@ -3311,7 +3311,7 @@ FAST_HANDLE(JMP) {
         if (operands[0].size == 64 + 16 || operands[0].size == 32 + 16) {
             WARN("Far jump detected at %lx", rip);
             bool bit32 = operands[0].size == 32 + 16;
-            biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+            biscuit::GPR ripreg = Allocations::RIP();
             biscuit::GPR address = rec.lea(&operands[0]);
             biscuit::GPR cs = rec.scratch();
             rec.readMemory(ripreg, address, 0, bit32 ? X86_SIZE_DWORD : X86_SIZE_QWORD);
@@ -3344,7 +3344,7 @@ FAST_HANDLE(JMP) {
     case ZYDIS_OPERAND_TYPE_REGISTER:
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::GPR src = rec.zextIfDirty32(rec.getGPR(&operands[0]), rec.getSize(&operands[0]));
-        biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+        biscuit::GPR ripreg = Allocations::RIP();
         as.MV(ripreg, src);
         rec.backToDispatcher();
         rec.stopCompiling();
@@ -3354,7 +3354,7 @@ FAST_HANDLE(JMP) {
         u64 displacement = rec.sextImmediate(rec.getImmediate(&operands[0]), operands[0].imm.size);
         u64 address = rip + instruction.length + displacement;
         u64 offset = (rip - rec.getCurrentRipregValue()) + instruction.length + displacement;
-        biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+        biscuit::GPR ripreg = Allocations::RIP();
         rec.addi(ripreg, ripreg, offset);
         if (MODE32) {
             rec.zext(ripreg, ripreg, X86_SIZE_DWORD);
@@ -4295,14 +4295,14 @@ FAST_HANDLE(CWD) {
 }
 
 FAST_HANDLE(CDQ) {
-    biscuit::GPR sext = rec.allocatedGPR(X86_REF_RDX);
+    biscuit::GPR sext = Allocations::RDX();
     biscuit::GPR eax = rec.getGPR(X86_REF_RAX, X86_SIZE_QWORD);
     as.SRAIW(sext, eax, 31);
     rec.setGPR(X86_REF_RDX, X86_SIZE_DWORD, sext);
 }
 
 FAST_HANDLE(CQO) {
-    biscuit::GPR sext = rec.allocatedGPR(X86_REF_RDX);
+    biscuit::GPR sext = Allocations::RDX();
     biscuit::GPR rax = rec.getGPR(X86_REF_RAX, X86_SIZE_QWORD);
     as.SRAI(sext, rax, 63);
     rec.setGPR(X86_REF_RDX, X86_SIZE_QWORD, sext);
@@ -4520,7 +4520,7 @@ FAST_HANDLE(MOVSXD) {
         return;
     }
 
-    biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
+    biscuit::GPR dst = Allocations::allocatedGPR(rec.zydisToRef(operands[0].reg.value));
     if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         i64 imm;
         biscuit::GPR address = rec.leaOffset(&operands[1], imm);
@@ -5164,8 +5164,8 @@ FAST_HANDLE(SYSCALL) {
     }
 
     u64 offset = rip - rec.getCurrentRipregValue();
-    biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
-    biscuit::GPR rcx = rec.allocatedGPR(X86_REF_RCX);
+    biscuit::GPR ripreg = Allocations::RIP();
+    biscuit::GPR rcx = Allocations::RCX();
     // Point the RIP to the syscall instruction, in case we need to service a signal
     if (offset != 0) {
         rec.setCurrentRipregValue(rec.getCurrentRipregValue() + offset);
@@ -6028,7 +6028,7 @@ static biscuit::GPR getStringRegister(Recompiler& rec, Assembler& as, x86_ref_e 
         return rec.getGPR(ref, address_width);
     }
 
-    biscuit::GPR reg = rec.allocatedGPR(ref);
+    biscuit::GPR reg = Allocations::allocatedGPR(ref);
     as.ZEXTW(reg, reg);
     return reg;
 }
@@ -7735,7 +7735,7 @@ FAST_HANDLE(TZCNT) {
         // To avoid having to do a branch, we can insert the 16th bit to the src
         // If the src operand is 0, the CTZW will return 16 because it found that bit
         x86_ref_e dst_ref = rec.zydisToRef(operands[0].reg.value);
-        biscuit::GPR dst = rec.allocatedGPR(dst_ref); // don't zext
+        biscuit::GPR dst = Allocations::allocatedGPR(dst_ref); // don't zext
         biscuit::GPR src;
         if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
             src = rec.getGPR(&operands[1], X86_SIZE_QWORD); // don't zext this either, we will insert a bit anyway
@@ -7769,7 +7769,7 @@ FAST_HANDLE(TZCNT) {
         }
     } else if (instruction.operand_width == 32 || instruction.operand_width == 64) {
         x86_ref_e dst_ref = rec.zydisToRef(operands[0].reg.value);
-        biscuit::GPR dst = rec.allocatedGPR(dst_ref); // don't zext
+        biscuit::GPR dst = Allocations::allocatedGPR(dst_ref); // don't zext
         biscuit::GPR src;
         if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
             src = rec.getGPR(&operands[1], X86_SIZE_QWORD); // don't zext this either, CTZW will deal with 32 bits only anyway
@@ -8390,7 +8390,7 @@ FAST_HANDLE(BSR) {
 
 FAST_HANDLE(LZCNT) {
     x86_ref_e dst_ref = rec.zydisToRef(operands[0].reg.value);
-    biscuit::GPR dst = rec.allocatedGPR(dst_ref); // don't zext
+    biscuit::GPR dst = Allocations::allocatedGPR(dst_ref); // don't zext
     biscuit::GPR src;
     bool zexted = false;
     biscuit::GPR zexted_src = rec.scratch();
@@ -9015,7 +9015,7 @@ FAST_HANDLE(MFENCE) {
 FAST_HANDLE(MOVSX) {
     if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         i64 imm;
-        biscuit::GPR dst = operands[0].size == 16 ? rec.scratch() : rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
+        biscuit::GPR dst = operands[0].size == 16 ? rec.scratch() : Allocations::allocatedGPR(rec.zydisToRef(operands[0].reg.value));
         biscuit::GPR address = rec.leaOffset(&operands[1], imm);
         switch (operands[1].size) {
         case 8: {
@@ -12199,7 +12199,7 @@ FAST_HANDLE(POPFQ) {
     as.ANDI(temp, temp, 1);
     as.SB(temp, offsetof(ThreadState, ctx.rf), Recompiler::threadStatePointer());
 
-    biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+    biscuit::GPR ripreg = Allocations::RIP();
     u64 offset = (rip + instruction.length) - rec.getCurrentRipregValue();
     ASSERT(offset != 0);
     rec.setCurrentRipregValue(rec.getCurrentRipregValue() + offset);
@@ -13901,7 +13901,7 @@ inline static void x87_Operation(Recompiler& rec, u64 rip, Assembler& as, ZydisD
 
     u64 ripreg_offset = rip + instruction.length - rec.getCurrentRipregValue();
     if (ripreg_offset != 0) {
-        biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+        biscuit::GPR ripreg = Allocations::RIP();
         rec.setCurrentRipregValue(rec.getCurrentRipregValue() + ripreg_offset);
         rec.addi(ripreg, ripreg, ripreg_offset);
     }
@@ -14227,7 +14227,7 @@ FAST_HANDLE(INT) {
         }
 
         u64 offset = rip - rec.getCurrentRipregValue();
-        biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+        biscuit::GPR ripreg = Allocations::RIP();
         if (offset != 0) {
             rec.setCurrentRipregValue(rec.getCurrentRipregValue() + offset);
             rec.addi(ripreg, ripreg, offset);

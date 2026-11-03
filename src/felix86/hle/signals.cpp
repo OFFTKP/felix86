@@ -707,12 +707,12 @@ static void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state
 
     // Also update the allocatable state in the registers
     u64* regs = get_regs(host_context);
-    regs[Recompiler::allocatedGPR(X86_REF_RSP).Index()] = state->GetGpr(X86_REF_RSP);
-    regs[Recompiler::allocatedGPR(X86_REF_RDI).Index()] = state->GetGpr(X86_REF_RDI);
-    regs[Recompiler::allocatedGPR(X86_REF_RSI).Index()] = state->GetGpr(X86_REF_RSI);
-    regs[Recompiler::allocatedGPR(X86_REF_RDX).Index()] = state->GetGpr(X86_REF_RDX);
-    regs[Recompiler::allocatedGPR(X86_REF_RAX).Index()] = state->GetGpr(X86_REF_RAX);
-    regs[Recompiler::allocatedGPR(X86_REF_RIP).Index()] = state->GetRip();
+    regs[Allocations::RSP().Index()] = state->GetGpr(X86_REF_RSP);
+    regs[Allocations::RDI().Index()] = state->GetGpr(X86_REF_RDI);
+    regs[Allocations::RSI().Index()] = state->GetGpr(X86_REF_RSI);
+    regs[Allocations::RDX().Index()] = state->GetGpr(X86_REF_RDX);
+    regs[Allocations::RAX().Index()] = state->GetGpr(X86_REF_RAX);
+    regs[Allocations::RIP().Index()] = state->GetRip();
 }
 
 static void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, siginfo_t* guest_info, ucontext_t* host_context) {
@@ -838,9 +838,9 @@ static void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* st
 
     // Also update the allocatable state in the registers
     u64* regs = get_regs(host_context);
-    regs[Recompiler::allocatedGPR(X86_REF_RSP).Index()] = state->GetGpr(X86_REF_RSP);
-    regs[Recompiler::allocatedGPR(X86_REF_RAX).Index()] = state->GetGpr(X86_REF_RAX);
-    regs[Recompiler::allocatedGPR(X86_REF_RIP).Index()] = state->GetRip();
+    regs[Allocations::RSP().Index()] = state->GetGpr(X86_REF_RSP);
+    regs[Allocations::RAX().Index()] = state->GetGpr(X86_REF_RAX);
+    regs[Allocations::RIP().Index()] = state->GetRip();
 }
 
 static void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state, siginfo_t* guest_info, ucontext_t* host_context) {
@@ -943,11 +943,11 @@ static void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state
 
     // Also update the allocatable state in the registers
     u64* regs = get_regs(host_context);
-    regs[Recompiler::allocatedGPR(X86_REF_RSP).Index()] = state->GetGpr(X86_REF_RSP);
-    regs[Recompiler::allocatedGPR(X86_REF_RAX).Index()] = state->GetGpr(X86_REF_RAX);
-    regs[Recompiler::allocatedGPR(X86_REF_RDX).Index()] = state->GetGpr(X86_REF_RDX);
-    regs[Recompiler::allocatedGPR(X86_REF_RCX).Index()] = state->GetGpr(X86_REF_RCX);
-    regs[Recompiler::allocatedGPR(X86_REF_RIP).Index()] = state->GetRip();
+    regs[Allocations::RSP().Index()] = state->GetGpr(X86_REF_RSP);
+    regs[Allocations::RAX().Index()] = state->GetGpr(X86_REF_RAX);
+    regs[Allocations::RDX().Index()] = state->GetGpr(X86_REF_RDX);
+    regs[Allocations::RCX().Index()] = state->GetGpr(X86_REF_RCX);
+    regs[Allocations::RIP().Index()] = state->GetRip();
 }
 
 static void setupFrame(RegisteredSignal& signal, int sig, ThreadState* state, siginfo_t* guest_info, ucontext_t* host_context) {
@@ -1157,20 +1157,20 @@ static void pull_registers_from_context(ThreadState* state, ucontext_t* uctx) {
 
     for (int i = 0; i < 16; i++) {
         x86_ref_e ref = (x86_ref_e)(X86_REF_XMM0 + i);
-        state->SetXmm(ref, xmm_regs[Recompiler::allocatedXMM(ref).Index()]);
+        state->SetXmm(ref, xmm_regs[Allocations::allocatedXMM(ref).Index()]);
     }
 
     u64* regs = get_regs(uctx);
     for (int i = 0; i < 16; i++) {
         x86_ref_e ref = (x86_ref_e)(X86_REF_RAX + i);
-        state->SetGpr(ref, regs[Recompiler::allocatedGPR(ref).Index()]);
+        state->SetGpr(ref, regs[Allocations::allocatedGPR(ref).Index()]);
     }
 
-    state->SetFlag(X86_REF_OF, regs[Recompiler::allocatedGPR(X86_REF_OF).Index()]);
-    state->SetFlag(X86_REF_CF, regs[Recompiler::allocatedGPR(X86_REF_CF).Index()]);
-    state->SetFlag(X86_REF_ZF, regs[Recompiler::allocatedGPR(X86_REF_ZF).Index()]);
-    state->SetFlag(X86_REF_SF, regs[Recompiler::allocatedGPR(X86_REF_SF).Index()]);
-    state->SetRip(regs[Recompiler::allocatedGPR(X86_REF_RIP).Index()]);
+    state->SetFlag(X86_REF_OF, regs[Allocations::OF().Index()]);
+    state->SetFlag(X86_REF_CF, regs[Allocations::CF().Index()]);
+    state->SetFlag(X86_REF_ZF, regs[Allocations::ZF().Index()]);
+    state->SetFlag(X86_REF_SF, regs[Allocations::SF().Index()]);
+    state->SetRip(regs[Allocations::RIP().Index()]);
     // The rest of the state is never statically allocated, so at safepoints it is always correct in memory
 }
 
@@ -1284,7 +1284,7 @@ static void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uct
 
 static void prepare_synchronous_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx, u64 rip) {
     // Set the RIP register to actual instruction that faulted so that prepare_guest_signal picks it up for the context
-    get_regs(ctx)[Recompiler::allocatedGPR(X86_REF_RIP).Index()] = rip;
+    get_regs(ctx)[Allocations::RIP().Index()] = rip;
     prepare_guest_signal(sig, info, (ucontext_t*)ctx);
 }
 
@@ -1419,10 +1419,10 @@ static bool handle_safepoint(ThreadState* current_state, siginfo_t* info, uconte
             u64* regs = get_regs(context);
             // Set RIP to RIP - 2 to go back to the syscall instruction and restore the RAX
             // We do this in the context and then prepare_guest_signal will pick it up
-            regs[Recompiler::allocatedGPR(X86_REF_RIP).Index()] -= 2;
-            u8* data = (u8*)regs[Recompiler::allocatedGPR(X86_REF_RIP).Index()];
+            regs[Allocations::RIP().Index()] -= 2;
+            u8* data = (u8*)regs[Allocations::RIP().Index()];
             ASSERT((data[0] == 0x0f && data[1] == 0x05) || (data[0] == 0xcd && data[1] == 0x80));
-            regs[Recompiler::allocatedGPR(X86_REF_RAX).Index()] = current_state->ctx.orig_rax;
+            regs[Allocations::RAX().Index()] = current_state->ctx.orig_rax;
         }
         current_state->restart_syscall_always = false;
         current_state->restart_syscall_if_sa_restart = false;
@@ -1514,7 +1514,7 @@ static bool handle_smc(ThreadState* current_state, siginfo_t* info, ucontext_t* 
     }
 
 #ifdef __riscv
-    u64 rip = context->uc_mcontext.__gregs[Recompiler::allocatedGPR(X86_REF_RIP).Index()];
+    u64 rip = context->uc_mcontext.__gregs[Allocations::RIP().Index()];
     SMCLOG("Handling SMC on %lx during PC: %lx and RIP of block: %lx", (u64)info->si_addr, pc, rip);
 #endif
     u64 write_address = (u64)info->si_addr & ~0xFFFull;
@@ -1584,7 +1584,7 @@ static bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, uco
                     print_address(actual_rip);
                 } else {
 #ifdef __riscv
-                    WARN("Failed to get actual RIP, block: %lx", context->uc_mcontext.__gregs[Recompiler::allocatedGPR(X86_REF_RIP).Index()]);
+                    WARN("Failed to get actual RIP, block: %lx", context->uc_mcontext.__gregs[Allocations::RIP().Index()]);
 #endif
                 }
             } else {
@@ -1647,7 +1647,7 @@ static bool handle_wild_sigabrt(ThreadState* current_state, siginfo_t* info, uco
                     print_address(actual_rip);
                 } else {
 #ifdef __riscv
-                    WARN("Failed to get actual RIP, block: %lx", context->uc_mcontext.__gregs[Recompiler::allocatedGPR(X86_REF_RIP).Index()]);
+                    WARN("Failed to get actual RIP, block: %lx", context->uc_mcontext.__gregs[Allocations::RIP().Index()]);
 #endif
                 }
             } else {
@@ -1728,12 +1728,12 @@ static bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucon
     u64 actual_rip;
     if (next_instruction == expected_not_mapped || next_instruction == expected_not_read || next_instruction == expected_not_exec) {
         // In these scenarios there's no block, we are at the bad address thunks and we need to get the RIP from the allocated reg
-        actual_rip = get_regs(context)[Recompiler::allocatedGPR(X86_REF_RIP).Index()];
+        actual_rip = get_regs(context)[Allocations::RIP().Index()];
     } else if (next_instruction == expected_tf) {
         // In trap flag scenarios code cache is often cleared, so get_block_metadata won't work
         // However, since single stepping is enabled and ripreg is updated on every instruction
         // the actual rip is whatever the ripreg holds and points to the next instruction
-        actual_rip = get_regs(context)[Recompiler::allocatedGPR(X86_REF_RIP).Index()];
+        actual_rip = get_regs(context)[Allocations::RIP().Index()];
     } else {
         BlockMetadata* current_block = get_block_metadata(current_state, pc);
         ASSERT_MSG(current_block, "Failed to get current block during synchronous signal with PC=%lx, RIP=%lx", pc, current_state->ctx.rip);

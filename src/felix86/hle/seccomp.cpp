@@ -480,7 +480,7 @@ void BPFJit::prologue() {
     as.ADDI(sp, sp, (i32)(-sizeof(x64_seccomp_data)));
     as.MV(pointer, sp);
 
-    as.SW(Recompiler::allocatedGPR(X86_REF_RAX), offsetof(x64_seccomp_data, nr), pointer);
+    as.SW(Allocations::RAX(), offsetof(x64_seccomp_data, nr), pointer);
 
     as.LI(temp, AUDIT_ARCH_X86_64);
     as.SW(temp, offsetof(x64_seccomp_data, arch), pointer);
@@ -491,7 +491,7 @@ void BPFJit::prologue() {
     int i = 0;
     auto refs = {X86_REF_RDI, X86_REF_RSI, X86_REF_RDX, X86_REF_R10, X86_REF_R8, X86_REF_R9};
     for (auto ref : refs) {
-        as.SD(Recompiler::allocatedGPR(ref), offsetof(x64_seccomp_data, args) + i++ * sizeof(u64), pointer);
+        as.SD(Allocations::allocatedGPR(ref), offsetof(x64_seccomp_data, args) + i++ * sizeof(u64), pointer);
     }
 }
 
