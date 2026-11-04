@@ -237,7 +237,7 @@ int Filesystem::StatFs(const char* filename, struct statfs* buf) {
         return -EINVAL;
     }
 
-    FdPath fd_path = resolve(filename, false);
+    FdPath fd_path = resolve(filename, true);
     if (fd_path.is_error()) {
         VERBOSE("Error while resolving path during statfs(%s), error: %s", filename, strerror(fd_path.get_errno()));
         return -fd_path.get_errno();
@@ -362,7 +362,7 @@ int Filesystem::Chmod(const char* filename, u64 mode) {
 }
 
 int Filesystem::Creat(const char* filename, u64 mode) {
-    FdPath fd_path = resolve(filename, false);
+    FdPath fd_path = resolve(filename, true);
     if (fd_path.is_error()) {
         VERBOSE("Error while resolving path during creat(%s), error: %s", filename, strerror(fd_path.get_errno()));
         return -fd_path.get_errno();
