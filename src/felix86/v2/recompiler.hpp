@@ -824,6 +824,10 @@ struct Recompiler {
         return pc == not_exec_thunk;
     }
 
+    bool isInBadAddressThunk(u64 pc) {
+        return isInNotMappedOrNotReadThunk(pc) || isInNotExecThunk(pc);
+    }
+
 private:
     void emitNecessaryStuff();
 
