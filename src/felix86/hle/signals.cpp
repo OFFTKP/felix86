@@ -1667,7 +1667,7 @@ static bool handle_wild_sigabrt(ThreadState* current_state, siginfo_t* info, uco
 
 static bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
     // We can't cause a SIGSEGV SI_KERNEL from RISC-V, so fix up info->si_code to match x86 behavior
-    if (!is_in_jit_code(current_state, (u8*)pc)) {
+    if (!current_state->recompiler->isInBadAddressThunk(pc) && !is_in_jit_code(current_state, (u8*)pc)) {
         return false;
     }
 

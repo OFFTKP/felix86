@@ -200,9 +200,9 @@ void Recompiler::emitNecessaryStuff() {
     emitInterruptibleSyscallFunction();
     emitDispatcher();
     emitInvalidateCallerThunk();
+    emitBadAddressThunks();
 
     start_of_code_cache = as.GetCursorPointer();
-    emitBadAddressThunks(); // after start_of_code_cache so is_in_jit_code triggers
     reset_point = as.GetCursorPointer();
 
     flush_icache((u64)start, (u64)start_of_code_cache);
