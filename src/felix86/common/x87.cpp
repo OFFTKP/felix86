@@ -66,7 +66,7 @@ static void push(ThreadState* state, const extFloat80_t* value) {
     if (!empty) {
         WARN("x87 stack overflows during push at RIP=%lx", state->GetRip());
         state->ctx.fpu_sw |= 0b1000001; // set SF and IE bits
-        state->ctx.fpu_cw |= C1_BIT;    // set C1 to 1 == overflow
+        state->ctx.fpu_sw |= C1_BIT;    // set C1 to 1 == overflow
     }
 
     tw |= 1 << top;
@@ -82,7 +82,7 @@ static void pop(ThreadState* state) {
     if (empty) {
         WARN("x87 stack underflows during pop at RIP=%lx", state->GetRip());
         state->ctx.fpu_sw |= 0b1000001; // set SF and IE bits
-        state->ctx.fpu_cw &= ~C1_BIT;   // set C1 to 0 == underflow
+        state->ctx.fpu_sw &= ~C1_BIT;   // set C1 to 0 == underflow
     }
     tw &= ~(1 << top);
     top += 1;
