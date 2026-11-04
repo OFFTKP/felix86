@@ -1,10 +1,13 @@
 #include <csignal>
+#include <cstdio>
+#include <filesystem>
 #include <span>
 #include <vector>
 #include <elf.h>
 #include <fcntl.h>
 #include <fmt/base.h>
 #include <fmt/format.h>
+#include <linux/limits.h>
 #include <linux/prctl.h>
 #include <stdlib.h>
 #include <sys/auxv.h>
@@ -13,8 +16,10 @@
 #include <sys/prctl.h>
 #include <sys/random.h>
 #include <sys/ucontext.h>
+#include "felix86/common/config.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/common/pe.hpp"
 #include "felix86/common/script.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
@@ -383,6 +388,18 @@ void Emulator::Start() {
                 ASSERT(g_rootfs_fd > 0);
                 ASSERT(fchdir(g_rootfs_fd) == 0);
             }
+        }
+    }
+
+    auto _path = g_config.getProgramPath();
+    if (g_config.isWine() && g_config.volatile_metadata) {
+        auto path = g_config.getProgramPath();
+        auto resolved_path = Filesystem::resolve_wine(path.c_str());
+        if (resolved_path.is_error() || !std::filesystem::exists(resolved_path.full_path()) ||
+            !PE::RegisterVolatileMemory(resolved_path.full_path())) {
+            // If no volatile metadata was found, ignore this configuration and always enable TSO as appropriate fallback.
+            g_config.volatile_metadata = false;
+            g_config.always_tso = true;
         }
     }
 

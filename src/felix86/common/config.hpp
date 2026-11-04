@@ -43,7 +43,9 @@ struct Config {
     [[nodiscard]] static Config load(const std::filesystem::path& path, bool ignore_envs = false);
     static bool loadProfile(Config& config, const std::filesystem::path& profile);
     static bool loadExecutableProfiles(Config& config, const std::filesystem::path& dir, const std::string& program_name);
+    static std::filesystem::path getProgramPath();
     static std::string getProgramName();
+    static bool isWine();
     static void save(const std::filesystem::path& path, const Config& config, bool only_non_default = false);
 
     static std::filesystem::path getConfigFilePath();

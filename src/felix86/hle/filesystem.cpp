@@ -893,6 +893,58 @@ FdPath Filesystem::resolve(int fd, const char* path, bool resolve_symlinks) {
     return fd_path;
 }
 
+FdPath Filesystem::resolve_wine(const char* path) {
+    if (!path) {
+        return FdPath::error(EFAULT);
+    } else if (strlen(path) < 1) {
+        return FdPath::error(ENOENT);
+    }
+
+    std::string new_path = "";
+
+    // grab the device.
+    const char* iter = path;
+    char dev[3] = {(char)std::tolower(*iter++), *iter++, 0};
+    if (dev[1] == ':') {
+        // The path is absolute.
+
+        // grab the prefix.
+        if (const char* prefix = guest_getenv("WINEPREFIX")) {
+            new_path += prefix;
+            new_path += "/dosdevices/";
+            new_path += dev;
+            new_path += "/";
+            int lim = new_path.length();
+            for (char c; (c = *iter++) && (lim++ < PATH_MAX);) {
+                // convert backwards slashes to forwards slashes.
+                if (c == '\\') {
+                    new_path += '/';
+                } else {
+                    new_path += c;
+                }
+            }
+        } else {
+            // No wine prefix was set, abort translation.
+            return FdPath::error(ENOENT);
+        }
+    } else {
+        // The path is relative.
+
+        new_path += "./";
+        int lim = new_path.length();
+        for (char c; (c = *path++) && (lim++ < PATH_MAX);) {
+            // convert backwards slashes to forwards slashes.
+            if (c == '\\') {
+                new_path += '/';
+            } else {
+                new_path += c;
+            }
+        }
+    }
+
+    return resolve(new_path.c_str(), true);
+}
+
 FdPath Filesystem::resolve(const char* path, bool resolve_symlinks) {
     if (!path) {
         WARN("Tried to resolve a nullptr path, returning EFAULT");

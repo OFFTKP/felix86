@@ -252,6 +252,9 @@ struct Filesystem {
 
     static ssize_t Listxattr(const char* path, char* list, size_t size, bool llist);
 
+    /// Resolve a windows path through $WINEPREFIX.
+    static FdPath resolve_wine(const char* path);
+
     static FdPath resolve(const char* path, bool resolve_symlinks);
 
     static FdPath resolve(int fd, const char* path, bool resolve_symlinks);
