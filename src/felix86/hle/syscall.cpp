@@ -3092,7 +3092,10 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_statfs64: {
-            ASSERT(arg2 == sizeof(x86_statfs64));
+            if (arg2 != sizeof(x86_statfs64)) {
+                result = -EINVAL;
+                break;
+            }
             struct statfs statfs;
             x86_statfs64* guest_statfs = (x86_statfs64*)arg3;
             result = Filesystem::StatFs((char*)arg1, &statfs);
@@ -3102,7 +3105,10 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_fstatfs64: {
-            ASSERT(arg2 == sizeof(x86_statfs64));
+            if (arg2 != sizeof(x86_statfs64)) {
+                result = -EINVAL;
+                break;
+            }
             struct statfs statfs;
             x86_statfs64* guest_statfs = (x86_statfs64*)arg3;
             result = ::fstatfs(arg1, &statfs);
