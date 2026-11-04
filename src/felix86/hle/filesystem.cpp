@@ -182,7 +182,7 @@ bool Filesystem::FakeMount(const std::filesystem::path& mount_me, const std::fil
 }
 
 int Filesystem::OpenAt(bool mode32, int fd, const char* filename, int flags, u64 mode) {
-    bool follow = !(flags & O_NOFOLLOW);
+    bool follow = !(flags & O_NOFOLLOW) && !((flags & O_CREAT) && (flags & O_EXCL));
     FdPath fd_path = resolve(fd, filename, follow);
     if (fd_path.is_error()) {
         VERBOSE("Error while resolving path during openat(%d, %s), error: %s", fd, filename, strerror(fd_path.get_errno()));
@@ -401,7 +401,7 @@ int Filesystem::LinkAt(int oldfd, const char* oldpath, int newfd, const char* ne
         VERBOSE("Error while resolving old path during linkat(%d, %s), error: %s", oldfd, oldpath, strerror(old_fd_path.get_errno()));
         return -old_fd_path.get_errno();
     }
-    FdPath new_fd_path = resolve(newfd, newpath, follow);
+    FdPath new_fd_path = resolve(newfd, newpath, false);
     if (new_fd_path.is_error()) {
         VERBOSE("Error while resolving old path during linkat(%d, %s), error: %s", newfd, newpath, strerror(new_fd_path.get_errno()));
         return -new_fd_path.get_errno();
@@ -441,7 +441,7 @@ int Filesystem::MkdirAt(int fd, const char* filename, u64 mode) {
 }
 
 int Filesystem::MknodAt(int fd, const char* filename, u64 mode, u64 dev) {
-    FdPath fd_path = resolve(fd, filename, true);
+    FdPath fd_path = resolve(fd, filename, false);
     if (fd_path.is_error()) {
         VERBOSE("Error while resolving old path during mknodat(%d, %s), error: %s", fd, filename, strerror(fd_path.get_errno()));
         return -fd_path.get_errno();
@@ -556,7 +556,7 @@ int Filesystem::UtimensAt(int fd, const char* filename, struct timespec* spec, i
 }
 
 int Filesystem::Rmdir(const char* dir) {
-    FdPath fd_path = resolve(dir, true);
+    FdPath fd_path = resolve(dir, false);
     if (fd_path.is_error()) {
         VERBOSE("Error while resolving path during rmdir(%s), error: %s", dir, strerror(fd_path.get_errno()));
         return -fd_path.get_errno();
