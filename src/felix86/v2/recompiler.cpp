@@ -291,10 +291,13 @@ void Recompiler::emitDispatcher() {
     as.LILabel(t1, &invalidate_caller_thunk);
     as.SD(t1, offsetof(felix86_frame, invalidate_caller_thunk_ptr), sp);
 
-    as.LI(t1, compile_next_handler);
+    biscuit::Label compile_next_label;
+    biscuit::Label compile_next_skip_address_cache_label;
+
+    as.LILabel(t1, &compile_next_label);
     as.SD(t1, offsetof(felix86_frame, compile_next_handler_ptr), sp);
 
-    as.LI(t1, compile_next_skip_address_cache);
+    as.LILabel(t1, &compile_next_skip_address_cache_label);
     as.SD(t1, offsetof(felix86_frame, compile_next_skip_address_cache_ptr), sp);
 
     as.MV(threadStatePointer(), a0);
@@ -308,6 +311,7 @@ void Recompiler::emitDispatcher() {
         as.NOP();
     }
 
+    as.Bind(&compile_next_label);
     compile_next_handler = (u64)as.GetCursorPointer();
 
     if (g_config.address_cache) {
@@ -315,6 +319,7 @@ void Recompiler::emitDispatcher() {
         addressCacheLookup(ripreg, [](Assembler& as, biscuit::GPR new_rip) { as.JR(new_rip); });
     }
 
+    as.Bind(&compile_next_skip_address_cache_label);
     compile_next_skip_address_cache = (u64)as.GetCursorPointer();
 
     writebackState();
