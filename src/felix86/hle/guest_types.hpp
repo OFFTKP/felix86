@@ -141,14 +141,14 @@ struct x86_sigevent {
 
 struct x86_rlimit {
     x86_rlimit(const rlimit& rlimit) {
-        rlim_cur = rlimit.rlim_cur;
-        rlim_max = rlimit.rlim_max;
+        rlim_cur = std::min<u64>(rlimit.rlim_cur, UINT32_MAX);
+        rlim_max = std::min<u64>(rlimit.rlim_max, UINT32_MAX);
     }
 
     operator rlimit() const {
         rlimit rlimit;
-        rlimit.rlim_cur = (i32)rlim_cur;
-        rlimit.rlim_max = (i32)rlim_max;
+        rlimit.rlim_cur = rlim_cur == UINT32_MAX ? RLIM_INFINITY : rlim_cur;
+        rlimit.rlim_max = rlim_max == UINT32_MAX ? RLIM_INFINITY : rlim_max;
         return rlimit;
     }
 
