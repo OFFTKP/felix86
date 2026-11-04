@@ -915,7 +915,7 @@ static void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state
         frame->pretcode = signal.restorer;
     }
     frame->sig = sig;
-    frame->extramask = old_mask.__val[1];
+    frame->extramask = old_mask.__val[0] >> 32;
     felix86_fsave_32(state->ctx, &fpstate->fsave);
     fpstate->magic = 0; // extended state
     fpstate->status = state->ctx.fpu_sw;
@@ -1031,8 +1031,7 @@ void Signals::sigreturn(ThreadState* state, bool rt) {
             new_set = rt_frame->uc.uc_sigmask;
         } else {
             sigemptyset(&new_set);
-            new_set.__val[0] = legacy_frame->sc.oldmask;
-            new_set.__val[1] = legacy_frame->extramask;
+            new_set.__val[0] = legacy_frame->sc.oldmask | ((u64)legacy_frame->extramask << 32);
         }
         Signals::sigprocmask(state, SIG_SETMASK, &new_set, nullptr);
         if (rt) {
