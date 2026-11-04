@@ -833,7 +833,7 @@ private:
 
     void emitInterruptibleSyscallFunction();
 
-    [[nodiscard]] u8* emitInvalidateCallerThunk();
+    void emitInvalidateCallerThunk();
 
     bool scanAhead(u64 rip);
 
@@ -869,7 +869,9 @@ private:
 
     u64 restore_state_handler{};
 
-    u64 invalidate_caller_thunk{};
+    biscuit::Label invalidate_caller_thunk;
+
+    u8* reset_point{};
 
     u64 not_mapped_thunk{}, not_read_thunk{}, not_exec_thunk{};
 

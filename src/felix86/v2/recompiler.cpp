@@ -196,16 +196,13 @@ void Recompiler::emitNecessaryStuff() {
     OptimizationGuard guard(as, optimization_guard_counter);
 
     u64 start = (u64)as.GetCursorPointer();
-    u8* replace_me = emitInvalidateCallerThunk();
     emitInterruptibleSyscallFunction();
     emitDispatcher();
-    u8* ptr = as.GetCursorPointer();
-    as.SetCursorPointer(replace_me);
-    backToDispatcher();
-    as.SetCursorPointer(ptr);
+    emitInvalidateCallerThunk();
 
     start_of_code_cache = as.GetCursorPointer();
     emitBadAddressThunks(); // after start_of_code_cache so is_in_jit_code triggers
+    reset_point = as.GetCursorPointer();
 
     flush_icache((u64)start, (u64)start_of_code_cache);
 }
@@ -290,8 +287,7 @@ void Recompiler::emitDispatcher() {
     as.LI(t1, felix86_frame::expected_magic);
     as.SD(t1, offsetof(felix86_frame, magic), sp);
 
-    ASSERT(invalidate_caller_thunk);
-    as.LI(t1, invalidate_caller_thunk);
+    as.LILabel(t1, &invalidate_caller_thunk);
     as.SD(t1, offsetof(felix86_frame, invalidate_caller_thunk_ptr), sp);
 
     as.LI(t1, compile_next_handler);
@@ -382,8 +378,8 @@ void Recompiler::emitDispatcher() {
     as.JR(ra);
 }
 
-u8* Recompiler::emitInvalidateCallerThunk() {
-    invalidate_caller_thunk = (u64)as.GetCursorPointer();
+void Recompiler::emitInvalidateCallerThunk() {
+    as.Bind(&invalidate_caller_thunk);
 
     as.ADDI(sp, sp, -16);
     // All block links set the return address in t5, and we collect it here
@@ -402,13 +398,7 @@ u8* Recompiler::emitInvalidateCallerThunk() {
     as.ADDI(sp, sp, 16);
     call((u64)Recompiler::invalidateAt);
     restoreState(); // TODO: instead, make a "backToDispatcherSkipWriteback" function and remove this restore
-
-    // Will be replaced with backToDispatcher later
-    u8* replace_me = as.GetCursorPointer();
-    as.NOP();
-    as.NOP();
-    as.NOP();
-    return replace_me;
+    backToDispatcher();
 }
 
 // Note: This function is important. When we invalidate a block range, our choices are either iterate every block that links
@@ -520,8 +510,7 @@ void Recompiler::clearCodeCache(ThreadState* state) {
     host_pc_map.clear();
     page_map.clear();
     clearAddressCache();
-    as.RewindBuffer();
-    emitNecessaryStuff();
+    as.SetCursorPointer(reset_point);
 }
 
 void Recompiler::clearAddressCache() {
