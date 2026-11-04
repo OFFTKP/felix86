@@ -112,34 +112,28 @@ int FD::close_range(u32 start, u32 end, int flags) {
     }
 }
 
+static bool tramples_protected_fd(const char* name, int old_fd, int new_fd) {
+    auto guard = g_process_globals.states_lock.lock();
+    if (g_protected_fds.contains(old_fd)) {
+        WARN("%s with old_fd == protected FD: %d", name, old_fd);
+    }
+    if (g_protected_fds.contains(new_fd)) {
+        WARN("Program tried to trample our protected FD with %s, returning EBADF", name);
+        return true;
+    }
+    return false;
+}
+
 int FD::dup2(int old_fd, int new_fd) {
-    {
-        auto guard = g_process_globals.states_lock.lock();
-        for (u32 protected_fd : g_protected_fds) {
-            if (old_fd == (int)protected_fd) {
-                WARN("dup2 with old_fd == protected FD: %d", protected_fd);
-            }
-            if (new_fd == (int)protected_fd) {
-                WARN("Program tried to trample our protected FD with dup2, returning EBADF");
-                return -EBADF;
-            }
-        }
+    if (tramples_protected_fd("dup2", old_fd, new_fd)) {
+        return -EBADF;
     }
     return ::dup2(old_fd, new_fd);
 }
 
 int FD::dup3(int old_fd, int new_fd, int flags) {
-    {
-        auto guard = g_process_globals.states_lock.lock();
-        for (u32 protected_fd : g_protected_fds) {
-            if (old_fd == (int)protected_fd) {
-                WARN("dup2 with old_fd == protected FD: %d", protected_fd);
-            }
-            if (new_fd == (int)protected_fd) {
-                WARN("Program tried to trample our protected FD with dup3, returning EBADF");
-                return -EBADF;
-            }
-        }
+    if (tramples_protected_fd("dup3", old_fd, new_fd)) {
+        return -EBADF;
     }
     return ::dup3(old_fd, new_fd, flags);
 }
