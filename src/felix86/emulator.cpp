@@ -391,10 +391,12 @@ void Emulator::Start() {
         }
     }
 
+    auto _path = g_config.getProgramPath();
     if (g_config.isWine() && g_config.volatile_metadata) {
         auto path = g_config.getProgramPath();
         auto resolved_path = Filesystem::resolve_wine(path.c_str());
-        if (!std::filesystem::exists(resolved_path.full_path()) || !PE::RegisterVolatileMemory(resolved_path.full_path())) {
+        if (resolved_path.is_error() || !std::filesystem::exists(resolved_path.full_path()) ||
+            !PE::RegisterVolatileMemory(resolved_path.full_path())) {
             // If no volatile metadata was found, ignore this configuration and always enable TSO as appropriate fallback.
             g_config.volatile_metadata = false;
             g_config.always_tso = true;
