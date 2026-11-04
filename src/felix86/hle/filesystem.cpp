@@ -1083,7 +1083,7 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
             return FdPath::create(fd, path);
         }
 
-        if (path[0] == '/' && path[1] == 0) {
+        if (path[0] == '/' && path[strspn(path, "/")] == 0) {
             return FdPath::create(AT_FDCWD, g_config.rootfs_path);
         }
     }
