@@ -358,8 +358,8 @@ static long ForkMe(CloneArgs& host_clone_args) {
     // when we aren't in JIT code
     g_process_globals.before_fork();
     je_jemalloc_prefork();
-    long ret = syscall(SYS_clone, host_clone_args.guest_flags, nullptr, host_clone_args.parent_tid, host_clone_args.child_tid,
-                       nullptr); // args are flipped in syscall
+    long ret = syscall(SYS_clone, host_clone_args.guest_flags & ~CLONE_SETTLS, nullptr, host_clone_args.parent_tid, nullptr,
+                       host_clone_args.child_tid); // args are flipped in syscall
     if (ret == 0) {
         je_jemalloc_postfork_child();
         g_process_globals.after_fork_child();
