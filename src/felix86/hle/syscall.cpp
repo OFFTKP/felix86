@@ -2957,6 +2957,11 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             result = 0;
             break;
         }
+        case felix86_x86_32_setrlimit: {
+            rlimit limit = *(x86_rlimit*)arg2;
+            result = setrlimit((int)arg1, &limit);
+            break;
+        }
         case felix86_x86_32_getrlimit: {
             rlimit limit;
             result = getrlimit((int)arg1, &limit);
