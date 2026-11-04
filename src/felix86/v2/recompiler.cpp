@@ -3601,8 +3601,8 @@ biscuit::GPR Recompiler::getCond(int cond) {
 }
 
 bool Recompiler::needsTsoFence() const {
-    return (g_config.always_tso || (g_config.volatile_metadata && g_volatile.AdrIsVolatile(current_rip))) && !g_is_single_thread &&
-           !Extensions::TSO && !(g_config.no_tso_stack && current_instruction_on_stack && !g_config.paranoid);
+    return !g_is_single_thread && !Extensions::TSO && !(g_config.no_tso_stack && current_instruction_on_stack && !g_config.paranoid) &&
+           (g_config.always_tso || (g_config.volatile_metadata && g_volatile.AdrIsVolatile(current_rip)));
 }
 
 void Recompiler::readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size) {
