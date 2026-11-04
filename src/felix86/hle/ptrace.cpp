@@ -1242,12 +1242,10 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
         return 0;
     }
     case felix86_ptrace_request::felix86_PTRACE_GETSIGMASK: {
-        u64 size = (u64)addr;
-        if (size > 8) {
-            memset((u8*)data + 8, 0, (u64)addr - 8);
-            size = 8;
+        if ((u64)addr != sizeof(u64)) {
+            return -EINVAL;
         }
-        memcpy(data, &remote_state->ptrace_data.stop_info.sigmask, size);
+        memcpy(data, &remote_state->ptrace_data.stop_info.sigmask, sizeof(u64));
         return 0;
     }
     case felix86_ptrace_request::felix86_PTRACE_SYSCALL: {
@@ -1264,11 +1262,10 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
         return 0;
     }
     case felix86_ptrace_request::felix86_PTRACE_SETSIGMASK: {
-        u64 size = (u64)addr;
-        if (size > 8) {
-            size = 8;
+        if ((u64)addr != sizeof(u64)) {
+            return -EINVAL;
         }
-        memcpy(&remote_state->ptrace_data.stop_info.sigmask, data, size);
+        memcpy(&remote_state->ptrace_data.stop_info.sigmask, data, sizeof(u64));
         return 0;
     }
     case felix86_ptrace_request::felix86_PTRACE_GETREGSET: {
@@ -1429,8 +1426,10 @@ void raise_stop(StopType stop, int& sig, siginfo_t* guest_info, int event, u64 e
     *guest_info = data.stop_info.info;
     ASSERT(data.stop_info.signal >= 0);
     sig = data.stop_info.signal;
+    sigset_t new_mask = local_state->signal_mask;
+    new_mask.__val[0] = data.stop_info.sigmask;
     memset(&data.stop_info, 0, sizeof(data.stop_info));
-    Signals::sigprocmask(local_state, SIG_SETMASK, &local_state->signal_mask, nullptr);
+    Signals::sigprocmask(local_state, SIG_SETMASK, &new_mask, nullptr);
 
     // Address space could've been changed in many ways, not only via POKEDATA but also process_vm_writev
     // and even /proc/<pid>/mem or /proc/<pid>/task/<pid>/mem + write syscalls
