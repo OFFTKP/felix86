@@ -1165,10 +1165,11 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
         ASSERT(result == 0 || result == -1);
         return result;
     }
-    case felix86_ptrace_request::felix86_PTRACE_CONT: {
+    case felix86_ptrace_request::felix86_PTRACE_CONT:
+    case felix86_ptrace_request::felix86_PTRACE_SYSCALL: {
         int sig = (i32)(u64)data;
-        if (sig < 0) {
-            WARN("PTRACE_CONT with negative signal: %d", sig);
+        if (sig < 0 || sig > 64) {
+            WARN("%s with invalid signal: %d", guest_op_to_string(op), sig);
             return -EIO;
         }
 
@@ -1193,7 +1194,7 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
         }
 
         remote_state->ptrace_data.stop_info.signal = sig;
-        remote_state->ptrace_data.injected.cont_type = PTRACE_CONT;
+        remote_state->ptrace_data.injected.cont_type = op == felix86_ptrace_request::felix86_PTRACE_SYSCALL ? PTRACE_SYSCALL : PTRACE_CONT;
         remote_state.commit();
         // Skip the host signal from raise_stop
         int result = __ptrace(PTRACE_CONT, pid, 0, 0);
@@ -1248,19 +1249,6 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
             size = 8;
         }
         memcpy(data, &remote_state->ptrace_data.stop_info.sigmask, size);
-        return 0;
-    }
-    case felix86_ptrace_request::felix86_PTRACE_SYSCALL: {
-        if (data != 0 || addr != 0) {
-            WARN("Data or addr not 0 during PTRACE_SYSCALL?");
-        }
-
-        remote_state->ptrace_data.stop_info.signal = 0;
-        remote_state->ptrace_data.injected.cont_type = PTRACE_SYSCALL;
-        remote_state.commit();
-        // Skip the host signal from raise_stop
-        int result = __ptrace(PTRACE_CONT, pid, 0, 0);
-        ASSERT(result == 0);
         return 0;
     }
     case felix86_ptrace_request::felix86_PTRACE_SETSIGMASK: {
