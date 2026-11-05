@@ -172,10 +172,11 @@ Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
         flag_mode = FlagMode::AlwaysEmit;
     }
 
-    if (g_config.perf_blocks || g_config.perf_global || g_config.perf_libs) {
+    if (g_config.perf_blocks || g_config.perf_global || g_config.perf_libs || g_config.perf_jitdump) {
         u64 end = (u64)as.GetCursorPointer();
         u64 size = end - (u64)enter_dispatcher;
         g_process_globals.perf->addToFile((u64)enter_dispatcher, size, "felix86 dispatcher");
+        g_process_globals.perf->addCode((u64)enter_dispatcher, size, "felix86 dispatcher");
     }
 
     if (g_config.perf_global) {
@@ -665,7 +666,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
         g_gdbjit->fire(gdb_block);
     }
 
-    if (g_config.perf_blocks || g_config.perf_symbols) {
+    if (g_config.perf_blocks || g_config.perf_symbols || g_config.perf_jitdump) {
         std::string symbol;
         size_t size = host_address_end - block_meta.host_address;
         if (g_config.perf_symbols) {
@@ -679,6 +680,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
             symbol = fmt::format("block_0x{:x}", start_rip);
         }
         g_process_globals.perf->addToFile(block_meta.host_address, size, symbol);
+        g_process_globals.perf->addCode(block_meta.host_address, size, symbol);
     }
 
     if (g_config.perf_libs) {
