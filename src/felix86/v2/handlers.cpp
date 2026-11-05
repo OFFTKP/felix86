@@ -180,8 +180,10 @@ struct FusedJcc {
     bool swap = false;
 };
 
-static std::optional<FusedJcc> getFusedJcc(ZydisMnemonic mnemonic, bool is_test) {
-    switch (mnemonic) {
+static std::optional<FusedJcc> getFusedJcc(ZydisMnemonic jump_mnemonic, ZydisMnemonic flag_mnemonic) {
+    bool is_cmp = flag_mnemonic == ZYDIS_MNEMONIC_CMP || flag_mnemonic == ZYDIS_MNEMONIC_SUB;
+    bool is_test = flag_mnemonic == ZYDIS_MNEMONIC_TEST;
+    switch (jump_mnemonic) {
     case ZYDIS_MNEMONIC_JZ: {
         return FusedJcc{BranchCond::EQ, FusedCompare::Equal};
     }
@@ -189,24 +191,30 @@ static std::optional<FusedJcc> getFusedJcc(ZydisMnemonic mnemonic, bool is_test)
         return FusedJcc{BranchCond::NE, FusedCompare::Equal};
     }
     case ZYDIS_MNEMONIC_JB: {
-        if (is_test) {
+        if (!is_cmp) {
             return std::nullopt;
         }
         return FusedJcc{BranchCond::LTU, FusedCompare::Unsigned};
     }
     case ZYDIS_MNEMONIC_JNB: {
-        if (is_test) {
+        if (!is_cmp) {
             return std::nullopt;
         }
         return FusedJcc{BranchCond::GEU, FusedCompare::Unsigned};
     }
     case ZYDIS_MNEMONIC_JBE: {
+        if (!is_cmp && !is_test) {
+            return std::nullopt;
+        }
         if (is_test) {
             return FusedJcc{BranchCond::EQ, FusedCompare::Equal};
         }
         return FusedJcc{BranchCond::GEU, FusedCompare::Unsigned, true};
     }
     case ZYDIS_MNEMONIC_JNBE: {
+        if (!is_cmp && !is_test) {
+            return std::nullopt;
+        }
         if (is_test) {
             return FusedJcc{BranchCond::NE, FusedCompare::Equal};
         }
@@ -225,15 +233,27 @@ static std::optional<FusedJcc> getFusedJcc(ZydisMnemonic mnemonic, bool is_test)
         return FusedJcc{BranchCond::GE, FusedCompare::Signed};
     }
     case ZYDIS_MNEMONIC_JL: {
+        if (!is_cmp && !is_test) {
+            return std::nullopt;
+        }
         return FusedJcc{BranchCond::LT, FusedCompare::Signed};
     }
     case ZYDIS_MNEMONIC_JNL: {
+        if (!is_cmp && !is_test) {
+            return std::nullopt;
+        }
         return FusedJcc{BranchCond::GE, FusedCompare::Signed};
     }
     case ZYDIS_MNEMONIC_JLE: {
+        if (!is_cmp && !is_test) {
+            return std::nullopt;
+        }
         return FusedJcc{BranchCond::GE, FusedCompare::Signed, true};
     }
     case ZYDIS_MNEMONIC_JNLE: {
+        if (!is_cmp && !is_test) {
+            return std::nullopt;
+        }
         return FusedJcc{BranchCond::LT, FusedCompare::Signed, true};
     }
     default: {
@@ -242,8 +262,13 @@ static std::optional<FusedJcc> getFusedJcc(ZydisMnemonic mnemonic, bool is_test)
     }
 }
 
-static void getFusedOperands(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, bool is_test, const FusedJcc& fused, biscuit::GPR& lhs,
-                             biscuit::GPR& rhs) {
+static void getFusedOperands(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, ZydisMnemonic flag_mnemonic, const FusedJcc& fused,
+                             biscuit::GPR& lhs, biscuit::GPR& rhs) {
+    bool is_test = flag_mnemonic == ZYDIS_MNEMONIC_TEST;
+    bool is_inc = flag_mnemonic == ZYDIS_MNEMONIC_INC;
+    bool is_add = flag_mnemonic == ZYDIS_MNEMONIC_ADD;
+    bool is_dec = flag_mnemonic == ZYDIS_MNEMONIC_DEC;
+    bool is_sub = flag_mnemonic == ZYDIS_MNEMONIC_SUB;
     x86_size_e size = rec.getSize(&operands[0]);
     bool same_register = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER &&
                          operands[0].reg.value == operands[1].reg.value;
@@ -275,6 +300,32 @@ static void getFusedOperands(Recompiler& rec, Assembler& as, ZydisDecodedOperand
         if (fused.kind == FusedCompare::Signed && size != X86_SIZE_QWORD) {
             biscuit::GPR result = rec.scratch();
             rec.sext(result, lhs, size == X86_SIZE_BYTE_HIGH ? X86_SIZE_BYTE : size);
+            lhs = result;
+        }
+    } else if (fused.kind == FusedCompare::Equal && (is_add || is_sub || is_inc || is_dec)) {
+        u64 imm = (is_inc || is_dec) ? 1 : rec.sextImmediate(operands[1].imm.value.u, operands[0].size);
+        if (is_sub || is_dec) {
+            imm = -imm;
+        }
+        x86_ref_e ref = Recompiler::zydisToRef(operands[0].reg.value);
+        biscuit::GPR full = rec.getGPR(ref, X86_SIZE_QWORD);
+        if (size == X86_SIZE_QWORD) {
+            rec.addi(full, full, imm);
+            lhs = full;
+        } else if (size == X86_SIZE_DWORD) {
+            rec.addi(full, full, imm);
+            as.ZEXTW(full, full);
+            lhs = full;
+        } else {
+            biscuit::GPR result = rec.scratch();
+            if (size == X86_SIZE_BYTE_HIGH) {
+                as.SRLI(result, full, 8);
+                rec.addi(result, result, imm);
+            } else {
+                rec.addi(result, full, imm);
+            }
+            rec.zext(result, result, size);
+            rec.setGPR(ref, size, result, true);
             lhs = result;
         }
     } else if (fused.kind == FusedCompare::Equal) {
@@ -311,6 +362,18 @@ static void getFusedOperands(Recompiler& rec, Assembler& as, ZydisDecodedOperand
         } else {
             rhs = is_signed ? rec.getGPRSigned(&operands[1], false) : rec.zextIfDirty32(rec.getGPR(&operands[1]), size);
         }
+
+        if (is_sub) {
+            biscuit::GPR original = lhs;
+            if (!Recompiler::isScratch(lhs)) {
+                biscuit::GPR copy = rec.scratch();
+                as.MV(copy, lhs);
+                lhs = copy;
+            }
+            biscuit::GPR result = operands[0].size == 64 ? original : rec.scratch();
+            as.SUB(result, lhs, rhs);
+            rec.setGPR(&operands[0], result);
+        }
     }
 
     if (fused.swap) {
@@ -318,17 +381,29 @@ static void getFusedOperands(Recompiler& rec, Assembler& as, ZydisDecodedOperand
     }
 }
 
-static bool AttemptJccFusing(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands,
-                             bool is_test) {
+static bool AttemptJccFusing(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands) {
     auto opt = rec.getNextInstruction();
     if (!opt) {
         return false;
     }
 
+    const ZydisMnemonic mnemonic = instruction.mnemonic;
     auto [next_instruction, next_operands] = *opt;
-    std::optional<FusedJcc> fused = getFusedJcc(next_instruction->mnemonic, is_test);
+    std::optional<FusedJcc> fused = getFusedJcc(next_instruction->mnemonic, mnemonic);
     if (!fused) {
         return false;
+    }
+
+    if (mnemonic == ZYDIS_MNEMONIC_ADD || mnemonic == ZYDIS_MNEMONIC_SUB) {
+        if (operands[0].type != ZYDIS_OPERAND_TYPE_REGISTER || operands[1].type != ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+            return false;
+        }
+    }
+
+    if (mnemonic == ZYDIS_MNEMONIC_INC || mnemonic == ZYDIS_MNEMONIC_DEC) {
+        if (operands[0].type != ZYDIS_OPERAND_TYPE_REGISTER) {
+            return false;
+        }
     }
 
     u64 next_rip = rip + instruction.length;
@@ -341,7 +416,7 @@ static bool AttemptJccFusing(Recompiler& rec, u64 rip, Assembler& as, ZydisDecod
 
     biscuit::GPR lhs;
     biscuit::GPR rhs;
-    getFusedOperands(rec, as, operands, is_test, *fused, lhs, rhs);
+    getFusedOperands(rec, as, operands, mnemonic, *fused, lhs, rhs);
 
     JCC(rec, next_rip, as, *next_instruction, next_operands, fused->cond, lhs, rhs);
     rec.skipNext();
@@ -900,6 +975,12 @@ FAST_HANDLE(MOV) {
 }
 
 FAST_HANDLE(ADD) {
+    if (!g_config.single_step && !g_config.paranoid) {
+        if (AttemptJccFusing(rec, rip, as, instruction, operands)) {
+            return;
+        }
+    }
+
     bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
     bool needs_af = rec.shouldEmitFlag(rip, X86_REF_AF);
     bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
@@ -1097,6 +1178,12 @@ FAST_HANDLE(ADD) {
 }
 
 FAST_HANDLE(SUB) {
+    if (!g_config.single_step && !g_config.paranoid) {
+        if (AttemptJccFusing(rec, rip, as, instruction, operands)) {
+            return;
+        }
+    }
+
     bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
     bool needs_af = rec.shouldEmitFlag(rip, X86_REF_AF);
     bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
@@ -1386,7 +1473,7 @@ FAST_HANDLE(ADC) {
 
 FAST_HANDLE(CMP) {
     if (!g_config.single_step && !g_config.paranoid) {
-        if (AttemptJccFusing(rec, rip, as, instruction, operands, false)) {
+        if (AttemptJccFusing(rec, rip, as, instruction, operands)) {
             return;
         }
     }
@@ -3713,7 +3800,7 @@ FAST_HANDLE(IDIV) {
 
 FAST_HANDLE(TEST) {
     if (!g_config.single_step && !g_config.paranoid) {
-        if (AttemptJccFusing(rec, rip, as, instruction, operands, true)) {
+        if (AttemptJccFusing(rec, rip, as, instruction, operands)) {
             return;
         }
     }
@@ -3761,6 +3848,12 @@ FAST_HANDLE(TEST) {
 }
 
 FAST_HANDLE(INC) {
+    if (!g_config.single_step && !g_config.paranoid) {
+        if (AttemptJccFusing(rec, rip, as, instruction, operands)) {
+            return;
+        }
+    }
+
     x86_size_e size = rec.getSize(&operands[0]);
     bool needs_af = rec.shouldEmitFlag(rip, X86_REF_AF);
     bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
@@ -3887,6 +3980,12 @@ FAST_HANDLE(INC) {
 }
 
 FAST_HANDLE(DEC) {
+    if (!g_config.single_step && !g_config.paranoid) {
+        if (AttemptJccFusing(rec, rip, as, instruction, operands)) {
+            return;
+        }
+    }
+
     x86_size_e size = rec.getSize(&operands[0]);
     bool needs_af = rec.shouldEmitFlag(rip, X86_REF_AF);
     bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
