@@ -11,6 +11,11 @@ __attribute__((naked)) static void set_thread_state(ThreadState* state) {
         mv gp, a0
         ret
     )");
+#elif defined(__x86_64__)
+    asm volatile(R"(
+        wrgsbase %rdi
+        ret
+    )");
 #else
 #warning "Unimplemented"
 #endif
@@ -77,6 +82,11 @@ __attribute__((naked)) ThreadState* ThreadState::Get() {
 #ifdef __riscv
     asm volatile(R"(
         mv a0, gp
+        ret
+    )");
+#elif defined(__x86_64__)
+    asm volatile(R"(
+        rdgsbase %rax
         ret
     )");
 #else
