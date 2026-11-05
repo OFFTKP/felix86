@@ -219,7 +219,7 @@ struct Recompiler {
 
     void setVec(const ZydisDecodedOperand* operand, biscuit::Vec reg);
 
-    void setGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg);
+    void setGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg, bool zexted = false);
 
     void setGPR(ZydisRegister ref, x86_size_e size, biscuit::GPR reg) {
         return setGPR(zydisToRef(ref), size, reg);

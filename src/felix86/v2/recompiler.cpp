@@ -1849,39 +1849,54 @@ biscuit::Vec Recompiler::getVec(x86_ref_e ref) {
     return vec;
 }
 
-void Recompiler::setGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
+void Recompiler::setGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg, bool zexted) {
     switch (size) {
     case X86_SIZE_BYTE: {
         ASSERT(reg != Allocations::allocatedGPR(ref));
         biscuit::GPR dest = getGPR(ref, X86_SIZE_QWORD);
-        biscuit::GPR gpr8 = scratch();
-        as.ANDI(gpr8, reg, 0xff);
+        biscuit::GPR gpr8 = reg;
+        if (!zexted) {
+            gpr8 = scratch();
+            as.ANDI(gpr8, reg, 0xff);
+        }
         as.ANDI(dest, dest, ~0xff);
         as.OR(dest, dest, gpr8);
-        popScratch();
+        if (!zexted) {
+            popScratch();
+        }
         break;
     }
     case X86_SIZE_BYTE_HIGH: {
         ASSERT(reg != Allocations::allocatedGPR(ref));
         biscuit::GPR dest = getGPR(ref, X86_SIZE_QWORD);
-        biscuit::GPR gpr8 = scratch();
-        as.ANDI(gpr8, reg, 0xFF);
+        biscuit::GPR gpr8 = reg;
+        if (!zexted) {
+            gpr8 = scratch();
+            as.ANDI(gpr8, reg, 0xFF);
+        }
         as.RORI(dest, dest, 8);
         as.ANDI(dest, dest, ~0xFF);
         as.OR(dest, dest, gpr8);
         as.RORI(dest, dest, 56);
-        popScratch();
+        if (!zexted) {
+            popScratch();
+        }
         break;
     }
     case X86_SIZE_WORD: {
         ASSERT(reg != Allocations::allocatedGPR(ref));
         biscuit::GPR dest = getGPR(ref, X86_SIZE_QWORD);
-        biscuit::GPR gpr16 = scratch();
-        as.ZEXTH(gpr16, reg);
+        biscuit::GPR gpr16 = reg;
+        if (!zexted) {
+            gpr16 = scratch();
+            as.ZEXTH(gpr16, reg);
+        }
         as.SRLI(dest, dest, 16);
         as.SLLI(dest, dest, 16);
         as.OR(dest, dest, gpr16);
-        popScratch();
+        if (!zexted) {
+            popScratch();
+        }
         break;
     }
     case X86_SIZE_DWORD: {
