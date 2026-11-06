@@ -156,7 +156,7 @@ void GuestToHostMarshaller::emitPrologue(biscuit::Assembler& as) {
 
     if (g_config.print_thunks) {
         biscuit::Label after;
-        as.MV(a0, Recompiler::threadStatePointer());
+        as.MV(a0, Allocations::threadStatePointer());
         as.LI(t0, (u64)my_printer);
         as.AUIPC(a1, 0);
         as.ADDI(a1, a1, 16);
@@ -281,7 +281,7 @@ void GuestToHostMarshaller::emitPrologue(biscuit::Assembler& as) {
             address_reg = Allocations::RSP();
             offset = marshalling.x86.value.stack_position;
         } else {
-            address_reg = Recompiler::threadStatePointer();
+            address_reg = Allocations::threadStatePointer();
             if (marshalling.x86.value.reg >= X86_REF_RAX && marshalling.x86.value.reg <= X86_REF_R15) {
                 offset = offsetof(ThreadState, ctx.gprs) + (marshalling.x86.value.reg - X86_REF_RAX) * 8;
             } else if (marshalling.x86.value.reg >= X86_REF_XMM0 && marshalling.x86.value.reg <= X86_REF_XMM15) {
@@ -360,7 +360,7 @@ void GuestToHostMarshaller::emitPrologue(biscuit::Assembler& as) {
         } else if (marshalling.riscv.type == riscv_location::fpr) {
             biscuit::FPR dest_reg = biscuit::FPR(marshalling.riscv.value.reg_index);
             ASSERT(marshalling.x86.type == x86_location::reg);
-            ASSERT(address_reg == Recompiler::threadStatePointer());
+            ASSERT(address_reg == Allocations::threadStatePointer());
             switch (marshalling.size) {
             case 8: {
                 as.FLD(dest_reg, offset, address_reg);
@@ -385,31 +385,31 @@ void GuestToHostMarshaller::emitEpilogue(biscuit::Assembler& as) {
         switch (return_type) {
         case 'b':
             // Preserves top bits in x86-64
-            as.SB(a0, offsetof(ThreadState, ctx.gprs) + 0, Recompiler::threadStatePointer());
+            as.SB(a0, offsetof(ThreadState, ctx.gprs) + 0, Allocations::threadStatePointer());
             break;
         case 'w':
             // Preserves top bits in x86-64
-            as.SH(a0, offsetof(ThreadState, ctx.gprs) + 0, Recompiler::threadStatePointer());
+            as.SH(a0, offsetof(ThreadState, ctx.gprs) + 0, Allocations::threadStatePointer());
             break;
         case 'd':
-            as.SW(a0, offsetof(ThreadState, ctx.gprs) + 0, Recompiler::threadStatePointer());
-            as.SW(x0, offsetof(ThreadState, ctx.gprs) + 4, Recompiler::threadStatePointer()); // store 0 into bits 32-63
+            as.SW(a0, offsetof(ThreadState, ctx.gprs) + 0, Allocations::threadStatePointer());
+            as.SW(x0, offsetof(ThreadState, ctx.gprs) + 4, Allocations::threadStatePointer()); // store 0 into bits 32-63
             break;
         case 'q':
-            as.SD(a0, offsetof(ThreadState, ctx.gprs) + 0, Recompiler::threadStatePointer());
+            as.SD(a0, offsetof(ThreadState, ctx.gprs) + 0, Allocations::threadStatePointer());
             break;
         case 'F': {
-            as.FSW(fa0, offsetof(ThreadState, ctx.xmm) + 0, Recompiler::threadStatePointer());
-            as.SW(x0, offsetof(ThreadState, ctx.xmm) + 4, Recompiler::threadStatePointer()); // store 0 into bits 32-63
+            as.FSW(fa0, offsetof(ThreadState, ctx.xmm) + 0, Allocations::threadStatePointer());
+            as.SW(x0, offsetof(ThreadState, ctx.xmm) + 4, Allocations::threadStatePointer()); // store 0 into bits 32-63
             for (u32 i = 1; i < sizeof(XmmReg) / 8; i++) {
-                as.SD(x0, offsetof(ThreadState, ctx.xmm) + (i * 8), Recompiler::threadStatePointer());
+                as.SD(x0, offsetof(ThreadState, ctx.xmm) + (i * 8), Allocations::threadStatePointer());
             }
             break;
         }
         case 'D': {
-            as.FSD(fa0, offsetof(ThreadState, ctx.xmm) + 0, Recompiler::threadStatePointer());
+            as.FSD(fa0, offsetof(ThreadState, ctx.xmm) + 0, Allocations::threadStatePointer());
             for (u32 i = 1; i < sizeof(XmmReg) / 8; i++) {
-                as.SD(x0, offsetof(ThreadState, ctx.xmm) + (i * 8), Recompiler::threadStatePointer());
+                as.SD(x0, offsetof(ThreadState, ctx.xmm) + (i * 8), Allocations::threadStatePointer());
             }
             break;
         }
@@ -466,7 +466,7 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, const void* guest
     as.SD(s10, 8, sp);
 
     // Since ThreadState is always in gp, we can just access it here
-    biscuit::GPR thread_state_pointer = Recompiler::threadStatePointer();
+    biscuit::GPR thread_state_pointer = Allocations::threadStatePointer();
     biscuit::GPR guest_stack_pointer = t1;
 
     as.LD(guest_stack_pointer, offsetof(ThreadState, ctx.gprs) + (X86_REF_RSP - X86_REF_RAX) * 8, thread_state_pointer);
