@@ -14,6 +14,7 @@
 #include "felix86/common/frame.hpp"
 #include "felix86/common/gdbjit.hpp"
 #include "felix86/common/global.hpp"
+#include "felix86/common/optimization_guard.hpp"
 #include "felix86/common/perf.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
@@ -28,16 +29,6 @@
 #include "felix86/v2/recompiler.hpp"
 #include "fmt/format.h"
 
-constexpr static u64 code_cache_sizes[] = {
-    4 * MB,
-    8 * MB,
-    16 * MB,
-    32 * MB,
-};
-
-constexpr static u64 code_cache_sizes_count = std::size(code_cache_sizes);
-constexpr static u64 max_code_cache_size = code_cache_sizes[code_cache_sizes_count - 1];
-
 static void incorrect_magic(void* sp) {
     ERROR("Incorrect magic in frame (sp: %p)", sp);
 }
@@ -45,28 +36,6 @@ static void incorrect_magic(void* sp) {
 static void incorrect_stack(void* sp_expected, void* sp_actual) {
     ERROR("Incorrect stack in frame, expected %p, but got %p", sp_expected, sp_actual);
 }
-
-struct OptimizationGuard {
-    OptimizationGuard(biscuit::Assembler& as, int& counter) : as(as), counter(counter) {
-        if (g_config.auto_compress) {
-            as.DisableOptimization(Optimization::AutoCompress);
-            counter++;
-        }
-    }
-
-    ~OptimizationGuard() {
-        if (g_config.auto_compress) {
-            counter--;
-            if (counter == 0) {
-                as.EnableOptimization(Optimization::AutoCompress);
-            }
-        }
-    }
-
-private:
-    biscuit::Assembler& as;
-    int& counter; // only used so we can guard recursively, doesn't need to be atomic
-};
 
 // Some instructions modify the flags conditionally or sometimes they don't modify them at all.
 // This needs to be marked as a usage of the flag as it can be passed through if they don't modify,
@@ -117,71 +86,29 @@ static bool is_stack_operand(const ZydisDecodedOperand& operand) {
 }
 
 Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
-    constexpr size_t total_size = max_code_cache_size;
-    // Try allocating code cache near program so that rip-relative immediates can be made in fewer instructions
-    u64 min = std::min(g_executable_start, g_interpreter_start);
-    void* address = MAP_FAILED;
-    // If the program is allocated in 32-bit address space then it's not worth performing this optimization
-    // as to not interfere with MAP_32BIT and because immediates can be made in 2 instructions
-    if (min > 5 * GB) {
-        for (int i = 0; i < 56; i++) {
-            min -= total_size;
-            min &= ~(2 * MB - 1);
-            address = ::mmap((void*)min, total_size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE | MAP_FIXED_NOREPLACE, -1, 0);
-            if (address != MAP_FAILED) {
-                reservation_base = address;
-                reservation_size = total_size;
-                break;
-            }
-        }
+    as = Assembler(code_cache->getThunkArea(), CodeCache::thunk_area_size);
+    emitNecessaryStuff();
+    const u64 end_of_thunks = (u64)as.GetCursorPointer();
 
-        if (address == MAP_FAILED) {
-            WARN("Failed to allocate code cache near executable");
-        }
-    }
-    if (address == MAP_FAILED) {
-        // Allocate an extra 2MB of virtual address space and skip it so that the mapping is aligned
-        // to 2MB for the MADV_HUGEPAGE to work
-        void* raw = ::mmap(nullptr, total_size + 2 * MB, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
-        if (raw != MAP_FAILED) {
-            reservation_base = raw;
-            reservation_size = total_size + 2 * MB;
-            address = (void*)(((u64)raw + 2 * MB - 1) & ~(2 * MB - 1));
-        } else {
-            address = MAP_FAILED;
-        }
-    }
-    ASSERT_MSG(address != MAP_FAILED, "Failed to reserve code cache for thread %d?", gettid());
-    u8* first_chunk =
-        (u8*)::mmap((u8*)address, code_cache_sizes[0], PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
-    ASSERT(first_chunk == (u8*)address);
-    as = Assembler(first_chunk, max_code_cache_size);
-
-    int result = madvise(address, total_size, MADV_HUGEPAGE);
-    if (result != 0) {
-        WARN("Failed to set MADV_HUGEPAGE for code cache");
-    }
-
+    as = Assembler(code_cache->getBlockArea(), code_cache->getBlockAreaSize());
     if (g_config.auto_compress) {
         as.EnableOptimization(Optimization::AutoCompress);
     }
-
-    emitNecessaryStuff();
 
     if (g_config.always_flags || g_config.paranoid) {
         flag_mode = FlagMode::AlwaysEmit;
     }
 
+    const CodeCachePointers& pointers = code_cache->getPointers();
     if (g_config.perf_blocks || g_config.perf_global || g_config.perf_libs || g_config.perf_jitdump) {
-        u64 end = (u64)as.GetCursorPointer();
-        u64 size = end - (u64)enter_dispatcher;
-        g_process_globals.perf->addToFile((u64)enter_dispatcher, size, "felix86 dispatcher");
-        g_process_globals.perf->addCode((u64)enter_dispatcher, size, "felix86 dispatcher");
+        u64 size = end_of_thunks - (u64)pointers.enter_dispatcher;
+        g_process_globals.perf->addToFile((u64)pointers.enter_dispatcher, size, "felix86 dispatcher");
+        g_process_globals.perf->addCode((u64)pointers.enter_dispatcher, size, "felix86 dispatcher");
     }
 
     if (g_config.perf_global) {
-        g_process_globals.perf->addToFile((u64)start_of_code_cache, max_code_cache_size - ((u64)start_of_code_cache - (u64)as.GetBufferPointer(0)),
-                                          "felix86 code cache");
+        u64 end_of_reservation = (u64)code_cache->getBlockArea() + code_cache->getBlockAreaSize();
+        g_process_globals.perf->addToFile(pointers.start_of_code_cache, end_of_reservation - pointers.start_of_code_cache, "felix86 code cache");
     }
 
     for (int i = 0; i < 8; i++) {
@@ -190,60 +117,56 @@ Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
     }
 }
 
-Recompiler::~Recompiler() {
-    munmap(reservation_base, reservation_size);
-}
+Recompiler::~Recompiler() = default;
 
 void Recompiler::emitNecessaryStuff() {
     OptimizationGuard guard(as, optimization_guard_counter);
-
     u64 start = (u64)as.GetCursorPointer();
-    emitInterruptibleSyscallFunction();
+    emitInterruptibleSyscallThunk();
     emitDispatcher();
     emitInvalidateCallerThunk();
     emitBadAddressThunks();
 
-    start_of_code_cache = as.GetCursorPointer();
-    reset_point = as.GetCursorPointer();
-
-    flush_icache((u64)start, (u64)start_of_code_cache);
+    flush_icache(start, (u64)as.GetCursorPointer());
 }
 
 void Recompiler::emitBadAddressThunks() {
+    CodeCachePointers& pointers = code_cache->getPointers();
     while ((u64)as.GetCursorPointer() & 0xF) {
         as.C_NOP();
     }
 
     // The signal handler will find the RIP via the allocated ripreg as it tried
     // to compile a block there
-    not_mapped_thunk = (u64)as.GetCursorPointer();
+    pointers.not_mapped = (u64)as.GetCursorPointer();
     as.SD(x0, 0, x0);
     as.SLTIU(x0, x0, FELIX86_HINT_NOT_MAPPED);
     as.C_UNDEF();
     as.C_UNDEF();
 
-    not_read_thunk = (u64)as.GetCursorPointer();
+    pointers.not_read = (u64)as.GetCursorPointer();
     as.SD(x0, 0, x0);
     as.SLTIU(x0, x0, FELIX86_HINT_NOT_READ);
     as.C_UNDEF();
     as.C_UNDEF();
 
-    not_exec_thunk = (u64)as.GetCursorPointer();
+    pointers.not_exec = (u64)as.GetCursorPointer();
     as.SD(x0, 0, x0);
     as.SLTIU(x0, x0, FELIX86_HINT_NOT_EXEC);
     as.C_UNDEF();
     as.C_UNDEF();
 }
 
-void Recompiler::emitInterruptibleSyscallFunction() {
+void Recompiler::emitInterruptibleSyscallThunk() {
+    CodeCachePointers& pointers = code_cache->getPointers();
     while ((u64)as.GetCursorPointer() & 0xF) {
         as.C_NOP();
     }
 
-    // This function is used to have a straight line sequence of code that first checks if any signals are deferred, then
+    // This thunk is used to have a straight line sequence of code that first checks if any signals are deferred, then
     // loads the arguments and calls ECALL. Even if a signal happens *after* the check and before the ECALL,
     // it is able to verify it is between these two points and jump to the -EINTR return from the signal handler.
-    interruptible_syscall_func = (decltype(interruptible_syscall_func))as.GetCursorPointer();
+    pointers.interruptible_syscall = (InterruptibleSyscallFunc)as.GetCursorPointer();
     biscuit::Label eintr;
     as.LD(t0, 0, a0);
     as.MV(t1, a1);
@@ -255,18 +178,19 @@ void Recompiler::emitInterruptibleSyscallFunction() {
     as.MV(a5, a7);
     as.MV(a7, t1);
     as.BNEZ(t0, &eintr);
-    interruptible_syscall_func_ecall = as.GetCursorPointer();
+    pointers.interruptible_syscall_ecall = (u64)as.GetCursorPointer();
     as.ECALL();
     as.RET();
     as.Bind(&eintr);
 
-    interruptible_syscall_func_eintr = as.GetCursorPointer();
+    pointers.interruptible_syscall_eintr = (u64)as.GetCursorPointer();
     as.LI(a0, -FELIX86_ERESTARTNOINTR);
     as.RET();
 }
 
 void Recompiler::emitDispatcher() {
-    enter_dispatcher = (decltype(enter_dispatcher))as.GetCursorPointer();
+    CodeCachePointers& pointers = code_cache->getPointers();
+    pointers.enter_dispatcher = (decltype(pointers.enter_dispatcher))as.GetCursorPointer();
 
     // Save the current frame in the stack
     // The size of felix86_frame is bigger than the red zone, so we need to decrement the stack instead of using a temporary
@@ -303,7 +227,7 @@ void Recompiler::emitDispatcher() {
 
     as.MV(Allocations::threadStatePointer(), a0);
 
-    restore_state_handler = (u64)as.GetCursorPointer();
+    pointers.restore_state = (u64)as.GetCursorPointer();
 
     restoreState();
 
@@ -313,7 +237,7 @@ void Recompiler::emitDispatcher() {
     }
 
     as.Bind(&compile_next_label);
-    compile_next_handler = (u64)as.GetCursorPointer();
+    pointers.compile_next = (u64)as.GetCursorPointer();
 
     if (g_config.address_cache) {
         biscuit::GPR ripreg = Allocations::RIP();
@@ -321,7 +245,7 @@ void Recompiler::emitDispatcher() {
     }
 
     as.Bind(&compile_next_skip_address_cache_label);
-    compile_next_skip_address_cache = (u64)as.GetCursorPointer();
+    pointers.compile_next_skip_address_cache = (u64)as.GetCursorPointer();
 
     writebackState();
     as.MV(a0, Allocations::threadStatePointer());
@@ -334,7 +258,7 @@ void Recompiler::emitDispatcher() {
     as.JR(retval);
     popScratch();
 
-    exit_dispatcher = (decltype(exit_dispatcher))as.GetCursorPointer();
+    pointers.exit_dispatcher = (decltype(pointers.exit_dispatcher))as.GetCursorPointer();
 
     // Move stack pointer to current frame (passed as an argument)
     as.MV(sp, a0);
@@ -344,7 +268,7 @@ void Recompiler::emitDispatcher() {
 
     // Load the frame we had before entering the dispatcher
     // First make sure our magic is correct
-    Label magic_correct;
+    biscuit::Label magic_correct;
     as.LD(t1, offsetof(felix86_frame, magic), sp);
     as.LI(t2, felix86_frame::expected_magic);
     as.BEQ(t1, t2, &magic_correct);
@@ -367,7 +291,7 @@ void Recompiler::emitDispatcher() {
     }
 
     // Sanity check that the stack is just sp + sizeof(felix86_frame)
-    Label stack_correct;
+    biscuit::Label stack_correct;
     as.ADDI(t1, sp, sizeof(felix86_frame));
     as.BEQ(t1, t0, &stack_correct);
 
@@ -437,8 +361,8 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_
     if (linked_block) {
         // This was jumped to by a link. We need to unlink the caller so it doesn't jump here again.
         u8* cursor = state->recompiler->as.GetCursorPointer();
-        ASSERT_MSG(linked_block > state->recompiler->start_of_code_cache && linked_block <= cursor, "%p < %p <= %p",
-                   state->recompiler->start_of_code_cache, linked_block, cursor);
+        ASSERT_MSG(linked_block > (u8*)state->recompiler->getStartOfCodeCache() && linked_block <= cursor, "%p < %p <= %p",
+                   (u8*)state->recompiler->getStartOfCodeCache(), linked_block, cursor);
 
         u32 auipc, addi;
         {
@@ -481,30 +405,7 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_
 }
 
 void Recompiler::resizeOrClearCodeCache(ThreadState* state) {
-    if (code_cache_size_index < code_cache_sizes_count - 1) {
-        // Allocate more of our reserved buffer
-        u8* old_mem = as.GetBufferPointer(0);
-        u64 old_size = code_cache_sizes[code_cache_size_index];
-        u8* past_end = old_mem + old_size;
-        ASSERT(!((u64)past_end & 0xFFF));
-        code_cache_size_index++;
-        u64 new_size = code_cache_sizes[code_cache_size_index];
-        u64 size_difference = new_size - old_size;
-
-        void* address = ::mmap(past_end, size_difference, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
-        if (address != past_end) {
-            // TODO: investigate
-            // Unsure what causes this to happen, but it does. In that case, clear code cache and carry on
-            // Perhaps PR_MDWE_REFUSE_EXEC_GAIN
-            WARN("Couldn't increment code cache because mmap returned %p (errno: %s), clearing code cache", address, strerror(errno));
-            clearCodeCache(state);
-
-            // Undo the size increment
-            code_cache_size_index--;
-        } else {
-            madvise(address, size_difference, MADV_HUGEPAGE);
-        }
-    } else {
+    if (!code_cache->grow()) {
         clearCodeCache(state);
     }
 }
@@ -512,12 +413,9 @@ void Recompiler::resizeOrClearCodeCache(ThreadState* state) {
 void Recompiler::clearCodeCache(ThreadState* state) {
     WARN("Clearing cache on thread %u", gettid());
     state->pending_cache_clear = false;
-    auto guard = page_map_lock.lock();
-    block_metadata.clear();
-    host_pc_map.clear();
-    page_map.clear();
+    code_cache->clear();
     clearAddressCache();
-    as.SetCursorPointer(reset_point);
+    as.RewindBuffer();
 }
 
 void Recompiler::clearAddressCache() {
@@ -547,11 +445,12 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
         const bool mapped = prot.has_value();
         const bool readable = mapped && *prot & PROT_READ;
         const bool executable = mapped && ((*prot & PROT_EXEC) || ((state->persona & READ_IMPLIES_EXEC) && readable));
+        const CodeCachePointers& pointers = code_cache->getPointers();
         if (mapped) {
             if (executable) {
                 // Continue compiling...
             } else {
-                return (*prot & (PROT_READ | PROT_WRITE)) ? not_exec_thunk : not_read_thunk;
+                return (*prot & (PROT_READ | PROT_WRITE)) ? pointers.not_exec : pointers.not_read;
             }
         } else {
             int maps_fd = open("/proc/self/maps", O_RDONLY | O_CLOEXEC);
@@ -572,7 +471,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
             if (!unmapped) {
                 // Continue compiling, may be one of our thunk trampolines
             } else {
-                return not_mapped_thunk;
+                return pointers.not_mapped;
             }
         }
     } else {
@@ -596,8 +495,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
     u64 protect_end = 0;
     SequenceResult result;
     do {
-        u64 size = code_cache_sizes[code_cache_size_index];
-        size_t remaining_size = size - as.GetCodeBuffer().GetCursorOffset();
+        size_t remaining_size = code_cache->getMappedEnd() - as.GetCursorPointer();
         // TODO: restrict max x86 instruction count per block
         if (remaining_size < 400'000) { // less than ~400KB left, clear cache
             resizeOrClearCodeCache(state);
@@ -626,7 +524,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
     ASSERT(host_address_end - start >= 8); // At least 2 instructions, so that our unlinking logic works
 
     BlockMetadata& block_meta = getBlockMetadata(rip);
-    host_pc_map[host_address_end - 1] = {&block_meta};
+    code_cache->addHostPcLookup(host_address_end - 1, &block_meta);
 
     if (g_config.address_cache) {
         AddressCacheEntry& entry = state->getAddressCacheEntry(start_rip);
@@ -782,17 +680,7 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
     // TODO: insert safepoints within the block every N instructions, needs to flushx87 too
     insertSafepoint();
 
-    {
-        auto guard = page_map_lock.lock();
-        u64 start_masked = start_rip & ~0xFFFull;
-        u64 end_masked = (current_scan_end - 1) & ~0xFFFull;
-        for (u64 page = start_masked; page <= end_masked; page += 0x1000) {
-            std::vector<BlockMetadata*>& blocks_in_page = page_map[page];
-            if (std::find(blocks_in_page.begin(), blocks_in_page.end(), &block_meta) == blocks_in_page.end()) {
-                blocks_in_page.push_back(&block_meta);
-            }
-        }
-    }
+    code_cache->addBlockToPages(&block_meta, start_rip, current_scan_end);
 
     if (track_smc && g_mapper->check_smc_trackers(start_rip, *protect_end - start_rip, smc_trackers)) {
         current_block_metadata = nullptr;
@@ -2378,7 +2266,8 @@ void Recompiler::restoreState() {
 void Recompiler::backToDispatcher(bool return_hint, bool skip_lookup) {
     OptimizationGuard guard(as, optimization_guard_counter);
     const bool is_single_step = single_step != SingleStepMode::None;
-    const u64 handler = skip_lookup ? compile_next_skip_address_cache : compile_next_handler;
+    const CodeCachePointers& pointers = code_cache->getPointers();
+    const u64 handler = skip_lookup ? pointers.compile_next_skip_address_cache : pointers.compile_next;
     if (compiling && is_single_step) {
         as.SD(x0, 0, x0);
         as.SLTIU(x0, x0, FELIX86_HINT_TF);
@@ -2413,11 +2302,11 @@ void Recompiler::backToDispatcher(bool return_hint, bool skip_lookup) {
 }
 
 void Recompiler::enterDispatcher(ThreadState* state) {
-    enter_dispatcher(state);
+    code_cache->getPointers().enter_dispatcher(state);
 }
 
 void Recompiler::exitDispatcher(felix86_frame* frame) {
-    exit_dispatcher(frame);
+    code_cache->getPointers().exit_dispatcher(frame);
     __builtin_unreachable();
 }
 
@@ -3839,10 +3728,6 @@ void Recompiler::sext(biscuit::GPR dst, biscuit::GPR src, x86_size_e size) {
     }
 }
 
-bool Recompiler::blockExists(u64 rip) {
-    return getBlockMetadata(rip).host_address != 0;
-}
-
 biscuit::GPR Recompiler::getFlags() {
     biscuit::GPR reg = scratch();
     biscuit::GPR temp = scratch();
@@ -4137,22 +4022,14 @@ void Recompiler::emitSelfValidation(biscuit::Label* expected_bytes) {
 }
 
 int Recompiler::invalidateRange(u64 start, u64 end, bool is_smc) {
-    auto guard = page_map_lock.lock();
-    auto lower = page_map.lower_bound(start);
-    auto upper = page_map.upper_bound(end - 1);
-
-    int blocks = 0;
-    for (auto it = lower; it != upper; it++) {
-        blocks += std::erase_if(it->second, [&](BlockMetadata* block) {
-            if (is_smc && block->misc_info.self_validating) {
-                // Don't invalidate self-validating blocks
-                return false;
-            }
-            invalidateBlock(block, is_smc);
-            return true;
-        });
-    }
-    return blocks;
+    return code_cache->eraseBlocksInRange(start, end, [&](BlockMetadata* block) {
+        if (is_smc && block->misc_info.self_validating) {
+            // Don't invalidate self-validating blocks
+            return false;
+        }
+        invalidateBlock(block, is_smc);
+        return true;
+    });
 }
 
 void Recompiler::invalidateRangeGlobal(u64 start, u64 end, const char* reason, bool is_smc) {
