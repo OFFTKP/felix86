@@ -1364,11 +1364,11 @@ static bool handle_scan_ahead_fault(ThreadState* current_state, siginfo_t* info,
 
 static bool handle_safepoint(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
     // First we need to check if we are a safepoint
-    // Safepoint instructions perform SD(x0, -8, Recompiler::threadStatePointer())
+    // Safepoint instructions perform SD(x0, -8, Allocations::threadStatePointer())
     u32 expected_instruction;
     {
         Assembler tas((u8*)&expected_instruction, sizeof(u32));
-        tas.SD(x0, -8, Recompiler::threadStatePointer());
+        tas.SD(x0, -8, Allocations::threadStatePointer());
     }
 
     u32 current_instruction = *(u32*)pc;
@@ -1385,7 +1385,7 @@ static bool handle_safepoint(ThreadState* current_state, siginfo_t* info, uconte
     }
 
     if (info->si_addr != (u8*)current_state - 8) {
-        // Sanity check. An SD(x0, -8, Recompiler::threadStatePointer()) that is inside
+        // Sanity check. An SD(x0, -8, Allocations::threadStatePointer()) that is inside
         // the JIT code will always be a safe point but we can never have enough checks
         WARN("Faulting address expected to be safepoint page but it's not?");
         return false;

@@ -83,7 +83,7 @@ __attribute__((naked)) ThreadState* ThreadState::Get() {
 #warning "Unimplemented"
 #endif
 }
-static_assert(Recompiler::threadStatePointer() == gp);
+static_assert(Allocations::threadStatePointer() == gp);
 
 void ThreadState::Destroy(ThreadState* state) {
     auto lock = g_process_globals.states_lock.lock();

@@ -305,12 +305,6 @@ struct Recompiler {
 
     int invalidateRange(u64 start, u64 end, bool is_smc);
 
-    constexpr static biscuit::GPR threadStatePointer() {
-        return gp; // due to -mno-relax, this register won't be modified in C++ code
-                   // which is great because it means we can access it at any time during
-                   // the process's lifetime
-    }
-
     void setSingleStepMode(SingleStepMode mode) {
         single_step = mode;
     }
@@ -360,7 +354,7 @@ struct Recompiler {
             // We don't statically allocate MMX registers because they are so rare
             // to justify loading/storing them on every VM enter/exit
             biscuit::GPR address = scratch();
-            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, ctx.st) + index * sizeof(Float80));
+            as.ADDI(address, Allocations::threadStatePointer(), offsetof(ThreadState, ctx.st) + index * sizeof(Float80));
             setVectorState(SEW::E64, 1);
             as.VLE64(entry.reg, address);
             popScratch();
@@ -562,7 +556,7 @@ struct Recompiler {
         ASSERT(offset >= offsetof(ThreadState, f64_to_80_mem));
         ASSERT(offset < offsetof(ThreadState, clear_tid_address));
         ASSERT(isScratch(t4));
-        as.LD(t4, offset, threadStatePointer());
+        as.LD(t4, offset, Allocations::threadStatePointer());
         as.JALR(t4);
     }
 
@@ -575,7 +569,7 @@ struct Recompiler {
             ASSERT(isScratch(t4));
             writebackState();
             as.LI(t4, (u64)push_calltrace);
-            as.MV(a0, threadStatePointer());
+            as.MV(a0, Allocations::threadStatePointer());
             as.LI(a1, current_rip);
             as.JALR(t4);
             restoreState();
@@ -587,7 +581,7 @@ struct Recompiler {
             ASSERT(isScratch(t4));
             writebackState();
             as.LI(t4, (u64)pop_calltrace);
-            as.MV(a0, threadStatePointer());
+            as.MV(a0, Allocations::threadStatePointer());
             as.JALR(t4);
             restoreState();
         }

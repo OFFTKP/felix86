@@ -246,4 +246,10 @@ struct Allocations {
         }
         }
     }
+
+    static constexpr biscuit::GPR threadStatePointer() {
+        return biscuit::gp; // due to -mno-relax, this register won't be modified in C++ code
+                            // which is great because it means we can access it at any time during
+                            // the process's lifetime
+    }
 };
