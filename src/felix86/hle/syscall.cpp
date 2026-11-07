@@ -1695,11 +1695,21 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
                     break;
                 }
 
-                // Transform to hex because environment variables may have commas
-                guest_envs += string_to_hex((const char*)ptr);
-                guest_envs += ",";
-
                 guest_envp += mode32 ? 4 : 8;
+
+                constexpr const char* felix86_start = "FELIX86_";
+                if (strncmp((const char*)ptr, felix86_start, strlen(felix86_start)) == 0) {
+                    // If it starts with FELIX86_, a guest program is trying to pass us config options
+                    // This isn't any less secure than a host program passing them to a guest setuid program
+                    // which can reject them from secure_getenv.
+                    // So pass them along to the host for convenience (such as being able to set FELIX86 env vars
+                    // in the Steam environment from the GUI)
+                    envp.push_back((const char*)ptr);
+                } else {
+                    // Transform to hex because environment variables may have commas
+                    guest_envs += string_to_hex((const char*)ptr);
+                    guest_envs += ",";
+                }
             }
 
             if (!guest_envs.empty()) {
@@ -1759,6 +1769,17 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         for (auto arg : argv) {
             args += " ";
             args += arg ? arg : "";
+        }
+
+        if (g_config.verbose) {
+            std::string full;
+            for (auto env : envp) {
+                if (env) {
+                    full += env;
+                    full += " ";
+                }
+            }
+            VERBOSE("Child environment: %s", full.c_str());
         }
 
         g_process_globals.shm_manager.unlink();
