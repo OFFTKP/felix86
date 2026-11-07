@@ -4,6 +4,7 @@
 #include <string>
 #include <readline/history.h>
 #include <readline/readline.h>
+#include <sys/mman.h>
 #include <sys/wait.h>
 #include "felix86/common/config.hpp"
 #include "felix86/common/global.hpp"
@@ -120,62 +121,57 @@ static void compile(const std::string& input) {
     ::remove(pbuffer);
 
     // Push back an UD2 to trigger recompilation end
+    const u64 ud2_offset = output.size();
     output.push_back(0x0F);
     output.push_back(0x0B);
 
+    const size_t guest_size = (output.size() + 0xFFF) & ~0xFFFull;
+    u8* guest = (u8*)mmap(nullptr, guest_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (guest == MAP_FAILED) {
+        printf("mmap error\n");
+        return;
+    }
+    memcpy(guest, output.data(), output.size());
+
     std::unique_ptr<Recompiler> rec = std::make_unique<Recompiler>(true);
     rec->setFlagMode(flag_mode);
-    rec->compileSequence(mode32, (u64)output.data(), nullptr);
+    rec->compileSequence(mode32, (u64)guest, nullptr);
 
-    BlockMetadata& metadata = rec->getBlockMetadata((u64)output.data());
+    BlockMetadata& metadata = rec->getBlockMetadata((u64)guest);
 
-    u64 start = metadata.host_address;
-    u64 end = start;
-    for (auto instr : metadata.translation_sizes) {
-        end += instr.riscv_instructions_size;
-    }
-
-    u64 code_end = (u64)rec->getEndOfCodeCache();
-    if (end == code_end) {
-        // Remove compiled UNDEF instructions off the end, if any
-        u16* fin = (u16*)(end - 2);
-        while (*fin == 0) {
-            end -= 2;
-            fin = (u16*)(end - 2);
-        }
-
-        // Also remove a store to zero and a hint used to emulate ud2
-        end -= 8;
-    }
-
-    // TODO: can we make this less hacky
-    // Skip the safepoint at the start of the sequence
-    start += 4;
-
-    size_t span_index = 0;
-    u64 address = start;
-    for (int i = 0; i < end - start;) {
-        u64 riscv_size = metadata.translation_sizes[span_index].riscv_instructions_size;
-        if (span_index == 0) {
-            riscv_size -= 4;
-        }
-        for (int j = 0; j < riscv_size; j += 4) {
+    auto print_range = [](u64 start, u64 end, int color_index) {
+        for (u64 address = start; address < end; address += 4) {
             u32 data = 0;
-            memcpy(&data, (void*)(address + j), 4);
-            std::string out = riscv_disassemble(data, address + j);
-            if (use_color) {
-                printf("%s", colors[span_index % color_count]);
+            memcpy(&data, (void*)address, 4);
+            std::string out = riscv_disassemble(data, address);
+            if (use_color && color_index >= 0) {
+                printf("%s%s%s\n", colors[color_index % color_count], out.c_str(), reset);
+            } else {
+                printf("%s\n", out.c_str());
             }
-            printf("%s", out.c_str());
-            if (use_color) {
-                printf("%s", reset);
-            }
-            printf("\n");
+        }
+    };
+
+    u64 address = metadata.host_address;
+    u64 guest_offset = 0;
+    for (size_t i = 0; i < metadata.translation_sizes.size(); i++) {
+        const u64 riscv_size = metadata.translation_sizes[i].riscv_instructions_size;
+        if (guest_offset < ud2_offset) {
+            // Skip the safepoint at the start of the sequence
+            const u64 print_start = i == 0 ? address + 4 : address;
+            print_range(print_start, address + riscv_size, i);
         }
         address += riscv_size;
-        i += riscv_size;
-        span_index++;
+        guest_offset += metadata.translation_sizes[i].x86_instruction_size;
     }
+
+    const u64 code_end = (u64)rec->getEndOfCodeCache();
+    if (address < code_end) {
+        printf("Exits:\n");
+        print_range(address, code_end, -1);
+    }
+
+    munmap(guest, guest_size);
 }
 
 void __attribute__((noreturn)) enter_repl() {
@@ -188,7 +184,6 @@ void __attribute__((noreturn)) enter_repl() {
 
     Config::initialize();
     g_config.quiet = true;
-    g_config.scan_ahead_multi = false;
     Extensions::G = true;
     Extensions::Zba = true;
     Extensions::Zbb = true;
@@ -203,6 +198,7 @@ void __attribute__((noreturn)) enter_repl() {
     Extensions::Zvknha = true;
     Extensions::Zicclsm = true;
     Handlers::initialize();
+    ThreadState::Create(nullptr);
     using_history();
     std::string version_full = get_version_full();
     printf("%s - try the command `help`\n", version_full.c_str());
