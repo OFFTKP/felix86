@@ -434,19 +434,7 @@ struct x86_rt_sigframe {
 };
 
 static BlockMetadata* get_block_metadata(ThreadState* state, u64 host_pc) {
-    auto& map = state->recompiler->getHostPcMap();
-    auto it = map.lower_bound(host_pc);
-    ASSERT(it != map.end());
-    BlockMetadata* block = it->second;
-    u64 address_end = block->host_address;
-    for (auto& sizes : block->translation_sizes) {
-        address_end += sizes.riscv_instructions_size;
-    }
-    if (!(host_pc >= block->host_address && host_pc < address_end)) {
-        WARN("PC: %lx not inside range %lx-%lx?", host_pc, block->host_address, address_end);
-        return nullptr;
-    }
-    return block;
+    return state->recompiler->getCodeCache().getBlockByHostPc(host_pc);
 }
 
 static u64 get_actual_rip(BlockMetadata& metadata, u64 fault_pc) {

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <memory>
 #include <unordered_map>
 #include <Zydis/Utils.h>
 #include "Zydis/Decoder.h"
@@ -15,6 +16,7 @@
 #include "felix86/common/utility.hpp"
 #include "felix86/common/zydis_types.hpp"
 #include "felix86/v2/allocations.hpp"
+#include "felix86/v2/code_cache.hpp"
 
 #define FELIX86_HINT_SAFEPOINT_SYSCALL 0xa5
 #define FELIX86_HINT_GP 0x86
@@ -24,11 +26,6 @@
 #define FELIX86_HINT_INT1 0xf1
 #define FELIX86_HINT_UD2 0xd2
 #define FELIX86_HINT_TF 0x7f
-#define FELIX86_HINT_NOT_MAPPED 0x4e
-#define FELIX86_HINT_NOT_READ 0x15
-#define FELIX86_HINT_NOT_EXEC 0xec
-
-#define FELIX86_ERESTARTNOINTR 513
 
 constexpr int scan_ahead_count = 64;
 constexpr int scan_ahead_budget = 512;
@@ -83,48 +80,6 @@ struct RegisterAccess {
     u64 address; // address where the load or writeback happened
     bool valid;  // true if loaded and potentially modified, false if written back to memory and allocated register holds garbage
 };
-
-struct TranslationSize {
-    u16 x86_instruction_size : 4;
-    u16 riscv_instructions_size : 12;
-};
-static_assert(sizeof(TranslationSize) == sizeof(u16));
-
-enum class PendingLinkFlags : u64 {
-    HasReturnHint = 0x8000'0000'0000'0000,
-};
-
-struct BlockMetadata {
-    u64 host_address{};
-    u64 guest_address{};
-    // This gives us a count of x86 instructions per block, the size of each instruction
-    // and the size of the risc-v instructions used to translate it
-    std::vector<TranslationSize> translation_sizes{};
-    /// Pointers to blocks to be linked. The top 7 bits are used to denote various flags
-    // related to the block as a bitset.
-    std::vector<uintptr_t> pending_links{};
-    // We always end blocks on CALL. This is because some games (e.g. Celeste) may include garbage or
-    // unmapped pages if we don't end sequences on CALL. Since we want to do the CALL/RET optimization,
-    // and the hardware RSB needs to match the return address, but we can't continue scanning after the call,
-    // we place a jumpAndLink after the CALL, and populate the address cache with it. But if the address cache
-    // entry of the return block gets evicted, the next return misses and the dispatcher re-inserts an entry.
-    // When the block would get recompiled the address cache entry would point to the new block and RSB prediction
-    // would fail. We want RSB to succeed and to not compile past the CALL, so this is our compromise.
-    u64 ret_stub{};
-    union {
-        struct {
-            // How many times this block was recompiled. After smc_threshold it will no longer protect the page
-            // and instead emit a self-validating block
-            u64 smc_hits : 8;
-            u64 self_validating : 1;
-            u64 last_smc_ms : 32;
-            u64 unused : 23;
-        };
-        u64 raw{};
-    } misc_info{};
-};
-
-using InterruptibleSyscallFunc = u64 (*)(u64* effective_deferred_signals, u64 nr, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5, u64 arg6);
 
 // WARN: don't allocate this struct on the stack as it's quite big due to address_cache and can lead to stack overflow
 struct Recompiler {
@@ -426,21 +381,23 @@ struct Recompiler {
     }
 
     BlockMetadata& getBlockMetadata(u64 rip) {
-        return block_metadata[rip];
+        return code_cache->getBlockMetadata(rip);
     }
 
-    bool blockExists(u64 rip);
+    bool blockExists(u64 rip) {
+        return code_cache->blockExists(rip);
+    }
 
     biscuit::GPR getFlags();
 
     u64 getImmediate(ZydisDecodedOperand* operand);
 
-    auto& getHostPcMap() {
-        return host_pc_map;
+    CodeCache& getCodeCache() {
+        return *code_cache;
     }
 
     u64 getRestoreState() {
-        return restore_state_handler;
+        return code_cache->getPointers().restore_state;
     }
 
     static void* compileNext(ThreadState* state) {
@@ -451,7 +408,11 @@ struct Recompiler {
     }
 
     u64 getCompileNext() {
-        return compile_next_handler;
+        return code_cache->getPointers().compile_next;
+    }
+
+    u8* getStartOfCodeCache() const {
+        return (u8*)code_cache->getPointers().start_of_code_cache;
     }
 
     u64 getCompiledBlock(ThreadState* state, u64 rip) {
@@ -585,10 +546,6 @@ struct Recompiler {
             as.JALR(t4);
             restoreState();
         }
-    }
-
-    u8* getStartOfCodeCache() const {
-        return (u8*)start_of_code_cache;
     }
 
     u8* getEndOfCodeCache() const {
@@ -798,24 +755,27 @@ struct Recompiler {
     void addressCacheLookup(biscuit::GPR guest_address, void on_hit(Assembler&, biscuit::GPR), bool use_ra = false);
 
     i64 interruptibleSyscall(u64* signals, u64 nr, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5, u64 arg6) {
-        ASSERT(interruptible_syscall_func);
-        return interruptible_syscall_func(signals, nr, arg1, arg2, arg3, arg4, arg5, arg6);
+        const CodeCachePointers& pointers = code_cache->getPointers();
+        ASSERT(pointers.interruptible_syscall);
+        return pointers.interruptible_syscall(signals, nr, arg1, arg2, arg3, arg4, arg5, arg6);
     }
 
     bool isInInterruptibleSyscall(u64 pc) {
-        return pc >= (u64)interruptible_syscall_func && pc <= (u64)interruptible_syscall_func_ecall;
+        const CodeCachePointers& pointers = code_cache->getPointers();
+        return pc >= (u64)pointers.interruptible_syscall && pc <= pointers.interruptible_syscall_ecall;
     }
 
     u64 getInterruptibleSyscallEintrAddress() {
-        return (u64)interruptible_syscall_func_eintr;
+        return code_cache->getPointers().interruptible_syscall_eintr;
     }
 
     bool isInNotMappedOrNotReadThunk(u64 pc) {
-        return pc == not_mapped_thunk || pc == not_read_thunk;
+        const auto& pointers = code_cache->getPointers();
+        return pc == pointers.not_mapped || pc == pointers.not_read;
     }
 
     bool isInNotExecThunk(u64 pc) {
-        return pc == not_exec_thunk;
+        return pc == code_cache->getPointers().not_exec;
     }
 
     bool isInBadAddressThunk(u64 pc) {
@@ -829,7 +789,7 @@ private:
 
     void emitBadAddressThunks();
 
-    void emitInterruptibleSyscallFunction();
+    void emitInterruptibleSyscallThunk();
 
     void emitInvalidateCallerThunk();
 
@@ -853,36 +813,12 @@ private:
 
     static void invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_block);
 
+    std::unique_ptr<CodeCache> code_cache = std::make_unique<CodeCache>();
     biscuit::Assembler as{};
+    biscuit::Label invalidate_caller_thunk;
     ZydisDecoder decoder{};
 
     std::array<std::pair<bool, u64>, 4> breakpoints;
-
-    void (*enter_dispatcher)(ThreadState*){};
-
-    void (*exit_dispatcher)(felix86_frame*){};
-
-    u64 compile_next_handler{};
-    u64 compile_next_skip_address_cache{};
-
-    u64 restore_state_handler{};
-
-    biscuit::Label invalidate_caller_thunk;
-
-    u8* reset_point{};
-
-    u64 not_mapped_thunk{}, not_read_thunk{}, not_exec_thunk{};
-
-    void* start_of_code_cache{};
-
-    std::unordered_map<u64, BlockMetadata> block_metadata{};
-
-    Semaphore page_map_lock;
-    std::map<u64, std::vector<BlockMetadata*>> page_map{};
-
-    // For fast host pc -> block metadata lookup (binary search vs looking up one by one)
-    // on signal handlers
-    std::map<u64, BlockMetadata*> host_pc_map{};
 
     bool compiling{};
 
@@ -942,14 +878,9 @@ private:
 
     bool skip_next = false;
 
-    void* reservation_base = nullptr;
-    size_t reservation_size = 0;
-
     std::deque<u64> calltrace{};
 
     FlagMode flag_mode = FlagMode::Default;
-
-    u64 code_cache_size_index = 0;
 
     int optimization_guard_counter = 0; // see OptimizationGuard
 
@@ -960,10 +891,6 @@ private:
     int pushed_this_block = 0;
 
     bool relocatable = false;
-
-    InterruptibleSyscallFunc interruptible_syscall_func = nullptr;
-    void* interruptible_syscall_func_ecall = nullptr;
-    void* interruptible_syscall_func_eintr = nullptr;
 
     SingleStepMode single_step = SingleStepMode::None;
 
