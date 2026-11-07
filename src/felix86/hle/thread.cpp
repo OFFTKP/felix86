@@ -295,6 +295,11 @@ static long NewCloneMe(CloneArgs& host_clone_args) {
     u64 pthread_create_flags =
         CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SYSVSEM | CLONE_SIGHAND | CLONE_THREAD | CLONE_SETTLS | CLONE_PARENT_SETTID | CLONE_CHILD_CLEARTID;
 
+    // Seems like Zenity passes CLONE_DETACHED which is an ignored flag in `clone` and one that causes -EINVAL in `clone3`.
+    // Since it would ruin our guest_flags == pthread_create_flags comparison and end up in the custom libc path (where clone3 would EINVAL), we just
+    // remove it from the flag set here
+    host_clone_args.guest_flags &= ~CLONE_DETACHED;
+
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
@@ -319,11 +324,13 @@ static long NewCloneMe(CloneArgs& host_clone_args) {
     ThreadState* state = ThreadState::Get();
     bool trace_clone = state->ptrace_data.constants.flags & PTRACE_O_TRACECLONE;
     state->ptrace_data.stop_info.in_clone = true;
-    pthread_create(&thread, &attr, pthread_handler, &host_clone_args);
+    int result = pthread_create(&thread, &attr, pthread_handler, &host_clone_args);
     state->ptrace_data.stop_info.in_clone = false;
-    pthread_detach(thread);
-
     pthread_attr_destroy(&attr);
+    if (result != 0) {
+        return -result;
+    }
+    pthread_detach(thread);
 
     // Wait for the pthread_handler to finish initialization and set this flag
     while (!__atomic_load_n(&host_clone_args.new_tid, __ATOMIC_SEQ_CST))
