@@ -32,9 +32,6 @@ struct BlockMetadata {
     // This gives us a count of x86 instructions per block, the size of each instruction
     // and the size of the risc-v instructions used to translate it
     std::vector<TranslationSize> translation_sizes{};
-    /// Pointers to blocks to be linked. The top 7 bits are used to denote various flags
-    // related to the block as a bitset.
-    std::vector<uintptr_t> pending_links{};
     // We always end blocks on CALL. This is because some games (e.g. Celeste) may include garbage or
     // unmapped pages if we don't end sequences on CALL. Since we want to do the CALL/RET optimization,
     // and the hardware RSB needs to match the return address, but we can't continue scanning after the call,

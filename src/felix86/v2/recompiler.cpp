@@ -3003,14 +3003,14 @@ void Recompiler::jumpAndLink(u64 rip, bool return_link, bool skip_lookup) {
 
     u8* start = as.GetCursorPointer();
     if (!blockExists(rip)) {
-        uintptr_t link_me = (uintptr_t)as.GetCursorPointer();
+        u64 link_me = (u64)as.GetCursorPointer();
         backToDispatcher(return_link, skip_lookup);
 
         // The top 7 bits are used as flags.
         link_me &= ((u64)1 << 57) - 1;
         if (return_link)
             link_me |= (u64)PendingLinkFlags::HasReturnHint;
-        getBlockMetadata(rip).pending_links.push_back(link_me);
+        pending_links[rip].push_back(link_me);
     } else {
         auto& target_meta = getBlockMetadata(rip);
         u64 target = target_meta.host_address;
@@ -3310,7 +3310,12 @@ void Recompiler::expirePendingLinks(u64 rip) {
 
     u64 min = -1ull;
     u64 max = 0;
-    auto& links = getBlockMetadata(rip).pending_links;
+    auto it = pending_links.find(rip);
+    if (it == pending_links.end()) {
+        return;
+    }
+
+    auto& links = it->second;
     if (links.empty()) {
         return;
     }
@@ -3337,7 +3342,7 @@ void Recompiler::expirePendingLinks(u64 rip) {
     flush_icache(min, max + 4096);
 
     // Free the memory as pending_links won't be used after the block is compiled
-    std::vector<uintptr_t>().swap(links);
+    pending_links.erase(it);
 }
 
 u64 Recompiler::zextImmediate(u64 imm, ZyanU8 size) {
