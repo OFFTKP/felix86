@@ -1,4 +1,5 @@
 #include <cmath>
+#include <cstdint>
 #include <Zydis/Zydis.h>
 #include "Zydis/DecoderTypes.h"
 #include "Zydis/SharedTypes.h"
@@ -9817,14 +9818,20 @@ FAST_HANDLE(CVTTSS2SI) {
     biscuit::FPR temp = rec.scratchFPR();
     biscuit::GPR tmp_int = rec.scratch();
 
+    uint32_t class_mask = (1 << 7) | (1 << 8) | (1 << 9);
     if (gpr_size == X86_SIZE_DWORD) {
         rec.setVectorState(SEW::E32, 1);
         as.VFMV_FS(temp, src);
         as.FCVT_W_S(dst, temp, RMode::RTZ);
         as.FCLASS_S(tmp_int, temp);
-        as.ANDI(tmp_int, tmp_int, (1 << 0) | (1 << 7) | (1 << 8) | (1 << 9));
+        as.ANDI(tmp_int, tmp_int, class_mask);
         Label ok32;
         as.BEQZ(tmp_int, &ok32);
+        if (!g_config.unsafe_math) {
+            as.FRFLAGS(tmp_int);
+            as.ANDI(tmp_int, tmp_int, (1 << 4));
+            as.BEQZ(tmp_int, &ok32);
+        }
         as.LI(dst, 0x80000000);
         as.Bind(&ok32);
     } else if (gpr_size == X86_SIZE_QWORD) {
@@ -9832,9 +9839,14 @@ FAST_HANDLE(CVTTSS2SI) {
         as.VFMV_FS(temp, src);
         as.FCVT_L_S(dst, temp, RMode::RTZ);
         as.FCLASS_S(tmp_int, temp);
-        as.ANDI(tmp_int, tmp_int, (1 << 0) | (1 << 7) | (1 << 8) | (1 << 9));
+        as.ANDI(tmp_int, tmp_int, class_mask);
         Label ok64;
         as.BEQZ(tmp_int, &ok64);
+        if (!g_config.unsafe_math) {
+            as.FRFLAGS(tmp_int);
+            as.ANDI(tmp_int, tmp_int, (1 << 4));
+            as.BEQZ(tmp_int, &ok64);
+        }
         as.LI(dst, 0x80000000);
         as.SLLI(dst, dst, 32);
         as.Bind(&ok64);
@@ -9861,15 +9873,24 @@ FAST_HANDLE(CVTTSD2SI) {
         as.ANDI(tmp_int, tmp_int, (1 << 0) | (1 << 7) | (1 << 8) | (1 << 9));
         Label ok32;
         as.BEQZ(tmp_int, &ok32);
+        if (!g_config.unsafe_math) {
+            as.FRFLAGS(tmp_int);
+            as.ANDI(tmp_int, tmp_int, (1 << 4));
+            as.BEQZ(tmp_int, &ok32);
+        }
         as.LI(dst, 0x80000000);
         as.Bind(&ok32);
     } else if (gpr_size == X86_SIZE_QWORD) {
         as.FCVT_L_D(dst, tmp_fp, RMode::RTZ);
-
         as.FCLASS_D(tmp_int, tmp_fp);
         as.ANDI(tmp_int, tmp_int, (1 << 0) | (1 << 7) | (1 << 8) | (1 << 9));
         Label ok64;
         as.BEQZ(tmp_int, &ok64);
+        if (!g_config.unsafe_math) {
+            as.FRFLAGS(tmp_int);
+            as.ANDI(tmp_int, tmp_int, (1 << 4));
+            as.BEQZ(tmp_int, &ok64);
+        }
         as.LI(dst, 0x80000000);
         as.SLLI(dst, dst, 32);
         as.Bind(&ok64);
