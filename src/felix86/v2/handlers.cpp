@@ -9922,7 +9922,7 @@ FAST_HANDLE(CVTPS2PD) {
     rec.setVec(&operands[0], result);
 }
 
-FAST_HANDLE(CVTTPS2DQ) {
+static void CVTTPS2DQ(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, int element_count) {
     biscuit::GPR mask = rec.scratch();
     biscuit::GPR indefinite = rec.scratch();
     biscuit::GPR largest_int = rec.scratch();
@@ -9937,16 +9937,20 @@ FAST_HANDLE(CVTTPS2DQ) {
     as.ADDI(largest_int, indefinite, -1);
     as.FCVT_S_W(largest_int_f, largest_int);
 
-    rec.setVectorState(SEW::E32, 4);
+    rec.setVectorState(SEW::E32, element_count);
     as.VFCLASS(class_bits, src);
     as.VAND(class_bits, class_bits, mask);
-    as.VMFGT(bigger_bits, src, largest_int_f);
+    as.VMFGE(bigger_bits, src, largest_int_f);
     as.VMSNE(v0, class_bits, x0);
     as.VMOR(v0, v0, bigger_bits);
     rec.v0Modified();
     as.VFCVT_RTZ_X_F(dst, src);
     as.VMERGE(dst, dst, indefinite);
     rec.setVec(&operands[0], dst);
+}
+
+FAST_HANDLE(CVTTPS2DQ) {
+    CVTTPS2DQ(rec, as, operands, 4);
 }
 
 FAST_HANDLE(CVTPS2DQ) {
@@ -9967,7 +9971,7 @@ FAST_HANDLE(CVTPS2DQ) {
     rec.setVectorState(SEW::E32, 4);
     as.VFCLASS(class_bits, src);
     as.VAND(class_bits, class_bits, mask);
-    as.VMFGT(bigger_bits, src, largest_int_f);
+    as.VMFGE(bigger_bits, src, largest_int_f);
     as.VMSNE(v0, class_bits, x0);
     as.VMOR(v0, v0, bigger_bits);
     rec.v0Modified();
@@ -9976,7 +9980,7 @@ FAST_HANDLE(CVTPS2DQ) {
     rec.setVec(&operands[0], dst);
 }
 
-FAST_HANDLE(CVTTPD2DQ) {
+static void CVTTPD2DQ(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, int element_count) {
     biscuit::Vec result = rec.scratchVec();
     biscuit::GPR mask = rec.scratch();
     biscuit::GPR indefinite = rec.scratch();
@@ -9992,16 +9996,16 @@ FAST_HANDLE(CVTTPD2DQ) {
     as.ADDI(largest_int, indefinite, -1);
     as.FCVT_D_W(largest_int_f, largest_int);
 
-    rec.setVectorState(SEW::E64, 2);
+    rec.setVectorState(SEW::E64, element_count);
     as.VFCLASS(class_bits, src);
     as.VAND(class_bits, class_bits, mask);
     as.VMFGT(bigger_bits, src, largest_int_f);
     as.VMSNE(class_bits, class_bits, x0);
 
-    rec.setVectorState(SEW::E32, 4, LMUL::MF2);
+    rec.setVectorState(SEW::E32, element_count * 2, LMUL::MF2);
     as.VFNCVT_RTZ_X_F(result, src);
 
-    rec.setVectorState(SEW::E32, 4);
+    rec.setVectorState(SEW::E32, element_count * 2);
     as.VMOR(v0, class_bits, bigger_bits);
     rec.v0Modified();
     as.VMERGE(dst, result, indefinite);
@@ -10009,6 +10013,10 @@ FAST_HANDLE(CVTTPD2DQ) {
     rec.v0Modified();
     as.VAND(dst, dst, 0, VecMask::Yes);
     rec.setVec(&operands[0], dst);
+}
+
+FAST_HANDLE(CVTTPD2DQ) {
+    CVTTPD2DQ(rec, as, operands, 2);
 }
 
 FAST_HANDLE(CVTPD2DQ) {
@@ -16296,23 +16304,27 @@ FAST_HANDLE(VCVTPD2DQ) {
 }
 
 FAST_HANDLE(VCVTTPD2DQ) {
-    biscuit::Vec result = rec.scratchVecM2();
-    biscuit::Vec src = rec.getVec(&operands[1]);
+    if (g_config.unsafe_math) {
+        biscuit::Vec result = rec.scratchVecM2();
+        biscuit::Vec src = rec.getVec(&operands[1]);
 
-    rec.setVectorState(SEW::E32, 4, LMUL::MF2);
-    as.VFNCVT_RTZ_X_F(result, src);
+        rec.setVectorState(SEW::E32, 4, LMUL::MF2);
+        as.VFNCVT_RTZ_X_F(result, src);
 
-    bool is_xmms = !instruction.raw.vex.L;
-    if (is_xmms) {
-        rec.setVectorState(SEW::E64, 4);
-        biscuit::Vec dst = rec.getVec(&operands[0]);
-        rec.vsplat(v0, 0b1110);
-        as.VAND(result, result, 0, VecMask::Yes);
-        rec.v0Modified();
-        as.VMV1R(dst, result); // saves having to use the mask to zero upper bits
-        rec.setVec(&operands[0], dst);
+        bool is_xmms = !instruction.raw.vex.L;
+        if (is_xmms) {
+            rec.setVectorState(SEW::E64, 4);
+            biscuit::Vec dst = rec.getVec(&operands[0]);
+            rec.vsplat(v0, 0b1110);
+            as.VAND(result, result, 0, VecMask::Yes);
+            rec.v0Modified();
+            as.VMV1R(dst, result); // saves having to use the mask to zero upper bits
+            rec.setVec(&operands[0], dst);
+        } else {
+            rec.setVec(&operands[0], result);
+        }
     } else {
-        rec.setVec(&operands[0], result);
+        CVTTPD2DQ(rec, as, operands, 4);
     }
 }
 
@@ -16382,7 +16394,11 @@ FAST_HANDLE(VCVTPS2DQ) {
 }
 
 FAST_HANDLE(VCVTTPS2DQ) {
-    AVX_Operation(rec, as, instruction, operands, (FuncPtr2)&Assembler::VFCVT_RTZ_X_F, SEW::E32, 8);
+    if (g_config.unsafe_math) {
+        AVX_Operation(rec, as, instruction, operands, (FuncPtr2)&Assembler::VFCVT_RTZ_X_F, SEW::E32, 8);
+    } else {
+        CVTTPS2DQ(rec, as, operands, 8);
+    }
 }
 
 FAST_HANDLE(VCVTSD2SI) {
