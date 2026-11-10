@@ -414,6 +414,7 @@ void Recompiler::clearCodeCache(ThreadState* state) {
     WARN("Clearing cache on thread %u", gettid());
     state->pending_cache_clear = false;
     code_cache->clear();
+    pending_links.clear();
     clearAddressCache();
     as.RewindBuffer();
 }
@@ -3316,10 +3317,6 @@ void Recompiler::expirePendingLinks(u64 rip) {
     }
 
     auto& links = it->second;
-    if (links.empty()) {
-        return;
-    }
-
     for (uintptr_t link : links) {
         bool has_return_hint = link & (u64)PendingLinkFlags::HasReturnHint;
 
