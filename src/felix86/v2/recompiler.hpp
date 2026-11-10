@@ -31,6 +31,12 @@ constexpr int scan_ahead_count = 64;
 constexpr int scan_ahead_budget = 512;
 constexpr int scan_ahead_depth = 2;
 
+enum class InvalidationKind {
+    Reset,
+    Modify,
+    NoExec,
+};
+
 enum class SequenceResult {
     Compiled,
     Modified,
@@ -256,9 +262,9 @@ struct Recompiler {
 
     void insertSafepoint();
 
-    static void invalidateRangeGlobal(u64 start, u64 end, const char* reason, bool is_smc = false);
+    static void invalidateRangeGlobal(u64 start, u64 end, const char* reason, InvalidationKind kind = InvalidationKind::Reset);
 
-    int invalidateRange(u64 start, u64 end, bool is_smc);
+    int invalidateRange(u64 start, u64 end, InvalidationKind kind);
 
     void setSingleStepMode(SingleStepMode mode) {
         single_step = mode;

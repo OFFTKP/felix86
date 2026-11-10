@@ -1506,7 +1506,7 @@ static bool handle_smc(ThreadState* current_state, siginfo_t* info, ucontext_t* 
 #endif
     u64 write_address = (u64)info->si_addr & ~0xFFFull;
     g_mapper->mark_rw(write_address, 0x1000);
-    Recompiler::invalidateRangeGlobal(write_address, write_address + 1, "self-modifying code", true);
+    Recompiler::invalidateRangeGlobal(write_address, write_address + 1, "self-modifying code", InvalidationKind::Modify);
     FELIX86_PROFILE_INSTANT_INCREMENT(current_state->thread_stats, AccumulatedSMCCount, 1);
     return true;
 }

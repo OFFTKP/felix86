@@ -324,11 +324,16 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         // If a page becomes non-executable we invalidate the blocks as they must now fault
         // It's faster to just invalidate them than to check what protections the pages used to have
         const bool no_exec = g_config.guest_memory_tracking_enabled && !(prot & PROT_EXEC);
-        if (((prot & PROT_WRITE) || no_exec) && result == 0) {
+        const bool writable = prot & PROT_WRITE;
+        if ((writable || no_exec) && result == 0) {
             // We mark pages as read-only when we recompile their code. But if the guest program
             // decides to override that by marking them as PROT_WRITE then we can no longer keep track
-            // of them. So in that case, we will invalidate everything in that region to be safe.
-            Recompiler::invalidateRangeGlobal(start, start + size, "mprotect");
+            // of them. So in that case, we will invalidate everything in that region that's not a self-validating block
+            InvalidationKind kind = InvalidationKind::Reset;
+            if (writable) {
+                kind = no_exec ? InvalidationKind::NoExec : InvalidationKind::Modify;
+            }
+            Recompiler::invalidateRangeGlobal(start, start + size, "mprotect", kind);
         }
         break;
     }
