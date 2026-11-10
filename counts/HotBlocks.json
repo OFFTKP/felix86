@@ -287,7 +287,7 @@
             "FCVT.S.W        ft8, t2, dyn",
             "VFCLASS.V       v2, xmm0, none",
             "VAND.VX         v2, v2, ra, none",
-            "VMFGT.VF        v3, xmm0, ft8, none",
+            "VMFGE.VF        v3, xmm0, ft8, none",
             "VMSNE.VX        vmask, v2, zero, none",
             "VMOR.MM         vmask, vmask, v3",
             "VFCVT.RTZ.X.F.V xmm2, xmm0, none",
