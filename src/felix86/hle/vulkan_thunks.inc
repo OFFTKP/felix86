@@ -230,6 +230,17 @@ EXT("libvulkan.so", vkGetPrivateData, v_qdqqq)
 KHR("libvulkan.so", vkQueueSubmit2, d_qdqq)
 EXT("libvulkan.so", vkSetPrivateData, d_qdqqq)
 
+// Vulkan 1.4
+KHR("libvulkan.so", vkMapMemory2, d_qqq)
+KHR("libvulkan.so", vkUnmapMemory2, d_qq)
+EXT("libvulkan.so", vkCopyMemoryToImage, d_qq)
+EXT("libvulkan.so", vkCopyImageToMemory, d_qq)
+EXT("libvulkan.so", vkCopyImageToImage, d_qq)
+EXT("libvulkan.so", vkTransitionImageLayout, d_qdq)
+KHR("libvulkan.so", vkCmdPushDescriptorSetWithTemplate, v_qqqdq)
+KHR("libvulkan.so", vkCmdSetRenderingAttachmentLocations, v_qq)
+KHR("libvulkan.so", vkCmdSetRenderingInputAttachmentIndices, v_qq)
+
 // EXT
 X("libvulkan.so", vkCreateDebugReportCallbackEXT, d_qqxq)
 X("libvulkan.so", vkDebugReportMessageEXT, v_qddqqdqq)
@@ -414,12 +425,169 @@ EXT("libvulkan.so", vkCmdSetVertexInput, v_qdqdq)
 EXT("libvulkan.so", vkGetMemoryHostPointerProperties, d_qdqq)
 
 // VK_KHR_fragment_shading_rate
-KHR("libvulkan.so", vkCmdSetFragmentShadingRateKHR, v_qqq)
+KHR("libvulkan.so", vkCmdSetFragmentShadingRate, v_qqq)
 KHR("libvulkan.so", vkGetPhysicalDeviceFragmentShadingRates, d_qqq)
 
 // VK_AMD_buffer_marker
 X("libvulkan.so", vkCmdWriteBufferMarkerAMD, v_qdqqd)
 X("libvulkan.so", vkCmdWriteBufferMarker2AMD, v_qqqqd)
+
+// VK_EXT_descriptor_heap
+X("libvulkan.so", vkCmdBindResourceHeapEXT, v_qq)
+X("libvulkan.so", vkCmdBindSamplerHeapEXT, v_qq)
+X("libvulkan.so", vkCmdPushDataEXT, v_qq)
+X("libvulkan.so", vkGetImageOpaqueCaptureDataEXT, d_qdqq)
+X("libvulkan.so", vkGetPhysicalDeviceDescriptorSizeEXT, q_qd)
+X("libvulkan.so", vkWriteResourceDescriptorsEXT, d_qdqq)
+X("libvulkan.so", vkWriteSamplerDescriptorsEXT, d_qdqq)
+X("libvulkan.so", vkRegisterCustomBorderColorEXT, d_qqdq)
+X("libvulkan.so", vkUnregisterCustomBorderColorEXT, v_qd)
+
+// VK_KHR_external_semaphore_fd
+X("libvulkan.so", vkGetSemaphoreFdKHR, d_qqq)
+X("libvulkan.so", vkImportSemaphoreFdKHR, d_qq)
+
+// VK_KHR_external_fence_fd
+X("libvulkan.so", vkImportFenceFdKHR, d_qq)
+X("libvulkan.so", vkGetFenceFdKHR, d_qqq)
+
+// VK_KHR_device_address_commands
+X("libvulkan.so", vkCmdBindIndexBuffer3KHR, v_qq)
+X("libvulkan.so", vkCmdBindVertexBuffers3KHR, v_qddq)
+X("libvulkan.so", vkCmdDrawIndirect2KHR, v_qq)
+X("libvulkan.so", vkCmdDrawIndexedIndirect2KHR, v_qq)
+X("libvulkan.so", vkCmdDispatchIndirect2KHR, v_qq)
+X("libvulkan.so", vkCmdCopyMemoryKHR, v_qq)
+X("libvulkan.so", vkCmdCopyMemoryToImageKHR, v_qq)
+X("libvulkan.so", vkCmdCopyImageToMemoryKHR, v_qq)
+X("libvulkan.so", vkCmdUpdateMemoryKHR, v_qqdqq)
+X("libvulkan.so", vkCmdFillMemoryKHR, v_qqdd)
+X("libvulkan.so", vkCmdCopyQueryPoolResultsToMemoryKHR, v_qqddqdd)
+X("libvulkan.so", vkCmdDrawIndirectCount2KHR, v_qq)
+X("libvulkan.so", vkCmdDrawIndexedIndirectCount2KHR, v_qq)
+X("libvulkan.so", vkCmdBeginConditionalRendering2EXT, v_qq)
+X("libvulkan.so", vkCmdBindTransformFeedbackBuffers2EXT, v_qddq)
+X("libvulkan.so", vkCmdBeginTransformFeedback2EXT, v_qddq)
+X("libvulkan.so", vkCmdEndTransformFeedback2EXT, v_qddq)
+X("libvulkan.so", vkCmdDrawIndirectByteCount2EXT, v_qddqdd)
+X("libvulkan.so", vkCmdDrawMeshTasksIndirect2EXT, v_qq)
+X("libvulkan.so", vkCmdDrawMeshTasksIndirectCount2EXT, v_qq)
+X("libvulkan.so", vkCmdWriteMarkerToMemoryAMD, v_qq)
+X("libvulkan.so", vkCreateAccelerationStructure2KHR, d_qqxq)
+
+// VK_EXT_present_timing
+X("libvulkan.so", vkSetSwapchainPresentTimingQueueSizeEXT, d_qqd)
+X("libvulkan.so", vkGetSwapchainTimingPropertiesEXT, d_qqqq)
+X("libvulkan.so", vkGetSwapchainTimeDomainPropertiesEXT, d_qqqq)
+X("libvulkan.so", vkGetPastPresentationTimingEXT, d_qqq)
+
+// VK_EXT_image_drm_format_modifier
+X("libvulkan.so", vkGetImageDrmFormatModifierPropertiesEXT, d_qqq)
+
+// VK_KHR_maintenance10
+KHR_EXT("libvulkan.so", vkCmdEndRendering2, v_qq)
+
+// VK_EXT_custom_resolve
+X("libvulkan.so", vkCmdBeginCustomResolveEXT, v_qq)
+
+// VK_EXT_primitive_restart_index
+X("libvulkan.so", vkCmdSetPrimitiveRestartIndexEXT, v_qd)
+
+// VK_KHR_copy_memory_indirect
+X("libvulkan.so", vkCmdCopyMemoryIndirectKHR, v_qq)
+X("libvulkan.so", vkCmdCopyMemoryToImageIndirectKHR, v_qq)
+
+// VK_KHR_deferred_host_operations
+X("libvulkan.so", vkCreateDeferredOperationKHR, d_qxq)
+X("libvulkan.so", vkDestroyDeferredOperationKHR, v_qqx)
+X("libvulkan.so", vkGetDeferredOperationMaxConcurrencyKHR, d_qq)
+X("libvulkan.so", vkGetDeferredOperationResultKHR, d_qq)
+X("libvulkan.so", vkDeferredOperationJoinKHR, d_qq)
+
+// VK_KHR_acceleration_structure
+X("libvulkan.so", vkCreateAccelerationStructureKHR, d_qqxq)
+X("libvulkan.so", vkDestroyAccelerationStructureKHR, v_qqx)
+X("libvulkan.so", vkCmdBuildAccelerationStructuresKHR, v_qdqq)
+X("libvulkan.so", vkCmdBuildAccelerationStructuresIndirectKHR, v_qdqqqq)
+X("libvulkan.so", vkBuildAccelerationStructuresKHR, d_qqdqq)
+X("libvulkan.so", vkCopyAccelerationStructureKHR, d_qqq)
+X("libvulkan.so", vkCopyAccelerationStructureToMemoryKHR, d_qqq)
+X("libvulkan.so", vkCopyMemoryToAccelerationStructureKHR, d_qqq)
+X("libvulkan.so", vkWriteAccelerationStructuresPropertiesKHR, d_qdqdqqq)
+X("libvulkan.so", vkCmdCopyAccelerationStructureKHR, v_qq)
+X("libvulkan.so", vkCmdCopyAccelerationStructureToMemoryKHR, v_qq)
+X("libvulkan.so", vkCmdCopyMemoryToAccelerationStructureKHR, v_qq)
+X("libvulkan.so", vkGetAccelerationStructureDeviceAddressKHR, q_qq)
+X("libvulkan.so", vkCmdWriteAccelerationStructuresPropertiesKHR, v_qdqdqd)
+X("libvulkan.so", vkGetDeviceAccelerationStructureCompatibilityKHR, v_qqq)
+X("libvulkan.so", vkGetAccelerationStructureBuildSizesKHR, v_qdqqq)
+
+// VK_KHR_ray_tracing_pipeline
+X("libvulkan.so", vkCmdTraceRaysKHR, v_qqqqqddd)
+X("libvulkan.so", vkCreateRayTracingPipelinesKHR, d_qqqdqxq)
+X("libvulkan.so", vkGetRayTracingCaptureReplayShaderGroupHandlesKHR, d_qqddqq)
+X("libvulkan.so", vkCmdTraceRaysIndirectKHR, v_qqqqqq)
+X("libvulkan.so", vkGetRayTracingShaderGroupStackSizeKHR, q_qqdd)
+X("libvulkan.so", vkCmdSetRayTracingPipelineStackSizeKHR, v_qd)
+
+// VK_KHR_ray_tracing_maintenance1
+X("libvulkan.so", vkCmdTraceRaysIndirect2KHR, v_qq)
+
+// VK_EXT_mesh_shader
+X("libvulkan.so", vkCmdDrawMeshTasksEXT, v_qddd)
+X("libvulkan.so", vkCmdDrawMeshTasksIndirectEXT, v_qqqdd)
+X("libvulkan.so", vkCmdDrawMeshTasksIndirectCountEXT, v_qqqqqdd)
+
+// VK_EXT_device_generated_commands
+X("libvulkan.so", vkGetGeneratedCommandsMemoryRequirementsEXT, v_qqq)
+X("libvulkan.so", vkCmdPreprocessGeneratedCommandsEXT, v_qqq)
+X("libvulkan.so", vkCmdExecuteGeneratedCommandsEXT, v_qdq)
+X("libvulkan.so", vkCreateIndirectCommandsLayoutEXT, d_qqxq)
+X("libvulkan.so", vkDestroyIndirectCommandsLayoutEXT, v_qqx)
+X("libvulkan.so", vkCreateIndirectExecutionSetEXT, d_qqxq)
+X("libvulkan.so", vkDestroyIndirectExecutionSetEXT, v_qqx)
+X("libvulkan.so", vkUpdateIndirectExecutionSetPipelineEXT, v_qqdq)
+X("libvulkan.so", vkUpdateIndirectExecutionSetShaderEXT, v_qqdq)
+
+// VK_EXT_device_fault
+X("libvulkan.so", vkGetDeviceFaultInfoEXT, d_qqq)
+
+// VK_KHR_cooperative_matrix
+X("libvulkan.so", vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR, d_qqq)
+
+// VK_KHR_pipeline_executable_properties
+X("libvulkan.so", vkGetPipelineExecutablePropertiesKHR, d_qqqq)
+X("libvulkan.so", vkGetPipelineExecutableStatisticsKHR, d_qqqq)
+X("libvulkan.so", vkGetPipelineExecutableInternalRepresentationsKHR, d_qqqq)
+
+// VK_KHR_pipeline_binary
+X("libvulkan.so", vkCreatePipelineBinariesKHR, d_qqxq)
+X("libvulkan.so", vkDestroyPipelineBinaryKHR, v_qqx)
+X("libvulkan.so", vkGetPipelineKeyKHR, d_qqq)
+X("libvulkan.so", vkGetPipelineBinaryDataKHR, d_qqqqq)
+X("libvulkan.so", vkReleaseCapturedPipelineDataKHR, d_qqx)
+
+// VK_KHR_video_queue
+X("libvulkan.so", vkGetPhysicalDeviceVideoCapabilitiesKHR, d_qqq)
+X("libvulkan.so", vkGetPhysicalDeviceVideoFormatPropertiesKHR, d_qqqq)
+X("libvulkan.so", vkCreateVideoSessionKHR, d_qqxq)
+X("libvulkan.so", vkDestroyVideoSessionKHR, v_qqx)
+X("libvulkan.so", vkGetVideoSessionMemoryRequirementsKHR, d_qqqq)
+X("libvulkan.so", vkBindVideoSessionMemoryKHR, d_qqdq)
+X("libvulkan.so", vkCreateVideoSessionParametersKHR, d_qqxq)
+X("libvulkan.so", vkUpdateVideoSessionParametersKHR, d_qqq)
+X("libvulkan.so", vkDestroyVideoSessionParametersKHR, v_qqx)
+X("libvulkan.so", vkCmdBeginVideoCodingKHR, v_qq)
+X("libvulkan.so", vkCmdEndVideoCodingKHR, v_qq)
+X("libvulkan.so", vkCmdControlVideoCodingKHR, v_qq)
+
+// VK_KHR_video_decode_queue
+X("libvulkan.so", vkCmdDecodeVideoKHR, v_qq)
+
+// VK_KHR_video_encode_queue
+X("libvulkan.so", vkGetPhysicalDeviceVideoEncodeQualityLevelPropertiesKHR, d_qqq)
+X("libvulkan.so", vkGetEncodedVideoSessionParametersKHR, d_qqqqq)
+X("libvulkan.so", vkCmdEncodeVideoKHR, v_qq)
 
 #undef KHR
 #undef EXT
