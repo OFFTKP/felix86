@@ -854,6 +854,10 @@ private:
     bool current_block_self_validating = false;
     u64 current_scan_end = 0;
 
+    /// Pointers to blocks to be linked. The top 7 bits are used to denote various flags
+    // related to the block as a bitset.
+    std::unordered_map<u64, std::vector<u64>> pending_links{};
+
     struct SideExit {
         biscuit::Label label;
         ptrdiff_t branch_offset;
