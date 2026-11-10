@@ -33,18 +33,24 @@
 struct Logger {
     __attribute__((format(printf, 1, 2))) static void log(const char* format, ...);
 
-    static const char* getPipeName();
-
     static void openTerminal();
 
     static void openLogFile();
 
     static void startServer();
 
-    static void joinServer();
+    static void initServerConnection();
+
+    static void afterForkChild();
 
 private:
-    static void serverLoop(int fd);
+    static void checkServer();
+
+    static void refreshServer();
+
+    static void tryAttach();
+
+    static void serverLoop(int listen_fd, int fd);
 };
 
 #define LOG(format, ...)                                                                                                                             \

@@ -133,6 +133,7 @@ void ProcessGlobals::after_fork_child() {
     shm_manager.unlock_after_fork();
     symbols_lock.unlock_after_fork();
     states_lock.unlock_after_fork();
+    Logger::afterForkChild();
 }
 
 void ProcessGlobals::after_fork_parent() {

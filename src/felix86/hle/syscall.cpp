@@ -1732,15 +1732,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
             envp.push_back(former_tracee.c_str());
         }
 
-        // We need to tell the new process where the server is
-        std::string log_env;
         envp.push_back("__FELIX86_EXECVE=1");
-        if (*Logger::getPipeName()) {
-            log_env = std::string("__FELIX86_PIPE=") + Logger::getPipeName();
-        }
-        if (!log_env.empty()) {
-            envp.push_back(log_env.c_str());
-        }
         std::string online_env = std::string("__FELIX86_ONLINE_CPUS=");
         if (!g_online_cpu_string.empty()) {
             online_env += g_online_cpu_string;

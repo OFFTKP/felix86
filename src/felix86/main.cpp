@@ -89,7 +89,7 @@ static struct argp_option options[] = {
         "https://felix86.com/docs/users/troubleshooting#privileged-executables-dont-work")},
     {"detect-binfmt-misc", 'd', 0, 0, TR("Check if we are correctly registered in binfmt_misc, returns 0 if ok")},
     {"unregister-binfmt-misc", 'u', 0, 0, TR("Unregister the emulator from binfmt_misc")},
-    {"log-server", 'l', 0, 0, TR("Start just the log server in the background")},
+    {"log-server", 'l', 0, 0, TR("Start the log server")},
 #ifdef BUILD_REPL
     {"repl", 'r', 0, 0, "Enter a REPL environment for testing instruction translations"},
 #endif
@@ -633,12 +633,8 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    const char* pipe = secure_getenv("__FELIX86_PIPE"); // don't inherit pipe from different uid
-    if (!pipe || !*pipe) {
-        Logger::openTerminal();
-    } else {
-        Logger::joinServer();
-    }
+    Logger::openTerminal();
+    Logger::initServerConnection();
     Logger::openLogFile();
 
 #ifdef FELIX86_VALIDATE_BINFMT_MISC
