@@ -8501,39 +8501,73 @@
         "disassembly": "vcvtpd2dq xmm1, ymm2"
     },
     "c5f9e6ca": {
-        "instruction_count": 6,
+        "instruction_count": 17,
         "expected_asm": [
-            "VSETIVLI        zero, 4, e32, mf2, tu, mu",
-            "VFNCVT.RTZ.X.F.W v2, xmm2, none",
+            "ADDIW           t1, zero, 0x1(1)",
+            "SLLI            t1, t1, 0x1f(31)",
+            "ADDIW           ra, zero, 0x381(897)",
+            "ADDI            t2, t1, 0xffffffff(-1)",
+            "FCVT.D.W        ft8, t2, dyn",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VMV.V.I         vmask, 0xe(14)",
-            "VAND.VI         v2, v2, 0x0(0), v0.t",
-            "VMV1R.V         xmm1, v2"
+            "VFCLASS.V       v3, xmm2, none",
+            "VAND.VX         v3, v3, ra, none",
+            "VMFGT.VF        v4, xmm2, ft8, none",
+            "VMSNE.VX        v3, v3, zero, none",
+            "VSETIVLI        zero, 8, e32, mf2, tu, mu",
+            "VFNCVT.RTZ.X.F.W v2, xmm2, none",
+            "VSETIVLI        zero, 8, e32, m1, tu, mu",
+            "VMOR.MM         vmask, v3, v4",
+            "VMERGE.VXM      xmm1, v2, t1",
+            "VMV.V.I         vmask, 0xc(12)",
+            "VAND.VI         xmm1, xmm1, 0x0(0), v0.t"
         ],
         "disassembly": "vcvttpd2dq xmm1, xmm2"
     },
     "c5f9e60f": {
-        "instruction_count": 8,
+        "instruction_count": 19,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v4, rdi, none, 1",
-            "VSETIVLI        zero, 4, e32, mf2, tu, mu",
-            "VFNCVT.RTZ.X.F.W v2, v4, none",
+            "VLE8.V          v5, rdi, none, 1",
+            "ADDIW           t1, zero, 0x1(1)",
+            "SLLI            t1, t1, 0x1f(31)",
+            "ADDIW           ra, zero, 0x381(897)",
+            "ADDI            t2, t1, 0xffffffff(-1)",
+            "FCVT.D.W        ft8, t2, dyn",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VMV.V.I         vmask, 0xe(14)",
-            "VAND.VI         v2, v2, 0x0(0), v0.t",
-            "VMV1R.V         xmm1, v2"
+            "VFCLASS.V       v3, v5, none",
+            "VAND.VX         v3, v3, ra, none",
+            "VMFGT.VF        v4, v5, ft8, none",
+            "VMSNE.VX        v3, v3, zero, none",
+            "VSETIVLI        zero, 8, e32, mf2, tu, mu",
+            "VFNCVT.RTZ.X.F.W v2, v5, none",
+            "VSETIVLI        zero, 8, e32, m1, tu, mu",
+            "VMOR.MM         vmask, v3, v4",
+            "VMERGE.VXM      xmm1, v2, t1",
+            "VMV.V.I         vmask, 0xc(12)",
+            "VAND.VI         xmm1, xmm1, 0x0(0), v0.t"
         ],
         "disassembly": "vcvttpd2dq xmm1, [rdi]"
     },
     "c5fde6ca": {
-        "instruction_count": 5,
+        "instruction_count": 17,
         "expected_asm": [
-            "VSETIVLI        zero, 4, e32, mf2, tu, mu",
-            "VFNCVT.RTZ.X.F.W v2, xmm2, none",
+            "ADDIW           t1, zero, 0x1(1)",
+            "SLLI            t1, t1, 0x1f(31)",
+            "ADDIW           ra, zero, 0x381(897)",
+            "ADDI            t2, t1, 0xffffffff(-1)",
+            "FCVT.D.W        ft8, t2, dyn",
             "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VMV.V.I         vmask, 0xfffffffc(-4)",
-            "VMERGE.VIM      xmm1, v2, 0x0(0)"
+            "VFCLASS.V       v3, xmm2, none",
+            "VAND.VX         v3, v3, ra, none",
+            "VMFGT.VF        v4, xmm2, ft8, none",
+            "VMSNE.VX        v3, v3, zero, none",
+            "VSETIVLI        zero, 8, e32, mf2, tu, mu",
+            "VFNCVT.RTZ.X.F.W v2, xmm2, none",
+            "VSETIVLI        zero, 8, e32, m1, tu, mu",
+            "VMOR.MM         vmask, v3, v4",
+            "VMERGE.VXM      xmm1, v2, t1",
+            "VMV.V.I         vmask, 0xc(12)",
+            "VAND.VI         xmm1, xmm1, 0x0(0), v0.t"
         ],
         "disassembly": "vcvttpd2dq xmm1, ymm2"
     },
@@ -8678,45 +8712,75 @@
         "disassembly": "vcvtps2pd ymm1, xmm2"
     },
     "c5fa5bca": {
-        "instruction_count": 5,
+        "instruction_count": 13,
         "expected_asm": [
-            "VSETIVLI        zero, 4, e32, m1, tu, mu",
-            "VFCVT.RTZ.X.F.V v2, xmm2, none",
-            "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VMV.V.I         vmask, 0xfffffffc(-4)",
-            "VMERGE.VIM      xmm1, v2, 0x0(0)"
+            "ADDIW           t1, zero, 0x1(1)",
+            "SLLI            t1, t1, 0x1f(31)",
+            "ADDIW           ra, zero, 0x381(897)",
+            "ADDI            t2, t1, 0xffffffff(-1)",
+            "FCVT.S.W        ft8, t2, dyn",
+            "VSETIVLI        zero, 8, e32, m1, tu, mu",
+            "VFCLASS.V       v2, xmm2, none",
+            "VAND.VX         v2, v2, ra, none",
+            "VMFGE.VF        v3, xmm2, ft8, none",
+            "VMSNE.VX        vmask, v2, zero, none",
+            "VMOR.MM         vmask, vmask, v3",
+            "VFCVT.RTZ.X.F.V xmm1, xmm2, none",
+            "VMERGE.VXM      xmm1, xmm1, t1"
         ],
         "disassembly": "vcvttps2dq xmm1, xmm2"
     },
     "c5fa5b0f": {
-        "instruction_count": 7,
+        "instruction_count": 15,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v3, rdi, none, 1",
-            "VSETIVLI        zero, 4, e32, m1, tu, mu",
-            "VFCVT.RTZ.X.F.V v2, v3, none",
-            "VSETIVLI        zero, 4, e64, m1, tu, mu",
-            "VMV.V.I         vmask, 0xfffffffc(-4)",
-            "VMERGE.VIM      xmm1, v2, 0x0(0)"
+            "VLE8.V          v4, rdi, none, 1",
+            "ADDIW           t1, zero, 0x1(1)",
+            "SLLI            t1, t1, 0x1f(31)",
+            "ADDIW           ra, zero, 0x381(897)",
+            "ADDI            t2, t1, 0xffffffff(-1)",
+            "FCVT.S.W        ft8, t2, dyn",
+            "VSETIVLI        zero, 8, e32, m1, tu, mu",
+            "VFCLASS.V       v2, v4, none",
+            "VAND.VX         v2, v2, ra, none",
+            "VMFGE.VF        v3, v4, ft8, none",
+            "VMSNE.VX        vmask, v2, zero, none",
+            "VMOR.MM         vmask, vmask, v3",
+            "VFCVT.RTZ.X.F.V xmm1, v4, none",
+            "VMERGE.VXM      xmm1, xmm1, t1"
         ],
         "disassembly": "vcvttps2dq xmm1, [rdi]"
     },
     "c5fe5bca": {
-        "instruction_count": 2,
+        "instruction_count": 13,
         "expected_asm": [
+            "ADDIW           t1, zero, 0x1(1)",
+            "SLLI            t1, t1, 0x1f(31)",
+            "ADDIW           ra, zero, 0x381(897)",
+            "ADDI            t2, t1, 0xffffffff(-1)",
+            "FCVT.S.W        ft8, t2, dyn",
             "VSETIVLI        zero, 8, e32, m1, tu, mu",
-            "VFCVT.RTZ.X.F.V xmm1, xmm2, none"
+            "VFCLASS.V       v2, xmm2, none",
+            "VAND.VX         v2, v2, ra, none",
+            "VMFGE.VF        v3, xmm2, ft8, none",
+            "VMSNE.VX        vmask, v2, zero, none",
+            "VMOR.MM         vmask, vmask, v3",
+            "VFCVT.RTZ.X.F.V xmm1, xmm2, none",
+            "VMERGE.VXM      xmm1, xmm1, t1"
         ],
         "disassembly": "vcvttps2dq ymm1, ymm2"
     },
     "c4e1fa2cc3": {
-        "instruction_count": 9,
+        "instruction_count": 12,
         "expected_asm": [
             "VSETIVLI        zero, 1, e32, m1, tu, mu",
             "VFMV.F.S        ft8, xmm3",
             "FCVT.L.S        rax, ft8, rtz",
             "FCLASS.S        ra, ft8",
-            "ANDI            ra, ra, 0x381(897)",
+            "ANDI            ra, ra, 0x380(896)",
+            "BEQ             ra, zero, 0x1c(28)",
+            "CSRRS           ra, zero, 0x1(1)",
+            "ANDI            ra, ra, 0x10(16)",
             "BEQ             ra, zero, 0x10(16)",
             "ADDIW           rax, zero, 0x1(1)",
             "SLLI            rax, rax, 0x1f(31)",
@@ -8725,14 +8789,17 @@
         "disassembly": "vcvttss2si rax, xmm3"
     },
     "c5fa2cc2": {
-        "instruction_count": 10,
+        "instruction_count": 13,
         "expected_asm": [
             "ADD.UW          ra, rax, zero",
             "VSETIVLI        zero, 1, e32, m1, tu, mu",
             "VFMV.F.S        ft8, xmm2",
             "FCVT.W.S        ra, ft8, rtz",
             "FCLASS.S        t1, ft8",
-            "ANDI            t1, t1, 0x381(897)",
+            "ANDI            t1, t1, 0x380(896)",
+            "BEQ             t1, zero, 0x18(24)",
+            "CSRRS           t1, zero, 0x1(1)",
+            "ANDI            t1, t1, 0x10(16)",
             "BEQ             t1, zero, 0xc(12)",
             "ADDIW           ra, zero, 0x1(1)",
             "SLLI            ra, ra, 0x1f(31)",
@@ -8741,7 +8808,7 @@
         "disassembly": "vcvttss2si eax, xmm2"
     },
     "c5fa2c07": {
-        "instruction_count": 12,
+        "instruction_count": 15,
         "expected_asm": [
             "VSETIVLI        zero, 4, e8, m1, tu, mu",
             "VLE8.V          v2, rdi, none, 1",
@@ -8750,7 +8817,10 @@
             "VFMV.F.S        ft8, v2",
             "FCVT.W.S        ra, ft8, rtz",
             "FCLASS.S        t1, ft8",
-            "ANDI            t1, t1, 0x381(897)",
+            "ANDI            t1, t1, 0x380(896)",
+            "BEQ             t1, zero, 0x18(24)",
+            "CSRRS           t1, zero, 0x1(1)",
+            "ANDI            t1, t1, 0x10(16)",
             "BEQ             t1, zero, 0xc(12)",
             "ADDIW           ra, zero, 0x1(1)",
             "SLLI            ra, ra, 0x1f(31)",
@@ -8759,7 +8829,7 @@
         "disassembly": "vcvttss2si eax, [rdi]"
     },
     "c4e1fa2c07": {
-        "instruction_count": 11,
+        "instruction_count": 14,
         "expected_asm": [
             "VSETIVLI        zero, 4, e8, m1, tu, mu",
             "VLE8.V          v2, rdi, none, 1",
@@ -8767,7 +8837,10 @@
             "VFMV.F.S        ft8, v2",
             "FCVT.L.S        rax, ft8, rtz",
             "FCLASS.S        ra, ft8",
-            "ANDI            ra, ra, 0x381(897)",
+            "ANDI            ra, ra, 0x380(896)",
+            "BEQ             ra, zero, 0x1c(28)",
+            "CSRRS           ra, zero, 0x1(1)",
+            "ANDI            ra, ra, 0x10(16)",
             "BEQ             ra, zero, 0x10(16)",
             "ADDIW           rax, zero, 0x1(1)",
             "SLLI            rax, rax, 0x1f(31)",
@@ -8776,13 +8849,16 @@
         "disassembly": "vcvttss2si rax, dword ptr [rdi]"
     },
     "c4e1fb2cc3": {
-        "instruction_count": 9,
+        "instruction_count": 12,
         "expected_asm": [
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VFMV.F.S        ft8, xmm3",
             "FCVT.L.D        rax, ft8, rtz",
             "FCLASS.D        ra, ft8",
             "ANDI            ra, ra, 0x381(897)",
+            "BEQ             ra, zero, 0x1c(28)",
+            "CSRRS           ra, zero, 0x1(1)",
+            "ANDI            ra, ra, 0x10(16)",
             "BEQ             ra, zero, 0x10(16)",
             "ADDIW           rax, zero, 0x1(1)",
             "SLLI            rax, rax, 0x1f(31)",
@@ -8791,7 +8867,7 @@
         "disassembly": "vcvttsd2si rax, xmm3"
     },
     "c5fb2cc2": {
-        "instruction_count": 10,
+        "instruction_count": 13,
         "expected_asm": [
             "ADD.UW          ra, rax, zero",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
@@ -8799,6 +8875,9 @@
             "FCVT.W.D        ra, ft8, rtz",
             "FCLASS.D        t1, ft8",
             "ANDI            t1, t1, 0x381(897)",
+            "BEQ             t1, zero, 0x18(24)",
+            "CSRRS           t1, zero, 0x1(1)",
+            "ANDI            t1, t1, 0x10(16)",
             "BEQ             t1, zero, 0xc(12)",
             "ADDIW           ra, zero, 0x1(1)",
             "SLLI            ra, ra, 0x1f(31)",
@@ -8807,7 +8886,7 @@
         "disassembly": "vcvttsd2si eax, xmm2"
     },
     "c5fb2c07": {
-        "instruction_count": 12,
+        "instruction_count": 15,
         "expected_asm": [
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
             "VLE8.V          v2, rdi, none, 1",
@@ -8817,6 +8896,9 @@
             "FCVT.W.D        ra, ft8, rtz",
             "FCLASS.D        t1, ft8",
             "ANDI            t1, t1, 0x381(897)",
+            "BEQ             t1, zero, 0x18(24)",
+            "CSRRS           t1, zero, 0x1(1)",
+            "ANDI            t1, t1, 0x10(16)",
             "BEQ             t1, zero, 0xc(12)",
             "ADDIW           ra, zero, 0x1(1)",
             "SLLI            ra, ra, 0x1f(31)",
@@ -8825,7 +8907,7 @@
         "disassembly": "vcvttsd2si eax, qword ptr [rdi]"
     },
     "c4e1fb2c07": {
-        "instruction_count": 11,
+        "instruction_count": 14,
         "expected_asm": [
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
             "VLE8.V          v2, rdi, none, 1",
@@ -8834,6 +8916,9 @@
             "FCVT.L.D        rax, ft8, rtz",
             "FCLASS.D        ra, ft8",
             "ANDI            ra, ra, 0x381(897)",
+            "BEQ             ra, zero, 0x1c(28)",
+            "CSRRS           ra, zero, 0x1(1)",
+            "ANDI            ra, ra, 0x10(16)",
             "BEQ             ra, zero, 0x10(16)",
             "ADDIW           rax, zero, 0x1(1)",
             "SLLI            rax, rax, 0x1f(31)",
