@@ -18,7 +18,7 @@ X("Register the emulator in binfmt_misc so that x86-64 executables can run witho
   "https://felix86.com/docs/users/troubleshooting#privileged-executables-dont-work")
 X("Check if we are correctly registered in binfmt_misc, returns 0 if ok", "检查模拟器是否已正确注册到 binfmt_misc，正常时返回 0")
 X("Unregister the emulator from binfmt_misc", "从 binfmt_misc 中注销模拟器")
-X("Start just the log server in the background", "仅在后台启动日志服务器")
+X("Start the log server", "启动日志服务器")
 
 X("Rootfs path not set in %s\n", "%s 中尚未设置 rootfs 路径\n")
 X("Rootfs path not set in %s and the default rootfs %s does not exist\n", "%s 中尚未设置 rootfs 路径，且默认 rootfs %s 不存在\n")
