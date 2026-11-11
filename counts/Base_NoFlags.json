@@ -2875,10 +2875,9 @@
         "disassembly": "sar edx, 0x01"
     },
     "48d1fa": {
-        "instruction_count": 2,
+        "instruction_count": 1,
         "expected_asm": [
-            "SRAI            ra, rdx, 0x1(1)",
-            "ADDI            rdx, ra, 0x0(0)"
+            "SRAI            rdx, rdx, 0x1(1)"
         ],
         "disassembly": "sar rdx, 0x01"
     },
@@ -2932,10 +2931,9 @@
         "disassembly": "sar edx, 0x3F"
     },
     "48c1fa3f": {
-        "instruction_count": 2,
+        "instruction_count": 1,
         "expected_asm": [
-            "SRAI            ra, rdx, 0x3f(63)",
-            "ADDI            rdx, ra, 0x0(0)"
+            "SRAI            rdx, rdx, 0x3f(63)"
         ],
         "disassembly": "sar rdx, 0x3F"
     },
