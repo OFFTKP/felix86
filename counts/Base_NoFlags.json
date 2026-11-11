@@ -2990,25 +2990,17 @@
         "disassembly": "sar dx, cl"
     },
     "d3fa": {
-        "instruction_count": 6,
+        "instruction_count": 2,
         "expected_asm": [
-            "ADD.UW          t1, rdx, zero",
-            "ANDI            t2, rcx, 0xff(255)",
-            "ANDI            t3, t2, 0x1f(31)",
-            "SRAW            ra, t1, t3",
-            "BEQ             t3, zero, 0x4(4)",
-            "ADD.UW          rdx, ra, zero"
+            "SRAW            rdx, rdx, rcx",
+            "ADD.UW          rdx, rdx, zero"
         ],
         "disassembly": "sar edx, cl"
     },
     "48d3fa": {
-        "instruction_count": 5,
+        "instruction_count": 1,
         "expected_asm": [
-            "ANDI            t1, rcx, 0xff(255)",
-            "ANDI            t2, t1, 0x3f(63)",
-            "SRA             ra, rdx, t2",
-            "BEQ             t2, zero, 0x4(4)",
-            "ADDI            rdx, ra, 0x0(0)"
+            "SRA             rdx, rdx, rcx"
         ],
         "disassembly": "sar rdx, cl"
     },
