@@ -178,4 +178,5 @@ jobs:
             echo "[skip ci]"
           } > $RUNNER_TEMP/commit_message.txt
           git commit -F $RUNNER_TEMP/commit_message.txt
+          git pull --rebase origin master
           git push
