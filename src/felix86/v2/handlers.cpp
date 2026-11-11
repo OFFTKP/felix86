@@ -967,6 +967,11 @@ FAST_HANDLE(MOV) {
                 UNREACHABLE();
             }
             }
+        } else if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE &&
+                   (operands[0].size == 32 || operands[0].size == 64)) {
+            biscuit::GPR dst = Allocations::allocatedGPR(rec.zydisToRef(operands[0].reg.value));
+            u64 value = operands[0].size == 32 ? (u64)(u32)operands[1].imm.value.u : (u64)operands[1].imm.value.s;
+            as.LI(dst, value);
         } else {
             biscuit::GPR src = rec.getGPR(&operands[1]);
             rec.setGPR(&operands[0], src);

@@ -14264,26 +14264,25 @@
         "disassembly": "mov dx, 0xFFFF"
     },
     "ba01000000": {
-        "instruction_count": 2,
+        "instruction_count": 1,
         "expected_asm": [
-            "ADDIW           ra, zero, 0x1(1)",
-            "ADD.UW          rdx, ra, zero"
+            "ADDIW           rdx, zero, 0x1(1)"
         ],
         "disassembly": "mov edx, 0x01"
     },
     "baffffffff": {
-        "instruction_count": 2,
+        "instruction_count": 3,
         "expected_asm": [
-            "ADDIW           ra, zero, 0xffffffff(-1)",
-            "ADD.UW          rdx, ra, zero"
+            "ADDIW           rdx, zero, 0x1(1)",
+            "SLLI            rdx, rdx, 0x20(32)",
+            "ADDI            rdx, rdx, 0xffffffff(-1)"
         ],
         "disassembly": "mov edx, 0xFFFFFFFF"
     },
     "48c7c2ffffffff": {
-        "instruction_count": 2,
+        "instruction_count": 1,
         "expected_asm": [
-            "ADDIW           ra, zero, 0xffffffff(-1)",
-            "ADDI            rdx, ra, 0x0(0)"
+            "ADDIW           rdx, zero, 0xffffffff(-1)"
         ],
         "disassembly": "mov rdx, 0xFFFFFFFFFFFFFFFF"
     },
