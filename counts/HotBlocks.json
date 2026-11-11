@@ -691,7 +691,7 @@
         ]
     },
     "7z1": {
-        "instruction_count": 89,
+        "instruction_count": 88,
         "expected_asm": [
             "SD              zero, state, 0xfffffff8(-8)",
             "ADD.UW          rdi, rax, zero",
@@ -718,8 +718,7 @@
             "CZERO.EQZ       t2, rcx, cf",
             "OR              ra, t1, t2",
             "ADD.UW          rcx, ra, zero",
-            "ADDIW           ra, zero, 0x1f(31)",
-            "ADD.UW          rdi, ra, zero",
+            "ADDIW           rdi, zero, 0x1f(31)",
             "CZERO.NEZ       t1, rbp, cf",
             "CZERO.EQZ       t2, rsi, cf",
             "OR              ra, t1, t2",
