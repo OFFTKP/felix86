@@ -995,6 +995,12 @@ FAST_HANDLE(ADD) {
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf || needs_af;
     bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
     if (!needs_any_flag && dst_reg) {
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE && instruction.operand_width >= 32) {
+            i64 imm = instruction.operand_width == 32 ? (i64)(i32)operands[1].imm.value.s : operands[1].imm.value.s;
+            if (IsValidSigned12BitImm(imm)) {
+                return OP_noflags_destreg_srcimm(rec, rip, as, instruction, operands, &Assembler::ADDI, &Assembler::ADDIW, &Assembler::ADD, imm);
+            }
+        }
         // We can do it faster if we don't need to calculate flags
         return OP_noflags_destreg(rec, rip, as, instruction, operands, &Assembler::ADD, &Assembler::ADDW);
     }
@@ -1198,6 +1204,12 @@ FAST_HANDLE(SUB) {
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf || needs_af;
     bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
     if (!needs_any_flag && dst_reg) {
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE && instruction.operand_width >= 32) {
+            i64 imm = instruction.operand_width == 32 ? (i64)(i32)operands[1].imm.value.s : operands[1].imm.value.s;
+            if (IsValidSigned12BitImm(-imm)) {
+                return OP_noflags_destreg_srcimm(rec, rip, as, instruction, operands, &Assembler::ADDI, &Assembler::ADDIW, &Assembler::ADD, -imm);
+            }
+        }
         // We can do it faster if we don't need to calculate flags
         return OP_noflags_destreg(rec, rip, as, instruction, operands, &Assembler::SUB, &Assembler::SUBW);
     }
