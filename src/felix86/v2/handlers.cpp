@@ -1905,7 +1905,8 @@ FAST_HANDLE(AND) {
     bool src_is_imm = operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE;
     bool src_is_reg = operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER;
     bool is_reg_reg = dst_is_reg && src_is_reg;
-    if (!needs_any_flag && !needs_atomic && operands[0].size >= 32 && (src_is_imm || is_reg_reg)) {
+    bool is_reg_mem = dst_is_reg && operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY;
+    if (!needs_any_flag && !needs_atomic && operands[0].size >= 32 && (src_is_imm || is_reg_reg || is_reg_mem)) {
         biscuit::GPR dst = dst_is_reg ? rec.getGPR(&operands[0], X86_SIZE_QWORD) : rec.getGPR(&operands[0]);
         if (src_is_imm && IsValidSigned12BitImm(operands[1].imm.value.s)) {
             as.ANDI(dst, dst, operands[1].imm.value.s);

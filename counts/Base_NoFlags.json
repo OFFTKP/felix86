@@ -1772,21 +1772,19 @@
         "disassembly": "and dx, [rdi]"
     },
     "2317": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
-            "LWU             t1, rdi, 0x0(0)",
-            "ADD.UW          t2, rdx, zero",
-            "AND             ra, t2, t1",
-            "ADD.UW          rdx, ra, zero"
+            "LWU             ra, rdi, 0x0(0)",
+            "AND             rdx, rdx, ra",
+            "ADD.UW          rdx, rdx, zero"
         ],
         "disassembly": "and edx, [rdi]"
     },
     "482317": {
-        "instruction_count": 3,
+        "instruction_count": 2,
         "expected_asm": [
-            "LD              t1, rdi, 0x0(0)",
-            "AND             ra, rdx, t1",
-            "ADDI            rdx, ra, 0x0(0)"
+            "LD              ra, rdi, 0x0(0)",
+            "AND             rdx, rdx, ra"
         ],
         "disassembly": "and rdx, [rdi]"
     },
