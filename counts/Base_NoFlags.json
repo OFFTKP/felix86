@@ -233,36 +233,32 @@
         "disassembly": "add dx, 0xFFFF"
     },
     "83c201": {
-        "instruction_count": 3,
+        "instruction_count": 2,
         "expected_asm": [
-            "ADDIW           ra, zero, 0x1(1)",
-            "ADDW            rdx, rdx, ra",
+            "ADDIW           rdx, rdx, 0x1(1)",
             "ADD.UW          rdx, rdx, zero"
         ],
         "disassembly": "add edx, 0x01"
     },
     "83c2ff": {
-        "instruction_count": 3,
+        "instruction_count": 2,
         "expected_asm": [
-            "ADDIW           ra, zero, 0xffffffff(-1)",
-            "ADDW            rdx, rdx, ra",
+            "ADDIW           rdx, rdx, 0xffffffff(-1)",
             "ADD.UW          rdx, rdx, zero"
         ],
         "disassembly": "add edx, 0xFFFFFFFF"
     },
     "4883c201": {
-        "instruction_count": 2,
+        "instruction_count": 1,
         "expected_asm": [
-            "ADDIW           ra, zero, 0x1(1)",
-            "ADD             rdx, rdx, ra"
+            "ADDI            rdx, rdx, 0x1(1)"
         ],
         "disassembly": "add rdx, 0x01"
     },
     "4883c2ff": {
-        "instruction_count": 2,
+        "instruction_count": 1,
         "expected_asm": [
-            "ADDIW           ra, zero, 0xffffffff(-1)",
-            "ADD             rdx, rdx, ra"
+            "ADDI            rdx, rdx, 0xffffffff(-1)"
         ],
         "disassembly": "add rdx, 0xFFFFFFFFFFFFFFFF"
     },
@@ -540,36 +536,32 @@
         "disassembly": "sub dx, 0xFFFF"
     },
     "83ea01": {
-        "instruction_count": 3,
+        "instruction_count": 2,
         "expected_asm": [
-            "ADDIW           ra, zero, 0x1(1)",
-            "SUBW            rdx, rdx, ra",
+            "ADDIW           rdx, rdx, 0xffffffff(-1)",
             "ADD.UW          rdx, rdx, zero"
         ],
         "disassembly": "sub edx, 0x01"
     },
     "83eaff": {
-        "instruction_count": 3,
+        "instruction_count": 2,
         "expected_asm": [
-            "ADDIW           ra, zero, 0xffffffff(-1)",
-            "SUBW            rdx, rdx, ra",
+            "ADDIW           rdx, rdx, 0x1(1)",
             "ADD.UW          rdx, rdx, zero"
         ],
         "disassembly": "sub edx, 0xFFFFFFFF"
     },
     "4883ea01": {
-        "instruction_count": 2,
+        "instruction_count": 1,
         "expected_asm": [
-            "ADDIW           ra, zero, 0x1(1)",
-            "SUB             rdx, rdx, ra"
+            "ADDI            rdx, rdx, 0xffffffff(-1)"
         ],
         "disassembly": "sub rdx, 0x01"
     },
     "4883eaff": {
-        "instruction_count": 2,
+        "instruction_count": 1,
         "expected_asm": [
-            "ADDIW           ra, zero, 0xffffffff(-1)",
-            "SUB             rdx, rdx, ra"
+            "ADDI            rdx, rdx, 0x1(1)"
         ],
         "disassembly": "sub rdx, 0xFFFFFFFFFFFFFFFF"
     },

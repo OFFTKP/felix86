@@ -119,7 +119,7 @@
         ]
     },
     "crysis3": {
-        "instruction_count": 269,
+        "instruction_count": 268,
         "expected_asm": [
             "SD              zero, state, 0xfffffff8(-8)",
             "ADD             ra, rbp, r11",
@@ -321,8 +321,7 @@
             "ADDIW           rax, rdx, 0x0(0)",
             "VMV.V.V         xmm1, xmm8",
             "ADD             rax, rax, rax",
-            "ADDIW           ra, zero, 0x10(16)",
-            "ADD             r11, r11, ra",
+            "ADDI            r11, r11, 0x10(16)",
             "SH3ADD          ra, rax, rsp",
             "ADDI            ra, ra, 0x30(48)",
             "VLE32.V         v3, ra, none, 1",
@@ -386,14 +385,14 @@
             "XOR             of, of, t2",
             "ADDI            rdi, ra, 0x0(0)",
             "ADDI            t5, zero, 0x0(0)",
-            "BEQ             zf, zero, 0xfffffbdc(-1060)",
+            "BEQ             zf, zero, 0xfffffbe0(-1056)",
             "ADDI            rip, rip, 0x1d2(466)",
             "LD              t6, sp, 0x18(24)",
             "JALR            t5, t6, 0x0(0)"
         ]
     },
     "tekken1": {
-        "instruction_count": 293,
+        "instruction_count": 291,
         "expected_asm": [
             "SD              zero, state, 0xfffffff8(-8)",
             "LUI             t1, 0xb3(179)",
@@ -579,11 +578,9 @@
             "VRGATHEREI16.VV xmm1, xmm3, v3, none",
             "VMV.V.V         xmm0, xmm11",
             "VRGATHER.VI     xmm0, xmm11, 0x3(3), none",
-            "ADDIW           ra, zero, 0x10(16)",
-            "ADD             r14, r14, ra",
+            "ADDI            r14, r14, 0x10(16)",
             "VFMUL.VV        xmm1, xmm1, xmm7, none",
-            "ADDIW           ra, zero, 0x10(16)",
-            "ADD             rsi, rsi, ra",
+            "ADDI            rsi, rsi, 0x10(16)",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "LUI             ra, 0x10(16)",
             "ADDIW           ra, ra, 0x1(1)",
@@ -684,7 +681,7 @@
             "SLT             t1, ra, rsi",
             "XOR             of, of, t1",
             "ADDI            t5, zero, 0x0(0)",
-            "BEQ             zf, zero, 0xfffffb7c(-1156)",
+            "BEQ             zf, zero, 0xfffffb84(-1148)",
             "ADDI            rip, rip, 0x223(547)",
             "LD              t6, sp, 0x18(24)",
             "JALR            t5, t6, 0x0(0)"
