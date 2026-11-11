@@ -3234,6 +3234,12 @@ FAST_HANDLE(SAR) {
         return fast_SAR_imm(rec, rip, as, instruction, operands);
     }
 
+    bool needs_any_flag = rec.shouldEmitFlag(rip, X86_REF_CF) || rec.shouldEmitFlag(rip, X86_REF_OF) || rec.shouldEmitFlag(rip, X86_REF_PF) ||
+                          rec.shouldEmitFlag(rip, X86_REF_ZF) || rec.shouldEmitFlag(rip, X86_REF_SF);
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].size >= 32 && !needs_any_flag) {
+        return SHIFT_noflags(rec, rip, as, instruction, operands, &Assembler::SRA, &Assembler::SRAW);
+    }
+
     biscuit::GPR result = rec.scratch();
     x86_size_e size = rec.getSize(&operands[0]);
     biscuit::GPR dst = rec.getGPR(&operands[0]);
