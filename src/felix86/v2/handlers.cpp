@@ -3033,6 +3033,10 @@ FAST_HANDLE(SAR_imm) {
     u8 shift = rec.getImmediate(&operands[1]);
     shift &= instruction.operand_width == 64 ? 0x3F : 0x1F;
 
+    if (size == X86_SIZE_QWORD && operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && !rec.shouldEmitFlag(rip, X86_REF_CF)) {
+        result = dst;
+    }
+
     if (shift != 0) {
         switch (size) {
         case X86_SIZE_BYTE:
