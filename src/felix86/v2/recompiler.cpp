@@ -4053,9 +4053,11 @@ void Recompiler::emitSelfValidation(biscuit::Label* expected_bytes) {
     resetScratch();
 }
 
-int Recompiler::invalidateRange(u64 start, u64 end, bool is_smc) {
+int Recompiler::invalidateRange(u64 start, u64 end, InvalidationKind kind) {
+    const bool is_smc = kind != InvalidationKind::Reset;
+    const bool keep_self_validating = kind == InvalidationKind::Modify;
     return code_cache->eraseBlocksInRange(start, end, [&](BlockMetadata* block) {
-        if (is_smc && block->misc_info.self_validating) {
+        if (keep_self_validating && block->misc_info.self_validating) {
             // Don't invalidate self-validating blocks
             return false;
         }
@@ -4064,7 +4066,7 @@ int Recompiler::invalidateRange(u64 start, u64 end, bool is_smc) {
     });
 }
 
-void Recompiler::invalidateRangeGlobal(u64 start, u64 end, const char* reason, bool is_smc) {
+void Recompiler::invalidateRangeGlobal(u64 start, u64 end, const char* reason, InvalidationKind kind) {
     // Get all the pages in this range, search all thread states for these pages, invalidate the blocks in those pages
     auto states_guard = g_process_globals.states_lock.lock();
     start &= ~0xFFFull;
@@ -4074,7 +4076,7 @@ void Recompiler::invalidateRangeGlobal(u64 start, u64 end, const char* reason, b
     u64 max = 0;
     u64 blocks = 0;
     for (ThreadState* state : g_process_globals.states) {
-        blocks += state->recompiler->invalidateRange(start, end, is_smc);
+        blocks += state->recompiler->invalidateRange(start, end, kind);
 
         u64 cache_start = (u64)state->recompiler->getStartOfCodeCache();
         u64 cache_end = (u64)state->recompiler->getEndOfCodeCache();
