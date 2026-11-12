@@ -2396,14 +2396,15 @@ FAST_HANDLE(CALL) {
 FAST_HANDLE(RET) {
     rec.popCalltrace();
 
-    if (instruction.opcode == 0xCB) {
+    if (instruction.opcode == 0xCB || instruction.opcode == 0xCA) {
         WARN("Far return detected at %lx", rip);
-        bool bit32 = MODE32;
+        const x86_size_e size = rec.zydisToSize(instruction.operand_width);
+        const u64 bytes = instruction.operand_width / 8;
         biscuit::GPR ripreg = Allocations::RIP();
         biscuit::GPR new_cs = rec.scratch();
         biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
-        rec.readMemory(ripreg, rsp, 0, bit32 ? X86_SIZE_DWORD : X86_SIZE_QWORD);
-        rec.readMemory(new_cs, rsp, bit32 ? 4 : 8, X86_SIZE_WORD);
+        rec.readMemory(ripreg, rsp, 0, size);
+        rec.readMemory(new_cs, rsp, bytes, X86_SIZE_WORD);
         biscuit::GPR tmp = rec.scratch();
         biscuit::Label cs_ok;
         as.XORI(tmp, new_cs, 0x23);
@@ -2416,7 +2417,11 @@ FAST_HANDLE(RET) {
         as.C_UNDEF();
         as.Bind(&cs_ok);
         rec.popScratch();
-        as.ADDI(rsp, rsp, bit32 ? 8 : 16);
+        u64 imm = 2 * bytes;
+        if (operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+            imm += rec.getImmediate(&operands[0]);
+        }
+        rec.addi(rsp, rsp, imm);
         rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
         rec.writebackState();
         as.MV(a1, new_cs);
