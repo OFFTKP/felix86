@@ -414,6 +414,37 @@ static bool AttemptJccFusing(Recompiler& rec, u64 rip, Assembler& as, ZydisDecod
     rec.flushX87();
     rec.resetScratch();
 
+    // A branch like cmp reg, 0xfffff with jbe/ja, or a cmp reg, 0x100000 with jb/jae can be fused into shift with beqz/bnez
+    if (mnemonic == ZYDIS_MNEMONIC_CMP && fused->kind == FusedCompare::Unsigned && operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE &&
+        (operands[0].size == 32 || operands[0].size == 64)) {
+        u64 imm = rec.zextImmediate(operands[1].imm.value.u, operands[0].size);
+        ZydisMnemonic jcc = next_instruction->mnemonic;
+        bool equals = jcc == ZYDIS_MNEMONIC_JNBE || jcc == ZYDIS_MNEMONIC_JBE;
+        bool above = jcc == ZYDIS_MNEMONIC_JNBE || jcc == ZYDIS_MNEMONIC_JNB;
+        // If jbe/ja, add one to convert to single bit, otherwise check if it's already single bit to perform the optimization
+        u64 bits = equals ? imm + 1 : imm;
+        if (operands[0].size == 32) {
+            bits = (u32)bits;
+        }
+        bool cmp_with_zero = equals && imm == 0;
+        bool is_single_bit = std::has_single_bit(bits);
+        if (!cmp_with_zero && is_single_bit) {
+            int k = std::countr_zero(bits);
+            biscuit::GPR shifted = rec.scratch();
+            if (operands[0].size == 32) {
+                biscuit::GPR value =
+                    operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER ? rec.getGPR(&operands[0], X86_SIZE_QWORD) : rec.getGPR(&operands[0]);
+                as.SRLIW(shifted, value, k);
+            } else {
+                biscuit::GPR value = rec.getGPR(&operands[0]);
+                as.SRLI(shifted, value, k);
+            }
+            JCC(rec, next_rip, as, *next_instruction, next_operands, above ? BranchCond::NE : BranchCond::EQ, shifted, x0);
+            rec.skipNext();
+            return true;
+        }
+    }
+
     biscuit::GPR lhs;
     biscuit::GPR rhs;
     getFusedOperands(rec, as, operands, mnemonic, *fused, lhs, rhs);
