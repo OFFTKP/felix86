@@ -12,12 +12,14 @@ constexpr static std::array saved_gprs = {biscuit::ra, biscuit::sp, biscuit::tp,
 // A frame in the host stack that contains saved host registers
 // This is used to restore the context before entering the dispatcher and to also store multiple contexts
 // (for example callbacks from thunked libraries)
-struct felix86_frame {
+struct alignas(16) felix86_frame {
     constexpr static u64 expected_magic = 0x6814'8664'0000'FE86;
     u64 magic; // to make sure this is indeed a frame
     ThreadState* state;
     u64 invalidate_caller_thunk_ptr;
+    // We keep two versions of the address cache lookup, the 32-bit one NOTs the address, see tagged_address.hpp for reasoning
     u64 compile_next_handler_ptr;
+    u64 compile_next_32_handler_ptr;
     u64 compile_next_skip_address_cache_ptr;
     u64 gprs[saved_gprs.size()];
     // We don't modify the saved FPRs so we don't need to save them

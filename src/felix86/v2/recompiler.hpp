@@ -190,7 +190,7 @@ struct Recompiler {
 
     void stopCompiling();
 
-    void backToDispatcher(bool return_hint = false, bool skip_lookup = false);
+    void backToDispatcher(bool mode32, bool return_hint = false, bool skip_lookup = false);
 
     void writebackState();
 
@@ -234,7 +234,9 @@ struct Recompiler {
 
     int getBitSize(x86_size_e size);
 
-    void jumpAndLink(u64 rip, bool return_hint = false, bool skip_lookup = false);
+    void jumpAndLink(u64 rip, bool mode32, bool return_hint = false, bool skip_lookup = false);
+
+    void jumpAndLink(TaggedAddress address, bool return_hint = false, bool skip_lookup = false);
 
     void jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false);
 
@@ -276,7 +278,7 @@ struct Recompiler {
     void exitIfPendingCacheClear();
 
     bool canEmitRetStub() const {
-        return g_config.address_cache && g_config.return_address_hint && !relocatable && !isSingleStepping();
+        return g_config.return_address_hint && !relocatable && !isSingleStepping();
     }
 
     // TODO: move these elsewhere
@@ -380,12 +382,12 @@ struct Recompiler {
         lock_handled = true;
     }
 
-    BlockMetadata& getBlockMetadata(u64 rip) {
-        return code_cache->getBlockMetadata(rip);
+    BlockMetadata& getBlockMetadata(TaggedAddress address) {
+        return code_cache->getBlockMetadata(address);
     }
 
-    bool blockExists(u64 rip) {
-        return code_cache->blockExists(rip);
+    bool blockExists(TaggedAddress address) {
+        return code_cache->blockExists(address);
     }
 
     biscuit::GPR getFlags();
@@ -407,12 +409,17 @@ struct Recompiler {
         return (void*)next_block;
     }
 
-    u64 getCompileNext() {
-        return code_cache->getPointers().compile_next;
+    u64 getCompileNext(bool mode32) {
+        const CodeCachePointers& pointers = code_cache->getPointers();
+        return mode32 ? pointers.compile_next_32 : pointers.compile_next;
     }
 
     u8* getStartOfCodeCache() const {
         return (u8*)code_cache->getPointers().start_of_code_cache;
+    }
+
+    static bool isAddressable(u64 rip) {
+        return (rip & ~mmap_max_addr()) == 0;
     }
 
     u64 getCompiledBlock(ThreadState* state, u64 rip) {
@@ -420,26 +427,21 @@ struct Recompiler {
             clearCodeCache(state);
         }
 
-        if (g_config.address_cache) {
-            BlockMetadata& meta = getBlockMetadata(rip);
-            if (meta.host_address != 0) {
-                AddressCacheEntry& entry = state->getAddressCacheEntry(rip);
-                entry.guest = rip;
-                entry.host = meta.ret_stub ? meta.ret_stub : meta.host_address;
-                return meta.host_address;
-            } else {
-                return compile(state, rip);
-            }
-        } else {
-            if (blockExists(rip)) {
-                return getBlockMetadata(rip).host_address;
-            } else {
-                return compile(state, rip);
-            }
+        if (!isAddressable(rip)) {
+            return code_cache->getPointers().not_mapped;
         }
 
-        UNREACHABLE();
-        return {};
+        bool mode32 = state->ctx.Mode32();
+        TaggedAddress address = TaggedAddress::make(rip, mode32);
+        BlockMetadata& meta = getBlockMetadata(address);
+        if (meta.host_address != 0) {
+            AddressCacheEntry& entry = state->getAddressCacheEntry(rip);
+            entry.guest = address;
+            entry.host = meta.ret_stub ? meta.ret_stub : meta.host_address;
+            return meta.host_address;
+        }
+
+        return compile(state, rip);
     }
 
     u8 stackPointerSize() {
@@ -752,7 +754,7 @@ struct Recompiler {
         }
     }
 
-    void addressCacheLookup(biscuit::GPR guest_address, void on_hit(Assembler&, biscuit::GPR), bool use_ra = false);
+    void addressCacheLookup(biscuit::GPR guest_address, void on_hit(Assembler&, biscuit::GPR), bool mode32, bool use_ra = false);
 
     i64 interruptibleSyscall(u64* signals, u64 nr, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5, u64 arg6) {
         const CodeCachePointers& pointers = code_cache->getPointers();
@@ -797,7 +799,7 @@ private:
 
     u32 scanLandingBlock(ThreadState* state, u64 initial_rip, u64 rip_ahead, int depth, int& instrs_left);
 
-    void expirePendingLinks(u64 rip);
+    void expirePendingLinks(TaggedAddress address);
 
     int getBreakpointIndex(u64 rip);
 
@@ -856,7 +858,7 @@ private:
 
     /// Pointers to blocks to be linked. The top 7 bits are used to denote various flags
     // related to the block as a bitset.
-    std::unordered_map<u64, std::vector<u64>> pending_links{};
+    std::unordered_map<TaggedAddress, std::vector<u64>> pending_links{};
 
     struct SideExit {
         biscuit::Label label;

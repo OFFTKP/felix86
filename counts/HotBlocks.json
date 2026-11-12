@@ -1075,7 +1075,7 @@
             "BEQ             zf, zero, 0xfffffb7c(-1156)",
             "ADDI            rip, rip, 0x16f(367)",
             "ADD.UW          rip, rip, zero",
-            "LD              t6, sp, 0x18(24)",
+            "LD              t6, sp, 0x20(32)",
             "JALR            t5, t6, 0x0(0)"
         ]
     },
@@ -1253,7 +1253,7 @@
             "BEQ             ra, zero, 0xfffffd60(-672)",
             "ADDI            rip, rip, 0xc4(196)",
             "ADD.UW          rip, rip, zero",
-            "LD              t6, sp, 0x18(24)",
+            "LD              t6, sp, 0x20(32)",
             "JALR            t5, t6, 0x0(0)"
         ]
     },

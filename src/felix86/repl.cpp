@@ -137,7 +137,8 @@ static void compile(const std::string& input) {
     rec->setFlagMode(flag_mode);
     rec->compileSequence(mode32, (u64)guest, nullptr);
 
-    BlockMetadata& metadata = rec->getBlockMetadata((u64)guest);
+    TaggedAddress guest_address = TaggedAddress::make((u64)guest, mode32);
+    BlockMetadata& metadata = rec->getBlockMetadata(guest_address);
 
     auto print_range = [](u64 start, u64 end, int color_index) {
         for (u64 address = start; address < end; address += 4) {

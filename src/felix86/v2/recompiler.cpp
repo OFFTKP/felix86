@@ -216,11 +216,14 @@ void Recompiler::emitDispatcher() {
     as.LILabel(t1, &invalidate_caller_thunk);
     as.SD(t1, offsetof(felix86_frame, invalidate_caller_thunk_ptr), sp);
 
-    biscuit::Label compile_next_label;
+    biscuit::Label compile_next_label, compile_next_32_label;
     biscuit::Label compile_next_skip_address_cache_label;
 
     as.LILabel(t1, &compile_next_label);
     as.SD(t1, offsetof(felix86_frame, compile_next_handler_ptr), sp);
+
+    as.LILabel(t1, &compile_next_32_label);
+    as.SD(t1, offsetof(felix86_frame, compile_next_32_handler_ptr), sp);
 
     as.LILabel(t1, &compile_next_skip_address_cache_label);
     as.SD(t1, offsetof(felix86_frame, compile_next_skip_address_cache_ptr), sp);
@@ -230,6 +233,11 @@ void Recompiler::emitDispatcher() {
     pointers.restore_state = (u64)as.GetCursorPointer();
 
     restoreState();
+    biscuit::GPR cs = scratch();
+    as.LHU(cs, offsetof(ThreadState, ctx.cs), Allocations::threadStatePointer());
+    as.ADDI(cs, cs, -0x23);
+    as.BEQZ(cs, &compile_next_32_label);
+    popScratch();
 
     // Align this to cache line boundary since it's hit often
     while ((u64)as.GetCursorPointer() & 0x3F) {
@@ -239,10 +247,8 @@ void Recompiler::emitDispatcher() {
     as.Bind(&compile_next_label);
     pointers.compile_next = (u64)as.GetCursorPointer();
 
-    if (g_config.address_cache) {
-        biscuit::GPR ripreg = Allocations::RIP();
-        addressCacheLookup(ripreg, [](Assembler& as, biscuit::GPR new_rip) { as.JR(new_rip); });
-    }
+    biscuit::GPR ripreg = Allocations::RIP();
+    addressCacheLookup(ripreg, [](Assembler& as, biscuit::GPR new_rip) { as.JR(new_rip); }, false);
 
     as.Bind(&compile_next_skip_address_cache_label);
     pointers.compile_next_skip_address_cache = (u64)as.GetCursorPointer();
@@ -257,6 +263,15 @@ void Recompiler::emitDispatcher() {
     as.MV(t5, x0); // zero out t5, see invalidate_caller_thunk
     as.JR(retval);
     popScratch();
+
+    while ((u64)as.GetCursorPointer() & 0x3F) {
+        as.NOP();
+    }
+
+    as.Bind(&compile_next_32_label);
+    pointers.compile_next_32 = (u64)as.GetCursorPointer();
+    addressCacheLookup(ripreg, [](Assembler& as, biscuit::GPR new_rip) { as.JR(new_rip); }, true);
+    as.J(&compile_next_skip_address_cache_label);
 
     pointers.exit_dispatcher = (decltype(pointers.exit_dispatcher))as.GetCursorPointer();
 
@@ -329,7 +344,7 @@ void Recompiler::emitInvalidateCallerThunk() {
     as.ADDI(sp, sp, 16);
     call((u64)Recompiler::invalidateAt);
     restoreState(); // TODO: instead, make a "backToDispatcherSkipWriteback" function and remove this restore
-    backToDispatcher();
+    backToDispatcher(false, false, true);
 }
 
 // Note: This function is important. When we invalidate a block range, our choices are either iterate every block that links
@@ -340,7 +355,9 @@ void Recompiler::emitInvalidateCallerThunk() {
 // When possible, we use JAL to link to t5. In other cases we use AUIPC.
 void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_block) {
     u64 rip = state->ctx.rip;
-    BlockMetadata& metadata = state->recompiler->getBlockMetadata(rip);
+    bool mode32 = state->ctx.Mode32();
+    TaggedAddress address = TaggedAddress::make(rip, mode32);
+    BlockMetadata& metadata = state->recompiler->getBlockMetadata(address);
     if (metadata.host_address == (u64)invalid_block) {
         ASSERT(invalid_block);
         if (metadata.misc_info.self_validating) {
@@ -354,7 +371,7 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_
         }
         metadata.host_address = 0;
         AddressCacheEntry& entry = state->getAddressCacheEntry(rip);
-        entry.guest = ~rip;
+        entry.guest = TaggedAddress::invalid(rip);
         entry.host = -1ull;
     }
 
@@ -396,7 +413,7 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_
         bool return_hint = ((link_instruction >> 7) & 0x1f) == ra.Index();
         // Don't make the ret stub jump go to address cache, as it would jump to itself
         bool is_ret_stub = metadata.ret_stub == (u64)link_location;
-        state->recompiler->jumpAndLink(rip, return_hint, is_ret_stub);
+        state->recompiler->jumpAndLink(rip, mode32, return_hint, is_ret_stub);
         state->recompiler->as.SetCursorPointer(cursor);
         flush_icache((u64)link_location, (u64)link_location + 4096);
     } else {
@@ -429,7 +446,7 @@ void Recompiler::exitIfPendingCacheClear() {
     as.LBU(pending, offsetof(ThreadState, pending_cache_clear), Allocations::threadStatePointer());
     as.BEQZ(pending, &no_pending);
     popScratch();
-    backToDispatcher(false, true);
+    backToDispatcher(current_mode32, false, true);
     as.Bind(&no_pending);
 }
 
@@ -487,6 +504,8 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
     }
 
     const u64 start_rip = rip;
+    const bool mode32 = state->ctx.Mode32();
+    const TaggedAddress address = TaggedAddress::make(rip, mode32);
     u64 start;
 
     // Map it immediately so we can optimize conditional branch to self
@@ -503,7 +522,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
         }
 
         start = (u64)as.GetCursorPointer();
-        result = compileSequence(state->ctx.Mode32(), rip, &protect_end);
+        result = compileSequence(mode32, rip, &protect_end);
         if (result == SequenceResult::SideExitOutOfRange) {
             ASSERT(!superblocks_disabled);
             // Retry without superblocks, as the block gets too big and the side exits out of range
@@ -511,7 +530,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
         } else if (result == SequenceResult::Overran) {
             ASSERT_MSG(++overruns < 16, "Block at %016lx keeps compiling past its protected pages", rip);
         } else if (result == SequenceResult::Modified) {
-            addSmcHit(getBlockMetadata(rip));
+            addSmcHit(getBlockMetadata(address));
         }
     } while (result != SequenceResult::Compiled);
     superblocks_disabled = false;
@@ -524,17 +543,15 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
 
     ASSERT(host_address_end - start >= 8); // At least 2 instructions, so that our unlinking logic works
 
-    BlockMetadata& block_meta = getBlockMetadata(rip);
+    BlockMetadata& block_meta = getBlockMetadata(address);
     code_cache->addHostPcLookup(host_address_end - 1, &block_meta);
 
-    if (g_config.address_cache) {
-        AddressCacheEntry& entry = state->getAddressCacheEntry(start_rip);
-        entry.host = block_meta.ret_stub ? block_meta.ret_stub : block_meta.host_address;
-        entry.guest = start_rip;
-    }
+    AddressCacheEntry& entry = state->getAddressCacheEntry(start_rip);
+    entry.host = block_meta.ret_stub ? block_meta.ret_stub : block_meta.host_address;
+    entry.guest = address;
 
     // If other blocks were waiting for this block to be linked, link them now
-    expirePendingLinks(rip);
+    expirePendingLinks(address);
 
     if (g_config.gdb) {
         size_t inst_count = block_meta.translation_sizes.size();
@@ -630,7 +647,8 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
 
     current_mode32 = mode32;
     current_decoder_initialized = false; // TODO: don't invalidate if same mode32 as before
-    BlockMetadata& block_meta = getBlockMetadata(rip);
+    TaggedAddress address = TaggedAddress::make(rip, mode32);
+    BlockMetadata& block_meta = getBlockMetadata(address);
     bool is_self_validating = g_config.self_validating_blocks && shouldSelfValidate(block_meta) && !checkIfBreakpoint(rip);
     if (is_self_validating) {
         current_block_self_validating = true;
@@ -798,7 +816,7 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
                 as.C_UNDEF();
             } else {
                 // g_config.single_step
-                backToDispatcher();
+                backToDispatcher(current_mode32);
             }
             stopCompiling();
         }
@@ -830,7 +848,7 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
     if (current_block_big) {
         VERBOSE("Block at %lx exceeded max instruction count", start_rip);
         flushBlockState(rip);
-        jumpAndLink(rip);
+        jumpAndLink(rip, current_mode32);
     }
 
     if (!side_exits.empty()) {
@@ -1603,7 +1621,7 @@ void Recompiler::emitBreakpoint(u64 rip, u64 start_pc, u8 instruction_length) {
     as.LI(a2, i);
     callPointer(offsetof(ThreadState, felix86_raise_hardware_breakpoint));
     restoreState();
-    backToDispatcher();
+    backToDispatcher(current_mode32, false, true);
     stopCompiling();
 
     u64 size = (u64)as.GetCursorPointer() - start_pc;
@@ -2264,11 +2282,12 @@ void Recompiler::restoreState() {
     scratch_index = saved_scratch_index;
 }
 
-void Recompiler::backToDispatcher(bool return_hint, bool skip_lookup) {
+void Recompiler::backToDispatcher(bool mode32, bool return_hint, bool skip_lookup) {
     OptimizationGuard guard(as, optimization_guard_counter);
     const bool is_single_step = single_step != SingleStepMode::None;
     const CodeCachePointers& pointers = code_cache->getPointers();
-    const u64 handler = skip_lookup ? pointers.compile_next_skip_address_cache : pointers.compile_next;
+    const u64 compile_next = mode32 ? pointers.compile_next_32 : pointers.compile_next;
+    const u64 handler = skip_lookup ? pointers.compile_next_skip_address_cache : compile_next;
     if (compiling && is_single_step) {
         as.SD(x0, 0, x0);
         as.SLTIU(x0, x0, FELIX86_HINT_TF);
@@ -2290,10 +2309,11 @@ void Recompiler::backToDispatcher(bool return_hint, bool skip_lookup) {
         ASSERT(isScratch(t6));
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Winvalid-offsetof"
+        int offset = mode32 ? offsetof(felix86_frame, compile_next_32_handler_ptr) : offsetof(felix86_frame, compile_next_handler_ptr);
         if (skip_lookup)
             as.LD(t6, offsetof(felix86_frame, compile_next_skip_address_cache_ptr), sp);
         else
-            as.LD(t6, offsetof(felix86_frame, compile_next_handler_ptr), sp);
+            as.LD(t6, offset, sp);
 #pragma GCC diagnostic pop
         if (return_hint)
             as.JALR(x1, 0, t6);
@@ -2993,27 +3013,37 @@ void Recompiler::updateSign(biscuit::GPR result, x86_size_e size) {
     }
 }
 
-void Recompiler::jumpAndLink(u64 rip, bool return_link, bool skip_lookup) {
+void Recompiler::jumpAndLink(u64 rip, bool mode32, bool return_link, bool skip_lookup) {
+    if (!isAddressable(rip)) {
+        backToDispatcher(mode32, return_link, skip_lookup);
+        return;
+    }
+
+    jumpAndLink(TaggedAddress::make(rip, mode32), return_link, skip_lookup);
+}
+
+void Recompiler::jumpAndLink(TaggedAddress address, bool return_link, bool skip_lookup) {
     OptimizationGuard guard(as, optimization_guard_counter);
+    const bool mode32 = address.mode32();
     const bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
     if (is_single_step || relocatable) {
         // Just emit jump to dispatcher
-        backToDispatcher(return_link, skip_lookup);
+        backToDispatcher(mode32, return_link, skip_lookup);
         return;
     }
 
     u8* start = as.GetCursorPointer();
-    if (!blockExists(rip)) {
+    if (!blockExists(address)) {
         u64 link_me = (u64)as.GetCursorPointer();
-        backToDispatcher(return_link, skip_lookup);
+        backToDispatcher(mode32, return_link, skip_lookup);
 
         // The top 7 bits are used as flags.
         link_me &= ((u64)1 << 57) - 1;
         if (return_link)
             link_me |= (u64)PendingLinkFlags::HasReturnHint;
-        pending_links[rip].push_back(link_me);
+        pending_links[address].push_back(link_me);
     } else {
-        auto& target_meta = getBlockMetadata(rip);
+        auto& target_meta = getBlockMetadata(address);
         u64 target = target_meta.host_address;
 
         u64 offset = target - (u64)as.GetCursorPointer();
@@ -3113,7 +3143,7 @@ void Recompiler::jumpAndLinkConditional(BranchCond cond, biscuit::GPR lhs, biscu
             rip_false = (u32)rip_false;
         }
 
-        jumpAndLink(rip_false);
+        jumpAndLink(rip_false, current_mode32);
         return;
     }
 
@@ -3128,7 +3158,7 @@ void Recompiler::jumpAndLinkConditional(BranchCond cond, biscuit::GPR lhs, biscu
         rip_false = (u32)rip_false;
     }
 
-    jumpAndLink(rip_false);
+    jumpAndLink(rip_false, current_mode32);
 
     as.Bind(&true_label);
     u64 rip_true_offset = rip_true - getCurrentRipregValue();
@@ -3138,7 +3168,7 @@ void Recompiler::jumpAndLinkConditional(BranchCond cond, biscuit::GPR lhs, biscu
         rip_true = (u32)rip_true;
     }
 
-    jumpAndLink(rip_true);
+    jumpAndLink(rip_true, current_mode32);
 }
 
 void Recompiler::emitSideExit(BranchCond cond, biscuit::GPR lhs, biscuit::GPR rhs, u64 rip_true) {
@@ -3191,7 +3221,7 @@ bool Recompiler::emitSideExitStubs() {
             target = (u32)target;
         }
 
-        jumpAndLink(target);
+        jumpAndLink(target, current_mode32);
     }
     side_exits.clear();
     return true;
@@ -3300,18 +3330,18 @@ bool Recompiler::canCompileSpeculatively(const ZydisDecodedInstruction& instruct
     return true;
 }
 
-void Recompiler::expirePendingLinks(u64 rip) {
+void Recompiler::expirePendingLinks(TaggedAddress address) {
     if (relocatable) {
         return;
     }
 
-    if (!blockExists(rip)) {
+    if (!blockExists(address)) {
         return;
     }
 
     u64 min = -1ull;
     u64 max = 0;
-    auto it = pending_links.find(rip);
+    auto it = pending_links.find(address);
     if (it == pending_links.end()) {
         return;
     }
@@ -3324,7 +3354,7 @@ void Recompiler::expirePendingLinks(u64 rip) {
         u8* link_addr = (u8*)((signed_link << 7) >> 7);
         u8* cursor = as.GetCursorPointer();
         as.SetCursorPointer(link_addr);
-        jumpAndLink(rip, has_return_hint);
+        jumpAndLink(address, has_return_hint);
         as.SetCursorPointer(cursor);
 
         u64 addr = (u64)link_addr;
@@ -4146,7 +4176,7 @@ void Recompiler::switchToX87() {
     block_state.x87_state = x87State::x87;
 }
 
-void Recompiler::addressCacheLookup(biscuit::GPR guest_address, void on_hit(Assembler&, biscuit::GPR), bool use_ra) {
+void Recompiler::addressCacheLookup(biscuit::GPR guest_address, void on_hit(Assembler&, biscuit::GPR), bool mode32, bool use_ra) {
     if (!use_ra) {
         // Waste the ra scratch
         (void)scratch();
@@ -4154,6 +4184,13 @@ void Recompiler::addressCacheLookup(biscuit::GPR guest_address, void on_hit(Asse
     biscuit::GPR host_address = use_ra ? x1 : scratch();
     biscuit::GPR temp = scratch();
     biscuit::GPR temp2 = scratch();
+    biscuit::GPR temp3;
+    biscuit::GPR tagged_address = guest_address;
+    if (mode32) {
+        temp3 = scratch();
+        as.NOT(temp3, guest_address);
+        tagged_address = temp3;
+    }
     biscuit::Label not_equal;
     i32 lo12 = 0;
     u64 offset = -address_cache_offset;
@@ -4175,7 +4212,7 @@ void Recompiler::addressCacheLookup(biscuit::GPR guest_address, void on_hit(Asse
     // Load even if branch fails is slightly better for fusion
     as.LD(host_address, offset_host, temp);
     as.LD(temp2, offset_guest, temp);
-    as.BNE(temp2, guest_address, &not_equal);
+    as.BNE(temp2, tagged_address, &not_equal);
     as.MV(t5, x0); // zero out t5, see invalidate_caller_thunk
     on_hit(as, host_address);
     as.Bind(&not_equal);
@@ -4183,6 +4220,9 @@ void Recompiler::addressCacheLookup(biscuit::GPR guest_address, void on_hit(Asse
     popScratch();
     if (!use_ra) {
         popScratch();
+        popScratch();
+    }
+    if (mode32) {
         popScratch();
     }
 }

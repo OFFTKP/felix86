@@ -46,9 +46,7 @@ ThreadState* ThreadState::Create(ThreadState* copy_state) {
     state->reservation_base = reservation_base;
 
     madvise(state->getAddressCache(), address_cache_size, MADV_HUGEPAGE);
-    if (g_config.address_cache) {
-        state->getAddressCache()[0].guest = -1ull;
-    }
+    state->getAddressCache()[0].guest = TaggedAddress::invalid(0);
 
     if (g_emit_stats) {
         state->thread_stats = g_process_globals.shm_manager.addThread(tid);
