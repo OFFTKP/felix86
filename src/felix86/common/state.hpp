@@ -512,18 +512,12 @@ struct ThreadState {
         return getAddressCache()[rip & ((1 << address_cache_bits) - 1)];
     }
 
-    void invalidateAddressCacheEdges() {
-        constexpr u64 last = (1 << address_cache_bits) - 1;
-        getAddressCache()[0].guest = TaggedAddress::invalid(0);
-        getAddressCache()[last].guest = TaggedAddress::invalid(last);
-    }
-
     void clearAddressCache() {
         AddressCacheEntry* address_cache = getAddressCache();
         for (size_t i = 0; i < (1 << address_cache_bits); i++) {
             address_cache[i] = AddressCacheEntry{};
         }
-        invalidateAddressCacheEdges();
+        address_cache[0].guest = TaggedAddress::invalid(0);
     }
 };
 
