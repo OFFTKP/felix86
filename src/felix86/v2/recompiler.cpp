@@ -1621,7 +1621,7 @@ void Recompiler::emitBreakpoint(u64 rip, u64 start_pc, u8 instruction_length) {
     as.LI(a2, i);
     callPointer(offsetof(ThreadState, felix86_raise_hardware_breakpoint));
     restoreState();
-    backToDispatcher(current_mode32);
+    backToDispatcher(current_mode32, false, true);
     stopCompiling();
 
     u64 size = (u64)as.GetCursorPointer() - start_pc;

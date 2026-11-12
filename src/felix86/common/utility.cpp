@@ -1087,8 +1087,13 @@ u64 mmap_min_addr() {
 
 u64 mmap_max_addr() {
     static u64 addr = []() {
+        constexpr u64 sv57_max = 0x00FF'FFFF'FFFF'FFFFull;
         biscuit::CPUInfo info;
-        return info.GetHighestVirtualAddress();
+        u64 max = info.GetHighestVirtualAddress();
+        if (max == 0 || max > sv57_max) {
+            return sv57_max;
+        }
+        return max;
     }();
     return addr;
 }
