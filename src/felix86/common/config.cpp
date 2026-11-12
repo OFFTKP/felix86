@@ -157,6 +157,7 @@ bool Config::initialize(bool ignore_envs) {
                     paranoid_config.scan_ahead_multi = false;
                     paranoid_config.no_address_overflow = false;
                     paranoid_config.reduced_precision = false;
+                    paranoid_config.return_address_hint = false;
                     Config::save(profiles_path / "paranoid.toml", paranoid_config, true);
                 }
 

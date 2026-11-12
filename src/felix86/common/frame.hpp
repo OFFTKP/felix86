@@ -12,16 +12,12 @@ constexpr static std::array saved_gprs = {biscuit::ra, biscuit::sp, biscuit::tp,
 // A frame in the host stack that contains saved host registers
 // This is used to restore the context before entering the dispatcher and to also store multiple contexts
 // (for example callbacks from thunked libraries)
-struct felix86_frame {
+struct alignas(16) felix86_frame {
     constexpr static u64 expected_magic = 0x6814'8664'0000'FE86;
     u64 magic; // to make sure this is indeed a frame
     ThreadState* state;
     u64 invalidate_caller_thunk_ptr;
-    // We keep two instances of the compile next handler, one is used during 32-bit mode and sets a bit
-    // to the looked up address on the address cache. This saves us instructions if we had to do a shared lookup path, we only
-    // need a BSETI on the 32-bit address cache path and a J at the end.
-    // Keeping tag bits in the lookup address stems from the fact that we want to handle the (rare) case that
-    // a thread runs the same code in both 64-bit and 32-bit modes. In those cases, we don't want a lookup hit to happen.
+    // We keep two versions of the address cache lookup, the 32-bit one NOTs the address, see tagged_address.hpp for reasoning
     u64 compile_next_handler_ptr;
     u64 compile_next_32_handler_ptr;
     u64 compile_next_skip_address_cache_ptr;

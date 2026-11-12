@@ -439,12 +439,9 @@ struct Recompiler {
             entry.guest = address;
             entry.host = meta.ret_stub ? meta.ret_stub : meta.host_address;
             return meta.host_address;
-        } else {
-            return compile(state, rip);
         }
 
-        UNREACHABLE();
-        return {};
+        return compile(state, rip);
     }
 
     u8 stackPointerSize() {

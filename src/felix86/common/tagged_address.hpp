@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include "felix86/common/log.hpp"
 #include "felix86/common/types.hpp"
 
 // This struct exists for the reason that it's possible a program decides to jump to the same code as 32-bit mode
@@ -33,16 +34,13 @@ struct TaggedAddress {
         return raw >> 63;
     }
 
-    u64 rip() const {
-        return mode32() ? ~raw : raw;
-    }
-
     // We store 32-bit addresses as ~address in address cache and block map, such that no collisions can happen
     // with 64-bit blocks. If we didn't do this and instead used the top bit to mark 32-bit blocks, if a thread
     // tried to jump to the invalid address 0x8000'0000'0001'0000, we would either have to catch it in the addressCacheLookup
     // which would add instructions to the 64-bit lookup, or it could jump to a 32-bit block instead of to our
     // not_mapped thunk. A 64-bit entry can't have these upper bits set, as isAddressable function catches it and properly faults.
     static TaggedAddress make(u64 rip, bool mode32) {
+        ASSERT((rip >> 63) == 0);
         return TaggedAddress{mode32 ? ~rip : rip};
     }
 
