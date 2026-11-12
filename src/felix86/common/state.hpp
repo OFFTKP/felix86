@@ -6,6 +6,7 @@
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/shm_stats.hpp"
+#include "felix86/common/tagged_address.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/common/x86_ref.hpp"
@@ -16,7 +17,8 @@
 #include "felix86/hle/syscall.hpp"
 
 struct AddressCacheEntry {
-    u64 host{}, guest{};
+    u64 host{};
+    TaggedAddress guest{};
 };
 
 constexpr int address_cache_bits = 17;
@@ -515,7 +517,7 @@ struct ThreadState {
         for (size_t i = 0; i < (1 << address_cache_bits); i++) {
             address_cache[i] = AddressCacheEntry{};
         }
-        address_cache[0].guest = -1ull;
+        address_cache[0].guest.raw = -1ull;
     }
 };
 

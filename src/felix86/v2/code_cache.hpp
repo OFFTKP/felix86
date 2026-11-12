@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <vector>
 #include "felix86/common/process_lock.hpp"
+#include "felix86/common/tagged_address.hpp"
 #include "felix86/common/types.hpp"
 
 #define FELIX86_HINT_NOT_MAPPED 0x4e
@@ -64,6 +65,7 @@ struct CodeCachePointers {
     void (*enter_dispatcher)(ThreadState*){};
     void (*exit_dispatcher)(felix86_frame*){};
     u64 compile_next{};
+    u64 compile_next_32{};
     u64 compile_next_skip_address_cache{};
     u64 restore_state{};
 };
@@ -98,12 +100,12 @@ struct CodeCache {
 
     bool grow();
 
-    BlockMetadata& getBlockMetadata(u64 rip) {
-        return block_metadata[rip];
+    BlockMetadata& getBlockMetadata(TaggedAddress address) {
+        return block_metadata[address];
     }
 
-    bool blockExists(u64 rip) {
-        return getBlockMetadata(rip).host_address != 0;
+    bool blockExists(TaggedAddress address) {
+        return getBlockMetadata(address).host_address != 0;
     }
 
     void addBlockToPages(BlockMetadata* block, u64 guest_start, u64 guest_end);
@@ -136,7 +138,7 @@ private:
     u64 size_index = 0;
     CodeCachePointers pointers{};
 
-    std::unordered_map<u64, BlockMetadata> block_metadata{};
+    std::unordered_map<TaggedAddress, BlockMetadata> block_metadata{};
 
     Semaphore page_map_lock;
     std::map<u64, std::vector<BlockMetadata*>> page_map{};

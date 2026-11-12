@@ -52,7 +52,8 @@ void reset_recompiler() {
 void compile_sequence(u64 rip) {
     reset_recompiler();
     g_rec->compileSequence(g_mode32, rip, nullptr);
-    BlockMetadata& metadata = g_rec->getBlockMetadata(rip);
+    TaggedAddress address = TaggedAddress::make(rip, g_mode32);
+    BlockMetadata& metadata = g_rec->getBlockMetadata(address);
     u64 start = metadata.host_address;
     u64 end = start;
     for (auto instr : metadata.translation_sizes) {

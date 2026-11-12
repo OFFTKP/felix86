@@ -2371,7 +2371,7 @@ FAST_HANDLE(CALL) {
             as.MV(a0, Allocations::threadStatePointer());
             rec.callPointer(offsetof(ThreadState, felix86_set_segment));
             rec.restoreState();
-            rec.backToDispatcher();
+            rec.backToDispatcher(MODE32, false, true);
             rec.stopCompiling();
             return;
         }
@@ -2392,7 +2392,7 @@ FAST_HANDLE(CALL) {
         rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
 
         rec.writeMemory(scratch, rsp, 0, rec.stackWidth());
-        rec.backToDispatcher(rec.canEmitRetStub());
+        rec.backToDispatcher(MODE32, rec.canEmitRetStub());
         break;
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
@@ -2416,7 +2416,7 @@ FAST_HANDLE(CALL) {
         } else {
             // No need for AUIPC if not an RSB CALL, as the JAL will link t5
         }
-        rec.jumpAndLink(address, rec.canEmitRetStub());
+        rec.jumpAndLink(address, MODE32, rec.canEmitRetStub());
         break;
     }
     default: {
@@ -2432,11 +2432,12 @@ FAST_HANDLE(CALL) {
         }
         u64 stub = (u64)as.GetCursorPointer();
         // Don't make the ret stub jump go to address cache, as it would jump to itself
-        rec.jumpAndLink(return_rip, false, true);
-        rec.getBlockMetadata(return_rip).ret_stub = stub;
+        rec.jumpAndLink(return_rip, MODE32, false, true);
+        const TaggedAddress return_address = TaggedAddress::make(return_rip, MODE32);
+        rec.getBlockMetadata(return_address).ret_stub = stub;
         ThreadState* state = ThreadState::Get();
         AddressCacheEntry& entry = state->getAddressCacheEntry(return_rip);
-        entry.guest = return_rip;
+        entry.guest = return_address;
         entry.host = stub;
     }
     rec.stopCompiling();
@@ -2478,7 +2479,7 @@ FAST_HANDLE(RET) {
         as.MV(a0, Allocations::threadStatePointer());
         rec.callPointer(offsetof(ThreadState, felix86_set_segment));
         rec.restoreState();
-        rec.backToDispatcher();
+        rec.backToDispatcher(MODE32, false, true);
         rec.stopCompiling();
         return;
     }
@@ -2507,10 +2508,10 @@ FAST_HANDLE(RET) {
     bool inline_lookup = rec.canEmitRetStub();
     if (inline_lookup) {
         // If the guest address exists inside of the guest address cache lookup table then we may assume a block is compiled for that address.
-        rec.addressCacheLookup(scratch, [](Assembler& as, biscuit::GPR ret) { as.JALR(x0, 0, ret); }, true);
+        rec.addressCacheLookup(scratch, [](Assembler& as, biscuit::GPR ret) { as.JALR(x0, 0, ret); }, MODE32, true);
     }
 
-    rec.backToDispatcher(false, inline_lookup);
+    rec.backToDispatcher(MODE32, false, inline_lookup);
     rec.stopCompiling();
 }
 
@@ -2534,7 +2535,7 @@ FAST_HANDLE(IRET) {
     as.LI(a1, 2);
     rec.callPointer(offsetof(ThreadState, felix86_iret));
     rec.restoreState();
-    rec.backToDispatcher();
+    rec.backToDispatcher(MODE32, false, true);
     rec.stopCompiling();
 }
 
@@ -2561,7 +2562,7 @@ FAST_HANDLE(IRETD) {
     as.LI(a1, 4);
     rec.callPointer(offsetof(ThreadState, felix86_iret));
     rec.restoreState();
-    rec.backToDispatcher();
+    rec.backToDispatcher(MODE32, false, true);
     rec.stopCompiling();
 }
 
@@ -2589,7 +2590,7 @@ FAST_HANDLE(IRETQ) {
     as.LI(a1, 8);
     rec.callPointer(offsetof(ThreadState, felix86_iret));
     rec.restoreState();
-    rec.backToDispatcher();
+    rec.backToDispatcher(MODE32, false, true);
     rec.stopCompiling();
 }
 
@@ -3485,7 +3486,7 @@ FAST_HANDLE(JMP) {
             as.MV(a0, Allocations::threadStatePointer());
             rec.callPointer(offsetof(ThreadState, felix86_set_segment));
             rec.restoreState();
-            rec.backToDispatcher();
+            rec.backToDispatcher(MODE32, false, true);
             rec.stopCompiling();
             return;
         }
@@ -3497,7 +3498,7 @@ FAST_HANDLE(JMP) {
         biscuit::GPR src = rec.zextIfDirty32(rec.getGPR(&operands[0]), rec.getSize(&operands[0]));
         biscuit::GPR ripreg = Allocations::RIP();
         as.MV(ripreg, src);
-        rec.backToDispatcher();
+        rec.backToDispatcher(MODE32);
         rec.stopCompiling();
         break;
     }
@@ -3511,7 +3512,7 @@ FAST_HANDLE(JMP) {
             rec.zext(ripreg, ripreg, X86_SIZE_DWORD);
             address = (u32)address;
         }
-        rec.jumpAndLink(address);
+        rec.jumpAndLink(address, MODE32);
         rec.stopCompiling();
         break;
     }
@@ -5347,10 +5348,15 @@ FAST_HANDLE(SYSCALL) {
     biscuit::Label after;
     // TODO: we can get this faster by returning
     biscuit::GPR temp = rec.scratch();
+    biscuit::Label changed;
     as.LI(temp, rip);
-    as.BEQ(ripreg, temp, &after);
-    // RIP changed during syscall. This happens on sigreturn. Go back to dispatcher
-    rec.backToDispatcher();
+    as.BNE(ripreg, temp, &changed);
+    as.LHU(temp, offsetof(ThreadState, ctx.cs), Allocations::threadStatePointer());
+    as.ADDI(temp, temp, MODE32 ? -0x23 : -0x33);
+    as.BEQZ(temp, &after);
+    as.Bind(&changed);
+    // RIP or CS changed during syscall. This happens on sigreturn. Go back to dispatcher
+    rec.backToDispatcher(MODE32, false, true);
     as.Bind(&after);
 
     // After restoring the state, insert a safepoint
@@ -12383,7 +12389,7 @@ FAST_HANDLE(POPFQ) {
     as.MV(a0, Allocations::threadStatePointer());
     rec.callPointer(offsetof(ThreadState, felix86_tf_changed));
     rec.restoreState();
-    rec.backToDispatcher();
+    rec.backToDispatcher(MODE32);
     as.Bind(&tf_not_changed);
 }
 
@@ -14407,10 +14413,15 @@ FAST_HANDLE(INT) {
         biscuit::Label after;
         // TODO: we can get this faster by returning
         biscuit::GPR temp = rec.scratch();
+        biscuit::Label changed;
         as.LI(temp, rip);
-        as.BEQ(ripreg, temp, &after);
-        // RIP changed during syscall. This happens on sigreturn. Go back to dispatcher
-        rec.backToDispatcher();
+        as.BNE(ripreg, temp, &changed);
+        as.LHU(temp, offsetof(ThreadState, ctx.cs), Allocations::threadStatePointer());
+        as.ADDI(temp, temp, MODE32 ? -0x23 : -0x33);
+        as.BEQZ(temp, &after);
+        as.Bind(&changed);
+        // RIP or CS changed during syscall. This happens on sigreturn. Go back to dispatcher
+        rec.backToDispatcher(MODE32, false, true);
         as.Bind(&after);
 
         rec.setCurrentRipregValue(rec.getCurrentRipregValue() + instruction.length);

@@ -1266,7 +1266,7 @@ static void prepare_guest_signal(int sig, siginfo_t* guest_info, ucontext_t* uct
     if (handler->flags & SA_RESETHAND) {
         Signals::registerSignalHandler(state, sig, (u64)SIG_DFL, handler->mask, handler->flags, handler->restorer);
     }
-    set_pc(uctx, state->recompiler->getCompileNext());
+    set_pc(uctx, state->recompiler->getCompileNext(state->ctx.Mode32()));
 }
 
 static void prepare_synchronous_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx, u64 rip) {
@@ -1542,9 +1542,10 @@ static bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, uco
         if (pc < mmap_min_addr() || (pc & ~mmap_max_addr())) {
             WARN("Jump to bad address: %lx", pc);
             WARN("RIP: %lx", current_state->ctx.rip);
-            BlockMetadata& meta = current_state->recompiler->getBlockMetadata(current_state->ctx.rip);
+            TaggedAddress address = TaggedAddress::make(current_state->ctx.rip, current_state->ctx.Mode32());
+            BlockMetadata& meta = current_state->recompiler->getBlockMetadata(address);
             AddressCacheEntry& entry = current_state->getAddressCacheEntry(current_state->ctx.rip);
-            WARN("BlockMetadata: [%lx, %lx], address_cache: [%lx, %lx]", meta.guest_address, meta.host_address, entry.guest, entry.host);
+            WARN("BlockMetadata: [%lx, %lx], address_cache: [%lx, %lx]", meta.guest_address, meta.host_address, entry.guest.raw, entry.host);
         }
 
         felix86_coredump();
@@ -1890,7 +1891,7 @@ static void signal_handler(int sig, siginfo_t* info, void* ctx) {
             AddressCacheEntry entry = state->getAddressCacheEntry(state->ctx.rip);
             if (!state->force_defer_synchronous) {
                 ERROR("Synchronous signal %s with code %d but not in JIT code during RIP=%lx, PC=%lx, RA=%lx, address_cache entry: [%lx, %lx]",
-                      sigdescr_np(sig), info->si_code, state->ctx.rip, pc, get_regs(ctx)[1], entry.guest, entry.host);
+                      sigdescr_np(sig), info->si_code, state->ctx.rip, pc, get_regs(ctx)[1], entry.guest.raw, entry.host);
             } else {
                 defer_signal(state, sig, info, ctx);
                 siglongjmp(state->force_defer_buffer, sig);

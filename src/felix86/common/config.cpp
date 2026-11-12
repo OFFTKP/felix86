@@ -121,7 +121,6 @@ bool Config::initialize(bool ignore_envs) {
 
                 if (!std::filesystem::exists(profiles_path / "extreme.toml", ec)) {
                     Config extreme_config{};
-                    extreme_config.address_cache = true;
                     extreme_config.unsafe_flags = true;
                     extreme_config.unsafe_math = true;
                     extreme_config.always_tso = false;
@@ -135,7 +134,6 @@ bool Config::initialize(bool ignore_envs) {
 
                 if (!std::filesystem::exists(profiles_path / "safe.toml", ec)) {
                     Config safe_config{};
-                    safe_config.address_cache = true;
                     safe_config.unsafe_flags = false;
                     safe_config.unsafe_math = false;
                     safe_config.always_tso = true;
@@ -151,7 +149,6 @@ bool Config::initialize(bool ignore_envs) {
                     Config paranoid_config{};
                     paranoid_config.paranoid = true;
                     paranoid_config.always_flags = true;
-                    paranoid_config.address_cache = false;
                     paranoid_config.unsafe_flags = false;
                     paranoid_config.unsafe_math = false;
                     paranoid_config.always_tso = true;
