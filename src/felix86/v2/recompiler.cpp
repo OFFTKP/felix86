@@ -233,7 +233,11 @@ void Recompiler::emitDispatcher() {
     pointers.restore_state = (u64)as.GetCursorPointer();
 
     restoreState();
-    as.J(&compile_next_skip_address_cache_label);
+    biscuit::GPR cs = scratch();
+    as.LHU(cs, offsetof(ThreadState, ctx.cs), Allocations::threadStatePointer());
+    as.ADDI(cs, cs, -0x23);
+    as.BEQZ(cs, &compile_next_32_label);
+    popScratch();
 
     // Align this to cache line boundary since it's hit often
     while ((u64)as.GetCursorPointer() & 0x3F) {
@@ -367,7 +371,7 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_
         }
         metadata.host_address = 0;
         AddressCacheEntry& entry = state->getAddressCacheEntry(rip);
-        entry.guest.raw = ~rip;
+        entry.guest = TaggedAddress::invalid(rip);
         entry.host = -1ull;
     }
 
@@ -3010,7 +3014,17 @@ void Recompiler::updateSign(biscuit::GPR result, x86_size_e size) {
 }
 
 void Recompiler::jumpAndLink(u64 rip, bool mode32, bool return_link, bool skip_lookup) {
+    if (!isAddressable(rip)) {
+        backToDispatcher(mode32, return_link, skip_lookup);
+        return;
+    }
+
+    jumpAndLink(TaggedAddress::make(rip, mode32), return_link, skip_lookup);
+}
+
+void Recompiler::jumpAndLink(TaggedAddress address, bool return_link, bool skip_lookup) {
     OptimizationGuard guard(as, optimization_guard_counter);
+    const bool mode32 = address.mode32();
     const bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
     if (is_single_step || relocatable) {
         // Just emit jump to dispatcher
@@ -3019,7 +3033,6 @@ void Recompiler::jumpAndLink(u64 rip, bool mode32, bool return_link, bool skip_l
     }
 
     u8* start = as.GetCursorPointer();
-    const TaggedAddress address = TaggedAddress::make(rip, mode32);
     if (!blockExists(address)) {
         u64 link_me = (u64)as.GetCursorPointer();
         backToDispatcher(mode32, return_link, skip_lookup);
@@ -3341,7 +3354,7 @@ void Recompiler::expirePendingLinks(TaggedAddress address) {
         u8* link_addr = (u8*)((signed_link << 7) >> 7);
         u8* cursor = as.GetCursorPointer();
         as.SetCursorPointer(link_addr);
-        jumpAndLink(address.address_bits, address.mode32, has_return_hint);
+        jumpAndLink(address, has_return_hint);
         as.SetCursorPointer(cursor);
 
         u64 addr = (u64)link_addr;
@@ -4175,7 +4188,7 @@ void Recompiler::addressCacheLookup(biscuit::GPR guest_address, void on_hit(Asse
     biscuit::GPR tagged_address = guest_address;
     if (mode32) {
         temp3 = scratch();
-        as.BSETI(temp3, guest_address, 63);
+        as.NOT(temp3, guest_address);
         tagged_address = temp3;
     }
     biscuit::Label not_equal;

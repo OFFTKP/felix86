@@ -68,7 +68,7 @@ X(Debugging, bool, proc_self_auxv, true, FELIX86_PROC_SELF_AUXV, "Enable /proc/s
 X(Debugging, bool, guest_memory_tracking_enabled, false, FELIX86_GUEST_MEMORY_TRACKING_ENABLED, "Enable guest memory tracking")
 
 X(Performance, u64, max_block_size, 300, FELIX86_MAX_BLOCK_SIZE, "Maximum x86 instructions per block")
-X(Performance, bool, return_address_hint, true, FELIX86_RETURN_ADDRESS_HINT, "Use return address hints for faster branch predictions. Requires the address cache to be enabled")
+X(Performance, bool, return_address_hint, true, FELIX86_RETURN_ADDRESS_HINT, "Use return address hints for faster branch predictions")
 X(Performance, bool, unsafe_flags, false, FELIX86_UNSAFE_FLAGS, "Assume flags are thrashed on every call/ret to avoid some calculations")
 X(Performance, bool, unsafe_math, false, FELIX86_UNSAFE_MATH, "Don't accurately calculate minps/minpd/maxps/maxpd instructions when it comes to NaNs, don't accurately calculate round/cvtx2x instructions when it comes to overflows/NaNs/infinities, don't raise a signal on div/idiv division by zero or quotient overflow")
 X(Performance, bool, always_tso, false, FELIX86_ALWAYS_TSO, "Use fences to emulate TSO on every memory read/write -- Will cause slowdown but may fix some games")

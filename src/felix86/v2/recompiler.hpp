@@ -236,6 +236,8 @@ struct Recompiler {
 
     void jumpAndLink(u64 rip, bool mode32, bool return_hint = false, bool skip_lookup = false);
 
+    void jumpAndLink(TaggedAddress address, bool return_hint = false, bool skip_lookup = false);
+
     void jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false);
 
     void jumpAndLinkConditional(BranchCond cond, biscuit::GPR lhs, biscuit::GPR rhs, u64 rip_true, u64 rip_false);
@@ -416,9 +418,17 @@ struct Recompiler {
         return (u8*)code_cache->getPointers().start_of_code_cache;
     }
 
+    static bool isAddressable(u64 rip) {
+        return (rip & ~mmap_max_addr()) == 0;
+    }
+
     u64 getCompiledBlock(ThreadState* state, u64 rip) {
         if (state->pending_cache_clear) {
             clearCodeCache(state);
+        }
+
+        if (!isAddressable(rip)) {
+            return code_cache->getPointers().not_mapped;
         }
 
         bool mode32 = state->ctx.Mode32();
