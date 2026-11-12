@@ -144,16 +144,6 @@ static void CMOV(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstructio
     rec.setGPR(&operands[0], result);
 }
 
-static biscuit::GPR getCmpRhsUnsigned(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands) {
-    if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-        biscuit::GPR imm = rec.scratch();
-        as.LI(imm, rec.zextImmediate(operands[1].imm.value.u, operands[0].size));
-        return imm;
-    }
-
-    return rec.zextIfDirty32(rec.getGPR(&operands[1]), rec.getSize(&operands[0]));
-}
-
 static void JCC(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, BranchCond cond,
                 biscuit::GPR lhs, biscuit::GPR rhs) {
     u64 immediate = rec.sextImmediate(rec.getImmediate(&operands[0]), operands[0].imm.size);
@@ -465,7 +455,67 @@ static bool AttemptJccFusing(Recompiler& rec, u64 rip, Assembler& as, ZydisDecod
     return true;
 }
 
-static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands) {
+struct FusedSetccCmov {
+    ZydisMnemonic jcc;
+    bool is_cmov;
+};
+
+static std::optional<FusedSetccCmov> getFusedSetccCmov(ZydisMnemonic mnemonic) {
+    switch (mnemonic) {
+    case ZYDIS_MNEMONIC_SETZ:
+        return FusedSetccCmov{ZYDIS_MNEMONIC_JZ, false};
+    case ZYDIS_MNEMONIC_SETNZ:
+        return FusedSetccCmov{ZYDIS_MNEMONIC_JNZ, false};
+    case ZYDIS_MNEMONIC_SETB:
+        return FusedSetccCmov{ZYDIS_MNEMONIC_JB, false};
+    case ZYDIS_MNEMONIC_SETNB:
+        return FusedSetccCmov{ZYDIS_MNEMONIC_JNB, false};
+    case ZYDIS_MNEMONIC_SETBE:
+        return FusedSetccCmov{ZYDIS_MNEMONIC_JBE, false};
+    case ZYDIS_MNEMONIC_SETNBE:
+        return FusedSetccCmov{ZYDIS_MNEMONIC_JNBE, false};
+    case ZYDIS_MNEMONIC_SETS:
+        return FusedSetccCmov{ZYDIS_MNEMONIC_JS, false};
+    case ZYDIS_MNEMONIC_SETNS:
+        return FusedSetccCmov{ZYDIS_MNEMONIC_JNS, false};
+    case ZYDIS_MNEMONIC_SETL:
+        return FusedSetccCmov{ZYDIS_MNEMONIC_JL, false};
+    case ZYDIS_MNEMONIC_SETNL:
+        return FusedSetccCmov{ZYDIS_MNEMONIC_JNL, false};
+    case ZYDIS_MNEMONIC_SETLE:
+        return FusedSetccCmov{ZYDIS_MNEMONIC_JLE, false};
+    case ZYDIS_MNEMONIC_SETNLE:
+        return FusedSetccCmov{ZYDIS_MNEMONIC_JNLE, false};
+    case ZYDIS_MNEMONIC_CMOVZ:
+        return FusedSetccCmov{ZYDIS_MNEMONIC_JZ, true};
+    case ZYDIS_MNEMONIC_CMOVNZ:
+        return FusedSetccCmov{ZYDIS_MNEMONIC_JNZ, true};
+    case ZYDIS_MNEMONIC_CMOVB:
+        return FusedSetccCmov{ZYDIS_MNEMONIC_JB, true};
+    case ZYDIS_MNEMONIC_CMOVNB:
+        return FusedSetccCmov{ZYDIS_MNEMONIC_JNB, true};
+    case ZYDIS_MNEMONIC_CMOVBE:
+        return FusedSetccCmov{ZYDIS_MNEMONIC_JBE, true};
+    case ZYDIS_MNEMONIC_CMOVNBE:
+        return FusedSetccCmov{ZYDIS_MNEMONIC_JNBE, true};
+    case ZYDIS_MNEMONIC_CMOVS:
+        return FusedSetccCmov{ZYDIS_MNEMONIC_JS, true};
+    case ZYDIS_MNEMONIC_CMOVNS:
+        return FusedSetccCmov{ZYDIS_MNEMONIC_JNS, true};
+    case ZYDIS_MNEMONIC_CMOVL:
+        return FusedSetccCmov{ZYDIS_MNEMONIC_JL, true};
+    case ZYDIS_MNEMONIC_CMOVNL:
+        return FusedSetccCmov{ZYDIS_MNEMONIC_JNL, true};
+    case ZYDIS_MNEMONIC_CMOVLE:
+        return FusedSetccCmov{ZYDIS_MNEMONIC_JLE, true};
+    case ZYDIS_MNEMONIC_CMOVNLE:
+        return FusedSetccCmov{ZYDIS_MNEMONIC_JNLE, true};
+    default:
+        return std::nullopt;
+    }
+}
+
+static bool AttemptSetccCmovFusing(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands) {
     // Sometimes we hit instructions like
     //     cmp ...
     //     cmovl
@@ -473,170 +523,103 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
     // OF calculation can be 8-9 instructions. And the effect of CMOVL is that it just checks the 'less than' condition
     // There's instructions that can do this way better like SLT(U) in RISC-V. We must make sure the other flags aren't used
     // and fuse the cmp+cmovl (and others eventually) into fewer instructions
-    u64 next_rip = rip + instruction.length;
-    bool needs_cf = rec.shouldEmitFlag(next_rip, X86_REF_CF);
-    bool needs_af = rec.shouldEmitFlag(next_rip, X86_REF_AF);
-    bool needs_pf = rec.shouldEmitFlag(next_rip, X86_REF_PF);
-    bool needs_zf = rec.shouldEmitFlag(next_rip, X86_REF_ZF);
-    bool needs_sf = rec.shouldEmitFlag(next_rip, X86_REF_SF);
-    bool needs_of = rec.shouldEmitFlag(next_rip, X86_REF_OF);
-    bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf || needs_af;
-    // If after the next instruction we need any flag, we can't fuse the CMP because the flags will be important later on
-    if (needs_any_flag) {
-        return false;
-    }
-
     auto opt = rec.getNextInstruction();
     if (!opt) {
         return false;
     }
 
+    const ZydisMnemonic mnemonic = instruction.mnemonic;
     auto [next_instruction, next_operands] = *opt;
-    if (next_operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+    std::optional<FusedSetccCmov> consumer = getFusedSetccCmov(next_instruction->mnemonic);
+    if (!consumer) {
         return false;
     }
 
-    switch (next_instruction->mnemonic) {
-    case ZYDIS_MNEMONIC_CMOVL: {
-        biscuit::GPR cond = rec.scratch();
-        biscuit::GPR lhs = rec.getGPR(&operands[0]);
-        biscuit::GPR rhs = rec.getGPR(&operands[1]);
-        if (operands[0].size != 64) {
-            biscuit::GPR slhs = rec.scratch();
-            biscuit::GPR srhs = rec.scratch();
-            rec.sext(slhs, lhs, rec.zydisToSize(operands[0].size));
-            rec.sext(srhs, rhs, rec.zydisToSize(operands[0].size));
-            as.SLT(cond, slhs, srhs);
-            rec.popScratch();
-            rec.popScratch();
-        } else {
-            as.SLT(cond, lhs, rhs);
-        }
-        rec.resetScratch(); // pop all scratch except cond which was allocated first
-        rec.scratch();
-        CMOV(rec, rip, as, *next_instruction, next_operands, cond, false);
-        rec.skipNext();
-        return true;
+    if (consumer->is_cmov ? next_operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY : next_operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        return false;
     }
-    case ZYDIS_MNEMONIC_CMOVLE: {
-        biscuit::GPR cond = rec.scratch();
-        biscuit::GPR lhs = rec.getGPR(&operands[0]);
-        biscuit::GPR rhs = rec.getGPR(&operands[1]);
-        if (operands[0].size != 64) {
-            biscuit::GPR slhs = rec.scratch();
-            biscuit::GPR srhs = rec.scratch();
-            rec.sext(slhs, lhs, rec.zydisToSize(operands[0].size));
-            rec.sext(srhs, rhs, rec.zydisToSize(operands[0].size));
-            as.SGT(cond, slhs, srhs);
-            as.XORI(cond, cond, 1);
-            rec.popScratch();
-            rec.popScratch();
-        } else {
-            as.SGT(cond, lhs, rhs);
-            as.XORI(cond, cond, 1);
-        }
-        rec.resetScratch();
-        rec.scratch();
-        CMOV(rec, rip, as, *next_instruction, next_operands, cond, false);
-        rec.skipNext();
-        return true;
+
+    std::optional<FusedJcc> fused = getFusedJcc(consumer->jcc, mnemonic);
+    if (!fused) {
+        return false;
     }
-    case ZYDIS_MNEMONIC_CMOVNLE: {
-        biscuit::GPR cond = rec.scratch();
-        biscuit::GPR lhs = rec.getGPR(&operands[0]);
-        biscuit::GPR rhs = rec.getGPR(&operands[1]);
-        if (operands[0].size != 64) {
-            biscuit::GPR slhs = rec.scratch();
-            biscuit::GPR srhs = rec.scratch();
-            rec.sext(slhs, lhs, rec.zydisToSize(operands[0].size));
-            rec.sext(srhs, rhs, rec.zydisToSize(operands[0].size));
-            as.SGT(cond, slhs, srhs);
-            rec.popScratch();
-            rec.popScratch();
-        } else {
-            as.SGT(cond, lhs, rhs);
+
+    if (mnemonic == ZYDIS_MNEMONIC_ADD || mnemonic == ZYDIS_MNEMONIC_SUB) {
+        if (operands[0].type != ZYDIS_OPERAND_TYPE_REGISTER || operands[1].type != ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+            return false;
         }
-        rec.resetScratch();
-        rec.scratch();
-        CMOV(rec, rip, as, *next_instruction, next_operands, cond, false);
-        rec.skipNext();
-        return true;
     }
-    case ZYDIS_MNEMONIC_CMOVNL: {
-        biscuit::GPR cond = rec.scratch();
-        biscuit::GPR lhs = rec.getGPR(&operands[0]);
-        biscuit::GPR rhs = rec.getGPR(&operands[1]);
-        if (operands[0].size != 64) {
-            biscuit::GPR slhs = rec.scratch();
-            biscuit::GPR srhs = rec.scratch();
-            rec.sext(slhs, lhs, rec.zydisToSize(operands[0].size));
-            rec.sext(srhs, rhs, rec.zydisToSize(operands[0].size));
-            as.SLT(cond, slhs, srhs);
-            as.XORI(cond, cond, 1);
-            rec.popScratch();
-            rec.popScratch();
-        } else {
-            as.SLT(cond, lhs, rhs);
-            as.XORI(cond, cond, 1);
+
+    if (mnemonic == ZYDIS_MNEMONIC_INC || mnemonic == ZYDIS_MNEMONIC_DEC) {
+        if (operands[0].type != ZYDIS_OPERAND_TYPE_REGISTER) {
+            return false;
         }
-        rec.resetScratch();
-        rec.scratch();
-        CMOV(rec, rip, as, *next_instruction, next_operands, cond, false);
-        rec.skipNext();
-        return true;
     }
-    case ZYDIS_MNEMONIC_CMOVB: {
-        biscuit::GPR cond = rec.scratch();
-        biscuit::GPR lhs = rec.zextIfDirty32(rec.getGPR(&operands[0]), rec.getSize(&operands[0]));
-        biscuit::GPR rhs = getCmpRhsUnsigned(rec, as, operands);
+
+    u64 next_rip = rip + instruction.length;
+    if (rec.anyFlagNeededAfter(next_rip)) {
+        return false;
+    }
+
+    rec.flushX87();
+    rec.resetScratch();
+
+    biscuit::GPR cond = rec.scratch();
+    biscuit::GPR lhs;
+    biscuit::GPR rhs;
+    getFusedOperands(rec, as, operands, mnemonic, *fused, lhs, rhs);
+
+    biscuit::GPR value = cond;
+    bool inverted = false;
+    bool is_equality = fused->cond == BranchCond::EQ || fused->cond == BranchCond::NE;
+    switch (fused->cond) {
+    case BranchCond::EQ:
+    case BranchCond::NE: {
+        inverted = fused->cond == BranchCond::EQ;
+        if (rhs == x0) {
+            value = lhs;
+        } else {
+            as.XOR(cond, lhs, rhs);
+        }
+        break;
+    }
+    case BranchCond::LT:
+    case BranchCond::GE: {
+        inverted = fused->cond == BranchCond::GE;
+        as.SLT(cond, lhs, rhs);
+        break;
+    }
+    case BranchCond::LTU:
+    case BranchCond::GEU: {
+        inverted = fused->cond == BranchCond::GEU;
         as.SLTU(cond, lhs, rhs);
-        rec.resetScratch();
-        rec.scratch();
-        CMOV(rec, rip, as, *next_instruction, next_operands, cond, false);
-        rec.skipNext();
-        return true;
-    }
-    case ZYDIS_MNEMONIC_CMOVBE: {
-        biscuit::GPR cond = rec.scratch();
-        biscuit::GPR lhs = rec.zextIfDirty32(rec.getGPR(&operands[0]), rec.getSize(&operands[0]));
-        biscuit::GPR rhs = getCmpRhsUnsigned(rec, as, operands);
-        as.SGTU(cond, lhs, rhs);
-        as.XORI(cond, cond, 1);
-        rec.resetScratch();
-        rec.scratch();
-        CMOV(rec, rip, as, *next_instruction, next_operands, cond, false);
-        rec.skipNext();
-        return true;
-    }
-    case ZYDIS_MNEMONIC_CMOVNB: {
-        biscuit::GPR cond = rec.scratch();
-        biscuit::GPR lhs = rec.zextIfDirty32(rec.getGPR(&operands[0]), rec.getSize(&operands[0]));
-        biscuit::GPR rhs = getCmpRhsUnsigned(rec, as, operands);
-        as.SLTU(cond, lhs, rhs);
-        as.XORI(cond, cond, 1);
-        rec.resetScratch();
-        rec.scratch();
-        CMOV(rec, rip, as, *next_instruction, next_operands, cond, false);
-        rec.skipNext();
-        return true;
-    }
-    case ZYDIS_MNEMONIC_CMOVNBE: {
-        biscuit::GPR cond = rec.scratch();
-        biscuit::GPR lhs = rec.zextIfDirty32(rec.getGPR(&operands[0]), rec.getSize(&operands[0]));
-        biscuit::GPR rhs = getCmpRhsUnsigned(rec, as, operands);
-        as.SGTU(cond, lhs, rhs);
-        rec.resetScratch();
-        rec.scratch();
-        CMOV(rec, rip, as, *next_instruction, next_operands, cond, false);
-        rec.skipNext();
-        return true;
-    }
-    default: {
         break;
     }
     }
 
-    return false;
+    if (!consumer->is_cmov) {
+        if (inverted) {
+            as.SEQZ(cond, value);
+        } else if (is_equality) {
+            as.SNEZ(cond, value);
+        }
+        value = cond;
+        inverted = false;
+    } else if (Recompiler::isScratch(value) && value != cond) {
+        as.MV(cond, value);
+        value = cond;
+    }
+
+    rec.resetScratch();
+    rec.scratch();
+
+    if (consumer->is_cmov) {
+        CMOV(rec, rip, as, *next_instruction, next_operands, value, inverted);
+    } else {
+        rec.setGPR(&next_operands[0], value);
+    }
+    rec.skipNext();
+    return true;
 }
 
 static bool is_segment(ZydisDecodedOperand& operand) {
@@ -1028,6 +1011,12 @@ FAST_HANDLE(ADD) {
         }
     }
 
+    if (!g_config.single_step && !g_config.paranoid) {
+        if (AttemptSetccCmovFusing(rec, rip, as, instruction, operands)) {
+            return;
+        }
+    }
+
     bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
     bool needs_af = rec.shouldEmitFlag(rip, X86_REF_AF);
     bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
@@ -1233,6 +1222,12 @@ FAST_HANDLE(ADD) {
 FAST_HANDLE(SUB) {
     if (!g_config.single_step && !g_config.paranoid) {
         if (AttemptJccFusing(rec, rip, as, instruction, operands)) {
+            return;
+        }
+    }
+
+    if (!g_config.single_step && !g_config.paranoid) {
+        if (AttemptSetccCmovFusing(rec, rip, as, instruction, operands)) {
             return;
         }
     }
@@ -1538,7 +1533,7 @@ FAST_HANDLE(CMP) {
     }
 
     if (!g_config.single_step && !g_config.paranoid) {
-        if (AttemptCmpFusing(rec, rip, as, instruction, operands)) {
+        if (AttemptSetccCmovFusing(rec, rip, as, instruction, operands)) {
             return;
         }
     }
@@ -3881,6 +3876,12 @@ FAST_HANDLE(TEST) {
         }
     }
 
+    if (!g_config.single_step && !g_config.paranoid) {
+        if (AttemptSetccCmovFusing(rec, rip, as, instruction, operands)) {
+            return;
+        }
+    }
+
     bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
     bool needs_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
     bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
@@ -3926,6 +3927,12 @@ FAST_HANDLE(TEST) {
 FAST_HANDLE(INC) {
     if (!g_config.single_step && !g_config.paranoid) {
         if (AttemptJccFusing(rec, rip, as, instruction, operands)) {
+            return;
+        }
+    }
+
+    if (!g_config.single_step && !g_config.paranoid) {
+        if (AttemptSetccCmovFusing(rec, rip, as, instruction, operands)) {
             return;
         }
     }
@@ -4058,6 +4065,12 @@ FAST_HANDLE(INC) {
 FAST_HANDLE(DEC) {
     if (!g_config.single_step && !g_config.paranoid) {
         if (AttemptJccFusing(rec, rip, as, instruction, operands)) {
+            return;
+        }
+    }
+
+    if (!g_config.single_step && !g_config.paranoid) {
+        if (AttemptSetccCmovFusing(rec, rip, as, instruction, operands)) {
             return;
         }
     }
