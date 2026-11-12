@@ -276,25 +276,36 @@ static void getFusedOperands(Recompiler& rec, Assembler& as, ZydisDecodedOperand
     rhs = x0;
 
     if (is_test) {
-        lhs = rec.getGPR(&operands[0]);
-        if (!is_imm) {
-            lhs = rec.zextIfDirty32(lhs, size);
-        }
         if (is_imm) {
             u64 imm = rec.zextImmediate(operands[1].imm.value.u, operands[0].size);
+            bool is_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
+            bool high_byte = is_reg && size == X86_SIZE_BYTE_HIGH;
+            biscuit::GPR value = is_reg ? rec.getGPR(&operands[0], X86_SIZE_QWORD) : rec.getGPR(&operands[0]);
             biscuit::GPR result = rec.scratch();
-            if (IsValidSigned12BitImm((i64)imm)) {
-                as.ANDI(result, lhs, (i64)imm);
+            if (fused.kind == FusedCompare::Equal && std::has_single_bit(imm)) {
+                as.BEXTI(result, value, std::countr_zero(imm) + (high_byte ? 8 : 0));
             } else {
-                as.LI(result, imm);
-                as.AND(result, lhs, result);
+                if (high_byte) {
+                    biscuit::GPR shifted = rec.scratch();
+                    as.SRLI(shifted, value, 8);
+                    value = shifted;
+                }
+                if (IsValidSigned12BitImm((i64)imm)) {
+                    as.ANDI(result, value, (i64)imm);
+                } else {
+                    as.LI(result, imm);
+                    as.AND(result, value, result);
+                }
             }
             lhs = result;
-        } else if (!same_register) {
-            biscuit::GPR src = rec.getGPR(&operands[1]);
-            biscuit::GPR result = rec.scratch();
-            as.AND(result, lhs, src);
-            lhs = result;
+        } else {
+            lhs = rec.zextIfDirty32(rec.getGPR(&operands[0]), size);
+            if (!same_register) {
+                biscuit::GPR src = rec.getGPR(&operands[1]);
+                biscuit::GPR result = rec.scratch();
+                as.AND(result, lhs, src);
+                lhs = result;
+            }
         }
 
         if (fused.kind == FusedCompare::Signed && size != X86_SIZE_QWORD) {
