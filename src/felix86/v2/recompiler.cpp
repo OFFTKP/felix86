@@ -2745,15 +2745,10 @@ void Recompiler::updateOverflowSub(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::
         as.SLT(temp, result, lhs);
         as.XOR(of, of, temp);
     } else {
-        as.NOT(temp, lhs);
-        as.OR(of, temp, rhs);
-        as.AND(of, of, result);
-        as.AND(temp, temp, rhs);
-        as.OR(of, of, temp);
-        as.SRLI(temp, of, size - 2);
-        as.SRLI(of, of, size - 1);
-        as.XOR(of, of, temp);
-        as.ANDI(of, of, 1);
+        as.XOR(temp, lhs, rhs);
+        as.XOR(of, lhs, result);
+        as.AND(of, of, temp);
+        as.BEXTI(of, of, size - 1);
     }
     popScratch();
 }
@@ -2767,15 +2762,10 @@ void Recompiler::updateOverflowAdd(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::
         as.SLTI(temp, rhs, 0);
         as.XOR(of, of, temp);
     } else {
-        as.OR(of, lhs, rhs);
-        as.NOT(temp, result);
-        as.AND(of, temp, of);
-        as.AND(temp, lhs, rhs);
-        as.OR(of, of, temp);
-        as.SRLI(temp, of, size - 2);
-        as.SRLI(of, of, size - 1);
-        as.XOR(of, of, temp);
-        as.ANDI(of, of, 1);
+        as.XOR(temp, lhs, result);
+        as.XOR(of, rhs, result);
+        as.AND(of, of, temp);
+        as.BEXTI(of, of, size - 1);
     }
     popScratch();
 }
