@@ -1036,6 +1036,15 @@ FAST_HANDLE(ADD) {
     bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf || needs_af;
     bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
+    if (!needs_any_flag && operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE &&
+        !(instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK) && IsValidSigned12BitImm(operands[1].imm.value.s)) {
+        biscuit::GPR value = rec.getGPR(&operands[0]);
+        biscuit::GPR sum = rec.scratch();
+        as.ADDI(sum, value, operands[1].imm.value.s);
+        rec.setGPR(&operands[0], sum);
+        return;
+    }
+
     if (!needs_any_flag && dst_reg) {
         if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE && instruction.operand_width >= 32) {
             i64 imm = instruction.operand_width == 32 ? (i64)(i32)operands[1].imm.value.s : operands[1].imm.value.s;
