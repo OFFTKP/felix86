@@ -263,42 +263,38 @@
         "disassembly": "add rdx, 0xFFFFFFFFFFFFFFFF"
     },
     "800701": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
-            "ADDIW           t1, zero, 0x1(1)",
-            "LBU             t2, rdi, 0x0(0)",
-            "ADD             ra, t2, t1",
-            "SB              ra, rdi, 0x0(0)"
+            "LBU             ra, rdi, 0x0(0)",
+            "ADDI            t1, ra, 0x1(1)",
+            "SB              t1, rdi, 0x0(0)"
         ],
         "disassembly": "add byte ptr [rdi], 0x01"
     },
     "66830701": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
-            "ADDIW           t1, zero, 0x1(1)",
-            "LHU             t2, rdi, 0x0(0)",
-            "ADD             ra, t2, t1",
-            "SH              ra, rdi, 0x0(0)"
+            "LHU             ra, rdi, 0x0(0)",
+            "ADDI            t1, ra, 0x1(1)",
+            "SH              t1, rdi, 0x0(0)"
         ],
         "disassembly": "add word ptr [rdi], 0x01"
     },
     "830701": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
-            "ADDIW           t1, zero, 0x1(1)",
-            "LWU             t2, rdi, 0x0(0)",
-            "ADD             ra, t2, t1",
-            "SW              ra, rdi, 0x0(0)"
+            "LWU             ra, rdi, 0x0(0)",
+            "ADDI            t1, ra, 0x1(1)",
+            "SW              t1, rdi, 0x0(0)"
         ],
         "disassembly": "add dword ptr [rdi], 0x01"
     },
     "48830701": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
-            "ADDIW           t1, zero, 0x1(1)",
-            "LD              t2, rdi, 0x0(0)",
-            "ADD             ra, t2, t1",
-            "SD              ra, rdi, 0x0(0)"
+            "LD              ra, rdi, 0x0(0)",
+            "ADDI            t1, ra, 0x1(1)",
+            "SD              t1, rdi, 0x0(0)"
         ],
         "disassembly": "add qword ptr [rdi], 0x01"
     },
