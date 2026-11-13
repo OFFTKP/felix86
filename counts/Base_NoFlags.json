@@ -2852,11 +2852,10 @@
         "disassembly": "sar dx, 0x01"
     },
     "d1fa": {
-        "instruction_count": 3,
+        "instruction_count": 2,
         "expected_asm": [
-            "ADD.UW          t1, rdx, zero",
-            "SRAIW           ra, t1, 0x1(1)",
-            "ADD.UW          rdx, ra, zero"
+            "SRAIW           rdx, rdx, 0x1(1)",
+            "ADD.UW          rdx, rdx, zero"
         ],
         "disassembly": "sar edx, 0x01"
     },
@@ -2908,11 +2907,10 @@
         "disassembly": "sar dx, 0x3F"
     },
     "c1fa3f": {
-        "instruction_count": 3,
+        "instruction_count": 2,
         "expected_asm": [
-            "ADD.UW          t1, rdx, zero",
-            "SRAIW           ra, t1, 0x1f(31)",
-            "ADD.UW          rdx, ra, zero"
+            "SRAIW           rdx, rdx, 0x1f(31)",
+            "ADD.UW          rdx, rdx, zero"
         ],
         "disassembly": "sar edx, 0x3F"
     },
@@ -5377,14 +5375,13 @@
         "disassembly": "imul dx"
     },
     "f7ea": {
-        "instruction_count": 6,
+        "instruction_count": 5,
         "expected_asm": [
             "ADDIW           ra, rdx, 0x0(0)",
             "ADDIW           t2, rax, 0x0(0)",
             "MUL             t1, ra, t2",
             "ADD.UW          rax, t1, zero",
-            "SRLI            t1, t1, 0x20(32)",
-            "ADD.UW          rdx, t1, zero"
+            "SRLI            rdx, t1, 0x20(32)"
         ],
         "disassembly": "imul edx"
     },
@@ -5429,24 +5426,22 @@
         "disassembly": "imul [rdi]"
     },
     "f72f": {
-        "instruction_count": 6,
+        "instruction_count": 5,
         "expected_asm": [
             "LW              ra, rdi, 0x0(0)",
             "ADDIW           t2, rax, 0x0(0)",
             "MUL             t1, ra, t2",
             "ADD.UW          rax, t1, zero",
-            "SRLI            t1, t1, 0x20(32)",
-            "ADD.UW          rdx, t1, zero"
+            "SRLI            rdx, t1, 0x20(32)"
         ],
         "disassembly": "imul [rdi]"
     },
     "48f72f": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
             "LD              ra, rdi, 0x0(0)",
-            "MULH            t1, rax, ra",
-            "MUL             rax, rax, ra",
-            "ADDI            rdx, t1, 0x0(0)"
+            "MULH            rdx, rax, ra",
+            "MUL             rax, rax, ra"
         ],
         "disassembly": "imul [rdi]"
     },
@@ -5496,14 +5491,13 @@
         "disassembly": "mul dx"
     },
     "f7e2": {
-        "instruction_count": 6,
+        "instruction_count": 5,
         "expected_asm": [
             "ADD.UW          ra, rdx, zero",
             "ADD.UW          t2, rax, zero",
             "MUL             t1, t2, ra",
             "ADD.UW          rax, t1, zero",
-            "SRLI            t1, t1, 0x20(32)",
-            "ADD.UW          rdx, t1, zero"
+            "SRLI            rdx, t1, 0x20(32)"
         ],
         "disassembly": "mul edx"
     },
@@ -5548,24 +5542,22 @@
         "disassembly": "mul [rdi]"
     },
     "f727": {
-        "instruction_count": 6,
+        "instruction_count": 5,
         "expected_asm": [
             "LWU             ra, rdi, 0x0(0)",
             "ADD.UW          t2, rax, zero",
             "MUL             t1, t2, ra",
             "ADD.UW          rax, t1, zero",
-            "SRLI            t1, t1, 0x20(32)",
-            "ADD.UW          rdx, t1, zero"
+            "SRLI            rdx, t1, 0x20(32)"
         ],
         "disassembly": "mul [rdi]"
     },
     "48f727": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
             "LD              ra, rdi, 0x0(0)",
-            "MULHU           t1, rax, ra",
-            "MUL             rax, rax, ra",
-            "ADDI            rdx, t1, 0x0(0)"
+            "MULHU           rdx, rax, ra",
+            "MUL             rax, rax, ra"
         ],
         "disassembly": "mul [rdi]"
     },
@@ -5670,8 +5662,8 @@
     "0fafd3": {
         "instruction_count": 2,
         "expected_asm": [
-            "MULW            ra, rdx, rbx",
-            "ADD.UW          rdx, ra, zero"
+            "MULW            rdx, rdx, rbx",
+            "ADD.UW          rdx, rdx, zero"
         ],
         "disassembly": "imul edx, ebx"
     },
@@ -5699,8 +5691,8 @@
         "instruction_count": 3,
         "expected_asm": [
             "LW              ra, rdi, 0x0(0)",
-            "MULW            t1, rdx, ra",
-            "ADD.UW          rdx, t1, zero"
+            "MULW            rdx, rdx, ra",
+            "ADD.UW          rdx, rdx, zero"
         ],
         "disassembly": "imul edx, [rdi]"
     },
@@ -5729,8 +5721,8 @@
         "instruction_count": 3,
         "expected_asm": [
             "ADDIW           ra, zero, 0xffffffff(-1)",
-            "MULW            t1, rbx, ra",
-            "ADD.UW          rdx, t1, zero"
+            "MULW            rdx, rbx, ra",
+            "ADD.UW          rdx, rdx, zero"
         ],
         "disassembly": "imul edx, ebx, 0xFFFFFFFF"
     },
@@ -5760,8 +5752,8 @@
         "expected_asm": [
             "LW              ra, rdi, 0x0(0)",
             "ADDIW           t1, zero, 0xffffffff(-1)",
-            "MULW            t2, ra, t1",
-            "ADD.UW          rdx, t2, zero"
+            "MULW            rdx, ra, t1",
+            "ADD.UW          rdx, rdx, zero"
         ],
         "disassembly": "imul edx, [rdi], 0xFFFFFFFF"
     },

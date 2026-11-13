@@ -3099,11 +3099,13 @@ FAST_HANDLE(SHR_imm) {
 FAST_HANDLE(SAR_imm) {
     x86_size_e size = rec.getSize(&operands[0]);
     biscuit::GPR result = rec.scratch();
-    biscuit::GPR dst = rec.getGPR(&operands[0]);
     u8 shift = rec.getImmediate(&operands[1]);
     shift &= instruction.operand_width == 64 ? 0x3F : 0x1F;
+    bool use_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && !rec.shouldEmitFlag(rip, X86_REF_CF) &&
+                   (size == X86_SIZE_QWORD || (size == X86_SIZE_DWORD && shift != 0));
+    biscuit::GPR dst = use_reg ? rec.getGPR(&operands[0], X86_SIZE_QWORD) : rec.getGPR(&operands[0]);
 
-    if (size == X86_SIZE_QWORD && operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && !rec.shouldEmitFlag(rip, X86_REF_CF)) {
+    if (use_reg) {
         result = dst;
     }
 
@@ -4806,12 +4808,14 @@ FAST_HANDLE(IMUL) {
                 as.MV(cf, of);
             }
 
-            as.SRLI(result, result, 32);
-            rec.setGPR(X86_REF_RDX, X86_SIZE_DWORD, result);
+            biscuit::GPR rdx = Allocations::allocatedGPR(X86_REF_RDX);
+            as.SRLI(rdx, result, 32);
+            rec.setGPR(X86_REF_RDX, X86_SIZE_QWORD, rdx);
             break;
         }
         case X86_SIZE_QWORD: {
-            biscuit::GPR result = rec.scratch();
+            biscuit::GPR rdx = Allocations::allocatedGPR(X86_REF_RDX);
+            biscuit::GPR result = src == rdx ? rec.scratch() : rdx;
             biscuit::GPR rax = rec.getGPR(X86_REF_RAX, X86_SIZE_QWORD);
             as.MULH(result, rax, src);
             as.MUL(rax, rax, src);
@@ -4862,7 +4866,8 @@ FAST_HANDLE(IMUL) {
             break;
         }
         case X86_SIZE_DWORD: {
-            biscuit::GPR result = rec.scratch();
+            bool use_reg = !emit_flags && operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
+            biscuit::GPR result = use_reg ? Allocations::allocatedGPR(Recompiler::zydisToRef(operands[0].reg.value)) : rec.scratch();
             if (emit_flags) {
                 as.MUL(result, src1, src2);
             } else {
@@ -4957,21 +4962,22 @@ FAST_HANDLE(MUL) {
         src = rec.zextIfDirty32(src, X86_SIZE_DWORD);
         as.MUL(result, eax, src);
         rec.setGPR(X86_REF_RAX, X86_SIZE_DWORD, result);
-        as.SRLI(result, result, 32);
+        biscuit::GPR rdx = Allocations::allocatedGPR(X86_REF_RDX);
+        as.SRLI(rdx, result, 32);
+        rec.setGPR(X86_REF_RDX, X86_SIZE_QWORD, rdx);
 
         if (rec.shouldEmitFlag(rip, X86_REF_CF) || rec.shouldEmitFlag(rip, X86_REF_OF)) {
             biscuit::GPR cf = rec.flag(X86_REF_CF);
             biscuit::GPR of = rec.flag(X86_REF_OF);
 
-            as.SNEZ(cf, result);
+            as.SNEZ(cf, rdx);
             as.MV(of, cf);
         }
-
-        rec.setGPR(X86_REF_RDX, X86_SIZE_DWORD, result);
         break;
     }
     case X86_SIZE_QWORD: {
-        biscuit::GPR result = rec.scratch();
+        biscuit::GPR rdx = Allocations::allocatedGPR(X86_REF_RDX);
+        biscuit::GPR result = src == rdx ? rec.scratch() : rdx;
         biscuit::GPR rax = rec.getGPR(X86_REF_RAX, X86_SIZE_QWORD);
         as.MULHU(result, rax, src);
         as.MUL(rax, rax, src);
