@@ -9975,10 +9975,10 @@ FAST_HANDLE(CVTTSD2SI) {
     rec.setVectorState(SEW::E64, 1);
     as.VFMV_FS(src_d, src);
     if (gpr_size == X86_SIZE_DWORD) {
-        intmax = 0x41DFFFFFFFE00000;
+        intmax = 0x41E0000000000000;
         as.FCVT_W_D(dst, src_d, RMode::RTZ);
     } else if (gpr_size == X86_SIZE_QWORD) {
-        intmax = 0x43DFFFFFFFFFFFFF;
+        intmax = 0x43E0000000000000;
         as.FCVT_L_D(dst, src_d, RMode::RTZ);
     } else {
         UNREACHABLE();
