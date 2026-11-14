@@ -4,12 +4,13 @@
 #include "felix86/common/types.hpp"
 
 struct Recompiler;
+struct CompileState;
 
 namespace biscuit {
 class Assembler;
 }
 
-using HandlerPtr = void (*)(Recompiler& rec, u64 rip, biscuit::Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
+using HandlerPtr = void (*)(Recompiler& rec, biscuit::Assembler& as, const CompileState& state);
 
 struct Handlers {
     static void initialize();

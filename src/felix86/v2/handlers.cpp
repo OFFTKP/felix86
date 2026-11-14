@@ -31,14 +31,21 @@ void felix86_cpuid(ThreadState* state);
 }
 
 #define FAST_HANDLE(name)                                                                                                                            \
-    static void fast_##name(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands)
+    static void fast_##name##_impl(Recompiler& rec, Assembler& as, const CompileState& state, u64 rip, ZydisDecodedInstruction& instruction,         \
+                                   ZydisDecodedOperand* operands);                                                                                   \
+    static void fast_##name(Recompiler& rec, Assembler& as, const CompileState& state) {                                                             \
+        fast_##name##_impl(rec, as, state, state.rip, *state.instruction, state.operands);                                                           \
+    }                                                                                                                                                \
+    static void fast_##name##_impl(Recompiler& rec, Assembler& as, const CompileState& state, u64 rip, ZydisDecodedInstruction& instruction,         \
+                                   ZydisDecodedOperand* operands)
 
 #define HAS_VEX (instruction.attributes & (ZYDIS_ATTRIB_HAS_VEX))
 
 #define HAS_REP (instruction.attributes & (ZYDIS_ATTRIB_HAS_REP | ZYDIS_ATTRIB_HAS_REPZ | ZYDIS_ATTRIB_HAS_REPNZ))
 
-static void UnimplementedHandler(Recompiler& rec, u64 rip, biscuit::Assembler& as, ZydisDecodedInstruction& instruction,
-                                 ZydisDecodedOperand* operands) {
+static void UnimplementedHandler(Recompiler& rec, biscuit::Assembler& as, const CompileState& state) {
+    const u64 rip = state.rip;
+    const ZydisDecodedInstruction& instruction = *state.instruction;
     ZydisDisassembledInstruction disassembled;
     auto mode = MODE32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
     if (ZYAN_SUCCESS(ZydisDisassembleIntel(mode, rip, (u8*)rip, 15, &disassembled))) {
@@ -1834,9 +1841,9 @@ FAST_HANDLE(OR) {
     bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
     bool dst_mem = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY;
     if (dst_reg) {
-        return fast_OR_reg(rec, rip, as, instruction, operands);
+        return fast_OR_reg(rec, as, state);
     } else if (dst_mem) {
-        return fast_OR_mem(rec, rip, as, instruction, operands);
+        return fast_OR_mem(rec, as, state);
     } else {
         UNREACHABLE();
     }
@@ -3175,7 +3182,7 @@ FAST_HANDLE(SAR_imm) {
 
 FAST_HANDLE(SHL) {
     if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-        return fast_SHL_imm(rec, rip, as, instruction, operands);
+        return fast_SHL_imm(rec, as, state);
     }
 
     bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
@@ -3241,7 +3248,7 @@ FAST_HANDLE(SHL) {
 
 FAST_HANDLE(SHR) {
     if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-        return fast_SHR_imm(rec, rip, as, instruction, operands);
+        return fast_SHR_imm(rec, as, state);
     }
 
     bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
@@ -3305,7 +3312,7 @@ FAST_HANDLE(SHR) {
 
 FAST_HANDLE(SAR) {
     if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-        return fast_SAR_imm(rec, rip, as, instruction, operands);
+        return fast_SAR_imm(rec, as, state);
     }
 
     bool needs_any_flag = rec.shouldEmitFlag(rip, X86_REF_CF) || rec.shouldEmitFlag(rip, X86_REF_OF) || rec.shouldEmitFlag(rip, X86_REF_PF) ||
@@ -4432,7 +4439,7 @@ FAST_HANDLE(XCHG_lock) {
 
 FAST_HANDLE(XCHG) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        return fast_XCHG_lock(rec, rip, as, instruction, operands);
+        return fast_XCHG_lock(rec, as, state);
     }
 
     biscuit::GPR temp = rec.scratch();
@@ -4641,63 +4648,63 @@ FAST_HANDLE(CMOVO) {
 }
 
 FAST_HANDLE(CMOVNO) {
-    fast_CMOVO(rec, rip, as, instruction, operands);
+    fast_CMOVO(rec, as, state);
 }
 
 FAST_HANDLE(CMOVB) {
-    fast_CMOVO(rec, rip, as, instruction, operands);
+    fast_CMOVO(rec, as, state);
 }
 
 FAST_HANDLE(CMOVNB) {
-    fast_CMOVO(rec, rip, as, instruction, operands);
+    fast_CMOVO(rec, as, state);
 }
 
 FAST_HANDLE(CMOVZ) {
-    fast_CMOVO(rec, rip, as, instruction, operands);
+    fast_CMOVO(rec, as, state);
 }
 
 FAST_HANDLE(CMOVNZ) {
-    fast_CMOVO(rec, rip, as, instruction, operands);
+    fast_CMOVO(rec, as, state);
 }
 
 FAST_HANDLE(CMOVBE) {
-    fast_CMOVO(rec, rip, as, instruction, operands);
+    fast_CMOVO(rec, as, state);
 }
 
 FAST_HANDLE(CMOVNBE) {
-    fast_CMOVO(rec, rip, as, instruction, operands);
+    fast_CMOVO(rec, as, state);
 }
 
 FAST_HANDLE(CMOVP) {
-    fast_CMOVO(rec, rip, as, instruction, operands);
+    fast_CMOVO(rec, as, state);
 }
 
 FAST_HANDLE(CMOVNP) {
-    fast_CMOVO(rec, rip, as, instruction, operands);
+    fast_CMOVO(rec, as, state);
 }
 
 FAST_HANDLE(CMOVS) {
-    fast_CMOVO(rec, rip, as, instruction, operands);
+    fast_CMOVO(rec, as, state);
 }
 
 FAST_HANDLE(CMOVNS) {
-    fast_CMOVO(rec, rip, as, instruction, operands);
+    fast_CMOVO(rec, as, state);
 }
 
 FAST_HANDLE(CMOVL) {
-    fast_CMOVO(rec, rip, as, instruction, operands);
+    fast_CMOVO(rec, as, state);
 }
 
 FAST_HANDLE(CMOVNL) {
-    fast_CMOVO(rec, rip, as, instruction, operands);
+    fast_CMOVO(rec, as, state);
 }
 
 FAST_HANDLE(CMOVLE) {
-    fast_CMOVO(rec, rip, as, instruction, operands);
+    fast_CMOVO(rec, as, state);
 }
 
 FAST_HANDLE(CMOVNLE) {
-    fast_CMOVO(rec, rip, as, instruction, operands);
+    fast_CMOVO(rec, as, state);
 }
 
 FAST_HANDLE(MOVSXD) {
@@ -5286,27 +5293,27 @@ FAST_HANDLE(VECTOR_MOV) {
 }
 
 FAST_HANDLE(MOVAPD) {
-    fast_VECTOR_MOV(rec, rip, as, instruction, operands);
+    fast_VECTOR_MOV(rec, as, state);
 }
 
 FAST_HANDLE(MOVAPS) {
-    fast_VECTOR_MOV(rec, rip, as, instruction, operands);
+    fast_VECTOR_MOV(rec, as, state);
 }
 
 FAST_HANDLE(MOVUPD) {
-    fast_VECTOR_MOV(rec, rip, as, instruction, operands);
+    fast_VECTOR_MOV(rec, as, state);
 }
 
 FAST_HANDLE(MOVUPS) {
-    fast_VECTOR_MOV(rec, rip, as, instruction, operands);
+    fast_VECTOR_MOV(rec, as, state);
 }
 
 FAST_HANDLE(MOVDQA) {
-    fast_VECTOR_MOV(rec, rip, as, instruction, operands);
+    fast_VECTOR_MOV(rec, as, state);
 }
 
 FAST_HANDLE(MOVDQU) {
-    fast_VECTOR_MOV(rec, rip, as, instruction, operands);
+    fast_VECTOR_MOV(rec, as, state);
 }
 
 FAST_HANDLE(RDTSC) {
@@ -5335,7 +5342,7 @@ FAST_HANDLE(RDTSC) {
 }
 
 FAST_HANDLE(RDTSCP) {
-    fast_RDTSC(rec, rip, as, instruction, operands);
+    fast_RDTSC(rec, as, state);
     rec.setGPR(X86_REF_RCX, X86_SIZE_QWORD, x0);
 }
 
@@ -5477,7 +5484,7 @@ FAST_HANDLE(PXOR) {
 }
 
 FAST_HANDLE(MOVNTDQ) {
-    fast_VECTOR_MOV(rec, rip, as, instruction, operands);
+    fast_VECTOR_MOV(rec, as, state);
 }
 
 FAST_HANDLE(MOVNTQ) {
@@ -5486,7 +5493,7 @@ FAST_HANDLE(MOVNTQ) {
 }
 
 FAST_HANDLE(MOVNTDQA) {
-    fast_VECTOR_MOV(rec, rip, as, instruction, operands);
+    fast_VECTOR_MOV(rec, as, state);
 }
 
 FAST_HANDLE(MOVNTI) {
@@ -5495,11 +5502,11 @@ FAST_HANDLE(MOVNTI) {
 }
 
 FAST_HANDLE(MOVNTPD) {
-    fast_VECTOR_MOV(rec, rip, as, instruction, operands);
+    fast_VECTOR_MOV(rec, as, state);
 }
 
 FAST_HANDLE(MOVNTPS) {
-    fast_VECTOR_MOV(rec, rip, as, instruction, operands);
+    fast_VECTOR_MOV(rec, as, state);
 }
 
 FAST_HANDLE(PAND) {
@@ -5539,35 +5546,35 @@ FAST_HANDLE(PANDN) {
 }
 
 FAST_HANDLE(ANDPS) {
-    fast_PAND(rec, rip, as, instruction, operands);
+    fast_PAND(rec, as, state);
 }
 
 FAST_HANDLE(ANDPD) {
-    fast_PAND(rec, rip, as, instruction, operands);
+    fast_PAND(rec, as, state);
 }
 
 FAST_HANDLE(ORPS) {
-    fast_POR(rec, rip, as, instruction, operands);
+    fast_POR(rec, as, state);
 }
 
 FAST_HANDLE(ORPD) {
-    fast_POR(rec, rip, as, instruction, operands);
+    fast_POR(rec, as, state);
 }
 
 FAST_HANDLE(XORPS) {
-    fast_PXOR(rec, rip, as, instruction, operands);
+    fast_PXOR(rec, as, state);
 }
 
 FAST_HANDLE(XORPD) {
-    fast_PXOR(rec, rip, as, instruction, operands);
+    fast_PXOR(rec, as, state);
 }
 
 FAST_HANDLE(ANDNPS) {
-    fast_PANDN(rec, rip, as, instruction, operands);
+    fast_PANDN(rec, as, state);
 }
 
 FAST_HANDLE(ANDNPD) {
-    fast_PANDN(rec, rip, as, instruction, operands);
+    fast_PANDN(rec, as, state);
 }
 
 static void PADD(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
@@ -6181,7 +6188,7 @@ FAST_HANDLE(MOVSB) {
 }
 
 FAST_HANDLE(MOVSW) {
-    fast_MOVSB(rec, rip, as, instruction, operands);
+    fast_MOVSB(rec, as, state);
 }
 
 // The rep movsd and sse movsd have the same mnemonic, so we differentiate it like this
@@ -6213,16 +6220,16 @@ FAST_HANDLE(MOVSD_sse) {
 
 FAST_HANDLE(MOVSD) {
     if (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE2) {
-        fast_MOVSD_sse(rec, rip, as, instruction, operands);
+        fast_MOVSD_sse(rec, as, state);
     } else if (instruction.meta.isa_set == ZYDIS_ISA_SET_I386) {
-        fast_MOVSB(rec, rip, as, instruction, operands);
+        fast_MOVSB(rec, as, state);
     } else {
         UNREACHABLE();
     }
 }
 
 FAST_HANDLE(MOVSQ) {
-    fast_MOVSB(rec, rip, as, instruction, operands);
+    fast_MOVSB(rec, as, state);
 }
 
 static biscuit::GPR getStringRegister(Recompiler& rec, Assembler& as, x86_ref_e ref, x86_size_e address_width) {
@@ -6310,15 +6317,15 @@ FAST_HANDLE(CMPSB) {
 }
 
 FAST_HANDLE(CMPSW) {
-    fast_CMPSB(rec, rip, as, instruction, operands);
+    fast_CMPSB(rec, as, state);
 }
 
 FAST_HANDLE(CMPSD_string) {
-    fast_CMPSB(rec, rip, as, instruction, operands);
+    fast_CMPSB(rec, as, state);
 }
 
 FAST_HANDLE(CMPSQ) {
-    fast_CMPSB(rec, rip, as, instruction, operands);
+    fast_CMPSB(rec, as, state);
 }
 
 FAST_HANDLE(SCASB) {
@@ -6381,15 +6388,15 @@ FAST_HANDLE(SCASB) {
 }
 
 FAST_HANDLE(SCASW) {
-    fast_SCASB(rec, rip, as, instruction, operands);
+    fast_SCASB(rec, as, state);
 }
 
 FAST_HANDLE(SCASD) {
-    fast_SCASB(rec, rip, as, instruction, operands);
+    fast_SCASB(rec, as, state);
 }
 
 FAST_HANDLE(SCASQ) {
-    fast_SCASB(rec, rip, as, instruction, operands);
+    fast_SCASB(rec, as, state);
 }
 
 FAST_HANDLE(LODSB) {
@@ -6449,15 +6456,15 @@ FAST_HANDLE(LODSB) {
 }
 
 FAST_HANDLE(LODSW) {
-    fast_LODSB(rec, rip, as, instruction, operands);
+    fast_LODSB(rec, as, state);
 }
 
 FAST_HANDLE(LODSD) {
-    fast_LODSB(rec, rip, as, instruction, operands);
+    fast_LODSB(rec, as, state);
 }
 
 FAST_HANDLE(LODSQ) {
-    fast_LODSB(rec, rip, as, instruction, operands);
+    fast_LODSB(rec, as, state);
 }
 
 FAST_HANDLE(STOSB) {
@@ -6506,15 +6513,15 @@ FAST_HANDLE(STOSB) {
 }
 
 FAST_HANDLE(STOSW) {
-    fast_STOSB(rec, rip, as, instruction, operands);
+    fast_STOSB(rec, as, state);
 }
 
 FAST_HANDLE(STOSD) {
-    fast_STOSB(rec, rip, as, instruction, operands);
+    fast_STOSB(rec, as, state);
 }
 
 FAST_HANDLE(STOSQ) {
-    fast_STOSB(rec, rip, as, instruction, operands);
+    fast_STOSB(rec, as, state);
 }
 
 FAST_HANDLE(MOVHPS) {
@@ -6541,7 +6548,7 @@ FAST_HANDLE(MOVHPS) {
 }
 
 FAST_HANDLE(MOVHPD) {
-    fast_MOVHPS(rec, rip, as, instruction, operands);
+    fast_MOVHPS(rec, as, state);
 }
 
 FAST_HANDLE(SHUFPD) {
@@ -8757,7 +8764,7 @@ FAST_HANDLE(MOVLPS) {
 }
 
 FAST_HANDLE(MOVLPD) {
-    fast_MOVLPS(rec, rip, as, instruction, operands);
+    fast_MOVLPS(rec, as, state);
 }
 
 FAST_HANDLE(MOVHLPS) {
@@ -9720,7 +9727,7 @@ FAST_HANDLE(CMPXCHG_lock) {
 
 FAST_HANDLE(CMPXCHG) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        return fast_CMPXCHG_lock(rec, rip, as, instruction, operands);
+        return fast_CMPXCHG_lock(rec, as, state);
     }
 
     x86_size_e size = rec.zydisToSize(instruction.operand_width);
@@ -11389,16 +11396,16 @@ FAST_HANDLE(XADD) {
     if (needs_atomic) {
         switch (instruction.operand_width) {
         case 8: {
-            return fast_XADD_lock_8(rec, rip, as, instruction, operands);
+            return fast_XADD_lock_8(rec, as, state);
         }
         case 16: {
-            return fast_XADD_lock_16(rec, rip, as, instruction, operands);
+            return fast_XADD_lock_16(rec, as, state);
         }
         case 32: {
-            return fast_XADD_lock_32(rec, rip, as, instruction, operands);
+            return fast_XADD_lock_32(rec, as, state);
         }
         case 64: {
-            return fast_XADD_lock_64(rec, rip, as, instruction, operands);
+            return fast_XADD_lock_64(rec, as, state);
         }
         default: {
             WARN("Unhandled atomic width: %d for XADD", instruction.operand_width);
@@ -11694,9 +11701,9 @@ FAST_HANDLE(CMPSS) {
 
 FAST_HANDLE(CMPSD) {
     if (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE2) {
-        fast_CMPSD_sse(rec, rip, as, instruction, operands);
+        fast_CMPSD_sse(rec, as, state);
     } else if (instruction.meta.isa_set == ZYDIS_ISA_SET_I386) {
-        fast_CMPSD_string(rec, rip, as, instruction, operands);
+        fast_CMPSD_string(rec, as, state);
     } else {
         UNREACHABLE();
     }
@@ -11923,11 +11930,11 @@ FAST_HANDLE(POPA) {
 }
 
 FAST_HANDLE(PUSHAD) {
-    fast_PUSHA(rec, rip, as, instruction, operands);
+    fast_PUSHA(rec, as, state);
 }
 
 FAST_HANDLE(POPAD) {
-    fast_POPA(rec, rip, as, instruction, operands);
+    fast_POPA(rec, as, state);
 }
 
 FAST_HANDLE(PABSB) {
@@ -12427,19 +12434,19 @@ FAST_HANDLE(POPFQ) {
 }
 
 FAST_HANDLE(PUSHF) {
-    fast_PUSHFQ(rec, rip, as, instruction, operands);
+    fast_PUSHFQ(rec, as, state);
 }
 
 FAST_HANDLE(PUSHFD) {
-    fast_PUSHFQ(rec, rip, as, instruction, operands);
+    fast_PUSHFQ(rec, as, state);
 }
 
 FAST_HANDLE(POPF) {
-    fast_POPFQ(rec, rip, as, instruction, operands);
+    fast_POPFQ(rec, as, state);
 }
 
 FAST_HANDLE(POPFD) {
-    fast_POPFQ(rec, rip, as, instruction, operands);
+    fast_POPFQ(rec, as, state);
 }
 
 FAST_HANDLE(MOVDDUP) {
@@ -14025,7 +14032,7 @@ FAST_HANDLE(FNSAVE) {
         rec.callPointer(offsetof(ThreadState, felix86_fsave_32));
     }
     rec.restoreState();
-    fast_FNINIT(rec, rip, as, instruction, operands);
+    fast_FNINIT(rec, as, state);
 }
 
 FAST_HANDLE(FRSTOR) {
@@ -14118,31 +14125,31 @@ inline static void x87_Operation(Recompiler& rec, u64 rip, Assembler& as, ZydisD
     }
 
 FAST_HANDLE(FNSTCW_80) {
-    fast_FNSTCW(rec, rip, as, instruction, operands);
+    fast_FNSTCW(rec, as, state);
 }
 
 FAST_HANDLE(FLDCW_80) {
-    fast_FLDCW(rec, rip, as, instruction, operands);
+    fast_FLDCW(rec, as, state);
 }
 
 FAST_HANDLE(FNCLEX_80) {
-    fast_FNCLEX(rec, rip, as, instruction, operands);
+    fast_FNCLEX(rec, as, state);
 }
 
 FAST_HANDLE(FXSAVE_80) {
-    fast_FXSAVE(rec, rip, as, instruction, operands);
+    fast_FXSAVE(rec, as, state);
 }
 
 FAST_HANDLE(FXSAVE64_80) {
-    fast_FXSAVE64(rec, rip, as, instruction, operands);
+    fast_FXSAVE64(rec, as, state);
 }
 
 FAST_HANDLE(FXRSTOR_80) {
-    fast_FXRSTOR(rec, rip, as, instruction, operands);
+    fast_FXRSTOR(rec, as, state);
 }
 
 FAST_HANDLE(FXRSTOR64_80) {
-    fast_FXRSTOR64(rec, rip, as, instruction, operands);
+    fast_FXRSTOR64(rec, as, state);
 }
 
 FAST_HANDLE(FWAIT_80) {
@@ -14216,15 +14223,15 @@ X87_HANDLE(FINCSTP);
 X87_HANDLE(FDECSTP);
 
 FAST_HANDLE(FNSTSW_80) {
-    fast_FNSTSW(rec, rip, as, instruction, operands);
+    fast_FNSTSW(rec, as, state);
 }
 
 FAST_HANDLE(FNSTENV_80) {
-    fast_FNSTENV(rec, rip, as, instruction, operands);
+    fast_FNSTENV(rec, as, state);
 }
 
 FAST_HANDLE(FLDENV_80) {
-    fast_FLDENV(rec, rip, as, instruction, operands);
+    fast_FLDENV(rec, as, state);
 }
 
 X87_HANDLE(FXCH);
@@ -14377,21 +14384,21 @@ FAST_HANDLE(FCMOVNU_80) {
 }
 
 FAST_HANDLE(FNINIT_80) {
-    fast_FNINIT(rec, rip, as, instruction, operands);
+    fast_FNINIT(rec, as, state);
 }
 
 X87_HANDLE(FXAM);
 
 FAST_HANDLE(FNSAVE_80) {
-    fast_FNSAVE(rec, rip, as, instruction, operands);
+    fast_FNSAVE(rec, as, state);
 }
 
 FAST_HANDLE(FRSTOR_80) {
-    fast_FRSTOR(rec, rip, as, instruction, operands);
+    fast_FRSTOR(rec, as, state);
 }
 
 FAST_HANDLE(FFREE_80) {
-    fast_FFREE(rec, rip, as, instruction, operands);
+    fast_FFREE(rec, as, state);
 }
 
 X87_HANDLE(FFREEP);
@@ -14463,7 +14470,7 @@ FAST_HANDLE(INT) {
         rec.insertSafepoint();
         rec.exitIfPendingCacheClear();
     } else if (operands[0].imm.value.u == 3) {
-        fast_INT3(rec, rip, as, instruction, operands);
+        fast_INT3(rec, as, state);
     } else {
         WARN("INT encountered with unknown immediate: %lx", operands[0].imm.value.u);
         as.SD(x0, 0, x0);
@@ -14599,43 +14606,43 @@ FAST_HANDLE(VMOVAPS) {
 }
 
 FAST_HANDLE(VMOVAPD) {
-    fast_VMOVAPS(rec, rip, as, instruction, operands);
+    fast_VMOVAPS(rec, as, state);
 }
 
 FAST_HANDLE(VMOVUPS) {
-    fast_VMOVAPS(rec, rip, as, instruction, operands);
+    fast_VMOVAPS(rec, as, state);
 }
 
 FAST_HANDLE(VMOVUPD) {
-    fast_VMOVAPS(rec, rip, as, instruction, operands);
+    fast_VMOVAPS(rec, as, state);
 }
 
 FAST_HANDLE(VLDDQU) {
-    fast_VMOVAPS(rec, rip, as, instruction, operands);
+    fast_VMOVAPS(rec, as, state);
 }
 
 FAST_HANDLE(VMOVDQA) {
-    fast_VMOVAPS(rec, rip, as, instruction, operands);
+    fast_VMOVAPS(rec, as, state);
 }
 
 FAST_HANDLE(VMOVDQU) {
-    fast_VMOVAPS(rec, rip, as, instruction, operands);
+    fast_VMOVAPS(rec, as, state);
 }
 
 FAST_HANDLE(VMOVNTDQ) {
-    fast_VMOVAPS(rec, rip, as, instruction, operands);
+    fast_VMOVAPS(rec, as, state);
 }
 
 FAST_HANDLE(VMOVNTDQA) {
-    fast_VMOVAPS(rec, rip, as, instruction, operands);
+    fast_VMOVAPS(rec, as, state);
 }
 
 FAST_HANDLE(VMOVNTPS) {
-    fast_VMOVAPS(rec, rip, as, instruction, operands);
+    fast_VMOVAPS(rec, as, state);
 }
 
 FAST_HANDLE(VMOVNTPD) {
-    fast_VMOVAPS(rec, rip, as, instruction, operands);
+    fast_VMOVAPS(rec, as, state);
 }
 
 FAST_HANDLE(VMOVD) {
@@ -14875,11 +14882,11 @@ FAST_HANDLE(VMASKMOVPS) {
 }
 
 FAST_HANDLE(VPMASKMOVD) {
-    fast_VMASKMOVPS(rec, rip, as, instruction, operands);
+    fast_VMASKMOVPS(rec, as, state);
 }
 
 FAST_HANDLE(VPMASKMOVQ) {
-    fast_VMASKMOVPD(rec, rip, as, instruction, operands);
+    fast_VMASKMOVPD(rec, as, state);
 }
 
 using FuncPtr2 = void (Assembler::*)(biscuit::Vec, biscuit::Vec, biscuit::VecMask);
@@ -15228,7 +15235,7 @@ FAST_HANDLE(VAESIMC) {
 }
 
 FAST_HANDLE(VAESKEYGENASSIST) {
-    fast_AESKEYGENASSIST(rec, rip, as, instruction, operands);
+    fast_AESKEYGENASSIST(rec, as, state);
     biscuit::Vec dst = rec.getVec(&operands[0]);
     rec.vzeroTopBits(dst, dst);
 }
@@ -15265,11 +15272,11 @@ FAST_HANDLE(VPERMQ) {
 }
 
 FAST_HANDLE(VPERMPS) {
-    fast_VPERMD(rec, rip, as, instruction, operands);
+    fast_VPERMD(rec, as, state);
 }
 
 FAST_HANDLE(VPERMPD) {
-    fast_VPERMQ(rec, rip, as, instruction, operands);
+    fast_VPERMQ(rec, as, state);
 }
 
 FAST_HANDLE(VPERMILPS) {
@@ -15500,7 +15507,7 @@ FAST_HANDLE(VPERM2I128) {
 }
 
 FAST_HANDLE(VPERM2F128) {
-    fast_VPERM2I128(rec, rip, as, instruction, operands);
+    fast_VPERM2I128(rec, as, state);
 }
 
 FAST_HANDLE(VPCMPISTRI) {
@@ -16473,19 +16480,19 @@ FAST_HANDLE(VCVTTPS2DQ) {
 }
 
 FAST_HANDLE(VCVTSD2SI) {
-    fast_CVTSD2SI(rec, rip, as, instruction, operands);
+    fast_CVTSD2SI(rec, as, state);
 }
 
 FAST_HANDLE(VCVTTSD2SI) {
-    fast_CVTTSD2SI(rec, rip, as, instruction, operands);
+    fast_CVTTSD2SI(rec, as, state);
 }
 
 FAST_HANDLE(VCVTSS2SI) {
-    fast_CVTSS2SI(rec, rip, as, instruction, operands);
+    fast_CVTSS2SI(rec, as, state);
 }
 
 FAST_HANDLE(VCVTTSS2SI) {
-    fast_CVTTSS2SI(rec, rip, as, instruction, operands);
+    fast_CVTTSS2SI(rec, as, state);
 }
 
 FAST_HANDLE(VCVTSI2SS) {
@@ -16673,11 +16680,11 @@ FAST_HANDLE(VMINSD) {
 }
 
 FAST_HANDLE(VLDMXCSR) {
-    fast_LDMXCSR(rec, rip, as, instruction, operands);
+    fast_LDMXCSR(rec, as, state);
 }
 
 FAST_HANDLE(VSTMXCSR) {
-    fast_STMXCSR(rec, rip, as, instruction, operands);
+    fast_STMXCSR(rec, as, state);
 }
 
 FAST_HANDLE(VPSADBW) {
@@ -16760,7 +16767,7 @@ FAST_HANDLE(VINSERTF128) {
 }
 
 FAST_HANDLE(VINSERTI128) {
-    fast_VINSERTF128(rec, rip, as, instruction, operands);
+    fast_VINSERTF128(rec, as, state);
 }
 
 FAST_HANDLE(VDPPS) {
@@ -16832,7 +16839,7 @@ FAST_HANDLE(VEXTRACTF128) {
 }
 
 FAST_HANDLE(VEXTRACTI128) {
-    fast_VEXTRACTF128(rec, rip, as, instruction, operands);
+    fast_VEXTRACTF128(rec, as, state);
 }
 
 FAST_HANDLE(VEXTRACTPS) {
@@ -17894,7 +17901,7 @@ FAST_HANDLE(VMOVHPD) {
 }
 
 FAST_HANDLE(VMOVHPS) {
-    fast_VMOVHPD(rec, rip, as, instruction, operands);
+    fast_VMOVHPD(rec, as, state);
 }
 
 FAST_HANDLE(VMOVLPD) {
@@ -17917,7 +17924,7 @@ FAST_HANDLE(VMOVLPD) {
 }
 
 FAST_HANDLE(VMOVLPS) {
-    fast_VMOVLPD(rec, rip, as, instruction, operands);
+    fast_VMOVLPD(rec, as, state);
 }
 
 static void VADDSUB(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int elements) {
@@ -18545,11 +18552,11 @@ FAST_HANDLE(VBROADCASTF128) {
 }
 
 FAST_HANDLE(VBROADCASTI128) {
-    fast_VBROADCASTF128(rec, rip, as, instruction, operands);
+    fast_VBROADCASTF128(rec, as, state);
 }
 
 FAST_HANDLE(VPHMINPOSUW) {
-    fast_PHMINPOSUW(rec, rip, as, instruction, operands);
+    fast_PHMINPOSUW(rec, as, state);
 }
 
 static void VPSHIFT_imm(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int elements,
