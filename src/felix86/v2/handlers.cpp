@@ -9921,7 +9921,7 @@ FAST_HANDLE(CVTSI2SS) {
     rec.setVec(&operands[0], dst);
 }
 
-static void CVTTSS2SI(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands) {
+FAST_HANDLE(CVTTSS2SI) {
     x86_size_e gpr_size = rec.getSize(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
     biscuit::GPR dst = rec.getGPR(&operands[0]);
@@ -9929,11 +9929,15 @@ static void CVTTSS2SI(Recompiler& rec, Assembler& as, ZydisDecodedOperand* opera
     biscuit::FPR cmp_max_int = rec.scratchFPR();
     biscuit::GPR tmp_int = rec.scratch();
 
+    uint64_t intmax = 0;
+
     rec.setVectorState(SEW::E32, 1);
     as.VFMV_FS(src_f, src);
     if (gpr_size == X86_SIZE_DWORD) {
+        intmax = 0x4F000000;
         as.FCVT_W_S(dst, src_f, RMode::RTZ);
     } else if (gpr_size == X86_SIZE_QWORD) {
+        intmax = 0x5F000000;
         as.FCVT_L_S(dst, src_f, RMode::RTZ);
     } else {
         UNREACHABLE();
@@ -9944,7 +9948,7 @@ static void CVTTSS2SI(Recompiler& rec, Assembler& as, ZydisDecodedOperand* opera
     as.FCLASS_S(tmp_int, src_f);
     as.ANDI(tmp_int, tmp_int, (1 << 7) | (1 << 8) | (1 << 9));
     as.BNEZ(tmp_int, &indefinite);
-    as.LI(tmp_int, 0x4F000000); // intmax in 32-bit floats.
+    as.LI(tmp_int, intmax);
     as.FMV_W_X(cmp_max_int, tmp_int);
     as.FLT_S(tmp_int, src_f, cmp_max_int);
     as.BNEZ(tmp_int, &no_indefinite);
@@ -9958,11 +9962,7 @@ static void CVTTSS2SI(Recompiler& rec, Assembler& as, ZydisDecodedOperand* opera
     rec.setGPR(&operands[0], dst);
 }
 
-FAST_HANDLE(CVTTSS2SI) {
-    CVTTSS2SI(rec, as, operands);
-}
-
-static void CVTTSD2SI(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands) {
+FAST_HANDLE(CVTTSD2SI) {
     x86_size_e gpr_size = rec.getSize(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
     biscuit::GPR dst = rec.getGPR(&operands[0]);
@@ -9970,11 +9970,15 @@ static void CVTTSD2SI(Recompiler& rec, Assembler& as, ZydisDecodedOperand* opera
     biscuit::FPR cmp_max_int = rec.scratchFPR();
     biscuit::GPR tmp_int = rec.scratch();
 
+    uint64_t intmax = 0;
+
     rec.setVectorState(SEW::E64, 1);
     as.VFMV_FS(src_d, src);
     if (gpr_size == X86_SIZE_DWORD) {
+        intmax = 0x41DFFFFFFFE00000;
         as.FCVT_W_D(dst, src_d, RMode::RTZ);
     } else if (gpr_size == X86_SIZE_QWORD) {
+        intmax = 0x43DFFFFFFFFFFFFF;
         as.FCVT_L_D(dst, src_d, RMode::RTZ);
     } else {
         UNREACHABLE();
@@ -9985,7 +9989,7 @@ static void CVTTSD2SI(Recompiler& rec, Assembler& as, ZydisDecodedOperand* opera
     as.FCLASS_D(tmp_int, src_d);
     as.ANDI(tmp_int, tmp_int, (1 << 7) | (1 << 8) | (1 << 9));
     as.BNEZ(tmp_int, &indefinite);
-    as.LI(tmp_int, 0x41E0000000000000); // intmax in 64-bit floats.
+    as.LI(tmp_int, intmax);
     as.FMV_D_X(cmp_max_int, tmp_int);
     as.FLT_D(tmp_int, src_d, cmp_max_int);
     as.BNEZ(tmp_int, &no_indefinite);
@@ -9997,10 +10001,6 @@ static void CVTTSD2SI(Recompiler& rec, Assembler& as, ZydisDecodedOperand* opera
     as.Bind(&no_indefinite);
 
     rec.setGPR(&operands[0], dst);
-}
-
-FAST_HANDLE(CVTTSD2SI) {
-    CVTTSD2SI(rec, as, operands);
 }
 
 FAST_HANDLE(CVTPD2PS) {
