@@ -202,6 +202,8 @@ set(FELIX86_HLE_SOURCES
 
 set(FELIX86_V2_SOURCES
     src/felix86/v2/code_cache.cpp
+    src/felix86/v2/common_emit.cpp
+    src/felix86/v2/dispatcher.cpp
     src/felix86/v2/recompiler.cpp
     src/felix86/v2/handlers.cpp
     src/felix86/v2/optimizer.cpp

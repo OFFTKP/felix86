@@ -373,7 +373,7 @@ static void getFusedOperands(Recompiler& rec, Assembler& as, ZydisDecodedOperand
 
         if (is_sub) {
             biscuit::GPR original = lhs;
-            if (!Recompiler::isScratch(lhs)) {
+            if (!ScratchAllocator::isScratch(lhs)) {
                 biscuit::GPR copy = rec.scratch();
                 as.MV(copy, lhs);
                 lhs = copy;
@@ -612,7 +612,7 @@ static bool AttemptSetccCmovFusing(Recompiler& rec, u64 rip, Assembler& as, Zydi
         }
         value = cond;
         inverted = false;
-    } else if (Recompiler::isScratch(value) && value != cond) {
+    } else if (ScratchAllocator::isScratch(value) && value != cond) {
         as.MV(cond, value);
         value = cond;
     }
@@ -3338,14 +3338,14 @@ FAST_HANDLE(SAR) {
     switch (size) {
     case X86_SIZE_BYTE:
     case X86_SIZE_BYTE_HIGH: {
-        ASSERT(Recompiler::isScratch(dst));
+        ASSERT(ScratchAllocator::isScratch(dst));
         as.SLLI(dst, dst, 56);
         as.SRAI(dst, dst, 56);
         as.SRA(result, dst, count);
         break;
     }
     case X86_SIZE_WORD: {
-        ASSERT(Recompiler::isScratch(dst));
+        ASSERT(ScratchAllocator::isScratch(dst));
         as.SLLI(dst, dst, 48);
         as.SRAI(dst, dst, 48);
         as.SRA(result, dst, count);
@@ -14515,7 +14515,7 @@ FAST_HANDLE(INVLPG) {
         ASSERT(name_size > 0);
         VERBOSE("Generating trampoline for %s", name);
         rec.writebackState();
-        void* trampoline = Thunks::generateTrampoline(rec, name);
+        void* trampoline = Thunks::generateTrampoline(rec.isRelocatable(), as, name);
         ASSERT_MSG(trampoline != nullptr, "Failed to install trampoline for \"%s\" (%lx)", name, (u64)name);
         rec.restoreState();
         rip += name_size + 1; // also skip null byte
@@ -14533,7 +14533,7 @@ FAST_HANDLE(INVLPG) {
         size_t name_size = strlen(name);
         VERBOSE("Generating trampoline for %lx (%s %s)", address, name, signature);
         rec.writebackState();
-        void* trampoline = Thunks::generateTrampoline(rec, name, signature, address);
+        void* trampoline = Thunks::generateTrampoline(rec.isRelocatable(), as, name, signature, address);
         ASSERT_MSG(trampoline != nullptr, "Failed to install trampoline for %lx", address);
         rec.restoreState();
         rip += 8 + signature_size + 1 + name_size + 1; // also skip null bytes

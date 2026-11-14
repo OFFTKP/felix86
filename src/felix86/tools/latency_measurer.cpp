@@ -21,8 +21,8 @@
 
 constexpr biscuit::GPR tmp = x31;
 constexpr biscuit::GPR tmp2 = x30;
-static_assert(Recompiler::isScratch(tmp));
-static_assert(Recompiler::isScratch(tmp2));
+static_assert(ScratchAllocator::isScratch(tmp));
+static_assert(ScratchAllocator::isScratch(tmp2));
 constexpr int loops = 500;
 constexpr int iterations = 100;
 constexpr int runs = 31;
@@ -72,6 +72,7 @@ void compile_sequence(u64 rip) {
         // Also remove a store to zero and a hint used to emulate ud2
         end -= 8;
     }
+    // TODO: get rid of getAssembler
     g_rec->getAssembler().SetCursorPointer((u8*)end);
 }
 
@@ -615,6 +616,7 @@ double measure(const Test& test, const Width& width, bool throughput) {
     end[0] = 0x0F;
     end[1] = 0x0B;
 
+    // TODO: get rid of getAssembler
     Assembler& as = g_rec->getAssembler();
     Label loop;
     Label done;

@@ -17,6 +17,7 @@
 #include "felix86/common/zydis_types.hpp"
 #include "felix86/v2/allocations.hpp"
 #include "felix86/v2/code_cache.hpp"
+#include "felix86/v2/scratch_allocator.hpp"
 
 #define FELIX86_HINT_SAFEPOINT_SYSCALL 0xa5
 #define FELIX86_HINT_GP 0x86
@@ -111,9 +112,7 @@ struct CompileState {
 
     BlockState block_state;
 
-    int scratch_index = 0;
-    int vector_scratch_index = 0;
-    int fpu_scratch_index = 0;
+    ScratchAllocator scratches;
 
     std::vector<InstructionData> instructions;
     ZydisDecodedInstruction* instruction{};
@@ -172,14 +171,6 @@ struct Recompiler {
     biscuit::FPR scratchFPR();
 
     ZydisMnemonic decode(u64 rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, bool ok_to_fail = false);
-
-    constexpr static bool isScratch(biscuit::GPR reg) {
-        if (std::find(scratch_gprs.begin(), scratch_gprs.end(), reg) != scratch_gprs.end()) {
-            return true;
-        }
-
-        return false;
-    }
 
     void popScratch();
 
@@ -466,6 +457,8 @@ struct Recompiler {
         return code_cache->getPointers().restore_state;
     }
 
+    static void invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_block);
+
     static void* compileNext(ThreadState* state) {
         FELIX86_PROFILE_ACCUMULATION(state->thread_stats, AccumulatedJITTime);
         u64 next_block = state->recompiler->getCompiledBlock(state, state->GetRip());
@@ -562,27 +555,10 @@ struct Recompiler {
         compile_state.block_state.grouping = LMUL::M1;
     }
 
-    void call(u64 target) {
-        resetVectorState(); // set state to garbage as a call may overwrite it
-        ASSERT(isScratch(t4));
-        i64 offset = target - (u64)as.GetCursorPointer();
-        if (IsValidJTypeImm(offset)) {
-            as.JAL(offset);
-        } else if (IsValid2GBImm(offset) && !relocatable) {
-            const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
-            const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
-            as.AUIPC(t4, hi20);
-            as.JALR(ra, lo12, t4);
-        } else {
-            as.LI(t4, target);
-            as.JALR(t4);
-        }
-    }
-
     void callPointer(u64 offset) {
         ASSERT(offset >= offsetof(ThreadState, f64_to_80_mem));
         ASSERT(offset < offsetof(ThreadState, clear_tid_address));
-        ASSERT(isScratch(t4));
+        ASSERT(ScratchAllocator::isScratch(t4));
         as.LD(t4, offset, Allocations::threadStatePointer());
         as.JALR(t4);
     }
@@ -593,7 +569,7 @@ struct Recompiler {
 
     void pushCalltrace() {
         if (g_config.calltrace) {
-            ASSERT(isScratch(t4));
+            ASSERT(ScratchAllocator::isScratch(t4));
             writebackState();
             as.LI(t4, (u64)push_calltrace);
             as.MV(a0, Allocations::threadStatePointer());
@@ -605,7 +581,7 @@ struct Recompiler {
 
     void popCalltrace() {
         if (g_config.calltrace) {
-            ASSERT(isScratch(t4));
+            ASSERT(ScratchAllocator::isScratch(t4));
             writebackState();
             as.LI(t4, (u64)pop_calltrace);
             as.MV(a0, Allocations::threadStatePointer());
@@ -616,6 +592,10 @@ struct Recompiler {
 
     u8* getEndOfCodeCache() const {
         return (u8*)as.GetCursorPointer();
+    }
+
+    bool isInJitCode(u64 pc) const {
+        return pc >= (u64)getStartOfCodeCache() && pc < (u64)getEndOfCodeCache();
     }
 
     static bool isXMM(x86_ref_e ref) {
@@ -849,16 +829,6 @@ struct Recompiler {
     }
 
 private:
-    void emitNecessaryStuff();
-
-    void emitDispatcher();
-
-    void emitBadAddressThunks();
-
-    void emitInterruptibleSyscallThunk();
-
-    void emitInvalidateCallerThunk();
-
     bool scanAhead(u64 rip);
 
     u32 scanLandingBlock(ThreadState* state, u64 initial_rip, u64 rip_ahead, int depth, int& instrs_left);
@@ -877,11 +847,8 @@ private:
 
     bool canCompileSpeculatively(const ZydisDecodedInstruction& instruction, const ZydisDecodedOperand* operands);
 
-    static void invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_block);
-
     std::unique_ptr<CodeCache> code_cache = std::make_unique<CodeCache>();
     biscuit::Assembler as{};
-    biscuit::Label invalidate_caller_thunk;
     ZydisDecoder decoder{};
 
     std::array<std::pair<bool, u64>, 4> breakpoints;
@@ -905,19 +872,4 @@ private:
     bool relocatable = false;
 
     SingleStepMode single_step = SingleStepMode::None;
-
-    constexpr static std::array scratch_gprs = {
-        x1, x6, x7, x28, x29, x30, x31,
-    };
-
-    // TODO: is the below comment still true? make it not true
-    // TODO: to remove "if changed" comment, go to places that regs are hardcoded and add static asserts that they are scratches
-    // TODO: For better or for worst (definitely for worst) we rely on the fact that we start with an even
-    // register and go sequentially like this
-    // This has to do with the fact we want even registers sometimes so widening operations can use
-    // the register group. In the future with a proper allocator we can make it so the order here doesn't
-    // matter and the order picks an available group.
-    constexpr static std::array scratch_vec = {v2, v3, v4, v5, v6, v7, v1};
-
-    constexpr static std::array scratch_fprs = {ft8, ft9, ft10, ft11};
 };
