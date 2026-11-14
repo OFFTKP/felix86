@@ -35,6 +35,13 @@ enum class x87State : u8 {
     MMX = 2,
 };
 
+enum class SyscallRestart : u8 {
+    None,
+    Restartable,
+    RestartIfSaRestart,
+    RestartAlways,
+};
+
 struct SignalQueueNode {
     siginfo_t info = {};
     SignalQueueNode* next = nullptr;
@@ -301,9 +308,7 @@ struct ThreadState {
     u64 effective_deferred_signals = 0;
     std::array<siginfo_t, 31> deferred_standard_info{};
     std::array<SignalQueueNode*, 33> deferred_realtime_info{};
-    bool in_restartable_syscall = false;
-    bool restart_syscall_if_sa_restart = false;
-    bool restart_syscall_always = false;
+    SyscallRestart syscall_restart = SyscallRestart::None;
     bool in_rmw_function = false;
 
     bool force_defer_synchronous = false;

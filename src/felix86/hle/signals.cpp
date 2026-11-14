@@ -1390,7 +1390,7 @@ static bool handle_safepoint(ThreadState* current_state, siginfo_t* info, uconte
     // Thus we just get the least significant set bit
     int sig = __builtin_ctzll(current_state->effective_deferred_signals);
 
-    if (current_state->restart_syscall_always || current_state->restart_syscall_if_sa_restart) {
+    if (current_state->syscall_restart == SyscallRestart::RestartAlways || current_state->syscall_restart == SyscallRestart::RestartIfSaRestart) {
         // Check if previous instruction is FELIX86_HINT_SAFEPOINT_SYSCALL, i.e. if this safepoint is right after a syscall
         u32 expected_previous_instruction;
         {
@@ -1400,7 +1400,7 @@ static bool handle_safepoint(ThreadState* current_state, siginfo_t* info, uconte
 
         u32 actual_previous_instruction = *(u32*)(pc - 4);
         RegisteredSignal* signal = SignalHandlerTable::getRegisteredSignal(current_state->signal_table, sig + 1);
-        bool restart = current_state->restart_syscall_always || (signal->flags & SA_RESTART);
+        bool restart = current_state->syscall_restart == SyscallRestart::RestartAlways || (signal->flags & SA_RESTART);
         if (restart) {
             ASSERT_MSG(expected_previous_instruction == actual_previous_instruction, "Not at syscall safepoint?");
             u64* regs = get_regs(context);
@@ -1411,8 +1411,7 @@ static bool handle_safepoint(ThreadState* current_state, siginfo_t* info, uconte
             ASSERT((data[0] == 0x0f && data[1] == 0x05) || (data[0] == 0xcd && data[1] == 0x80));
             regs[Allocations::RAX().Index()] = current_state->ctx.orig_rax;
         }
-        current_state->restart_syscall_always = false;
-        current_state->restart_syscall_if_sa_restart = false;
+        current_state->syscall_restart = SyscallRestart::None;
     }
 
     // Since we block signals, race here due to another signal being deferred is not possible
