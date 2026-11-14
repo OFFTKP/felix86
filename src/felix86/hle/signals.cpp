@@ -183,13 +183,6 @@ struct RegisteredHostSignal {
 #undef CASE
 }
 
-static bool is_in_jit_code(ThreadState* state, u8* ptr) {
-    CodeBuffer& buffer = state->recompiler->getAssembler().GetCodeBuffer();
-    u8* start = state->recompiler->getStartOfCodeCache();
-    u8* end = (u8*)buffer.GetCursorAddress();
-    return ptr >= start && ptr < end;
-}
-
 struct x64_fpstate {
     fxsave_frame fxsave;
     // xsave frame follows here...
@@ -1366,7 +1359,7 @@ static bool handle_safepoint(ThreadState* current_state, siginfo_t* info, uconte
         return false;
     }
 
-    if (!is_in_jit_code(current_state, (u8*)pc)) {
+    if (!current_state->recompiler->isInJitCode(pc)) {
         // Not in JIT code, rare but possible
         SIGLOG("Not in jit code");
         return false;
@@ -1451,7 +1444,7 @@ static bool handle_smc(ThreadState* current_state, siginfo_t* info, ucontext_t* 
     // Some functions, like felix86_bts may modify guest memory so SMC may happen during them
     // This behavior is seen in Mortal Kombat 1
     bool in_rmw = current_state->in_rmw_function;
-    if (!is_in_jit_code(current_state, (u8*)pc) && !in_rmw) {
+    if (!current_state->recompiler->isInJitCode(pc) && !in_rmw) {
         WARN("We hit a SIGSEGV ACCERR but PC is not in JIT code...");
         return false;
     }
@@ -1511,7 +1504,7 @@ static bool handle_smc(ThreadState* current_state, siginfo_t* info, ucontext_t* 
 }
 
 static bool handle_breakpoint(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
-    if (is_in_jit_code(current_state, (u8*)pc)) {
+    if (current_state->recompiler->isInJitCode(pc)) {
         // Search to see if it is our breakpoint
         // Note the we don't use EBREAK as gdb refuses to continue when it hits that if it doesn't have a breakpoint,
         // and also refuses to call our signal handler.
@@ -1553,7 +1546,7 @@ static bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, uco
     // In many cases it's annoying to attach a debugger at the start of a program, because it may be spawning many processes which
     // can trip up gdb and it won't know which fork to follow. The "don't detach forks" mode is also kind of jittery as far as I can see.
     // The capture_sigsegv mode can help us sleep the process for a while to attach gdb and get a proper backtrace.
-    bool in_jit_code = is_in_jit_code(current_state, (u8*)pc);
+    bool in_jit_code = current_state->recompiler->isInJitCode(pc);
     bool capture_it = g_config.capture_sigsegv;
     if (capture_it) {
         int pid = gettid();
@@ -1618,7 +1611,7 @@ static bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, uco
 static bool handle_wild_sigabrt(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
     // Similar to SIGSEGV sleeping, SIGABRT can be nice to capture because it's called when guest errors like
     // stack smashing happen.
-    bool in_jit_code = is_in_jit_code(current_state, (u8*)pc);
+    bool in_jit_code = current_state->recompiler->isInJitCode(pc);
     if (g_config.capture_sigabrt) {
         int pid = gettid();
         PLAIN("I have been hit by a wild SIGABRT%s! My TID is %d, you have 40 seconds to attach gdb using `gdb -p %d` to find out why! If you "
@@ -1654,7 +1647,7 @@ static bool handle_wild_sigabrt(ThreadState* current_state, siginfo_t* info, uco
 
 static bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
     // We can't cause a SIGSEGV SI_KERNEL from RISC-V, so fix up info->si_code to match x86 behavior
-    if (!current_state->recompiler->isInBadAddressThunk(pc) && !is_in_jit_code(current_state, (u8*)pc)) {
+    if (!current_state->recompiler->isInBadAddressThunk(pc) && !current_state->recompiler->isInJitCode(pc)) {
         return false;
     }
 
@@ -1880,7 +1873,7 @@ static void signal_handler(int sig, siginfo_t* info, void* ctx) {
     // process via kill or whatever other method
     if (info->si_code > 0 && (sig == SIGSEGV || sig == SIGBUS || sig == SIGILL || sig == SIGTRAP)) {
         // Synchronous signal, handle immediately
-        if (is_in_jit_code(state, (u8*)pc)) {
+        if (state->recompiler->isInJitCode(pc)) {
             BlockMetadata* current_block = get_block_metadata(state, pc);
             ASSERT_MSG(current_block, "Failed to get current block during synchronous signal with PC=%lx, RIP=%lx", pc, state->ctx.rip);
             u64 actual_rip = get_actual_rip(*current_block, pc);

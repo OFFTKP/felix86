@@ -88,10 +88,10 @@ constexpr inline auto X = x28;
 constexpr inline auto A = x29;
 constexpr inline auto temp = x30;
 constexpr inline auto pointer = x31;
-static_assert(Recompiler::isScratch(x28));
-static_assert(Recompiler::isScratch(x29));
-static_assert(Recompiler::isScratch(x30));
-static_assert(Recompiler::isScratch(x31));
+static_assert(ScratchAllocator::isScratch(x28));
+static_assert(ScratchAllocator::isScratch(x29));
+static_assert(ScratchAllocator::isScratch(x30));
+static_assert(ScratchAllocator::isScratch(x31));
 
 static void seccomp_trap() {
     // As seen in force_sig_info_to_task, this trap signal will unmask and switch to SIG_DFL if necessary

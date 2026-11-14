@@ -24,18 +24,12 @@
 #include "felix86/hle/mmap.hpp"
 #include "felix86/hle/ptrace.hpp"
 #include "felix86/hle/syscall.hpp"
+#include "felix86/v2/common_emit.hpp"
+#include "felix86/v2/dispatcher.hpp"
 #include "felix86/v2/handlers.hpp"
 #include "felix86/v2/optimizer.hpp"
 #include "felix86/v2/recompiler.hpp"
 #include "fmt/format.h"
-
-static void incorrect_magic(void* sp) {
-    ERROR("Incorrect magic in frame (sp: %p)", sp);
-}
-
-static void incorrect_stack(void* sp_expected, void* sp_actual) {
-    ERROR("Incorrect stack in frame, expected %p, but got %p", sp_expected, sp_actual);
-}
 
 // Some instructions modify the flags conditionally or sometimes they don't modify them at all.
 // This needs to be marked as a usage of the flag as it can be passed through if they don't modify,
@@ -86,9 +80,8 @@ static bool is_stack_operand(const ZydisDecodedOperand& operand) {
 }
 
 Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
-    as = Assembler(code_cache->getThunkArea(), CodeCache::thunk_area_size);
-    emitNecessaryStuff();
-    const u64 end_of_thunks = (u64)as.GetCursorPointer();
+    const u64 end_of_thunks =
+        (u64)Dispatcher::emitDispatcher(code_cache->getThunkArea(), CodeCache::thunk_area_size, code_cache->getPointers(), relocatable);
 
     as = Assembler(code_cache->getBlockArea(), code_cache->getBlockAreaSize());
     if (g_config.auto_compress) {
@@ -118,234 +111,6 @@ Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
 }
 
 Recompiler::~Recompiler() = default;
-
-void Recompiler::emitNecessaryStuff() {
-    OptimizationGuard guard(as, optimization_guard_counter);
-    u64 start = (u64)as.GetCursorPointer();
-    emitInterruptibleSyscallThunk();
-    emitDispatcher();
-    emitInvalidateCallerThunk();
-    emitBadAddressThunks();
-
-    flush_icache(start, (u64)as.GetCursorPointer());
-}
-
-void Recompiler::emitBadAddressThunks() {
-    CodeCachePointers& pointers = code_cache->getPointers();
-    while ((u64)as.GetCursorPointer() & 0xF) {
-        as.C_NOP();
-    }
-
-    // The signal handler will find the RIP via the allocated ripreg as it tried
-    // to compile a block there
-    pointers.not_mapped = (u64)as.GetCursorPointer();
-    as.SD(x0, 0, x0);
-    as.SLTIU(x0, x0, FELIX86_HINT_NOT_MAPPED);
-    as.C_UNDEF();
-    as.C_UNDEF();
-
-    pointers.not_read = (u64)as.GetCursorPointer();
-    as.SD(x0, 0, x0);
-    as.SLTIU(x0, x0, FELIX86_HINT_NOT_READ);
-    as.C_UNDEF();
-    as.C_UNDEF();
-
-    pointers.not_exec = (u64)as.GetCursorPointer();
-    as.SD(x0, 0, x0);
-    as.SLTIU(x0, x0, FELIX86_HINT_NOT_EXEC);
-    as.C_UNDEF();
-    as.C_UNDEF();
-}
-
-void Recompiler::emitInterruptibleSyscallThunk() {
-    CodeCachePointers& pointers = code_cache->getPointers();
-    while ((u64)as.GetCursorPointer() & 0xF) {
-        as.C_NOP();
-    }
-
-    // This thunk is used to have a straight line sequence of code that first checks if any signals are deferred, then
-    // loads the arguments and calls ECALL. Even if a signal happens *after* the check and before the ECALL,
-    // it is able to verify it is between these two points and jump to the -EINTR return from the signal handler.
-    pointers.interruptible_syscall = (InterruptibleSyscallFunc)as.GetCursorPointer();
-    biscuit::Label eintr;
-    as.LD(t0, 0, a0);
-    as.MV(t1, a1);
-    as.MV(a0, a2);
-    as.MV(a1, a3);
-    as.MV(a2, a4);
-    as.MV(a3, a5);
-    as.MV(a4, a6);
-    as.MV(a5, a7);
-    as.MV(a7, t1);
-    as.BNEZ(t0, &eintr);
-    pointers.interruptible_syscall_ecall = (u64)as.GetCursorPointer();
-    as.ECALL();
-    as.RET();
-    as.Bind(&eintr);
-
-    pointers.interruptible_syscall_eintr = (u64)as.GetCursorPointer();
-    as.LI(a0, -FELIX86_ERESTARTNOINTR);
-    as.RET();
-}
-
-void Recompiler::emitDispatcher() {
-    CodeCachePointers& pointers = code_cache->getPointers();
-    pointers.enter_dispatcher = (decltype(pointers.enter_dispatcher))as.GetCursorPointer();
-
-    // Save the current frame in the stack
-    // The size of felix86_frame is bigger than the red zone, so we need to decrement the stack instead of using a temporary
-    // This is because a signal could technically thrash values outside the red zone if we don't decrement the stack pointer here
-    as.MV(t0, sp);
-    as.ADDI(sp, sp, -(int)sizeof(felix86_frame));
-    for (size_t i = 0; i < saved_gprs.size(); i++) {
-        if (saved_gprs[i] != sp) {
-            as.SD(saved_gprs[i], offsetof(felix86_frame, gprs) + i * sizeof(u64), sp);
-        } else {
-            // Use t0 instead of sp to save our old stack
-            as.SD(t0, offsetof(felix86_frame, gprs) + i * sizeof(u64), sp);
-        }
-    }
-
-    // Save the ThreadState pointer
-    as.SD(a0, offsetof(felix86_frame, state), sp);
-
-    // Also save the magic number
-    as.LI(t1, felix86_frame::expected_magic);
-    as.SD(t1, offsetof(felix86_frame, magic), sp);
-
-    as.LILabel(t1, &invalidate_caller_thunk);
-    as.SD(t1, offsetof(felix86_frame, invalidate_caller_thunk_ptr), sp);
-
-    biscuit::Label compile_next_label, compile_next_32_label;
-    biscuit::Label compile_next_skip_address_cache_label;
-
-    as.LILabel(t1, &compile_next_label);
-    as.SD(t1, offsetof(felix86_frame, compile_next_handler_ptr), sp);
-
-    as.LILabel(t1, &compile_next_32_label);
-    as.SD(t1, offsetof(felix86_frame, compile_next_32_handler_ptr), sp);
-
-    as.LILabel(t1, &compile_next_skip_address_cache_label);
-    as.SD(t1, offsetof(felix86_frame, compile_next_skip_address_cache_ptr), sp);
-
-    as.MV(Allocations::threadStatePointer(), a0);
-
-    pointers.restore_state = (u64)as.GetCursorPointer();
-
-    restoreState();
-    biscuit::GPR cs = scratch();
-    as.LHU(cs, offsetof(ThreadState, ctx.cs), Allocations::threadStatePointer());
-    as.ADDI(cs, cs, -0x23);
-    as.BEQZ(cs, &compile_next_32_label);
-    popScratch();
-
-    // Align this to cache line boundary since it's hit often
-    while ((u64)as.GetCursorPointer() & 0x3F) {
-        as.NOP();
-    }
-
-    as.Bind(&compile_next_label);
-    pointers.compile_next = (u64)as.GetCursorPointer();
-
-    biscuit::GPR ripreg = Allocations::RIP();
-    addressCacheLookup(ripreg, [](Assembler& as, biscuit::GPR new_rip) { as.JR(new_rip); }, false);
-
-    as.Bind(&compile_next_skip_address_cache_label);
-    pointers.compile_next_skip_address_cache = (u64)as.GetCursorPointer();
-
-    writebackState();
-    as.MV(a0, Allocations::threadStatePointer());
-    call((u64)Recompiler::compileNext);
-
-    biscuit::GPR retval = scratch();
-    as.MV(retval, a0);
-    restoreState();
-    as.MV(t5, x0); // zero out t5, see invalidate_caller_thunk
-    as.JR(retval);
-    popScratch();
-
-    while ((u64)as.GetCursorPointer() & 0x3F) {
-        as.NOP();
-    }
-
-    as.Bind(&compile_next_32_label);
-    pointers.compile_next_32 = (u64)as.GetCursorPointer();
-    addressCacheLookup(ripreg, [](Assembler& as, biscuit::GPR new_rip) { as.JR(new_rip); }, true);
-    as.J(&compile_next_skip_address_cache_label);
-
-    pointers.exit_dispatcher = (decltype(pointers.exit_dispatcher))as.GetCursorPointer();
-
-    // Move stack pointer to current frame (passed as an argument)
-    as.MV(sp, a0);
-
-    // Load ThreadState* into t4
-    as.LD(t4, offsetof(felix86_frame, state), a0);
-
-    // Load the frame we had before entering the dispatcher
-    // First make sure our magic is correct
-    biscuit::Label magic_correct;
-    as.LD(t1, offsetof(felix86_frame, magic), sp);
-    as.LI(t2, felix86_frame::expected_magic);
-    as.BEQ(t1, t2, &magic_correct);
-
-    // Magic is incorrect if we get here
-    as.MV(a0, sp);
-    as.LI(t0, (u64)incorrect_magic);
-    as.JALR(t0);
-    as.GetCodeBuffer().Emit32(0);
-
-    as.Bind(&magic_correct);
-
-    for (size_t i = 0; i < saved_gprs.size(); i++) {
-        if (saved_gprs[i] != sp) {
-            as.LD(saved_gprs[i], offsetof(felix86_frame, gprs) + i * sizeof(u64), sp);
-        } else {
-            // Load the new stack pointer in t0 and set it later
-            as.LD(t0, offsetof(felix86_frame, gprs) + i * sizeof(u64), sp);
-        }
-    }
-
-    // Sanity check that the stack is just sp + sizeof(felix86_frame)
-    biscuit::Label stack_correct;
-    as.ADDI(t1, sp, sizeof(felix86_frame));
-    as.BEQ(t1, t0, &stack_correct);
-
-    // Stack pointer is incorrect if we get here
-    as.MV(a0, sp);
-    as.MV(a1, t0);
-    as.LI(t0, (u64)incorrect_stack);
-    as.JALR(t0);
-    as.GetCodeBuffer().Emit32(0);
-
-    as.Bind(&stack_correct);
-    as.MV(sp, t0);
-
-    // Return to wherever the dispatcher was originally entered from using enter_dispatcher
-    as.JR(ra);
-}
-
-void Recompiler::emitInvalidateCallerThunk() {
-    as.Bind(&invalidate_caller_thunk);
-
-    as.ADDI(sp, sp, -16);
-    // All block links set the return address in t5, and we collect it here
-    // The dispatcher itself sets t5 to 0 to signal that the jump comes from there
-    as.SD(t5, 0, sp);
-    // Contains the RISC-V PC of the block that gets invalidated
-    as.SD(ra, 8, sp);
-
-    // Call the invalidateAt function which will remove the block from the map
-    // when it's called and it will go back to the dispatcher, which will trigger a new compilation
-    writebackState();
-    as.MV(a0, Allocations::threadStatePointer());
-    as.LD(a1, 0, sp);
-    as.LD(a2, 8, sp);
-    as.ADDI(a2, a2, -4); // JALR links to instruction right after, go back 4 bytes
-    as.ADDI(sp, sp, 16);
-    call((u64)Recompiler::invalidateAt);
-    restoreState(); // TODO: instead, make a "backToDispatcherSkipWriteback" function and remove this restore
-    backToDispatcher(false, false, true);
-}
 
 // Note: This function is important. When we invalidate a block range, our choices are either iterate every block that links
 // to this block and unlink it, this is expensive both performance wise and memory wise, or we can instead insert a piece
@@ -620,10 +385,7 @@ void Recompiler::insertSafepoint() {
 }
 
 void Recompiler::loadRoundingMode(bool sse) {
-    biscuit::GPR rm = scratch();
-    as.LBU(rm, sse ? offsetof(ThreadState, ctx.rmode_sse) : offsetof(ThreadState, ctx.rmode_x87), Allocations::threadStatePointer());
-    as.FSRM(x0, rm);
-    popScratch();
+    CommonEmit::loadRoundingMode(as, compile_state.scratches, sse);
 }
 
 SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_end) {
@@ -1048,51 +810,36 @@ void Recompiler::compileInstruction(ZydisDecodedInstruction& instruction, ZydisD
 }
 
 biscuit::GPR Recompiler::scratch() {
-    ASSERT_MSG(compile_state.scratch_index != (int)scratch_gprs.size(), "Out of scratch registers while compiling %s",
-               disassemble_one(compile_state.mode32, compile_state.rip).c_str());
-    return scratch_gprs[compile_state.scratch_index++];
+    return compile_state.scratches.scratch();
 }
 
 biscuit::Vec Recompiler::scratchVec() {
-    ASSERT(compile_state.vector_scratch_index != (int)scratch_vec.size());
-    return scratch_vec[compile_state.vector_scratch_index++];
+    return compile_state.scratches.scratchVec();
 }
 
 biscuit::Vec Recompiler::scratchVecM2() {
-    if (scratch_vec[compile_state.vector_scratch_index].Index() % 2 != 0) {
-        compile_state.vector_scratch_index++;
-    }
-    ASSERT(compile_state.vector_scratch_index != (int)scratch_vec.size());
-    biscuit::Vec ret = scratch_vec[compile_state.vector_scratch_index++];
-    ASSERT(compile_state.vector_scratch_index != (int)scratch_vec.size());
-    ASSERT(ret.Index() % 2 == 0);
-    compile_state.vector_scratch_index++;
-    return ret;
+    return compile_state.scratches.scratchVecM2();
 }
 
 biscuit::FPR Recompiler::scratchFPR() {
-    ASSERT(compile_state.fpu_scratch_index != (int)scratch_fprs.size());
-    return scratch_fprs[compile_state.fpu_scratch_index++];
+    return compile_state.scratches.scratchFPR();
 }
 
 void Recompiler::popScratchVec() {
-    compile_state.vector_scratch_index--;
-    ASSERT(compile_state.vector_scratch_index >= 0);
+    compile_state.scratches.popScratchVec();
 }
 
 void Recompiler::popScratch() {
-    compile_state.scratch_index--;
-    ASSERT(compile_state.scratch_index >= 0);
+    biscuit::GPR freed = compile_state.scratches.popScratch();
 
-    if (scratch_gprs[compile_state.scratch_index] == compile_state.cached_lea) {
+    if (freed == compile_state.cached_lea) {
         compile_state.cached_lea = x0;
         compile_state.cached_lea_operand = nullptr;
     }
 }
 
 void Recompiler::popScratchFPR() {
-    compile_state.fpu_scratch_index--;
-    ASSERT(compile_state.fpu_scratch_index >= 0);
+    compile_state.scratches.popScratchFPR();
 }
 
 void Recompiler::resetBlockState(u64 rip) {
@@ -1120,9 +867,7 @@ void Recompiler::flushBlockState(u64 rip) {
 }
 
 void Recompiler::resetScratch() {
-    compile_state.scratch_index = 0;
-    compile_state.vector_scratch_index = 0;
-    compile_state.fpu_scratch_index = 0;
+    compile_state.scratches.resetScratch();
     compile_state.cached_lea = x0;
     compile_state.cached_lea_operand = nullptr;
 }
@@ -1512,7 +1257,7 @@ biscuit::GPR Recompiler::getGPRSigned(x86_ref_e ref, x86_size_e size, bool dont_
 }
 
 bool Recompiler::isDirty32(biscuit::GPR reg, x86_size_e size) {
-    return size == X86_SIZE_DWORD && compile_state.mode32 && !isScratch(reg);
+    return size == X86_SIZE_DWORD && compile_state.mode32 && !ScratchAllocator::isScratch(reg);
 }
 
 biscuit::GPR Recompiler::zextIfDirty32(biscuit::GPR reg, x86_size_e size) {
@@ -1573,7 +1318,7 @@ biscuit::Vec Recompiler::getVec(const ZydisDecodedOperand* operand) {
 
         readMemory(vec, address, operand->size);
 
-        if (isScratch(address)) {
+        if (ScratchAllocator::isScratch(address)) {
             popScratch(); // pop lea scratch
         }
 
@@ -2171,120 +1916,30 @@ void Recompiler::stopCompiling() {
 }
 
 void Recompiler::writebackState() {
-    int saved_scratch_index = compile_state.scratch_index;
+    const ScratchAllocator saved_scratches = compile_state.scratches;
     v0Modified();
     resetVectorState();
 
     flushPushpop();
     flushX87();
 
-    biscuit::GPR rip = Allocations::RIP();
-    as.SD(rip, offsetof(ThreadState, ctx.rip), Allocations::threadStatePointer());
-
-    for (int i = 0; i < 16; i++) {
-        x86_ref_e ref = (x86_ref_e)(X86_REF_RAX + i);
-        as.SD(Allocations::allocatedGPR(ref), offsetof(ThreadState, ctx.gprs) + i * sizeof(u64), Allocations::threadStatePointer());
-    }
-
-    biscuit::GPR address = scratch();
-
-    if (Extensions::VLEN == 256 && g_config.group_loadstore) {
-        static_assert(sizeof(XmmReg) == 256 / 8);
-        as.VSETVLI(address, x0, SEW::E64, LMUL::M8);
-        biscuit::Vec xmm0 = allocatedVec(X86_REF_XMM0);
-        biscuit::Vec xmm8 = allocatedVec(X86_REF_XMM8);
-        as.ADDI(address, Allocations::threadStatePointer(), offsetof(ThreadState, ctx.xmm) + 0 * sizeof(XmmReg));
-        as.VSE64(xmm0, address);
-        as.ADDI(address, Allocations::threadStatePointer(), offsetof(ThreadState, ctx.xmm) + 8 * sizeof(XmmReg));
-        as.VSE64(xmm8, address);
-        resetVectorState();
-    } else {
-        if (Extensions::VLEN >= 256) {
-            setVectorState(SEW::E64, 4);
-        } else {
-            ASSERT_MSG(g_config.no_avx && g_config.no_avx2, "AVX not disabled on VLEN=128 machine?");
-            setVectorState(SEW::E64, 2);
-        }
-        for (int i = 0; i < 16; i++) {
-            biscuit::Vec vec = allocatedVec((x86_ref_e)(X86_REF_XMM0 + i));
-            as.ADDI(address, Allocations::threadStatePointer(), offsetof(ThreadState, ctx.xmm) + i * sizeof(XmmReg));
-            as.VSE64(vec, address);
-        }
-    }
-
-    biscuit::GPR cf = Allocations::CF();
-    biscuit::GPR zf = Allocations::ZF();
-    biscuit::GPR sf = Allocations::SF();
-    biscuit::GPR of = Allocations::OF();
-
-    as.SB(cf, offsetof(ThreadState, ctx.cf), Allocations::threadStatePointer());
-    as.SB(zf, offsetof(ThreadState, ctx.zf), Allocations::threadStatePointer());
-    as.SB(sf, offsetof(ThreadState, ctx.sf), Allocations::threadStatePointer());
-    as.SB(of, offsetof(ThreadState, ctx.of), Allocations::threadStatePointer());
+    CommonEmit::writebackGuestState(as, compile_state.scratches);
 
     resetVectorState();
     compile_state.cached_lea_operand = nullptr;
-    compile_state.scratch_index = saved_scratch_index;
+    compile_state.scratches = saved_scratches;
 }
 
 void Recompiler::restoreState() {
-    int saved_scratch_index = compile_state.scratch_index;
+    const ScratchAllocator saved_scratches = compile_state.scratches;
     resetVectorState();
 
-    biscuit::GPR rip = Allocations::RIP();
-    as.LD(rip, offsetof(ThreadState, ctx.rip), Allocations::threadStatePointer());
-
-    for (int i = 0; i < 16; i++) {
-        x86_ref_e ref = (x86_ref_e)(X86_REF_RAX + i);
-        as.LD(Allocations::allocatedGPR(ref), offsetof(ThreadState, ctx.gprs) + i * sizeof(u64), Allocations::threadStatePointer());
-    }
-
-    biscuit::GPR address = scratch();
-
-    if (Extensions::VLEN == 256 && g_config.group_loadstore) {
-        static_assert(sizeof(XmmReg) == 256 / 8);
-        as.VSETVLI(address, x0, SEW::E64, LMUL::M8);
-        biscuit::Vec xmm0 = allocatedVec(X86_REF_XMM0);
-        biscuit::Vec xmm8 = allocatedVec(X86_REF_XMM8);
-        as.ADDI(address, Allocations::threadStatePointer(), offsetof(ThreadState, ctx.xmm) + 0 * sizeof(XmmReg));
-        as.VLE64(xmm0, address);
-        as.ADDI(address, Allocations::threadStatePointer(), offsetof(ThreadState, ctx.xmm) + 8 * sizeof(XmmReg));
-        as.VLE64(xmm8, address);
-        resetVectorState();
-    } else {
-        if (Extensions::VLEN >= 256) {
-            setVectorState(SEW::E64, 4);
-        } else {
-            setVectorState(SEW::E64, 2);
-        }
-        for (int i = 0; i < 16; i++) {
-            biscuit::Vec vec = allocatedVec((x86_ref_e)(X86_REF_XMM0 + i));
-            as.ADDI(address, Allocations::threadStatePointer(), offsetof(ThreadState, ctx.xmm) + sizeof(XmmReg) * i);
-            as.VLE64(vec, address);
-        }
-    }
-
-    popScratch();
-
-    biscuit::GPR cf = Allocations::CF();
-    biscuit::GPR zf = Allocations::ZF();
-    biscuit::GPR sf = Allocations::SF();
-    biscuit::GPR of = Allocations::OF();
-
-    as.LBU(cf, offsetof(ThreadState, ctx.cf), Allocations::threadStatePointer());
-    as.LBU(zf, offsetof(ThreadState, ctx.zf), Allocations::threadStatePointer());
-    as.LBU(sf, offsetof(ThreadState, ctx.sf), Allocations::threadStatePointer());
-    as.LBU(of, offsetof(ThreadState, ctx.of), Allocations::threadStatePointer());
-
-    // Restore the rounding mode
-    loadRoundingMode(compile_state.block_state.fsrm_sse);
-
-    as.FENCETSO();
+    CommonEmit::restoreGuestState(as, compile_state.scratches, compile_state.block_state.fsrm_sse);
 
     resetVectorState();
     compile_state.cached_lea_operand = nullptr;
     v0Modified();
-    compile_state.scratch_index = saved_scratch_index;
+    compile_state.scratches = saved_scratches;
 }
 
 void Recompiler::backToDispatcher(bool mode32, bool return_hint, bool skip_lookup) {
@@ -2304,14 +1959,14 @@ void Recompiler::backToDispatcher(bool mode32, bool return_hint, bool skip_looku
         ASSERT(IsValid2GBImm(offset));
         const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
         const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
-        ASSERT(isScratch(t6));
+        ASSERT(ScratchAllocator::isScratch(t6));
         as.AUIPC(t6, hi20);
         if (return_hint)
             as.JALR(x1, lo12, t6);
         else
             as.JALR(t5, lo12, t6); // t5 is used to mark a link location, see invalidateAt
     } else {
-        ASSERT(isScratch(t6));
+        ASSERT(ScratchAllocator::isScratch(t6));
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Winvalid-offsetof"
         int offset = mode32 ? offsetof(felix86_frame, compile_next_32_handler_ptr) : offsetof(felix86_frame, compile_next_handler_ptr);
@@ -3060,8 +2715,8 @@ void Recompiler::jumpAndLink(TaggedAddress address, bool return_link, bool skip_
             const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
             const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
 
-            ASSERT(isScratch(t4));
-            ASSERT(isScratch(t5));
+            ASSERT(ScratchAllocator::isScratch(t4));
+            ASSERT(ScratchAllocator::isScratch(t5));
             as.AUIPC(t4, hi20);
             if (return_link)
                 as.JALR(x1, lo12, t4);
@@ -3516,7 +3171,7 @@ std::pair<biscuit::GPR, bool> Recompiler::getCondNoInvert(int cond) {
 biscuit::GPR Recompiler::getCond(int cond) {
     auto [reg, needs_invert] = getCondNoInvert(cond);
     if (needs_invert) {
-        if (isScratch(reg)) {
+        if (ScratchAllocator::isScratch(reg)) {
             as.XORI(reg, reg, 1);
         } else {
             biscuit::GPR temp = scratch();
@@ -3971,8 +3626,8 @@ void Recompiler::patchBlockEntry(u64 host_address) {
     u32* address = (u32*)host_address;
     u32 storage;
     Assembler tas((u8*)&storage, 4);
-    static_assert(isScratch(t4));
-    static_assert(isScratch(ra));
+    static_assert(ScratchAllocator::isScratch(t4));
+    static_assert(ScratchAllocator::isScratch(ra));
     // It is important we use two compressed instructions here
     // Previously we would use two non-compressed instructions
     // But there's the scenario of one thread being about to run the second instruction
@@ -4180,52 +3835,7 @@ void Recompiler::switchToX87() {
 }
 
 void Recompiler::addressCacheLookup(biscuit::GPR guest_address, void on_hit(Assembler&, biscuit::GPR), bool mode32, bool use_ra) {
-    if (!use_ra) {
-        // Waste the ra scratch
-        (void)scratch();
-    }
-    biscuit::GPR host_address = use_ra ? x1 : scratch();
-    biscuit::GPR temp = scratch();
-    biscuit::GPR temp2 = scratch();
-    biscuit::GPR temp3;
-    biscuit::GPR tagged_address = guest_address;
-    if (mode32) {
-        temp3 = scratch();
-        as.NOT(temp3, guest_address);
-        tagged_address = temp3;
-    }
-    biscuit::Label not_equal;
-    i32 lo12 = 0;
-    u64 offset = -address_cache_offset;
-    const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
-    lo12 = static_cast<int32_t>(offset << 20) >> 20;
-    const bool lo12overflow = lo12 + 8 > 2047;
-    as.LUI(temp, hi20);
-    if (lo12overflow) {
-        as.ADDI(temp, temp, lo12);
-        lo12 = 0;
-    }
-    as.ADD(temp, temp, Allocations::threadStatePointer());
-    const i32 offset_guest = lo12 + 8;
-    const i32 offset_host = lo12;
-    as.SLLI(temp2, guest_address, 64 - address_cache_bits);
-    // Multiply by 16, which is size of each address cache entry
-    as.SRLI(temp2, temp2, 64 - address_cache_bits - 4);
-    as.ADD(temp, temp, temp2);
-    // Load even if branch fails is slightly better for fusion
-    as.LD(host_address, offset_host, temp);
-    as.LD(temp2, offset_guest, temp);
-    as.BNE(temp2, tagged_address, &not_equal);
-    as.MV(t5, x0); // zero out t5, see invalidate_caller_thunk
-    on_hit(as, host_address);
-    as.Bind(&not_equal);
-    popScratch();
-    popScratch();
-    if (!use_ra) {
-        popScratch();
-        popScratch();
-    }
-    if (mode32) {
-        popScratch();
-    }
+    CommonEmit::addressCacheLookup(as, compile_state.scratches, guest_address, on_hit, mode32, use_ra);
+    compile_state.cached_lea = x0;
+    compile_state.cached_lea_operand = nullptr;
 }

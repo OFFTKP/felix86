@@ -1,6 +1,10 @@
+#pragma once
+
 #include "felix86/common/types.hpp"
 
-struct Recompiler;
+namespace biscuit {
+class Assembler;
+}
 
 struct GuestPointers {
     const char* name;
@@ -10,9 +14,9 @@ struct GuestPointers {
 struct Thunks {
     static void initialize();
 
-    static void* generateTrampoline(Recompiler& rec, const char* name);
+    static void* generateTrampoline(bool relocatable, biscuit::Assembler& as, const char* name);
 
-    static void* generateTrampoline(Recompiler& rec, const char* name, const char* signature, u64 host_ptr);
+    static void* generateTrampoline(bool relocatable, biscuit::Assembler& as, const char* name, const char* signature, u64 host_ptr);
 
     static void runConstructor(const char* libname, GuestPointers* pointers);
 };
