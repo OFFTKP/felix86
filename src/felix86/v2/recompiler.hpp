@@ -59,6 +59,38 @@ struct AllocatedMMXReg {
     bool dirty = false;
 };
 
+struct X87RegCache {
+    std::array<AllocatedX87Reg, 8> x87{};
+    std::array<AllocatedMMXReg, 8> mmx{};
+
+    X87RegCache() {
+        for (int i = 0; i < 8; i++) {
+            x87[i].reg = biscuit::FPR(biscuit::ft0.Index() + i);
+            mmx[i].reg = biscuit::Vec(biscuit::v8.Index() + i);
+        }
+    }
+
+    void reset() {
+        for (int i = 0; i < 8; i++) {
+            x87[i].loaded = false;
+            x87[i].dirty = false;
+            x87[i].modify_tag = false;
+            x87[i].is32bit = false;
+            mmx[i].loaded = false;
+            mmx[i].dirty = false;
+        }
+    }
+
+    AllocatedX87Reg& loadedEntry(biscuit::FPR reg) {
+        for (auto& entry : x87) {
+            if (entry.loaded && entry.reg == reg) {
+                return entry;
+            }
+        }
+        UNREACHABLE();
+    }
+};
+
 enum class FlagMode {
     Default,
     AlwaysEmit,
@@ -72,12 +104,6 @@ enum class BranchCond {
     GEU,
     LT,
     GE,
-};
-
-enum class SingleStepMode : u8 {
-    None,
-    TrapFlag,
-    PtraceSinglestep,
 };
 
 // This struct is for indicating within a block at which points a register contains a value of a guest register,
@@ -142,6 +168,10 @@ struct CompileState {
     bool lock_handled = false;
     bool skip_next = false;
     int pushed_this_block = 0;
+
+    X87RegCache x87_cache{};
+
+    SingleStepMode single_step_mode = SingleStepMode::None;
 };
 
 // WARN: don't allocate this struct on the stack as it's quite big due to address_cache and can lead to stack overflow
@@ -317,12 +347,8 @@ struct Recompiler {
 
     int invalidateRange(u64 start, u64 end, InvalidationKind kind);
 
-    void setSingleStepMode(SingleStepMode mode) {
-        single_step = mode;
-    }
-
     bool isSingleStepping() const {
-        return g_config.single_step || single_step != SingleStepMode::None;
+        return g_config.single_step || compile_state.single_step_mode != SingleStepMode::None;
     }
 
     void setPendingCacheClear(ThreadState* state) {
@@ -358,7 +384,7 @@ struct Recompiler {
         }
         case X86_REF_MM0 ... X86_REF_MM7: {
             int index = reg - X86_REF_MM0;
-            AllocatedMMXReg& entry = mmx_reg_cache[index];
+            AllocatedMMXReg& entry = compile_state.x87_cache.mmx[index];
             if (entry.loaded) {
                 return entry.reg;
             }
@@ -695,59 +721,29 @@ struct Recompiler {
     void flushX87();
 
     void resetX87() {
-        for (int i = 0; i < 8; i++) {
-            x87_reg_cache[i].loaded = false;
-            x87_reg_cache[i].dirty = false;
-            x87_reg_cache[i].modify_tag = false;
-            x87_reg_cache[i].is32bit = false;
-            mmx_reg_cache[i].loaded = false;
-            mmx_reg_cache[i].dirty = false;
-        }
+        compile_state.x87_cache.reset();
         compile_state.pushed_this_block = 0;
         compile_state.deferred_fip = 0;
     }
 
     void markX87RegAs32Bit(biscuit::FPR reg) {
-        for (auto& entry : x87_reg_cache) {
-            if (entry.loaded && entry.reg == reg) {
-                entry.is32bit = true;
-                return;
-            }
-        }
-        UNREACHABLE();
+        compile_state.x87_cache.loadedEntry(reg).is32bit = true;
     }
 
     void markX87RegAs64Bit(biscuit::FPR reg) {
-        for (auto& entry : x87_reg_cache) {
-            if (entry.loaded && entry.reg == reg) {
-                if (entry.is32bit) {
-                    as.FCVT_D_S(reg, reg);
-                }
-                entry.is32bit = false;
-                return;
-            }
+        AllocatedX87Reg& entry = compile_state.x87_cache.loadedEntry(reg);
+        if (entry.is32bit) {
+            as.FCVT_D_S(reg, reg);
         }
-        UNREACHABLE();
+        entry.is32bit = false;
     }
 
     void setX87RegPrecision(biscuit::FPR reg, bool is32bit) {
-        for (auto& entry : x87_reg_cache) {
-            if (entry.loaded && entry.reg == reg) {
-                entry.is32bit = is32bit;
-                return;
-            }
-        }
-        UNREACHABLE();
+        compile_state.x87_cache.loadedEntry(reg).is32bit = is32bit;
     }
 
     bool isX87Reg32Bit(biscuit::FPR reg) {
-        for (auto& entry : x87_reg_cache) {
-            if (entry.loaded && entry.reg == reg) {
-                return entry.is32bit;
-            }
-        }
-        UNREACHABLE();
-        return false;
+        return compile_state.x87_cache.loadedEntry(reg).is32bit;
     }
 
     void switchToMMX();
@@ -853,7 +849,7 @@ private:
 
     std::array<std::pair<bool, u64>, 4> breakpoints;
 
-    CompileState compile_state;
+    CompileState compile_state{};
 
     /// Pointers to blocks to be linked. The top 7 bits are used to denote various flags
     // related to the block as a bitset.
@@ -865,11 +861,5 @@ private:
 
     int optimization_guard_counter = 0; // see OptimizationGuard
 
-    std::array<AllocatedX87Reg, 8> x87_reg_cache;
-
-    std::array<AllocatedMMXReg, 8> mmx_reg_cache;
-
     bool relocatable = false;
-
-    SingleStepMode single_step = SingleStepMode::None;
 };

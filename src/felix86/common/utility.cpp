@@ -1658,7 +1658,7 @@ void felix86_tf_changed(ThreadState* state, bool tf) {
         WARN("This program sets the trap flag");
     }
     state->SetFlag(X86_REF_TF, tf);
-    state->recompiler->setSingleStepMode(tf ? SingleStepMode::TrapFlag : SingleStepMode::None);
+    state->single_step_mode = tf ? SingleStepMode::TrapFlag : SingleStepMode::None;
     state->recompiler->setPendingCacheClear(state);
 }
 

@@ -1,5 +1,6 @@
 #include "felix86/common/frame.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/common/perf.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/v2/allocations.hpp"
@@ -230,7 +231,7 @@ static void emitDispatcherCore(biscuit::Assembler& as, CodeCachePointers& pointe
     as.J(&compile_next_skip_address_cache_label);
 }
 
-u8* Dispatcher::emitDispatcher(u8* buffer, u64 size, CodeCachePointers& pointers, bool relocatable) {
+void Dispatcher::emitDispatcher(u8* buffer, u64 size, CodeCachePointers& pointers, bool relocatable) {
     biscuit::Assembler as(buffer, size);
     u64 start = (u64)as.GetCursorPointer();
     emitInterruptibleSyscallThunk(as, pointers);
@@ -238,5 +239,9 @@ u8* Dispatcher::emitDispatcher(u8* buffer, u64 size, CodeCachePointers& pointers
     emitBadAddressThunks(as, pointers);
 
     flush_icache(start, (u64)as.GetCursorPointer());
-    return as.GetCursorPointer();
+    if (g_config.perf_blocks || g_config.perf_global || g_config.perf_libs || g_config.perf_jitdump) {
+        u64 size = (u64)as.GetCursorPointer() - (u64)pointers.enter_dispatcher;
+        g_process_globals.perf->addToFile((u64)pointers.enter_dispatcher, size, "felix86 dispatcher");
+        g_process_globals.perf->addCode((u64)pointers.enter_dispatcher, size, "felix86 dispatcher");
+    }
 }

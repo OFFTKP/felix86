@@ -20,7 +20,6 @@
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/common/volatile.hpp"
-#include "felix86/emulator.hpp"
 #include "felix86/hle/mmap.hpp"
 #include "felix86/hle/ptrace.hpp"
 #include "felix86/hle/syscall.hpp"
@@ -80,33 +79,11 @@ static bool is_stack_operand(const ZydisDecodedOperand& operand) {
 }
 
 Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
-    const u64 end_of_thunks =
-        (u64)Dispatcher::emitDispatcher(code_cache->getThunkArea(), CodeCache::thunk_area_size, code_cache->getPointers(), relocatable);
+    Dispatcher::emitDispatcher(code_cache->getThunkArea(), CodeCache::thunk_area_size, code_cache->getPointers(), relocatable);
 
     as = Assembler(code_cache->getBlockArea(), code_cache->getBlockAreaSize());
     if (g_config.auto_compress) {
         as.EnableOptimization(Optimization::AutoCompress);
-    }
-
-    if (g_config.always_flags || g_config.paranoid) {
-        flag_mode = FlagMode::AlwaysEmit;
-    }
-
-    const CodeCachePointers& pointers = code_cache->getPointers();
-    if (g_config.perf_blocks || g_config.perf_global || g_config.perf_libs || g_config.perf_jitdump) {
-        u64 size = end_of_thunks - (u64)pointers.enter_dispatcher;
-        g_process_globals.perf->addToFile((u64)pointers.enter_dispatcher, size, "felix86 dispatcher");
-        g_process_globals.perf->addCode((u64)pointers.enter_dispatcher, size, "felix86 dispatcher");
-    }
-
-    if (g_config.perf_global) {
-        u64 end_of_reservation = (u64)code_cache->getBlockArea() + code_cache->getBlockAreaSize();
-        g_process_globals.perf->addToFile(pointers.start_of_code_cache, end_of_reservation - pointers.start_of_code_cache, "felix86 code cache");
-    }
-
-    for (int i = 0; i < 8; i++) {
-        x87_reg_cache[i].reg = biscuit::FPR(biscuit::ft0.Index() + i);
-        mmx_reg_cache[i].reg = biscuit::Vec(biscuit::v8.Index() + i);
     }
 }
 
@@ -178,6 +155,7 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_
         bool return_hint = ((link_instruction >> 7) & 0x1f) == ra.Index();
         // Don't make the ret stub jump go to address cache, as it would jump to itself
         bool is_ret_stub = metadata.ret_stub == (u64)link_location;
+        state->recompiler->compile_state.single_step_mode = state->single_step_mode;
         state->recompiler->jumpAndLink(rip, mode32, return_hint, is_ret_stub);
         state->recompiler->as.SetCursorPointer(cursor);
         flush_icache((u64)link_location, (u64)link_location + 4096);
@@ -273,6 +251,8 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
     const TaggedAddress address = TaggedAddress::make(rip, mode32);
     u64 start;
 
+    compile_state.single_step_mode = state->single_step_mode;
+
     // Map it immediately so we can optimize conditional branch to self
 
     // A sequence of code (ie. basic block). This is so that we can also call it recursively later.
@@ -300,8 +280,9 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
     } while (result != SequenceResult::Compiled);
     compile_state.superblocks_disabled = false;
 
-    if (single_step == SingleStepMode::PtraceSinglestep) {
-        single_step = SingleStepMode::None;
+    if (state->single_step_mode == SingleStepMode::PtraceSinglestep) {
+        state->single_step_mode = SingleStepMode::None;
+        compile_state.single_step_mode = SingleStepMode::None;
     }
 
     u64 host_address_end = (u64)as.GetCursorPointer();
@@ -390,7 +371,7 @@ void Recompiler::loadRoundingMode(bool sse) {
 
 SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_end) {
     const u64 start_rip = rip;
-    const bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
+    const bool is_single_step = isSingleStepping();
     compile_state.compiling = true;
 
     // When invalidating from other threads we need to do it in a single atomic instruction, thus block starts
@@ -420,6 +401,10 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
         // how many bytes ahead to self-validate
         is_self_validating = scanAhead(rip);
         compile_state.block_self_validating = false;
+    }
+
+    if (g_config.always_flags || g_config.paranoid) {
+        setFlagMode(FlagMode::AlwaysEmit);
     }
 
     block_meta.misc_info.self_validating = is_self_validating;
@@ -523,7 +508,7 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
 
             if (is_mmx_operand(operands[0]) && operands[0].actions & ZYDIS_OPERAND_ACTION_WRITE) {
                 int index = operands[0].reg.value - ZYDIS_REGISTER_MM0;
-                mmx_reg_cache[index].dirty = true;
+                compile_state.x87_cache.mmx[index].dirty = true;
             }
         }
 
@@ -570,7 +555,7 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
 
         if (is_single_step && compile_state.compiling) {
             flushBlockState(rip);
-            if (single_step != SingleStepMode::None) {
+            if (compile_state.single_step_mode != SingleStepMode::None) {
                 as.SD(x0, 0, x0);
                 as.SLTIU(x0, x0, FELIX86_HINT_TF);
                 // Unreachable
@@ -674,23 +659,23 @@ void Recompiler::flushX87() {
     biscuit::FPR temp_fpr = scratchFPR();
     if (g_config.reduced_precision) {
         for (int i = 0; i < 8; i++) {
-            if (x87_reg_cache[i].dirty) {
+            if (compile_state.x87_cache.x87[i].dirty) {
                 if (!top_got) {
                     temp = scratch();
                     top = getTOP();
                     tag_word = scratch();
-                    if (x87_reg_cache[i].modify_tag) {
+                    if (compile_state.x87_cache.x87[i].modify_tag) {
                         as.LBU(tag_word, offsetof(ThreadState, ctx.fpu_tw), Allocations::threadStatePointer());
                         tag_dirty = true;
                     }
                     top_got = true;
                 }
-                ASSERT(x87_reg_cache[i].loaded);
+                ASSERT(compile_state.x87_cache.x87[i].loaded);
                 int index = i - compile_state.pushed_this_block;
                 as.ADDI(temp, top, index);
                 as.ANDI(temp, temp, 0b111);
 
-                if (x87_reg_cache[i].modify_tag) {
+                if (compile_state.x87_cache.x87[i].modify_tag) {
                     ASSERT(compile_state.pushed_this_block > 0);
                     ASSERT(tag_word != x0);
                     as.BSET(tag_word, tag_word, temp);
@@ -701,8 +686,8 @@ void Recompiler::flushX87() {
                 as.SLLI(temp, temp, 1);
                 static_assert(sizeof(ThreadState::ctx.st[0]) == sizeof(Float80) && sizeof(Float80) == 10);
                 as.ADD(temp, temp, Allocations::threadStatePointer());
-                biscuit::FPR value = x87_reg_cache[i].reg;
-                if (x87_reg_cache[i].is32bit) {
+                biscuit::FPR value = compile_state.x87_cache.x87[i].reg;
+                if (compile_state.x87_cache.x87[i].is32bit) {
                     as.FCVT_D_S(temp_fpr, value);
                     value = temp_fpr;
                 }
@@ -720,14 +705,14 @@ void Recompiler::flushX87() {
     }
 
     for (int i = 0; i < 8; i++) {
-        if (mmx_reg_cache[i].dirty) {
+        if (compile_state.x87_cache.mmx[i].dirty) {
             ASSERT(!x87_dirty);
-            ASSERT(mmx_reg_cache[i].loaded);
+            ASSERT(compile_state.x87_cache.mmx[i].loaded);
             if (temp == x0) {
                 temp = scratch();
             }
             setVectorState(SEW::E64, 1);
-            biscuit::Vec vec = mmx_reg_cache[i].reg;
+            biscuit::Vec vec = compile_state.x87_cache.mmx[i].reg;
             as.ADDI(temp, Allocations::threadStatePointer(), offsetof(ThreadState, ctx.st) + i * sizeof(Float80));
             as.VSE64(vec, temp);
             as.LI(temp, -1);
@@ -1574,7 +1559,7 @@ void Recompiler::setVec(x86_ref_e ref, biscuit::Vec vec) {
     biscuit::Vec dest = allocatedVec(ref);
 
     if (isMM(ref)) {
-        mmx_reg_cache[ref - X86_REF_MM0].loaded = true;
+        compile_state.x87_cache.mmx[ref - X86_REF_MM0].loaded = true;
     }
 
     if (dest != vec) {
@@ -1944,7 +1929,7 @@ void Recompiler::restoreState() {
 
 void Recompiler::backToDispatcher(bool mode32, bool return_hint, bool skip_lookup) {
     OptimizationGuard guard(as, optimization_guard_counter);
-    const bool is_single_step = single_step != SingleStepMode::None;
+    const bool is_single_step = compile_state.single_step_mode != SingleStepMode::None;
     const CodeCachePointers& pointers = code_cache->getPointers();
     const u64 compile_next = mode32 ? pointers.compile_next_32 : pointers.compile_next;
     const u64 handler = skip_lookup ? pointers.compile_next_skip_address_cache : compile_next;
@@ -2111,7 +2096,7 @@ u32 Recompiler::scanLandingBlock(ThreadState* state, u64 initial_rip, u64 rip_ah
 
 bool Recompiler::scanAhead(u64 rip) {
     compile_state.block_big = false;
-    bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
+    bool is_single_step = isSingleStepping();
     u64 initial_rip = rip;
     u64 lowest_rip_write = UINT64_MAX;
     compile_state.instructions.clear();
@@ -2675,7 +2660,7 @@ void Recompiler::jumpAndLink(u64 rip, bool mode32, bool return_link, bool skip_l
 void Recompiler::jumpAndLink(TaggedAddress address, bool return_link, bool skip_lookup) {
     OptimizationGuard guard(as, optimization_guard_counter);
     const bool mode32 = address.mode32();
-    const bool is_single_step = g_config.single_step || single_step != SingleStepMode::None;
+    const bool is_single_step = isSingleStepping();
     if (is_single_step || relocatable) {
         // Just emit jump to dispatcher
         backToDispatcher(mode32, return_link, skip_lookup);
@@ -3463,8 +3448,8 @@ biscuit::GPR Recompiler::getTOP() {
 }
 
 biscuit::FPR Recompiler::getST(int index, bool dirty, bool convert_to_64_bit) {
-    if (x87_reg_cache[index].loaded) {
-        biscuit::FPR reg = x87_reg_cache[index].reg;
+    if (compile_state.x87_cache.x87[index].loaded) {
+        biscuit::FPR reg = compile_state.x87_cache.x87[index].reg;
         if (g_config.reduced_precision >= 2 && convert_to_64_bit) {
             markX87RegAs64Bit(reg);
         }
@@ -3487,14 +3472,14 @@ biscuit::FPR Recompiler::getST(int index, bool dirty, bool convert_to_64_bit) {
     as.SLLI(top, top, 1);
     static_assert(sizeof(ThreadState::ctx.st[0]) == sizeof(Float80) && sizeof(Float80) == 10);
     as.ADD(address, top, Allocations::threadStatePointer());
-    as.FLD(x87_reg_cache[index].reg, offsetof(ThreadState, ctx.st), address);
+    as.FLD(compile_state.x87_cache.x87[index].reg, offsetof(ThreadState, ctx.st), address);
 
     popScratch();
     popScratch();
 
-    x87_reg_cache[index].loaded = true;
-    x87_reg_cache[index].dirty = dirty;
-    return x87_reg_cache[index].reg;
+    compile_state.x87_cache.x87[index].loaded = true;
+    compile_state.x87_cache.x87[index].dirty = dirty;
+    return compile_state.x87_cache.x87[index].reg;
 }
 
 biscuit::FPR Recompiler::getST(ZydisDecodedOperand* operand, bool dirty, bool convert_to_64_bit) {
@@ -3754,26 +3739,18 @@ void Recompiler::invalidateRangeGlobal(u64 start, u64 end, const char* reason, I
 }
 
 biscuit::FPR Recompiler::pushX87() {
-    if (x87_reg_cache[7].loaded) {
+    if (compile_state.x87_cache.x87[7].loaded) {
         WARN("Pushing while ST7 was previously used in block");
     }
 
-    AllocatedX87Reg temp = x87_reg_cache[7];
-    x87_reg_cache[7] = x87_reg_cache[6];
-    x87_reg_cache[6] = x87_reg_cache[5];
-    x87_reg_cache[5] = x87_reg_cache[4];
-    x87_reg_cache[4] = x87_reg_cache[3];
-    x87_reg_cache[3] = x87_reg_cache[2];
-    x87_reg_cache[2] = x87_reg_cache[1];
-    x87_reg_cache[1] = x87_reg_cache[0];
-    x87_reg_cache[0] = temp;
+    std::rotate(compile_state.x87_cache.x87.begin(), compile_state.x87_cache.x87.end() - 1, compile_state.x87_cache.x87.end());
 
     compile_state.pushed_this_block++;
-    x87_reg_cache[0].loaded = true;
-    x87_reg_cache[0].dirty = true;
-    x87_reg_cache[0].modify_tag = true;
-    x87_reg_cache[0].is32bit = false;
-    return x87_reg_cache[0].reg;
+    compile_state.x87_cache.x87[0].loaded = true;
+    compile_state.x87_cache.x87[0].dirty = true;
+    compile_state.x87_cache.x87[0].modify_tag = true;
+    compile_state.x87_cache.x87[0].is32bit = false;
+    return compile_state.x87_cache.x87[0].reg;
 }
 
 void Recompiler::popX87() {
@@ -3796,20 +3773,12 @@ void Recompiler::popX87() {
         popScratch();
     }
 
-    x87_reg_cache[0].loaded = false;
-    x87_reg_cache[0].dirty = false;
-    x87_reg_cache[0].modify_tag = false;
-    x87_reg_cache[0].is32bit = false;
+    compile_state.x87_cache.x87[0].loaded = false;
+    compile_state.x87_cache.x87[0].dirty = false;
+    compile_state.x87_cache.x87[0].modify_tag = false;
+    compile_state.x87_cache.x87[0].is32bit = false;
 
-    AllocatedX87Reg temp = x87_reg_cache[0];
-    x87_reg_cache[0] = x87_reg_cache[1];
-    x87_reg_cache[1] = x87_reg_cache[2];
-    x87_reg_cache[2] = x87_reg_cache[3];
-    x87_reg_cache[3] = x87_reg_cache[4];
-    x87_reg_cache[4] = x87_reg_cache[5];
-    x87_reg_cache[5] = x87_reg_cache[6];
-    x87_reg_cache[6] = x87_reg_cache[7];
-    x87_reg_cache[7] = temp;
+    std::rotate(compile_state.x87_cache.x87.begin(), compile_state.x87_cache.x87.begin() + 1, compile_state.x87_cache.x87.end());
 }
 
 // Move from x87 registers to MMX registers and switch the x87_state flag

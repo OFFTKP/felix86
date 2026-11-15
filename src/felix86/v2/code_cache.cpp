@@ -5,6 +5,7 @@
 #include <sys/mman.h>
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/common/perf.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/v2/code_cache.hpp"
 
@@ -63,6 +64,12 @@ CodeCache::CodeCache() {
     int result = madvise(address, total_size, MADV_HUGEPAGE);
     if (result != 0) {
         WARN("Failed to set MADV_HUGEPAGE for code cache");
+    }
+
+    if (g_config.perf_global) {
+        std::string name = "felix86 code cache " + std::to_string(gettid());
+        u64 end_of_reservation = (u64)getBlockArea() + getBlockAreaSize();
+        g_process_globals.perf->addToFile(pointers.start_of_code_cache, end_of_reservation - pointers.start_of_code_cache, name);
     }
 }
 

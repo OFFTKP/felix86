@@ -5,5 +5,5 @@
 struct CodeCachePointers;
 
 struct Dispatcher {
-    static u8* emitDispatcher(u8* buffer, u64 size, CodeCachePointers& pointers, bool relocatable);
+    static void emitDispatcher(u8* buffer, u64 size, CodeCachePointers& pointers, bool relocatable);
 };
