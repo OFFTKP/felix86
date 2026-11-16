@@ -1565,8 +1565,17 @@ std::string felix86_mountinfo() {
         std::string path1s = path1;
         std::string path2s = path2;
         for (auto& mount_path : g_process_globals.mount_paths) {
-            replaceOne(path1s, mount_path, "");
-            replaceOne(path2s, mount_path, "");
+            if (path1s == mount_path.string()) {
+                path1s = "/";
+            } else {
+                replaceOne(path1s, mount_path, "");
+            }
+
+            if (path2s == mount_path.string()) {
+                path2s = "/";
+            } else {
+                replaceOne(path2s, mount_path, "");
+            }
         }
 
         rv += fmt::format("{} {} {} {} {}{}\n", nid, nid2, devid, path1s, path2s, line.substr(pos));
