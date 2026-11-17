@@ -6,10 +6,10 @@
 
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
 #include <biscuit/assembler.hpp>
 #include <biscuit/registers.hpp>
+#include <cstddef>
+#include <cstdint>
 
 namespace biscuit {
 
