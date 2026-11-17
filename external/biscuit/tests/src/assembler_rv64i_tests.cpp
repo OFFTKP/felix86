@@ -173,13 +173,13 @@ TEST_CASE("LI (RV64)", "[rv64i]") {
     as.RewindBuffer();
     vals = {};
 
-    ///////// LUI+ADDIW+SLLI cases
+    ///////// ADDI+SRLI+SLLI cases
 
     as.LI(x1, 0x7FFFFFFF0000ULL);
-    // lui x1, -524288
-    // addiw x1, x1, -1
+    // addi x1, x0, -1
+    // srli x1, x1, 33
     // slli x1, x1, 16
-    compare_vals(0x800000B7U, 0xFFF0809BU, 0x01009093U, 0x000000000U);
+    compare_vals(0xFFF00093U, 0x0210D093U, 0x01009093U, 0x000000000U);
     as.RewindBuffer();
     vals = {};
 

@@ -412,7 +412,51 @@ void Assembler::LHU(GPR rd, int32_t imm, GPR rs) noexcept {
     EmitIType(m_buffer, static_cast<uint32_t>(imm), rs, 0b101, rd, 0b0000011);
 }
 
+uint32_t Assembler::LIDefaultCount(uint64_t imm) noexcept {
+    std::array<uint8_t, 8 * sizeof(uint32_t)> buffer{};
+    Assembler counter(buffer.data(), buffer.size(), ArchFeature::RV64);
+    counter.LIDefault(x1, imm);
+    return static_cast<uint32_t>(counter.GetCodeBuffer().GetSizeInBytes() / sizeof(uint32_t));
+}
+
 void Assembler::LI(GPR rd, uint64_t imm) noexcept {
+    if (!IsRV32(m_features) && rd != x0) {
+        bool use_bit_manip = IsOptimizationEnabled(Optimization::UseBitManipulation);
+        if (use_bit_manip && std::has_single_bit(imm)) {
+            BSETI(rd, zero, static_cast<uint32_t>(std::countr_zero(imm)));
+            return;
+        }
+        const uint64_t sext_imm = static_cast<uint64_t>(static_cast<int32_t>(imm));
+        // These can be constructed in 2 instructions, so don't count in that case
+        const bool is_sext32 = sext_imm == imm;
+        if (!is_sext32 && LIDefaultCount(imm) >= 3) {
+            const bool is_zext32 = (imm >> 32) == 0;
+            if (use_bit_manip && is_zext32) {
+                LI(rd, sext_imm);
+                ZEXTW(rd, rd);
+                return;
+            }
+            const uint32_t trailing_zeros = static_cast<uint32_t>(std::countr_zero(imm));
+            const uint64_t ones = imm >> trailing_zeros;
+            const bool is_mask = (ones & (ones + 1)) == 0;
+            if (is_mask) {
+                const uint32_t leading_zeros = static_cast<uint32_t>(std::countl_zero(ones));
+                ADDI(rd, zero, -1);
+                if (leading_zeros != 0) {
+                    SRLI(rd, rd, leading_zeros);
+                }
+                if (trailing_zeros != 0) {
+                    SLLI(rd, rd, trailing_zeros);
+                }
+                return;
+            }
+        }
+    }
+
+    LIDefault(rd, imm);
+}
+
+void Assembler::LIDefault(GPR rd, uint64_t imm) noexcept {
     if (IsRV32(m_features)) {
         // Depending on imm, the following instructions are emitted.
         // hi20 == 0              -> ADDI

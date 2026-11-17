@@ -374,7 +374,7 @@ static void getFusedOperands(Recompiler& rec, Assembler& as, ZydisDecodedOperand
 
         if (is_sub) {
             biscuit::GPR original = lhs;
-            if (!Recompiler::isScratch(lhs)) {
+            if (!ScratchAllocator::isScratch(lhs)) {
                 biscuit::GPR copy = rec.scratch();
                 as.MV(copy, lhs);
                 lhs = copy;
@@ -613,7 +613,7 @@ static bool AttemptSetccCmovFusing(Recompiler& rec, u64 rip, Assembler& as, Zydi
         }
         value = cond;
         inverted = false;
-    } else if (Recompiler::isScratch(value) && value != cond) {
+    } else if (ScratchAllocator::isScratch(value) && value != cond) {
         as.MV(cond, value);
         value = cond;
     }
@@ -1455,6 +1455,43 @@ FAST_HANDLE(SUB) {
 }
 
 FAST_HANDLE(SBB) {
+    bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
+    bool needs_af = rec.shouldEmitFlag(rip, X86_REF_AF);
+    bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
+    bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
+    bool needs_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
+    bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
+
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER &&
+        operands[0].reg.value == operands[1].reg.value && (operands[0].size == 32 || operands[0].size == 64)) {
+        biscuit::GPR result = rec.getGPR(&operands[0], X86_SIZE_QWORD);
+        biscuit::GPR cf = rec.flag(X86_REF_CF);
+
+        if (needs_pf) {
+            rec.setFlag(X86_REF_PF);
+        }
+
+        if (needs_af) {
+            as.SB(cf, offsetof(ThreadState, ctx.af), Allocations::threadStatePointer());
+        }
+
+        if (needs_of) {
+            rec.clearFlag(X86_REF_OF);
+        }
+
+        if (needs_zf) {
+            as.XORI(rec.flag(X86_REF_ZF), cf, 1);
+        }
+
+        if (needs_sf) {
+            as.MV(rec.flag(X86_REF_SF), cf);
+        }
+
+        as.NEG(result, cf);
+        rec.setGPR(&operands[0], result);
+        return;
+    }
+
     biscuit::GPR result = rec.scratch();
     biscuit::GPR result_2 = rec.scratch();
     biscuit::GPR src = rec.getGPR(&operands[1]);
@@ -1465,15 +1502,15 @@ FAST_HANDLE(SBB) {
     as.SUB(result, dst, src);
     as.SUB(result_2, result, cf);
 
-    if (rec.shouldEmitFlag(rip, X86_REF_PF)) {
+    if (needs_pf) {
         rec.updateParity(result_2);
     }
 
-    if (rec.shouldEmitFlag(rip, X86_REF_AF)) {
+    if (needs_af) {
         rec.updateAuxiliarySbb(dst, src, result_2);
     }
 
-    if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
+    if (needs_cf) {
         biscuit::GPR scratch = rec.scratch();
         biscuit::GPR cf = rec.flag(X86_REF_CF);
         rec.zext(scratch, result, size);
@@ -1489,15 +1526,15 @@ FAST_HANDLE(SBB) {
         rec.popScratch();
     }
 
-    if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
+    if (needs_of) {
         rec.updateOverflowSbb(dst, src, result_2, size);
     }
 
-    if (rec.shouldEmitFlag(rip, X86_REF_ZF)) {
+    if (needs_zf) {
         rec.updateZero(result_2, size);
     }
 
-    if (rec.shouldEmitFlag(rip, X86_REF_SF)) {
+    if (needs_sf) {
         rec.updateSign(result_2, size);
     }
 
@@ -3339,14 +3376,14 @@ FAST_HANDLE(SAR) {
     switch (size) {
     case X86_SIZE_BYTE:
     case X86_SIZE_BYTE_HIGH: {
-        ASSERT(Recompiler::isScratch(dst));
+        ASSERT(ScratchAllocator::isScratch(dst));
         as.SLLI(dst, dst, 56);
         as.SRAI(dst, dst, 56);
         as.SRA(result, dst, count);
         break;
     }
     case X86_SIZE_WORD: {
-        ASSERT(Recompiler::isScratch(dst));
+        ASSERT(ScratchAllocator::isScratch(dst));
         as.SLLI(dst, dst, 48);
         as.SRAI(dst, dst, 48);
         as.SRA(result, dst, count);
@@ -14521,7 +14558,7 @@ FAST_HANDLE(INVLPG) {
         ASSERT(name_size > 0);
         VERBOSE("Generating trampoline for %s", name);
         rec.writebackState();
-        void* trampoline = Thunks::generateTrampoline(rec, name);
+        void* trampoline = Thunks::generateTrampoline(rec.isRelocatable(), as, name);
         ASSERT_MSG(trampoline != nullptr, "Failed to install trampoline for \"%s\" (%lx)", name, (u64)name);
         rec.restoreState();
         rip += name_size + 1; // also skip null byte
@@ -14539,7 +14576,7 @@ FAST_HANDLE(INVLPG) {
         size_t name_size = strlen(name);
         VERBOSE("Generating trampoline for %lx (%s %s)", address, name, signature);
         rec.writebackState();
-        void* trampoline = Thunks::generateTrampoline(rec, name, signature, address);
+        void* trampoline = Thunks::generateTrampoline(rec.isRelocatable(), as, name, signature, address);
         ASSERT_MSG(trampoline != nullptr, "Failed to install trampoline for %lx", address);
         rec.restoreState();
         rip += 8 + signature_size + 1 + name_size + 1; // also skip null bytes

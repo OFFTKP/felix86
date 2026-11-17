@@ -1951,8 +1951,7 @@ void felix86_syscall(felix86_frame* frame) {
     ASSERT(frame->magic == felix86_frame::expected_magic);
     ThreadState* state = frame->state;
     bool mode32 = state->ctx.Mode32();
-    state->restart_syscall_always = false;
-    state->restart_syscall_if_sa_restart = false;
+    state->syscall_restart = SyscallRestart::None;
     u64 syscall_number = state->GetGpr(X86_REF_RAX);
     state->ctx.orig_rax = syscall_number;
     u64 args[6];
@@ -2000,7 +1999,7 @@ void felix86_syscall(felix86_frame* frame) {
     case felix86_x86_64_fcntl:
     case felix86_x86_64_splice:
     case felix86_x86_64_sendfile: {
-        state->in_restartable_syscall = true;
+        state->syscall_restart = SyscallRestart::Restartable;
         break;
     }
     default: {
@@ -2275,13 +2274,14 @@ void felix86_syscall(felix86_frame* frame) {
     }
 
     if (result == -FELIX86_ERESTARTNOINTR) {
-        state->restart_syscall_always = true;
+        state->syscall_restart = SyscallRestart::RestartAlways;
         result = -EINTR;
-    } else if (state->in_restartable_syscall && result == -EINTR) {
-        state->restart_syscall_if_sa_restart = true;
+    } else if (state->syscall_restart == SyscallRestart::Restartable && result == -EINTR) {
+        state->syscall_restart = SyscallRestart::RestartIfSaRestart;
+    } else {
+        state->syscall_restart = SyscallRestart::None;
     }
-    state->in_restartable_syscall = false;
-    if (state->restart_syscall_always || state->restart_syscall_if_sa_restart) {
+    if (state->syscall_restart != SyscallRestart::None) {
         state->ctx.orig_rax = syscall_number;
     }
 
@@ -2325,8 +2325,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
     if (!mode32) {
         WARN("Executing 32-bit syscall %lu on 64-bit process", syscall_number);
     }
-    state->restart_syscall_always = false;
-    state->restart_syscall_if_sa_restart = false;
+    state->syscall_restart = SyscallRestart::None;
     state->ctx.orig_rax = syscall_number;
     u64 args[6];
     read_syscall_args(state, syscall32_arg_regs, args);
@@ -2382,7 +2381,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
     case felix86_x86_32_splice:
     case felix86_x86_32_sendfile:
     case felix86_x86_32_sendfile64: {
-        state->in_restartable_syscall = true;
+        state->syscall_restart = SyscallRestart::Restartable;
         break;
     }
     case felix86_x86_32_socketcall: {
@@ -2398,7 +2397,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         case SYS_ACCEPT4:
         case SYS_RECVMMSG:
         case SYS_SENDMMSG: {
-            state->in_restartable_syscall = true;
+            state->syscall_restart = SyscallRestart::Restartable;
             break;
         }
         default: {
@@ -3697,13 +3696,14 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
     }
 
     if (result == -FELIX86_ERESTARTNOINTR) {
-        state->restart_syscall_always = true;
+        state->syscall_restart = SyscallRestart::RestartAlways;
         result = -EINTR;
-    } else if (state->in_restartable_syscall && result == -EINTR) {
-        state->restart_syscall_if_sa_restart = true;
+    } else if (state->syscall_restart == SyscallRestart::Restartable && result == -EINTR) {
+        state->syscall_restart = SyscallRestart::RestartIfSaRestart;
+    } else {
+        state->syscall_restart = SyscallRestart::None;
     }
-    state->in_restartable_syscall = false;
-    if (state->restart_syscall_always || state->restart_syscall_if_sa_restart) {
+    if (state->syscall_restart != SyscallRestart::None) {
         state->ctx.orig_rax = syscall_number;
     }
 

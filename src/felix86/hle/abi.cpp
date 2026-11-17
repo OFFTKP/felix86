@@ -297,7 +297,7 @@ void GuestToHostMarshaller::emitPrologue(biscuit::Assembler& as) {
             if (marshalling.riscv.type == riscv_location::stack) {
                 dest_reg = x7;
                 is_stack = true;
-                static_assert(Recompiler::isScratch(x7));
+                static_assert(ScratchAllocator::isScratch(x7));
             } else {
                 dest_reg = biscuit::GPR(marshalling.riscv.value.reg_index);
             }

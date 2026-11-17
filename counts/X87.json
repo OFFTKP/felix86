@@ -76,7 +76,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fadd st3, st0"
     },
@@ -157,7 +157,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fadd st0, st3"
     },
@@ -233,7 +233,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fadd [rdi]"
     },
@@ -309,7 +309,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fadd [rdi]"
     },
@@ -390,7 +390,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "faddp st3, st0"
     },
@@ -466,7 +466,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fiadd [rdi]"
     },
@@ -542,7 +542,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fiadd [rdi]"
     },
@@ -623,7 +623,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fsub st3, st0"
     },
@@ -704,7 +704,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fsub st0, st3"
     },
@@ -780,7 +780,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fsub [rdi]"
     },
@@ -856,7 +856,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fsub [rdi]"
     },
@@ -937,7 +937,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fsubp st3, st0"
     },
@@ -1013,7 +1013,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fisub [rdi]"
     },
@@ -1089,7 +1089,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fisub [rdi]"
     },
@@ -1170,7 +1170,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fsubr st3, st0"
     },
@@ -1251,7 +1251,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fsubr st0, st3"
     },
@@ -1327,7 +1327,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fsubr [rdi]"
     },
@@ -1403,7 +1403,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fsubr [rdi]"
     },
@@ -1484,7 +1484,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fsubrp st3, st0"
     },
@@ -1560,7 +1560,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fisubr [rdi]"
     },
@@ -1636,7 +1636,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fisubr [rdi]"
     },
@@ -1717,7 +1717,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fmul st3, st0"
     },
@@ -1798,7 +1798,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fmul st0, st3"
     },
@@ -1874,7 +1874,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fmul [rdi]"
     },
@@ -1950,7 +1950,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fmul [rdi]"
     },
@@ -2031,7 +2031,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fmulp st3, st0"
     },
@@ -2107,7 +2107,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fimul [rdi]"
     },
@@ -2183,7 +2183,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fimul [rdi]"
     },
@@ -2264,7 +2264,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fdiv st3, st0"
     },
@@ -2345,7 +2345,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fdiv st0, st3"
     },
@@ -2421,7 +2421,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fdiv [rdi]"
     },
@@ -2497,7 +2497,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fdiv [rdi]"
     },
@@ -2578,7 +2578,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fdivp st3, st0"
     },
@@ -2654,7 +2654,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fidiv [rdi]"
     },
@@ -2730,7 +2730,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fidiv [rdi]"
     },
@@ -2811,7 +2811,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fdivr st3, st0"
     },
@@ -2892,7 +2892,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fdivr st0, st3"
     },
@@ -2968,7 +2968,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fdivr [rdi]"
     },
@@ -3044,7 +3044,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fdivr [rdi]"
     },
@@ -3125,7 +3125,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fdivrp st3, st0"
     },
@@ -3201,7 +3201,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fidivr [rdi]"
     },
@@ -3277,7 +3277,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fidivr [rdi]"
     },
@@ -3358,7 +3358,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fcomi st0, st3"
     },
@@ -3439,7 +3439,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fcomip st0, st3"
     },
@@ -3520,7 +3520,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fucomi st0, st3"
     },
@@ -3601,7 +3601,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fucomip st0, st3"
     },
@@ -3670,7 +3670,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fist [rdi]"
     },
@@ -3739,7 +3739,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fist [rdi]"
     },
@@ -3808,7 +3808,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fistp [rdi]"
     },
@@ -3877,7 +3877,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fistp [rdi]"
     },
@@ -3946,7 +3946,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fistp [rdi]"
     },
@@ -4015,7 +4015,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fisttp [rdi]"
     },
@@ -4084,7 +4084,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fisttp [rdi]"
     },
@@ -4153,7 +4153,7 @@
             "CSRRW           zero, t1, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fisttp [rdi]"
     },
@@ -4219,7 +4219,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fabs"
     },
@@ -4285,7 +4285,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fsin"
     },
@@ -4351,7 +4351,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fcos"
     },
@@ -4417,7 +4417,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fld1"
     },
@@ -4483,7 +4483,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fldl2t"
     },
@@ -4549,7 +4549,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fldl2e"
     },
@@ -4615,7 +4615,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fldpi"
     },
@@ -4681,7 +4681,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fldlg2"
     },
@@ -4747,7 +4747,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fldln2"
     },
@@ -4813,7 +4813,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fldz"
     },
@@ -4879,7 +4879,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fchs"
     },
@@ -4945,7 +4945,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "frndint"
     },
@@ -5011,7 +5011,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fprem"
     },
@@ -5077,7 +5077,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fsqrt"
     },
@@ -5158,7 +5158,7 @@
             "CSRRW           zero, ra, 0x2(2)",
             "FENCE          ",
             "ADDI            rip, rip, 0x2(2)",
-            "SD              zero, state, 0xfffffff8(-8)"
+            "LD              zero, state, 0xfffffff8(-8)"
         ],
         "disassembly": "fxch st3"
     },

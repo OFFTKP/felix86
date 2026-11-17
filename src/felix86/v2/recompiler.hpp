@@ -17,6 +17,7 @@
 #include "felix86/common/zydis_types.hpp"
 #include "felix86/v2/allocations.hpp"
 #include "felix86/v2/code_cache.hpp"
+#include "felix86/v2/scratch_allocator.hpp"
 
 #define FELIX86_HINT_SAFEPOINT_SYSCALL 0xa5
 #define FELIX86_HINT_GP 0x86
@@ -58,6 +59,38 @@ struct AllocatedMMXReg {
     bool dirty = false;
 };
 
+struct X87RegCache {
+    std::array<AllocatedX87Reg, 8> x87{};
+    std::array<AllocatedMMXReg, 8> mmx{};
+
+    X87RegCache() {
+        for (int i = 0; i < 8; i++) {
+            x87[i].reg = biscuit::FPR(biscuit::ft0.Index() + i);
+            mmx[i].reg = biscuit::Vec(biscuit::v8.Index() + i);
+        }
+    }
+
+    void reset() {
+        for (int i = 0; i < 8; i++) {
+            x87[i].loaded = false;
+            x87[i].dirty = false;
+            x87[i].modify_tag = false;
+            x87[i].is32bit = false;
+            mmx[i].loaded = false;
+            mmx[i].dirty = false;
+        }
+    }
+
+    AllocatedX87Reg& loadedEntry(biscuit::FPR reg) {
+        for (auto& entry : x87) {
+            if (entry.loaded && entry.reg == reg) {
+                return entry;
+            }
+        }
+        UNREACHABLE();
+    }
+};
+
 enum class FlagMode {
     Default,
     AlwaysEmit,
@@ -71,12 +104,6 @@ enum class BranchCond {
     GEU,
     LT,
     GE,
-};
-
-enum class SingleStepMode : u8 {
-    None,
-    TrapFlag,
-    PtraceSinglestep,
 };
 
 // This struct is for indicating within a block at which points a register contains a value of a guest register,
@@ -111,9 +138,7 @@ struct CompileState {
 
     BlockState block_state;
 
-    int scratch_index = 0;
-    int vector_scratch_index = 0;
-    int fpu_scratch_index = 0;
+    ScratchAllocator scratches;
 
     std::vector<InstructionData> instructions;
     ZydisDecodedInstruction* instruction{};
@@ -143,6 +168,10 @@ struct CompileState {
     bool lock_handled = false;
     bool skip_next = false;
     int pushed_this_block = 0;
+
+    X87RegCache x87_cache{};
+
+    SingleStepMode single_step_mode = SingleStepMode::None;
 };
 
 // WARN: don't allocate this struct on the stack as it's quite big due to address_cache and can lead to stack overflow
@@ -172,14 +201,6 @@ struct Recompiler {
     biscuit::FPR scratchFPR();
 
     ZydisMnemonic decode(u64 rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, bool ok_to_fail = false);
-
-    constexpr static bool isScratch(biscuit::GPR reg) {
-        if (std::find(scratch_gprs.begin(), scratch_gprs.end(), reg) != scratch_gprs.end()) {
-            return true;
-        }
-
-        return false;
-    }
 
     void popScratch();
 
@@ -326,12 +347,8 @@ struct Recompiler {
 
     int invalidateRange(u64 start, u64 end, InvalidationKind kind);
 
-    void setSingleStepMode(SingleStepMode mode) {
-        single_step = mode;
-    }
-
     bool isSingleStepping() const {
-        return g_config.single_step || single_step != SingleStepMode::None;
+        return g_config.single_step || compile_state.single_step_mode != SingleStepMode::None;
     }
 
     void setPendingCacheClear(ThreadState* state) {
@@ -367,7 +384,7 @@ struct Recompiler {
         }
         case X86_REF_MM0 ... X86_REF_MM7: {
             int index = reg - X86_REF_MM0;
-            AllocatedMMXReg& entry = mmx_reg_cache[index];
+            AllocatedMMXReg& entry = compile_state.x87_cache.mmx[index];
             if (entry.loaded) {
                 return entry.reg;
             }
@@ -466,6 +483,8 @@ struct Recompiler {
         return code_cache->getPointers().restore_state;
     }
 
+    static void invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_block);
+
     static void* compileNext(ThreadState* state) {
         FELIX86_PROFILE_ACCUMULATION(state->thread_stats, AccumulatedJITTime);
         u64 next_block = state->recompiler->getCompiledBlock(state, state->GetRip());
@@ -562,27 +581,10 @@ struct Recompiler {
         compile_state.block_state.grouping = LMUL::M1;
     }
 
-    void call(u64 target) {
-        resetVectorState(); // set state to garbage as a call may overwrite it
-        ASSERT(isScratch(t4));
-        i64 offset = target - (u64)as.GetCursorPointer();
-        if (IsValidJTypeImm(offset)) {
-            as.JAL(offset);
-        } else if (IsValid2GBImm(offset) && !relocatable) {
-            const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
-            const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
-            as.AUIPC(t4, hi20);
-            as.JALR(ra, lo12, t4);
-        } else {
-            as.LI(t4, target);
-            as.JALR(t4);
-        }
-    }
-
     void callPointer(u64 offset) {
         ASSERT(offset >= offsetof(ThreadState, f64_to_80_mem));
         ASSERT(offset < offsetof(ThreadState, clear_tid_address));
-        ASSERT(isScratch(t4));
+        ASSERT(ScratchAllocator::isScratch(t4));
         as.LD(t4, offset, Allocations::threadStatePointer());
         as.JALR(t4);
     }
@@ -593,7 +595,7 @@ struct Recompiler {
 
     void pushCalltrace() {
         if (g_config.calltrace) {
-            ASSERT(isScratch(t4));
+            ASSERT(ScratchAllocator::isScratch(t4));
             writebackState();
             as.LI(t4, (u64)push_calltrace);
             as.MV(a0, Allocations::threadStatePointer());
@@ -605,7 +607,7 @@ struct Recompiler {
 
     void popCalltrace() {
         if (g_config.calltrace) {
-            ASSERT(isScratch(t4));
+            ASSERT(ScratchAllocator::isScratch(t4));
             writebackState();
             as.LI(t4, (u64)pop_calltrace);
             as.MV(a0, Allocations::threadStatePointer());
@@ -616,6 +618,10 @@ struct Recompiler {
 
     u8* getEndOfCodeCache() const {
         return (u8*)as.GetCursorPointer();
+    }
+
+    bool isInJitCode(u64 pc) const {
+        return pc >= (u64)getStartOfCodeCache() && pc < (u64)getEndOfCodeCache();
     }
 
     static bool isXMM(x86_ref_e ref) {
@@ -715,59 +721,29 @@ struct Recompiler {
     void flushX87();
 
     void resetX87() {
-        for (int i = 0; i < 8; i++) {
-            x87_reg_cache[i].loaded = false;
-            x87_reg_cache[i].dirty = false;
-            x87_reg_cache[i].modify_tag = false;
-            x87_reg_cache[i].is32bit = false;
-            mmx_reg_cache[i].loaded = false;
-            mmx_reg_cache[i].dirty = false;
-        }
+        compile_state.x87_cache.reset();
         compile_state.pushed_this_block = 0;
         compile_state.deferred_fip = 0;
     }
 
     void markX87RegAs32Bit(biscuit::FPR reg) {
-        for (auto& entry : x87_reg_cache) {
-            if (entry.loaded && entry.reg == reg) {
-                entry.is32bit = true;
-                return;
-            }
-        }
-        UNREACHABLE();
+        compile_state.x87_cache.loadedEntry(reg).is32bit = true;
     }
 
     void markX87RegAs64Bit(biscuit::FPR reg) {
-        for (auto& entry : x87_reg_cache) {
-            if (entry.loaded && entry.reg == reg) {
-                if (entry.is32bit) {
-                    as.FCVT_D_S(reg, reg);
-                }
-                entry.is32bit = false;
-                return;
-            }
+        AllocatedX87Reg& entry = compile_state.x87_cache.loadedEntry(reg);
+        if (entry.is32bit) {
+            as.FCVT_D_S(reg, reg);
         }
-        UNREACHABLE();
+        entry.is32bit = false;
     }
 
     void setX87RegPrecision(biscuit::FPR reg, bool is32bit) {
-        for (auto& entry : x87_reg_cache) {
-            if (entry.loaded && entry.reg == reg) {
-                entry.is32bit = is32bit;
-                return;
-            }
-        }
-        UNREACHABLE();
+        compile_state.x87_cache.loadedEntry(reg).is32bit = is32bit;
     }
 
     bool isX87Reg32Bit(biscuit::FPR reg) {
-        for (auto& entry : x87_reg_cache) {
-            if (entry.loaded && entry.reg == reg) {
-                return entry.is32bit;
-            }
-        }
-        UNREACHABLE();
-        return false;
+        return compile_state.x87_cache.loadedEntry(reg).is32bit;
     }
 
     void switchToMMX();
@@ -849,16 +825,6 @@ struct Recompiler {
     }
 
 private:
-    void emitNecessaryStuff();
-
-    void emitDispatcher();
-
-    void emitBadAddressThunks();
-
-    void emitInterruptibleSyscallThunk();
-
-    void emitInvalidateCallerThunk();
-
     bool scanAhead(u64 rip);
 
     u32 scanLandingBlock(ThreadState* state, u64 initial_rip, u64 rip_ahead, int depth, int& instrs_left);
@@ -877,16 +843,13 @@ private:
 
     bool canCompileSpeculatively(const ZydisDecodedInstruction& instruction, const ZydisDecodedOperand* operands);
 
-    static void invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_block);
-
     std::unique_ptr<CodeCache> code_cache = std::make_unique<CodeCache>();
     biscuit::Assembler as{};
-    biscuit::Label invalidate_caller_thunk;
     ZydisDecoder decoder{};
 
     std::array<std::pair<bool, u64>, 4> breakpoints;
 
-    CompileState compile_state;
+    CompileState compile_state{};
 
     /// Pointers to blocks to be linked. The top 7 bits are used to denote various flags
     // related to the block as a bitset.
@@ -898,26 +861,5 @@ private:
 
     int optimization_guard_counter = 0; // see OptimizationGuard
 
-    std::array<AllocatedX87Reg, 8> x87_reg_cache;
-
-    std::array<AllocatedMMXReg, 8> mmx_reg_cache;
-
     bool relocatable = false;
-
-    SingleStepMode single_step = SingleStepMode::None;
-
-    constexpr static std::array scratch_gprs = {
-        x1, x6, x7, x28, x29, x30, x31,
-    };
-
-    // TODO: is the below comment still true? make it not true
-    // TODO: to remove "if changed" comment, go to places that regs are hardcoded and add static asserts that they are scratches
-    // TODO: For better or for worst (definitely for worst) we rely on the fact that we start with an even
-    // register and go sequentially like this
-    // This has to do with the fact we want even registers sometimes so widening operations can use
-    // the register group. In the future with a proper allocator we can make it so the order here doesn't
-    // matter and the order picks an available group.
-    constexpr static std::array scratch_vec = {v2, v3, v4, v5, v6, v7, v1};
-
-    constexpr static std::array scratch_fprs = {ft8, ft9, ft10, ft11};
 };

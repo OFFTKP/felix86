@@ -25,11 +25,11 @@ void Thunks::initialize() {
     }
 }
 
-void* Thunks::generateTrampoline(Recompiler&, const char*) {
+void* Thunks::generateTrampoline(bool, biscuit::Assembler&, const char*) {
     return nullptr;
 }
 
-void* Thunks::generateTrampoline(Recompiler&, const char*, const char*, u64) {
+void* Thunks::generateTrampoline(bool, biscuit::Assembler&, const char*, const char*, u64) {
     return nullptr;
 }
 
@@ -44,6 +44,7 @@ void Thunks::runConstructor(const char*, GuestPointers*) {}
 #include "felix86/common/state.hpp"
 #include "felix86/hle/abi.hpp"
 #include "felix86/hle/signals.hpp"
+#include "felix86/v2/common_emit.hpp"
 #include "felix86/v2/recompiler.hpp"
 
 #include <vulkan/vulkan.h>
@@ -1227,7 +1228,7 @@ void Thunks::initialize() {
     }
 }
 
-void* Thunks::generateTrampoline(Recompiler& rec, const char* name) {
+void* Thunks::generateTrampoline(bool relocatable, biscuit::Assembler& as, const char* name) {
     if (!name) {
         return nullptr;
     }
@@ -1246,7 +1247,6 @@ void* Thunks::generateTrampoline(Recompiler& rec, const char* name) {
         return nullptr;
     }
 
-    Assembler& as = rec.getAssembler();
     const std::string& signature = thunk->signature;
     const u64 target = thunk->pointer;
 
@@ -1257,21 +1257,20 @@ void* Thunks::generateTrampoline(Recompiler& rec, const char* name) {
 
     GuestToHostMarshaller marshaller(name, signature);
     marshaller.emitPrologue(as);
-    rec.call(target);
+    CommonEmit::call(as, target, relocatable);
     marshaller.emitEpilogue(as);
 
     return trampoline;
 }
 
-void* Thunks::generateTrampoline(Recompiler& rec, const char* name, const char* signature, u64 host_ptr) {
+void* Thunks::generateTrampoline(bool relocatable, biscuit::Assembler& as, const char* name, const char* signature, u64 host_ptr) {
     ASSERT(signature);
     ASSERT(host_ptr);
-    Assembler& as = rec.getAssembler();
     void* trampoline = as.GetCursorPointer();
 
     GuestToHostMarshaller marshaller(name, signature);
     marshaller.emitPrologue(as);
-    rec.call(host_ptr);
+    CommonEmit::call(as, host_ptr, relocatable);
     marshaller.emitEpilogue(as);
 
     return trampoline;

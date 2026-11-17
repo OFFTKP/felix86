@@ -35,6 +35,13 @@ enum class x87State : u8 {
     MMX = 2,
 };
 
+enum class SyscallRestart : u8 {
+    None,
+    Restartable,
+    RestartIfSaRestart,
+    RestartAlways,
+};
+
 struct SignalQueueNode {
     siginfo_t info = {};
     SignalQueueNode* next = nullptr;
@@ -255,6 +262,12 @@ struct UserContext {
     }
 };
 
+enum class SingleStepMode : u8 {
+    None,
+    TrapFlag,
+    PtraceSinglestep,
+};
+
 // TODO: Please make me standard layout type? offsetof warnings...
 struct ThreadState {
     UserContext ctx{};
@@ -274,6 +287,7 @@ struct ThreadState {
                       // check presence of cpuid... on x86-64 processors... lol...
     bool ac_bit{};    // this is checked by Java to see if it's i386 or not
     bool pending_cache_clear{};
+    SingleStepMode single_step_mode = SingleStepMode::None;
 
     u32 robust_list{};
 
@@ -301,9 +315,7 @@ struct ThreadState {
     u64 effective_deferred_signals = 0;
     std::array<siginfo_t, 31> deferred_standard_info{};
     std::array<SignalQueueNode*, 33> deferred_realtime_info{};
-    bool in_restartable_syscall = false;
-    bool restart_syscall_if_sa_restart = false;
-    bool restart_syscall_always = false;
+    SyscallRestart syscall_restart = SyscallRestart::None;
     bool in_rmw_function = false;
 
     bool force_defer_synchronous = false;
