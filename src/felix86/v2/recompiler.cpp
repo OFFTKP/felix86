@@ -362,7 +362,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
 void Recompiler::insertSafepoint() {
     // This instruction must be 4 bytes, see invalidateBlock for reason
     OptimizationGuard guard(as, optimization_guard_counter);
-    as.SD(x0, -8, Allocations::threadStatePointer());
+    as.LD(x0, -8, Allocations::threadStatePointer());
 }
 
 void Recompiler::loadRoundingMode(bool sse) {
