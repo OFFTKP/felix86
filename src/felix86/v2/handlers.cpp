@@ -9944,15 +9944,10 @@ FAST_HANDLE(CVTTSS2SI) {
     }
 
     Label no_indefinite;
-    Label indefinite;
-    as.FCLASS_S(tmp_int, src_f);
-    as.ANDI(tmp_int, tmp_int, (1 << 7) | (1 << 8) | (1 << 9));
-    as.BNEZ(tmp_int, &indefinite);
     as.LI(tmp_int, intmax);
     as.FMV_W_X(cmp_max_int, tmp_int);
     as.FLT_S(tmp_int, src_f, cmp_max_int);
     as.BNEZ(tmp_int, &no_indefinite);
-    as.Bind(&indefinite);
     if (gpr_size == X86_SIZE_DWORD)
         as.LI(dst, (uint64_t)1 << 31);
     else
@@ -9972,11 +9967,17 @@ FAST_HANDLE(CVTTSD2SI) {
 
     uint64_t intmax = 0;
 
+    Label no_indefinite;
+    Label indefinite;
+
     rec.setVectorState(SEW::E64, 1);
     as.VFMV_FS(src_d, src);
     if (gpr_size == X86_SIZE_DWORD) {
         intmax = 0x41E0000000000000;
         as.FCVT_W_D(dst, src_d, RMode::RTZ);
+        as.FCLASS_D(tmp_int, src_d);
+        as.ANDI(tmp_int, tmp_int, (1 << 7) | (1 << 8) | (1 << 9));
+        as.BNEZ(tmp_int, &indefinite);
     } else if (gpr_size == X86_SIZE_QWORD) {
         intmax = 0x43E0000000000000;
         as.FCVT_L_D(dst, src_d, RMode::RTZ);
@@ -9984,11 +9985,6 @@ FAST_HANDLE(CVTTSD2SI) {
         UNREACHABLE();
     }
 
-    Label no_indefinite;
-    Label indefinite;
-    as.FCLASS_D(tmp_int, src_d);
-    as.ANDI(tmp_int, tmp_int, (1 << 7) | (1 << 8) | (1 << 9));
-    as.BNEZ(tmp_int, &indefinite);
     as.LI(tmp_int, intmax);
     as.FMV_D_X(cmp_max_int, tmp_int);
     as.FLT_D(tmp_int, src_d, cmp_max_int);
