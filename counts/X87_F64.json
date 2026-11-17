@@ -1440,7 +1440,7 @@
         "disassembly": "fistp [rdi]"
     },
     "df3f": {
-        "instruction_count": 28,
+        "instruction_count": 27,
         "expected_asm": [
             "LBU             t1, state, 0x351(849)",
             "SH2ADD          t1, t1, t1",
@@ -1448,9 +1448,8 @@
             "ADD             ra, t1, state",
             "FLD             ft2, ra, 0x88(136)",
             "ADDI            ra, rdi, 0x0(0)",
-            "ADDIW           t2, zero, 0xffffffff(-1)",
-            "SLLI            t2, t2, 0x3f(63)",
-            "ADDI            t2, t2, 0xffffffff(-1)",
+            "ADDI            t2, zero, 0xffffffff(-1)",
+            "SRLI            t2, t2, 0x1(1)",
             "FCVT.D.L        ft8, t2, dyn",
             "ADDI            t2, t2, 0x1(1)",
             "FCVT.L.D        t1, ft2, dyn",
@@ -1540,7 +1539,7 @@
         "disassembly": "fisttp [rdi]"
     },
     "dd0f": {
-        "instruction_count": 28,
+        "instruction_count": 27,
         "expected_asm": [
             "LBU             t1, state, 0x351(849)",
             "SH2ADD          t1, t1, t1",
@@ -1548,9 +1547,8 @@
             "ADD             ra, t1, state",
             "FLD             ft5, ra, 0x88(136)",
             "ADDI            ra, rdi, 0x0(0)",
-            "ADDIW           t2, zero, 0xffffffff(-1)",
-            "SLLI            t2, t2, 0x3f(63)",
-            "ADDI            t2, t2, 0xffffffff(-1)",
+            "ADDI            t2, zero, 0xffffffff(-1)",
+            "SRLI            t2, t2, 0x1(1)",
             "FCVT.D.L        ft8, t2, dyn",
             "ADDI            t2, t2, 0x1(1)",
             "FCVT.L.D        t1, ft5, rtz",

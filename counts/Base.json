@@ -13896,11 +13896,10 @@
         "disassembly": "mov edx, 0x01"
     },
     "baffffffff": {
-        "instruction_count": 3,
+        "instruction_count": 2,
         "expected_asm": [
-            "ADDIW           rdx, zero, 0x1(1)",
-            "SLLI            rdx, rdx, 0x20(32)",
-            "ADDI            rdx, rdx, 0xffffffff(-1)"
+            "ADDI            rdx, zero, 0xffffffff(-1)",
+            "SRLI            rdx, rdx, 0x20(32)"
         ],
         "disassembly": "mov edx, 0xFFFFFFFF"
     },
