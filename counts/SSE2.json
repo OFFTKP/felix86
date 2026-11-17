@@ -3249,12 +3249,11 @@
         "disassembly": "movmskpd rax, xmm2"
     },
     "660ff4dc": {
-        "instruction_count": 7,
+        "instruction_count": 6,
         "expected_asm": [
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "ADDIW           ra, zero, 0x1(1)",
-            "SLLI            ra, ra, 0x20(32)",
-            "ADDI            ra, ra, 0xffffffff(-1)",
+            "ADDI            ra, zero, 0xffffffff(-1)",
+            "SRLI            ra, ra, 0x20(32)",
             "VAND.VX         v2, xmm3, ra, none",
             "VAND.VX         v3, xmm4, ra, none",
             "VMUL.VV         xmm3, v2, v3, none"
@@ -3262,12 +3261,11 @@
         "disassembly": "pmuludq xmm3, xmm4"
     },
     "660ff4d2": {
-        "instruction_count": 7,
+        "instruction_count": 6,
         "expected_asm": [
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "ADDIW           ra, zero, 0x1(1)",
-            "SLLI            ra, ra, 0x20(32)",
-            "ADDI            ra, ra, 0xffffffff(-1)",
+            "ADDI            ra, zero, 0xffffffff(-1)",
+            "SRLI            ra, ra, 0x20(32)",
             "VAND.VX         v2, xmm2, ra, none",
             "VAND.VX         v3, xmm2, ra, none",
             "VMUL.VV         xmm2, v2, v3, none"
@@ -3275,14 +3273,13 @@
         "disassembly": "pmuludq xmm2, xmm2"
     },
     "660ff40f": {
-        "instruction_count": 9,
+        "instruction_count": 8,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VLE8.V          v2, rdi, none, 1",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "ADDIW           ra, zero, 0x1(1)",
-            "SLLI            ra, ra, 0x20(32)",
-            "ADDI            ra, ra, 0xffffffff(-1)",
+            "ADDI            ra, zero, 0xffffffff(-1)",
+            "SRLI            ra, ra, 0x20(32)",
             "VAND.VX         v3, xmm1, ra, none",
             "VAND.VX         v4, v2, ra, none",
             "VMUL.VV         xmm1, v3, v4, none"
@@ -5072,7 +5069,7 @@
         "disassembly": "pmaddwd mm1, [rdi]"
     },
     "0ff4dc": {
-        "instruction_count": 12,
+        "instruction_count": 11,
         "expected_asm": [
             "ADDI            ra, state, 0xa6(166)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
@@ -5080,9 +5077,8 @@
             "ADDI            ra, state, 0xb0(176)",
             "VLE64.V         v12, ra, none, 1",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "ADDIW           ra, zero, 0x1(1)",
-            "SLLI            ra, ra, 0x20(32)",
-            "ADDI            ra, ra, 0xffffffff(-1)",
+            "ADDI            ra, zero, 0xffffffff(-1)",
+            "SRLI            ra, ra, 0x20(32)",
             "VAND.VX         v2, v11, ra, none",
             "VAND.VX         v3, v12, ra, none",
             "VMUL.VV         v11, v2, v3, none"
@@ -5090,15 +5086,14 @@
         "disassembly": "pmuludq mm3, mm4"
     },
     "0ff4d2": {
-        "instruction_count": 10,
+        "instruction_count": 9,
         "expected_asm": [
             "ADDI            ra, state, 0x9c(156)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v10, ra, none, 1",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "ADDIW           ra, zero, 0x1(1)",
-            "SLLI            ra, ra, 0x20(32)",
-            "ADDI            ra, ra, 0xffffffff(-1)",
+            "ADDI            ra, zero, 0xffffffff(-1)",
+            "SRLI            ra, ra, 0x20(32)",
             "VAND.VX         v2, v10, ra, none",
             "VAND.VX         v3, v10, ra, none",
             "VMUL.VV         v10, v2, v3, none"
@@ -5106,16 +5101,15 @@
         "disassembly": "pmuludq mm2, mm2"
     },
     "0ff40f": {
-        "instruction_count": 11,
+        "instruction_count": 10,
         "expected_asm": [
             "ADDI            ra, state, 0x92(146)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VLE64.V         v9, ra, none, 1",
             "VLE64.V         v2, rdi, none, 1",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "ADDIW           ra, zero, 0x1(1)",
-            "SLLI            ra, ra, 0x20(32)",
-            "ADDI            ra, ra, 0xffffffff(-1)",
+            "ADDI            ra, zero, 0xffffffff(-1)",
+            "SRLI            ra, ra, 0x20(32)",
             "VAND.VX         v3, v9, ra, none",
             "VAND.VX         v4, v2, ra, none",
             "VMUL.VV         v9, v3, v4, none"

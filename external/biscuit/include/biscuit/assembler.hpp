@@ -45,6 +45,11 @@ enum class Optimization : uint32_t {
      * as long as rd and rs are not the zero register.
      */
     AutoCompress = 1,
+
+    /**
+     * Use bit manipulation extensions (Zba, Zbs) for LI, may save some instructions for some immediates
+     */
+    UseBitManipulation = 2,
 };
 BISCUIT_DEFINE_ENUM_FLAG_OPERATORS(Optimization);
 
@@ -1697,6 +1702,9 @@ public:
     void VFWMACCBF16(Vec vd, Vec vs1, Vec vs2, VecMask mask = VecMask::No) noexcept;
 
 private:
+    void LIDefault(GPR rd, uint64_t imm) noexcept;
+    static uint32_t LIDefaultCount(uint64_t imm) noexcept;
+
     // Binds a label to a given offset.
     void BindToOffset(Label* label, Label::LocationOffset offset);
 
