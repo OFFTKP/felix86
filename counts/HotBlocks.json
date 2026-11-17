@@ -2,7 +2,7 @@
     "crysis1": {
         "instruction_count": 39,
         "expected_asm": [
-            "SD              zero, state, 0xfffffff8(-8)",
+            "LD              zero, state, 0xfffffff8(-8)",
             "ADDIW           rdx, rdx, 0x0(0)",
             "ADDIW           r9, r9, 0x0(0)",
             "AND             rdx, rdx, r9",
@@ -46,7 +46,7 @@
     "crysis2": {
         "instruction_count": 70,
         "expected_asm": [
-            "SD              zero, state, 0xfffffff8(-8)",
+            "LD              zero, state, 0xfffffff8(-8)",
             "LUI             t1, 0xd8(216)",
             "ADDIW           t1, t1, 0x42f(1071)",
             "ADD             ra, rip, t1",
@@ -121,7 +121,7 @@
     "crysis3": {
         "instruction_count": 268,
         "expected_asm": [
-            "SD              zero, state, 0xfffffff8(-8)",
+            "LD              zero, state, 0xfffffff8(-8)",
             "ADD             ra, rbp, r11",
             "ADDI            ra, ra, 0xfffffff0(-16)",
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
@@ -394,7 +394,7 @@
     "tekken1": {
         "instruction_count": 291,
         "expected_asm": [
-            "SD              zero, state, 0xfffffff8(-8)",
+            "LD              zero, state, 0xfffffff8(-8)",
             "LUI             t1, 0xb3(179)",
             "ADDIW           t1, t1, 0x239(569)",
             "ADD             ra, rip, t1",
@@ -690,7 +690,7 @@
     "7z1": {
         "instruction_count": 83,
         "expected_asm": [
-            "SD              zero, state, 0xfffffff8(-8)",
+            "LD              zero, state, 0xfffffff8(-8)",
             "ADD.UW          rdi, rax, zero",
             "ADD.UW          t1, rax, zero",
             "SRLI            ra, t1, 0xb(11)",
@@ -778,7 +778,7 @@
     "overcooked1": {
         "instruction_count": 289,
         "expected_asm": [
-            "SD              zero, state, 0xfffffff8(-8)",
+            "LD              zero, state, 0xfffffff8(-8)",
             "ADDI            ra, rdi, 0xfffffff8(-8)",
             "ADD.UW          ra, ra, zero",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
@@ -1072,7 +1072,7 @@
     "overcooked2": {
         "instruction_count": 173,
         "expected_asm": [
-            "SD              zero, state, 0xfffffff8(-8)",
+            "LD              zero, state, 0xfffffff8(-8)",
             "ADD.UW          ra, rbp, zero",
             "LWU             rcx, ra, 0xffffffec(-20)",
             "ADD.UW          ra, rcx, zero",
@@ -1250,7 +1250,7 @@
     "tombraider1": {
         "instruction_count": 158,
         "expected_asm": [
-            "SD              zero, state, 0xfffffff8(-8)",
+            "LD              zero, state, 0xfffffff8(-8)",
             "ADDIW           ra, zero, 0x1(1)",
             "SB              ra, state, 0x398(920)",
             "LBU             ra, state, 0x3a0(928)",
