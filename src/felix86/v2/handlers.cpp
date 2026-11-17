@@ -1454,6 +1454,43 @@ FAST_HANDLE(SUB) {
 }
 
 FAST_HANDLE(SBB) {
+    bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
+    bool needs_af = rec.shouldEmitFlag(rip, X86_REF_AF);
+    bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
+    bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
+    bool needs_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
+    bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
+
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER &&
+        operands[0].reg.value == operands[1].reg.value && (operands[0].size == 32 || operands[0].size == 64)) {
+        biscuit::GPR result = rec.getGPR(&operands[0], X86_SIZE_QWORD);
+        biscuit::GPR cf = rec.flag(X86_REF_CF);
+
+        if (needs_pf) {
+            rec.setFlag(X86_REF_PF);
+        }
+
+        if (needs_af) {
+            as.SB(cf, offsetof(ThreadState, ctx.af), Allocations::threadStatePointer());
+        }
+
+        if (needs_of) {
+            rec.clearFlag(X86_REF_OF);
+        }
+
+        if (needs_zf) {
+            as.XORI(rec.flag(X86_REF_ZF), cf, 1);
+        }
+
+        if (needs_sf) {
+            as.MV(rec.flag(X86_REF_SF), cf);
+        }
+
+        as.NEG(result, cf);
+        rec.setGPR(&operands[0], result);
+        return;
+    }
+
     biscuit::GPR result = rec.scratch();
     biscuit::GPR result_2 = rec.scratch();
     biscuit::GPR src = rec.getGPR(&operands[1]);
@@ -1464,15 +1501,15 @@ FAST_HANDLE(SBB) {
     as.SUB(result, dst, src);
     as.SUB(result_2, result, cf);
 
-    if (rec.shouldEmitFlag(rip, X86_REF_PF)) {
+    if (needs_pf) {
         rec.updateParity(result_2);
     }
 
-    if (rec.shouldEmitFlag(rip, X86_REF_AF)) {
+    if (needs_af) {
         rec.updateAuxiliarySbb(dst, src, result_2);
     }
 
-    if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
+    if (needs_cf) {
         biscuit::GPR scratch = rec.scratch();
         biscuit::GPR cf = rec.flag(X86_REF_CF);
         rec.zext(scratch, result, size);
@@ -1488,15 +1525,15 @@ FAST_HANDLE(SBB) {
         rec.popScratch();
     }
 
-    if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
+    if (needs_of) {
         rec.updateOverflowSbb(dst, src, result_2, size);
     }
 
-    if (rec.shouldEmitFlag(rip, X86_REF_ZF)) {
+    if (needs_zf) {
         rec.updateZero(result_2, size);
     }
 
-    if (rec.shouldEmitFlag(rip, X86_REF_SF)) {
+    if (needs_sf) {
         rec.updateSign(result_2, size);
     }
 
