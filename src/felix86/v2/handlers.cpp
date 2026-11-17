@@ -9975,9 +9975,6 @@ FAST_HANDLE(CVTTSD2SI) {
     if (gpr_size == X86_SIZE_DWORD) {
         intmax = 0x41E0000000000000;
         as.FCVT_W_D(dst, src_d, RMode::RTZ);
-        as.FCLASS_D(tmp_int, src_d);
-        as.ANDI(tmp_int, tmp_int, (1 << 7) | (1 << 8) | (1 << 9));
-        as.BNEZ(tmp_int, &indefinite);
     } else if (gpr_size == X86_SIZE_QWORD) {
         intmax = 0x43E0000000000000;
         as.FCVT_L_D(dst, src_d, RMode::RTZ);
