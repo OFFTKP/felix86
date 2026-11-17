@@ -843,9 +843,11 @@ private:
 
     void discardSideExits();
 
+    void initializeAssembler();
+
     bool canCompileSpeculatively(const ZydisDecodedInstruction& instruction, const ZydisDecodedOperand* operands);
 
-    std::unique_ptr<CodeCache> code_cache = std::make_unique<CodeCache>();
+    CodeCache* code_cache = nullptr;
     biscuit::Assembler as{};
     ZydisDecoder decoder{};
 
@@ -864,4 +866,6 @@ private:
     int optimization_guard_counter = 0; // see OptimizationGuard
 
     bool relocatable = false;
+
+    void* staging_buffer = nullptr;
 };

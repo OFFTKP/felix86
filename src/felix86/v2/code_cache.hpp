@@ -27,6 +27,8 @@ enum class PendingLinkFlags : u64 {
     HasReturnHint = 0x8000'0000'0000'0000,
 };
 
+enum class CodeCacheType { Private, Shared };
+
 struct BlockMetadata {
     u64 host_address{};
     u64 guest_address{};
@@ -71,7 +73,7 @@ struct CodeCachePointers {
 };
 
 struct CodeCache {
-    CodeCache();
+    explicit CodeCache(CodeCacheType type);
     ~CodeCache();
     CodeCache(const CodeCache&) = delete;
     CodeCache& operator=(const CodeCache&) = delete;
@@ -146,4 +148,9 @@ private:
     // For fast host pc -> block metadata lookup (binary search vs looking up one by one)
     // on signal handlers
     std::map<u64, BlockMetadata*> host_pc_map{};
+};
+
+struct CodeCacheManager {
+    static CodeCache* createPrivate();
+    static CodeCache* getShared();
 };

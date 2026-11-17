@@ -31,6 +31,8 @@
 #include "felix86/v2/recompiler.hpp"
 #include "fmt/format.h"
 
+constexpr u64 staging_buffer_size = 256 * 1024;
+
 // Some instructions modify the flags conditionally or sometimes they don't modify them at all.
 // This needs to be marked as a usage of the flag as it can be passed through if they don't modify,
 // and previous instructions need to know that.
@@ -80,15 +82,33 @@ static bool is_stack_operand(const ZydisDecodedOperand& operand) {
 }
 
 Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
-    Dispatcher::emitDispatcher(code_cache->getThunkArea(), CodeCache::thunk_area_size, code_cache->getPointers(), relocatable);
+    if (!g_config.shared_code_cache) {
+        code_cache = CodeCacheManager::createPrivate();
 
-    as = Assembler(code_cache->getBlockArea(), code_cache->getBlockAreaSize());
+        Dispatcher::emitDispatcher(code_cache->getThunkArea(), CodeCache::thunk_area_size, code_cache->getPointers(), relocatable);
+
+        as = Assembler(code_cache->getBlockArea(), code_cache->getBlockAreaSize());
+    } else {
+        code_cache = CodeCacheManager::getShared();
+
+        staging_buffer = mmap(nullptr, staging_buffer_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        ASSERT_MSG(staging_buffer != MAP_FAILED, "Failed to map staging buffer with %d", errno);
+
+        as = Assembler((u8*)staging_buffer, staging_buffer_size);
+    }
+
     if (g_config.auto_compress) {
         as.EnableOptimization(Optimization::AutoCompress);
     }
 }
 
-Recompiler::~Recompiler() = default;
+Recompiler::~Recompiler() {
+    if (!g_config.shared_code_cache) {
+        delete code_cache;
+    } else {
+        // We don't delete the shared code cache, it has the lifetime of the program
+    }
+}
 
 // Note: This function is important. When we invalidate a block range, our choices are either iterate every block that links
 // to this block and unlink it, this is expensive both performance wise and memory wise, or we can instead insert a piece

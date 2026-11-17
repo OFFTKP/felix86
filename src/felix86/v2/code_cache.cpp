@@ -8,6 +8,7 @@
 #include "felix86/common/perf.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/v2/code_cache.hpp"
+#include "felix86/v2/dispatcher.hpp"
 
 constexpr static u64 code_cache_sizes[] = {
     4 * MB,
@@ -19,7 +20,9 @@ constexpr static u64 code_cache_sizes[] = {
 constexpr static u64 code_cache_sizes_count = std::size(code_cache_sizes);
 constexpr static u64 max_code_cache_size = code_cache_sizes[code_cache_sizes_count - 1];
 
-CodeCache::CodeCache() {
+CodeCache* g_shared_code_cache = nullptr;
+
+CodeCache::CodeCache(CodeCacheType type) {
     constexpr size_t total_size = max_code_cache_size;
     // Try allocating code cache near program so that rip-relative immediates can be made in fewer instructions
     u64 min = std::min(g_executable_start, g_interpreter_start);
@@ -146,4 +149,16 @@ void CodeCache::clear() {
     block_metadata.clear();
     host_pc_map.clear();
     page_map.clear();
+}
+
+CodeCache* CodeCacheManager::createPrivate() {
+    return new CodeCache(CodeCacheType::Private);
+}
+
+CodeCache* CodeCacheManager::getShared() {
+    if (!g_shared_code_cache) {
+        g_shared_code_cache = new CodeCache(CodeCacheType::Shared);
+        Dispatcher::emitDispatcher(g_shared_code_cache->getThunkArea(), CodeCache::thunk_area_size, g_shared_code_cache->getPointers(), false);
+    }
+    return g_shared_code_cache;
 }
