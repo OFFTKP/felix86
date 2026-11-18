@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <bit>
 #include <cstdint>
 #include <linux/fs.h>
 #include <sys/file.h>
@@ -3060,6 +3061,31 @@ void Recompiler::addi(biscuit::GPR dst, biscuit::GPR src, u64 imm) {
         biscuit::GPR reg = scratch();
         as.LI(reg, imm);
         as.ADD(dst, src, reg);
+        popScratch();
+    }
+}
+
+void Recompiler::andi(biscuit::GPR dst, biscuit::GPR src, u64 imm) {
+    if (imm == -1ull && dst == src) {
+        return;
+    }
+
+    if ((i64)imm >= -2048 && (i64)imm < 2048) {
+        as.ANDI(dst, src, imm);
+    } else if (imm == 0xFFFF) {
+        as.ZEXTH(dst, src);
+    } else if (imm == 0xFFFF'FFFF) {
+        as.ZEXTW(dst, src);
+    } else if ((imm & (imm + 1)) == 0) {
+        int shift = std::countl_zero(imm);
+        as.SLLI(dst, src, shift);
+        as.SRLI(dst, dst, shift);
+    } else if (std::has_single_bit(~imm)) {
+        as.BCLRI(dst, src, std::countr_zero(~imm));
+    } else {
+        biscuit::GPR reg = scratch();
+        as.LI(reg, imm);
+        as.AND(dst, src, reg);
         popScratch();
     }
 }
