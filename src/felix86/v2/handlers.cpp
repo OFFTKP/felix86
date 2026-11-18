@@ -16542,27 +16542,6 @@ FAST_HANDLE(VCVTPD2DQ) {
     }
 }
 
-FAST_HANDLE(VCVTTPD2DQ) {
-    biscuit::Vec result = rec.scratchVecM2();
-    biscuit::Vec src = rec.getVec(&operands[1]);
-
-    rec.setVectorState(SEW::E32, 4, LMUL::MF2);
-    as.VFNCVT_RTZ_X_F(result, src);
-
-    bool is_xmms = !instruction.raw.vex.L;
-    if (is_xmms) {
-        rec.setVectorState(SEW::E64, 4);
-        biscuit::Vec dst = rec.getVec(&operands[0]);
-        rec.vsplat(v0, 0b1110);
-        as.VAND(result, result, 0, VecMask::Yes);
-        rec.v0Modified();
-        as.VMV1R(dst, result); // saves having to use the mask to zero upper bits
-        rec.setVec(&operands[0], dst);
-    } else {
-        rec.setVec(&operands[0], result);
-    }
-}
-
 FAST_HANDLE(VCVTPD2PS) {
     biscuit::Vec result = rec.scratchVecM2();
     biscuit::Vec src = rec.getVec(&operands[1]);
@@ -16628,8 +16607,75 @@ FAST_HANDLE(VCVTPS2DQ) {
     rec.setVec(&operands[0], dst);
 }
 
+static void VCVTTP_indefiniteCheckVec(Recompiler& rec, Assembler& as, biscuit::Vec dst, biscuit::Vec src, bool from_double, int element_count) {
+    biscuit::GPR mask = rec.scratch();
+    biscuit::GPR indefinite = rec.scratch();
+    biscuit::FPR largest_int_f = rec.scratchFPR();
+    biscuit::Vec class_bits = rec.scratchVec();
+    biscuit::Vec bigger_bits = rec.scratchVec();
+
+    as.LI(indefinite, (uint64_t)1 << 31);
+    as.LI(mask, 0b1110000001);
+    if (from_double) {
+        as.FCVT_D_L(largest_int_f, indefinite);
+    } else {
+        biscuit::GPR largest_int = rec.scratch();
+        as.LI(largest_int, 0x4F000000);
+        as.FMV_W_X(largest_int_f, largest_int);
+    }
+
+    rec.setVectorState(from_double ? SEW::E64 : SEW::E32, element_count);
+    as.VFCLASS(class_bits, src);
+    as.VAND(class_bits, class_bits, mask);
+    as.VMFGE(bigger_bits, src, largest_int_f);
+    as.VMSNE(v0, class_bits, x0);
+    as.VMOR(v0, v0, bigger_bits);
+    if (from_double)
+        rec.setVectorState(SEW::E32, element_count);
+    as.VMERGE(dst, dst, indefinite);
+    rec.v0Modified();
+}
+
 FAST_HANDLE(VCVTTPS2DQ) {
-    AVX_Operation(rec, as, instruction, operands, (FuncPtr2)&Assembler::VFCVT_RTZ_X_F, SEW::E32, 8);
+    if (!g_config.unsafe_math) {
+        bool is_xmms = !instruction.raw.vex.L;
+        int element_count = is_xmms ? 4 : 8;
+        biscuit::Vec dst = rec.scratchVec();
+        biscuit::Vec src = rec.getVec(&operands[1]);
+        rec.setVectorState(SEW::E32, element_count);
+        as.VFCVT_RTZ_X_F(dst, src);
+        VCVTTP_indefiniteCheckVec(rec, as, dst, src, false, element_count);
+        rec.setVec(&operands[0], dst);
+    } else {
+        AVX_Operation(rec, as, instruction, operands, (FuncPtr2)&Assembler::VFCVT_RTZ_X_F, SEW::E32, 8);
+    }
+}
+
+FAST_HANDLE(VCVTTPD2DQ) {
+    biscuit::Vec result = rec.scratchVecM2();
+    biscuit::Vec src = rec.getVec(&operands[1]);
+    biscuit::Vec dst;
+
+    rec.setVectorState(SEW::E32, 4, LMUL::MF2);
+    as.VFNCVT_RTZ_X_F(result, src);
+
+    bool is_xmms = !instruction.raw.vex.L;
+    if (is_xmms) {
+        rec.setVectorState(SEW::E64, 4);
+        dst = g_config.unsafe_math ? rec.getVec(&operands[0]) : rec.scratchVec();
+        rec.vsplat(v0, 0b1110);
+        as.VAND(result, result, 0, VecMask::Yes);
+        rec.v0Modified();
+        as.VMV1R(dst, result); // saves having to use the mask to zero upper bits
+    } else {
+        dst = result;
+    }
+
+    if (!g_config.unsafe_math) {
+        VCVTTP_indefiniteCheckVec(rec, as, dst, src, true, is_xmms ? 2 : 4);
+    }
+
+    rec.setVec(&operands[0], dst);
 }
 
 FAST_HANDLE(VCVTSD2SI) {
