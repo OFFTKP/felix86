@@ -307,6 +307,8 @@ struct Recompiler {
 
     void addi(biscuit::GPR dest, biscuit::GPR src, u64 imm);
 
+    void andi(biscuit::GPR dest, biscuit::GPR src, u64 imm);
+
     void ori(biscuit::GPR dest, biscuit::GPR src, u64 imm);
 
     biscuit::GPR flag(x86_ref_e ref);

@@ -2008,18 +2008,112 @@ FAST_HANDLE(AND) {
     bool src_is_reg = operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER;
     bool is_reg_reg = dst_is_reg && src_is_reg;
     bool is_reg_mem = dst_is_reg && operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY;
-    if (!needs_any_flag && !needs_atomic && operands[0].size >= 32 && (src_is_imm || is_reg_reg || is_reg_mem)) {
+    if (!needs_any_flag && !needs_atomic && (src_is_imm || is_reg_reg || is_reg_mem)) {
         biscuit::GPR dst = dst_is_reg ? rec.getGPR(&operands[0], X86_SIZE_QWORD) : rec.getGPR(&operands[0]);
-        if (src_is_imm && IsValidSigned12BitImm(operands[1].imm.value.s)) {
-            as.ANDI(dst, dst, operands[1].imm.value.s);
+        if (src_is_imm) {
+            u64 imm = operands[1].imm.value.s;
+            if (dst_is_reg) {
+                x86_size_e size = rec.zydisToSize(operands[0].reg.value);
+                switch (size) {
+                case X86_SIZE_BYTE: {
+                    imm = (imm & 0xFF) | ~0xFFull;
+                    break;
+                }
+                case X86_SIZE_BYTE_HIGH: {
+                    imm = ((imm & 0xFF) << 8) | ~0xFF00ull;
+                    break;
+                }
+                case X86_SIZE_WORD: {
+                    imm = (imm & 0xFFFF) | ~0xFFFFull;
+                    break;
+                }
+                case X86_SIZE_DWORD: {
+                    imm = (i64)(i32)imm;
+                    break;
+                }
+                case X86_SIZE_QWORD: {
+                    break;
+                }
+                default: {
+                    UNREACHABLE();
+                    break;
+                }
+                }
+                rec.andi(dst, dst, imm);
+                if (size == X86_SIZE_DWORD && (i64)imm < 0) {
+                    as.ZEXTW(dst, dst);
+                }
+                rec.setGPR(operands[0].reg.value, X86_SIZE_QWORD, dst);
+            } else {
+                if (operands[0].size < 64) {
+                    u64 high = imm | (~0ull << operands[0].size);
+                    if (std::has_single_bit(~high)) {
+                        imm = high;
+                    }
+                }
+                rec.andi(dst, dst, imm);
+                rec.setGPR(&operands[0], dst);
+            }
         } else {
             biscuit::GPR src = src_is_reg ? rec.getGPR(&operands[1], X86_SIZE_QWORD) : rec.getGPR(&operands[1]);
-            as.AND(dst, dst, src);
-        }
-        if (dst_is_reg && operands[0].size == 32 && src_is_imm && operands[1].imm.value.u < UINT32_MAX) {
-            rec.setGPR(rec.zydisToRef(operands[0].reg.value), X86_SIZE_QWORD, dst); // no need to zext
-        } else {
-            rec.setGPR(&operands[0], dst);
+            switch (rec.zydisToSize(operands[0].reg.value)) {
+            case X86_SIZE_BYTE: {
+                bool high = src_is_reg && rec.zydisToSize(operands[1].reg.value) == X86_SIZE_BYTE_HIGH;
+                biscuit::GPR mask = rec.scratch();
+                if (high) {
+                    // and al, bh
+                    as.SRLI(mask, src, 8);
+                    as.ORI(mask, mask, ~0xFF);
+                } else {
+                    // and al, bl
+                    as.ORI(mask, src, ~0xFF);
+                }
+                as.AND(dst, dst, mask);
+                rec.popScratch();
+                break;
+            }
+            case X86_SIZE_BYTE_HIGH: {
+                bool high = src_is_reg && rec.zydisToSize(operands[1].reg.value) == X86_SIZE_BYTE_HIGH;
+                biscuit::GPR mask = rec.scratch();
+                if (high) {
+                    // and ah, bh
+                    as.LI(mask, ~0xFF00ull);
+                    as.OR(mask, mask, src);
+                } else {
+                    // and ah, bl
+                    as.ORI(mask, src, ~0xFF);
+                    as.RORI(mask, mask, 56);
+                }
+                as.AND(dst, dst, mask);
+                rec.popScratch();
+                break;
+            }
+            case X86_SIZE_WORD: {
+                biscuit::GPR mask = rec.scratch();
+                as.LI(mask, ~0xFFFFull);
+                as.OR(mask, mask, src);
+                as.AND(dst, dst, mask);
+                rec.popScratch();
+                break;
+            }
+            case X86_SIZE_DWORD: {
+                as.AND(dst, dst, src);
+                if (src_is_reg) {
+                    as.ZEXTW(dst, dst);
+                }
+                break;
+            }
+            case X86_SIZE_QWORD: {
+                as.AND(dst, dst, src);
+                break;
+            }
+            default: {
+                UNREACHABLE();
+                break;
+            }
+            }
+            ASSERT(dst_is_reg);
+            rec.setGPR(operands[0].reg.value, X86_SIZE_QWORD, dst);
         }
         return;
     }
