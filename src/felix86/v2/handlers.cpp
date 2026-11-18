@@ -16426,27 +16426,6 @@ FAST_HANDLE(VCVTPD2DQ) {
     }
 }
 
-FAST_HANDLE(VCVTTPD2DQ) {
-    biscuit::Vec result = rec.scratchVecM2();
-    biscuit::Vec src = rec.getVec(&operands[1]);
-
-    rec.setVectorState(SEW::E32, 4, LMUL::MF2);
-    as.VFNCVT_RTZ_X_F(result, src);
-
-    bool is_xmms = !instruction.raw.vex.L;
-    if (is_xmms) {
-        rec.setVectorState(SEW::E64, 4);
-        biscuit::Vec dst = rec.getVec(&operands[0]);
-        rec.vsplat(v0, 0b1110);
-        as.VAND(result, result, 0, VecMask::Yes);
-        rec.v0Modified();
-        as.VMV1R(dst, result); // saves having to use the mask to zero upper bits
-        rec.setVec(&operands[0], dst);
-    } else {
-        rec.setVec(&operands[0], result);
-    }
-}
-
 FAST_HANDLE(VCVTPD2PS) {
     biscuit::Vec result = rec.scratchVecM2();
     biscuit::Vec src = rec.getVec(&operands[1]);
@@ -16513,7 +16492,69 @@ FAST_HANDLE(VCVTPS2DQ) {
 }
 
 FAST_HANDLE(VCVTTPS2DQ) {
-    AVX_Operation(rec, as, instruction, operands, (FuncPtr2)&Assembler::VFCVT_RTZ_X_F, SEW::E32, 8);
+    if (!g_config.unsafe_math) {
+        bool is_xmms = !instruction.raw.vex.L;
+        biscuit::GPR tmp_gpr = rec.scratch();
+        biscuit::FPR min_fpr = rec.scratchFPR();
+
+        biscuit::Vec dst;
+        if (is_xmms) {
+            dst = rec.scratchVec();
+            rec.setVectorState(SEW::E32, 4);
+        } else {
+            dst = rec.getVec(&operands[0]);
+            rec.setVectorState(SEW::E32, 8);
+        }
+        biscuit::Vec src = rec.getVec(&operands[1]);
+        as.VFCVT_RTZ_X_F(dst, src);
+        as.LI(tmp_gpr, 0x4F000000);
+        as.FMV_W_X(min_fpr, tmp_gpr);
+        as.VMFGE(v0, src, min_fpr);
+        as.VFMERGE(dst, dst, min_fpr);
+        rec.v0Modified();
+        rec.setVec(&operands[0], dst);
+    } else {
+        AVX_Operation(rec, as, instruction, operands, (FuncPtr2)&Assembler::VFCVT_RTZ_X_F, SEW::E32, 8);
+    }
+}
+
+FAST_HANDLE(VCVTTPD2DQ) {
+    biscuit::Vec result = rec.scratchVecM2();
+    biscuit::Vec src = rec.getVec(&operands[1]);
+    biscuit::Vec dst;
+
+    rec.setVectorState(SEW::E32, 4, LMUL::MF2);
+    as.VFNCVT_RTZ_X_F(result, src);
+
+    bool is_xmms = !instruction.raw.vex.L;
+    if (is_xmms) {
+        rec.setVectorState(SEW::E64, 4);
+        dst = g_config.unsafe_math ? rec.getVec(&operands[0]) : rec.scratchVec();
+        rec.vsplat(v0, 0b1110);
+        as.VAND(result, result, 0, VecMask::Yes);
+        rec.v0Modified();
+        as.VMV1R(dst, result); // saves having to use the mask to zero upper bits
+    } else {
+        dst = result;
+    }
+
+    if (!g_config.unsafe_math) {
+        biscuit::GPR tmp_gpr = rec.scratch();
+        biscuit::FPR min_fpr = rec.scratchFPR();
+
+        if (is_xmms) {
+            rec.setVectorState(SEW::E64, 2);
+        } else {
+            rec.setVectorState(SEW::E64, 4);
+        }
+        as.LI(tmp_gpr, 0x4F000000);
+        as.FMV_W_X(min_fpr, tmp_gpr);
+        as.VMFGE(v0, src, min_fpr);
+        as.VFMERGE(dst, dst, min_fpr);
+        rec.v0Modified();
+    }
+
+    rec.setVec(&operands[0], dst);
 }
 
 FAST_HANDLE(VCVTSD2SI) {
