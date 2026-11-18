@@ -2008,6 +2008,22 @@ FAST_HANDLE(AND) {
     bool src_is_reg = operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER;
     bool is_reg_reg = dst_is_reg && src_is_reg;
     bool is_reg_mem = dst_is_reg && operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY;
+    bool is_mem_reg = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && src_is_reg;
+    if (!needs_any_flag && !needs_atomic && is_mem_reg) {
+        biscuit::GPR dst = rec.getGPR(&operands[0]);
+        biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+        if (rec.zydisToSize(operands[1].reg.value) == X86_SIZE_BYTE_HIGH) {
+            biscuit::GPR shifted = rec.scratch();
+            as.SRLI(shifted, src, 8);
+            as.AND(dst, dst, shifted);
+            rec.popScratch();
+        } else {
+            as.AND(dst, dst, src);
+        }
+        rec.setGPR(&operands[0], dst);
+        return;
+    }
+
     if (!needs_any_flag && !needs_atomic && (src_is_imm || is_reg_reg || is_reg_mem)) {
         biscuit::GPR dst = dst_is_reg ? rec.getGPR(&operands[0], X86_SIZE_QWORD) : rec.getGPR(&operands[0]);
         if (src_is_imm) {
