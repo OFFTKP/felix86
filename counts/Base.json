@@ -11076,7 +11076,7 @@
         "disassembly": "imul dx"
     },
     "f7ea": {
-        "instruction_count": 10,
+        "instruction_count": 9,
         "expected_asm": [
             "ADDIW           ra, rdx, 0x0(0)",
             "ADDIW           t2, rax, 0x0(0)",
@@ -11086,8 +11086,7 @@
             "XOR             of, cf, t1",
             "SLTU            of, zero, of",
             "ADDI            cf, of, 0x0(0)",
-            "SRLI            t1, t1, 0x20(32)",
-            "ADD.UW          rdx, t1, zero"
+            "SRLI            rdx, t1, 0x20(32)"
         ],
         "disassembly": "imul edx"
     },
@@ -11144,7 +11143,7 @@
         "disassembly": "imul [rdi]"
     },
     "f72f": {
-        "instruction_count": 10,
+        "instruction_count": 9,
         "expected_asm": [
             "LW              ra, rdi, 0x0(0)",
             "ADDIW           t2, rax, 0x0(0)",
@@ -11154,20 +11153,18 @@
             "XOR             of, cf, t1",
             "SLTU            of, zero, of",
             "ADDI            cf, of, 0x0(0)",
-            "SRLI            t1, t1, 0x20(32)",
-            "ADD.UW          rdx, t1, zero"
+            "SRLI            rdx, t1, 0x20(32)"
         ],
         "disassembly": "imul [rdi]"
     },
     "48f72f": {
-        "instruction_count": 8,
+        "instruction_count": 7,
         "expected_asm": [
             "LD              ra, rdi, 0x0(0)",
-            "MULH            t1, rax, ra",
+            "MULH            rdx, rax, ra",
             "MUL             rax, rax, ra",
-            "ADDI            rdx, t1, 0x0(0)",
             "SRAI            cf, rax, 0x3f(63)",
-            "XOR             of, cf, t1",
+            "XOR             of, cf, rdx",
             "SLTU            of, zero, of",
             "ADDI            cf, of, 0x0(0)"
         ],
@@ -11227,16 +11224,15 @@
         "disassembly": "mul dx"
     },
     "f7e2": {
-        "instruction_count": 8,
+        "instruction_count": 7,
         "expected_asm": [
             "ADD.UW          ra, rdx, zero",
             "ADD.UW          t2, rax, zero",
             "MUL             t1, t2, ra",
             "ADD.UW          rax, t1, zero",
-            "SRLI            t1, t1, 0x20(32)",
-            "SLTU            cf, zero, t1",
-            "ADDI            of, cf, 0x0(0)",
-            "ADD.UW          rdx, t1, zero"
+            "SRLI            rdx, t1, 0x20(32)",
+            "SLTU            cf, zero, rdx",
+            "ADDI            of, cf, 0x0(0)"
         ],
         "disassembly": "mul edx"
     },
@@ -11288,27 +11284,25 @@
         "disassembly": "mul [rdi]"
     },
     "f727": {
-        "instruction_count": 8,
+        "instruction_count": 7,
         "expected_asm": [
             "LWU             ra, rdi, 0x0(0)",
             "ADD.UW          t2, rax, zero",
             "MUL             t1, t2, ra",
             "ADD.UW          rax, t1, zero",
-            "SRLI            t1, t1, 0x20(32)",
-            "SLTU            cf, zero, t1",
-            "ADDI            of, cf, 0x0(0)",
-            "ADD.UW          rdx, t1, zero"
+            "SRLI            rdx, t1, 0x20(32)",
+            "SLTU            cf, zero, rdx",
+            "ADDI            of, cf, 0x0(0)"
         ],
         "disassembly": "mul [rdi]"
     },
     "48f727": {
-        "instruction_count": 6,
+        "instruction_count": 5,
         "expected_asm": [
             "LD              ra, rdi, 0x0(0)",
-            "MULHU           t1, rax, ra",
+            "MULHU           rdx, rax, ra",
             "MUL             rax, rax, ra",
-            "ADDI            rdx, t1, 0x0(0)",
-            "SLTU            cf, zero, t1",
+            "SLTU            cf, zero, rdx",
             "ADDI            of, cf, 0x0(0)"
         ],
         "disassembly": "mul [rdi]"
