@@ -16491,27 +16491,44 @@ FAST_HANDLE(VCVTPS2DQ) {
     rec.setVec(&operands[0], dst);
 }
 
+static void VCVTTP_indefiniteCheckVec(Recompiler& rec, Assembler& as, biscuit::Vec dst, biscuit::Vec src, bool from_double, int element_count) {
+    biscuit::GPR mask = rec.scratch();
+    biscuit::GPR indefinite = rec.scratch();
+    biscuit::FPR largest_int_f = rec.scratchFPR();
+    biscuit::Vec class_bits = rec.scratchVec();
+    biscuit::Vec bigger_bits = rec.scratchVec();
+
+    as.LI(indefinite, (uint64_t)1 << 31);
+    as.LI(mask, 0b1110000001);
+    if (from_double) {
+        as.FCVT_D_L(largest_int_f, indefinite);
+    } else {
+        biscuit::GPR largest_int = rec.scratch();
+        as.LI(largest_int, 0x4F000000);
+        as.FMV_W_X(largest_int_f, largest_int);
+    }
+
+    rec.setVectorState(from_double ? SEW::E64 : SEW::E32, element_count);
+    as.VFCLASS(class_bits, src);
+    as.VAND(class_bits, class_bits, mask);
+    as.VMFGE(bigger_bits, src, largest_int_f);
+    as.VMSNE(v0, class_bits, x0);
+    as.VMOR(v0, v0, bigger_bits);
+    if (from_double)
+        rec.setVectorState(SEW::E32, element_count);
+    as.VMERGE(dst, dst, indefinite);
+    rec.v0Modified();
+}
+
 FAST_HANDLE(VCVTTPS2DQ) {
     if (!g_config.unsafe_math) {
         bool is_xmms = !instruction.raw.vex.L;
-        biscuit::GPR tmp_gpr = rec.scratch();
-        biscuit::FPR min_fpr = rec.scratchFPR();
-
-        biscuit::Vec dst;
-        if (is_xmms) {
-            dst = rec.scratchVec();
-            rec.setVectorState(SEW::E32, 4);
-        } else {
-            dst = rec.getVec(&operands[0]);
-            rec.setVectorState(SEW::E32, 8);
-        }
+        int element_count = is_xmms ? 4 : 8;
+        biscuit::Vec dst = rec.scratchVec();
         biscuit::Vec src = rec.getVec(&operands[1]);
+        rec.setVectorState(SEW::E32, element_count);
         as.VFCVT_RTZ_X_F(dst, src);
-        as.LI(tmp_gpr, 0x4F000000);
-        as.FMV_W_X(min_fpr, tmp_gpr);
-        as.VMFGE(v0, src, min_fpr);
-        as.VFMERGE(dst, dst, min_fpr);
-        rec.v0Modified();
+        VCVTTP_indefiniteCheckVec(rec, as, dst, src, false, element_count);
         rec.setVec(&operands[0], dst);
     } else {
         AVX_Operation(rec, as, instruction, operands, (FuncPtr2)&Assembler::VFCVT_RTZ_X_F, SEW::E32, 8);
@@ -16539,19 +16556,7 @@ FAST_HANDLE(VCVTTPD2DQ) {
     }
 
     if (!g_config.unsafe_math) {
-        biscuit::GPR tmp_gpr = rec.scratch();
-        biscuit::FPR min_fpr = rec.scratchFPR();
-
-        if (is_xmms) {
-            rec.setVectorState(SEW::E64, 2);
-        } else {
-            rec.setVectorState(SEW::E64, 4);
-        }
-        as.LI(tmp_gpr, 0x4F000000);
-        as.FMV_W_X(min_fpr, tmp_gpr);
-        as.VMFGE(v0, src, min_fpr);
-        as.VFMERGE(dst, dst, min_fpr);
-        rec.v0Modified();
+        VCVTTP_indefiniteCheckVec(rec, as, dst, src, true, is_xmms ? 2 : 4);
     }
 
     rec.setVec(&operands[0], dst);
