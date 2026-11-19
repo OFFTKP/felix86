@@ -19,14 +19,28 @@ constexpr static u64 code_cache_sizes[] = {
 
 constexpr static u64 code_cache_sizes_count = std::size(code_cache_sizes);
 constexpr static u64 max_code_cache_size = code_cache_sizes[code_cache_sizes_count - 1];
+constexpr static u64 shared_code_cache_size = 256 * MB;
 
 CodeCache* g_shared_code_cache = nullptr;
 
 CodeCache::CodeCache(CodeCacheType type) {
-    constexpr size_t total_size = max_code_cache_size;
-    // Try allocating code cache near program so that rip-relative immediates can be made in fewer instructions
-    u64 min = std::min(g_executable_start, g_interpreter_start);
     void* address = MAP_FAILED;
+    u64 total_size;
+    u64 initial_size;
+    switch (type) {
+    case CodeCacheType::Private: {
+        total_size = max_code_cache_size;
+        initial_size = code_cache_sizes[0];
+        break;
+    }
+    case CodeCacheType::Shared: {
+        total_size = shared_code_cache_size;
+        initial_size = shared_code_cache_size;
+        break;
+    }
+    }
+    // Try allocating code cache near the program so that rip-relative immediates can be made in fewer instructions
+    u64 min = std::min(g_executable_start, g_interpreter_start);
     // If the program is allocated in 32-bit address space then it's not worth performing this optimization
     // as to not interfere with MAP_32BIT and because immediates can be made in 2 instructions
     if (min > 5 * GB) {
@@ -58,8 +72,7 @@ CodeCache::CodeCache(CodeCacheType type) {
         }
     }
     ASSERT_MSG(address != MAP_FAILED, "Failed to reserve code cache for thread %d?", gettid());
-    u8* first_chunk =
-        (u8*)::mmap((u8*)address, code_cache_sizes[0], PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+    u8* first_chunk = (u8*)::mmap((u8*)address, initial_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
     ASSERT(first_chunk == (u8*)address);
     mapping_start = first_chunk;
     pointers.start_of_code_cache = (u64)getBlockArea();
