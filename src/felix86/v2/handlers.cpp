@@ -10005,7 +10005,6 @@ FAST_HANDLE(CVTTSD2SI) {
     uint64_t intmax = 0;
 
     Label no_indefinite;
-    Label indefinite;
 
     rec.setVectorState(SEW::E64, 1);
     as.VFMV_FS(src_d, src);
@@ -10023,7 +10022,6 @@ FAST_HANDLE(CVTTSD2SI) {
     as.FMV_D_X(cmp_max_int, tmp_int);
     as.FLT_D(tmp_int, src_d, cmp_max_int);
     as.BNEZ(tmp_int, &no_indefinite);
-    as.Bind(&indefinite);
     if (gpr_size == X86_SIZE_DWORD)
         as.LI(dst, (uint64_t)1 << 31);
     else
