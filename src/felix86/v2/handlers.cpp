@@ -1,4 +1,5 @@
 #include <cmath>
+#include <cstdint>
 #include <Zydis/Zydis.h>
 #include "Zydis/DecoderTypes.h"
 #include "Zydis/SharedTypes.h"
@@ -10077,33 +10078,34 @@ FAST_HANDLE(CVTTSS2SI) {
     x86_size_e gpr_size = rec.getSize(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
     biscuit::GPR dst = rec.getGPR(&operands[0]);
-    biscuit::FPR temp = rec.scratchFPR();
+    biscuit::FPR src_f = rec.scratchFPR();
+    biscuit::FPR cmp_max_int = rec.scratchFPR();
     biscuit::GPR tmp_int = rec.scratch();
 
+    uint64_t intmax = 0;
+
+    rec.setVectorState(SEW::E32, 1);
+    as.VFMV_FS(src_f, src);
     if (gpr_size == X86_SIZE_DWORD) {
-        rec.setVectorState(SEW::E32, 1);
-        as.VFMV_FS(temp, src);
-        as.FCVT_W_S(dst, temp, RMode::RTZ);
-        as.FCLASS_S(tmp_int, temp);
-        as.ANDI(tmp_int, tmp_int, (1 << 0) | (1 << 7) | (1 << 8) | (1 << 9));
-        Label ok32;
-        as.BEQZ(tmp_int, &ok32);
-        as.LI(dst, 0x80000000);
-        as.Bind(&ok32);
+        intmax = 0x4F000000;
+        as.FCVT_W_S(dst, src_f, RMode::RTZ);
     } else if (gpr_size == X86_SIZE_QWORD) {
-        rec.setVectorState(SEW::E32, 1);
-        as.VFMV_FS(temp, src);
-        as.FCVT_L_S(dst, temp, RMode::RTZ);
-        as.FCLASS_S(tmp_int, temp);
-        as.ANDI(tmp_int, tmp_int, (1 << 0) | (1 << 7) | (1 << 8) | (1 << 9));
-        Label ok64;
-        as.BEQZ(tmp_int, &ok64);
-        as.LI(dst, 0x80000000);
-        as.SLLI(dst, dst, 32);
-        as.Bind(&ok64);
+        intmax = 0x5F000000;
+        as.FCVT_L_S(dst, src_f, RMode::RTZ);
     } else {
         UNREACHABLE();
     }
+
+    Label no_indefinite;
+    as.LI(tmp_int, intmax);
+    as.FMV_W_X(cmp_max_int, tmp_int);
+    as.FLT_S(tmp_int, src_f, cmp_max_int);
+    as.BNEZ(tmp_int, &no_indefinite);
+    if (gpr_size == X86_SIZE_DWORD)
+        as.LI(dst, (uint64_t)1 << 31);
+    else
+        as.LI(dst, (uint64_t)1 << 63);
+    as.Bind(&no_indefinite);
 
     rec.setGPR(&operands[0], dst);
 }
@@ -10112,33 +10114,35 @@ FAST_HANDLE(CVTTSD2SI) {
     x86_size_e gpr_size = rec.getSize(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
     biscuit::GPR dst = rec.getGPR(&operands[0]);
-    biscuit::FPR tmp_fp = rec.scratchFPR();
+    biscuit::FPR src_d = rec.scratchFPR();
+    biscuit::FPR cmp_max_int = rec.scratchFPR();
     biscuit::GPR tmp_int = rec.scratch();
 
+    uint64_t intmax = 0;
+
+    Label no_indefinite;
+
     rec.setVectorState(SEW::E64, 1);
-    as.VFMV_FS(tmp_fp, src);
-
+    as.VFMV_FS(src_d, src);
     if (gpr_size == X86_SIZE_DWORD) {
-        as.FCVT_W_D(dst, tmp_fp, RMode::RTZ);
-        as.FCLASS_D(tmp_int, tmp_fp);
-        as.ANDI(tmp_int, tmp_int, (1 << 0) | (1 << 7) | (1 << 8) | (1 << 9));
-        Label ok32;
-        as.BEQZ(tmp_int, &ok32);
-        as.LI(dst, 0x80000000);
-        as.Bind(&ok32);
+        intmax = 0x41E0000000000000;
+        as.FCVT_W_D(dst, src_d, RMode::RTZ);
     } else if (gpr_size == X86_SIZE_QWORD) {
-        as.FCVT_L_D(dst, tmp_fp, RMode::RTZ);
-
-        as.FCLASS_D(tmp_int, tmp_fp);
-        as.ANDI(tmp_int, tmp_int, (1 << 0) | (1 << 7) | (1 << 8) | (1 << 9));
-        Label ok64;
-        as.BEQZ(tmp_int, &ok64);
-        as.LI(dst, 0x80000000);
-        as.SLLI(dst, dst, 32);
-        as.Bind(&ok64);
+        intmax = 0x43E0000000000000;
+        as.FCVT_L_D(dst, src_d, RMode::RTZ);
     } else {
         UNREACHABLE();
     }
+
+    as.LI(tmp_int, intmax);
+    as.FMV_D_X(cmp_max_int, tmp_int);
+    as.FLT_D(tmp_int, src_d, cmp_max_int);
+    as.BNEZ(tmp_int, &no_indefinite);
+    if (gpr_size == X86_SIZE_DWORD)
+        as.LI(dst, (uint64_t)1 << 31);
+    else
+        as.LI(dst, (uint64_t)1 << 63);
+    as.Bind(&no_indefinite);
 
     rec.setGPR(&operands[0], dst);
 }

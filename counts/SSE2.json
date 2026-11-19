@@ -933,30 +933,33 @@
         "disassembly": "cvtsd2si rax, [rdi]"
     },
     "f2480f2cc3": {
-        "instruction_count": 9,
+        "instruction_count": 10,
         "expected_asm": [
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VFMV.F.S        ft8, xmm3",
             "FCVT.L.D        rax, ft8, rtz",
-            "FCLASS.D        ra, ft8",
-            "ANDI            ra, ra, 0x381(897)",
-            "BEQ             ra, zero, 0x10(16)",
-            "ADDIW           rax, zero, 0x1(1)",
-            "SLLI            rax, rax, 0x1f(31)",
-            "SLLI            rax, rax, 0x20(32)"
+            "ADDIW           ra, zero, 0x21f(543)",
+            "SLLI            ra, ra, 0x35(53)",
+            "FMV.D.X         ft9, ra",
+            "FLT.D           ra, ft8, ft9",
+            "BNE             zero, ra, 0xc(12)",
+            "ADDIW           rax, zero, 0xffffffff(-1)",
+            "SLLI            rax, rax, 0x3f(63)"
         ],
         "disassembly": "cvttsd2si rax, xmm3"
     },
     "f20f2cc2": {
-        "instruction_count": 10,
+        "instruction_count": 12,
         "expected_asm": [
             "ADD.UW          ra, rax, zero",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VFMV.F.S        ft8, xmm2",
             "FCVT.W.D        ra, ft8, rtz",
-            "FCLASS.D        t1, ft8",
-            "ANDI            t1, t1, 0x381(897)",
-            "BEQ             t1, zero, 0xc(12)",
+            "ADDIW           t1, zero, 0x20f(527)",
+            "SLLI            t1, t1, 0x35(53)",
+            "FMV.D.X         ft9, t1",
+            "FLT.D           t1, ft8, ft9",
+            "BNE             zero, t1, 0xc(12)",
             "ADDIW           ra, zero, 0x1(1)",
             "SLLI            ra, ra, 0x1f(31)",
             "ADD.UW          rax, ra, zero"
@@ -964,7 +967,7 @@
         "disassembly": "cvttsd2si eax, xmm2"
     },
     "f20f2c07": {
-        "instruction_count": 12,
+        "instruction_count": 14,
         "expected_asm": [
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
             "VLE8.V          v2, rdi, none, 1",
@@ -972,9 +975,11 @@
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VFMV.F.S        ft8, v2",
             "FCVT.W.D        ra, ft8, rtz",
-            "FCLASS.D        t1, ft8",
-            "ANDI            t1, t1, 0x381(897)",
-            "BEQ             t1, zero, 0xc(12)",
+            "ADDIW           t1, zero, 0x20f(527)",
+            "SLLI            t1, t1, 0x35(53)",
+            "FMV.D.X         ft9, t1",
+            "FLT.D           t1, ft8, ft9",
+            "BNE             zero, t1, 0xc(12)",
             "ADDIW           ra, zero, 0x1(1)",
             "SLLI            ra, ra, 0x1f(31)",
             "ADD.UW          rax, ra, zero"
@@ -982,19 +987,20 @@
         "disassembly": "cvttsd2si eax, qword ptr [rdi]"
     },
     "f2480f2c07": {
-        "instruction_count": 11,
+        "instruction_count": 12,
         "expected_asm": [
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
             "VLE8.V          v2, rdi, none, 1",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
             "VFMV.F.S        ft8, v2",
             "FCVT.L.D        rax, ft8, rtz",
-            "FCLASS.D        ra, ft8",
-            "ANDI            ra, ra, 0x381(897)",
-            "BEQ             ra, zero, 0x10(16)",
-            "ADDIW           rax, zero, 0x1(1)",
-            "SLLI            rax, rax, 0x1f(31)",
-            "SLLI            rax, rax, 0x20(32)"
+            "ADDIW           ra, zero, 0x21f(543)",
+            "SLLI            ra, ra, 0x35(53)",
+            "FMV.D.X         ft9, ra",
+            "FLT.D           ra, ft8, ft9",
+            "BNE             zero, ra, 0xc(12)",
+            "ADDIW           rax, zero, 0xffffffff(-1)",
+            "SLLI            rax, rax, 0x3f(63)"
         ],
         "disassembly": "cvttsd2si rax, [rdi]"
     },
