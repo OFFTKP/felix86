@@ -11,6 +11,7 @@
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/print.hpp"
+#include "felix86/common/qsbr.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
@@ -1376,67 +1377,83 @@ static bool handle_safepoint(ThreadState* current_state, siginfo_t* info, uconte
     u64 full = -1ull, old;
     ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &full, &old, sizeof(u64)) == 0);
 
-    ASSERT_MSG(current_state->effective_deferred_signals, "Faulted at safepoint, but no effective deferred signals, this shouldn't happen");
-
-    // While the order of standard signals is unspecified, if standard and real-time signals are queued
-    // standard signals are serviced first, and real-time signals follow a least to most order
-    // Thus we just get the least significant set bit
-    int sig = __builtin_ctzll(current_state->effective_deferred_signals);
-
-    if (current_state->syscall_restart == SyscallRestart::RestartAlways || current_state->syscall_restart == SyscallRestart::RestartIfSaRestart) {
-        // Check if previous instruction is FELIX86_HINT_SAFEPOINT_SYSCALL, i.e. if this safepoint is right after a syscall
-        u32 expected_previous_instruction;
-        {
-            Assembler tas((u8*)&expected_previous_instruction, sizeof(u32));
-            tas.SLTIU(x0, x0, FELIX86_HINT_SAFEPOINT_SYSCALL);
-        }
-
-        u32 actual_previous_instruction = *(u32*)(pc - 4);
-        RegisteredSignal* signal = SignalHandlerTable::getRegisteredSignal(current_state->signal_table, sig + 1);
-        bool restart = current_state->syscall_restart == SyscallRestart::RestartAlways || (signal->flags & SA_RESTART);
-        if (restart) {
-            ASSERT_MSG(expected_previous_instruction == actual_previous_instruction, "Not at syscall safepoint?");
-            u64* regs = get_regs(context);
-            // Set RIP to RIP - 2 to go back to the syscall instruction and restore the RAX
-            // We do this in the context and then prepare_guest_signal will pick it up
-            regs[Allocations::RIP().Index()] -= 2;
-            u8* data = (u8*)regs[Allocations::RIP().Index()];
-            ASSERT((data[0] == 0x0f && data[1] == 0x05) || (data[0] == 0xcd && data[1] == 0x80));
-            regs[Allocations::RAX().Index()] = current_state->ctx.orig_rax;
-        }
-        current_state->syscall_restart = SyscallRestart::None;
+    bool poked = current_state->poked.load(std::memory_order::relaxed);
+    if (poked) {
+        QSBR::enter_quiescent_state();
     }
 
-    // Since we block signals, race here due to another signal being deferred is not possible
+    int sig;
     siginfo_t guest_info;
-    if (sig <= 30) {
-        guest_info = current_state->deferred_standard_info[sig];
-        current_state->deferred_signals = current_state->deferred_signals & ~(1ull << sig);
-        current_state->effective_deferred_signals = current_state->effective_deferred_signals & ~(1ull << sig);
-    } else {
-        SignalQueueNode* node = current_state->deferred_realtime_info[sig - 31];
-        ASSERT(node);
-        guest_info = node->info;
-        if (node->next == nullptr) {
+    bool is_signal = current_state->effective_deferred_signals;
+    if (is_signal) {
+        // While the order of standard signals is unspecified, if standard and real-time signals are queued
+        // standard signals are serviced first, and real-time signals follow a least to most order
+        // Thus we just get the least significant set bit
+        sig = __builtin_ctzll(current_state->effective_deferred_signals);
+
+        if (current_state->syscall_restart == SyscallRestart::RestartAlways || current_state->syscall_restart == SyscallRestart::RestartIfSaRestart) {
+            // Check if previous instruction is FELIX86_HINT_SAFEPOINT_SYSCALL, i.e. if this safepoint is right after a syscall
+            u32 expected_previous_instruction;
+            {
+                Assembler tas((u8*)&expected_previous_instruction, sizeof(u32));
+                tas.SLTIU(x0, x0, FELIX86_HINT_SAFEPOINT_SYSCALL);
+            }
+
+            u32 actual_previous_instruction = *(u32*)(pc - 4);
+            RegisteredSignal* signal = SignalHandlerTable::getRegisteredSignal(current_state->signal_table, sig + 1);
+            bool restart = current_state->syscall_restart == SyscallRestart::RestartAlways || (signal->flags & SA_RESTART);
+            if (restart) {
+                ASSERT_MSG(expected_previous_instruction == actual_previous_instruction, "Not at syscall safepoint?");
+                u64* regs = get_regs(context);
+                // Set RIP to RIP - 2 to go back to the syscall instruction and restore the RAX
+                // We do this in the context and then prepare_guest_signal will pick it up
+                regs[Allocations::RIP().Index()] -= 2;
+                u8* data = (u8*)regs[Allocations::RIP().Index()];
+                ASSERT((data[0] == 0x0f && data[1] == 0x05) || (data[0] == 0xcd && data[1] == 0x80));
+                regs[Allocations::RAX().Index()] = current_state->ctx.orig_rax;
+            }
+            current_state->syscall_restart = SyscallRestart::None;
+        }
+
+        // Since we block signals, race here due to another signal being deferred is not possible
+        if (sig <= 30) {
+            guest_info = current_state->deferred_standard_info[sig];
             current_state->deferred_signals = current_state->deferred_signals & ~(1ull << sig);
             current_state->effective_deferred_signals = current_state->effective_deferred_signals & ~(1ull << sig);
+        } else {
+            SignalQueueNode* node = current_state->deferred_realtime_info[sig - 31];
+            ASSERT(node);
+            guest_info = node->info;
+            if (node->next == nullptr) {
+                current_state->deferred_signals = current_state->deferred_signals & ~(1ull << sig);
+                current_state->effective_deferred_signals = current_state->effective_deferred_signals & ~(1ull << sig);
+            }
+            current_state->deferred_realtime_info[sig - 31] = node->next;
+            ASSERT(munmap(node, 4096) == 0);
         }
-        current_state->deferred_realtime_info[sig - 31] = node->next;
-        ASSERT(munmap(node, 4096) == 0);
     }
 
     // Safe to restore our mask now
     ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old, nullptr, sizeof(u64)) == 0);
 
-    // This gives us a 0-indexed signal, but the actual signal number starts from 1
-    sig += 1;
+    if (is_signal) {
+        // This gives us a 0-indexed signal, but the actual signal number starts from 1
+        sig += 1;
 
-    // Handle signal...
-    // In order to handle the signal, we need to set the context in such a way that the JIT will jump
-    // to the dispatcher after returning, the stack will be well prepared. When finished, the code will naturally return to where it was supposed
-    // to return because sigreturn will set the PC according to the ucontext. Or it will longjmp out, but we don't care because we are out of the
-    // host signal handler. Being in a safepoint means we can do this PC manipulation without worrying about potential locks or stack overflows
-    prepare_guest_signal(sig, &guest_info, context);
+        // Handle signal...
+        // In order to handle the signal, we need to set the context in such a way that the JIT will jump
+        // to the dispatcher after returning, the stack will be well prepared. When finished, the code will naturally return to where it was supposed
+        // to return because sigreturn will set the PC according to the ucontext. Or it will longjmp out, but we don't care because we are out of the
+        // host signal handler. Being in a safepoint means we can do this PC manipulation without worrying about potential locks or stack overflows
+        prepare_guest_signal(sig, &guest_info, context);
+    } else {
+        // If not poked then we shouldn't be here...
+        ASSERT(poked);
+        // We were poked and there's no pending signal, go back to the dispatcher as our block may no longer exist
+        set_pc(context, current_state->recompiler->getCompileNext(current_state->ctx.Mode32()));
+        // Restore safepoint as there's no signals
+        ASSERT(mprotect(current_state->getDeferredFaultPage(), 4096, PROT_READ | PROT_WRITE) == 0);
+    }
     return true;
 }
 

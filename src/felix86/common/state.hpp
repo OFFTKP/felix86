@@ -2,6 +2,7 @@
 
 #include <array>
 #include <csetjmp>
+#include <sys/mman.h>
 #include "biscuit/isa.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
@@ -333,6 +334,15 @@ struct ThreadState {
     FEXCore::SHMStats::ThreadStats* thread_stats = nullptr;
 
     void* reservation_base = nullptr;
+
+    std::atomic<u64> local_qsbr_epoch = 0;
+    std::atomic_bool offline = false;
+    std::atomic_bool poked = false;
+
+    void Poke() {
+        poked.store(true, std::memory_order::relaxed);
+        ASSERT(mprotect(getDeferredFaultPage(), 4096, PROT_NONE) == 0);
+    }
 
     u64 GetGpr(x86_ref_e ref) const {
         if (ref < X86_REF_RAX || ref > X86_REF_R15) {

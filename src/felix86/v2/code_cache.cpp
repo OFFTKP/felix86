@@ -10,35 +10,12 @@
 #include "felix86/v2/code_cache.hpp"
 #include "felix86/v2/dispatcher.hpp"
 
-constexpr static u64 code_cache_sizes[] = {
-    4 * MB,
-    8 * MB,
-    16 * MB,
-    32 * MB,
-};
-
-constexpr static u64 code_cache_sizes_count = std::size(code_cache_sizes);
-constexpr static u64 max_code_cache_size = code_cache_sizes[code_cache_sizes_count - 1];
-constexpr static u64 shared_code_cache_size = 256 * MB;
-
 CodeCache* g_shared_code_cache = nullptr;
 
 CodeCache::CodeCache(CodeCacheType type) {
     void* address = MAP_FAILED;
-    u64 total_size;
-    u64 initial_size;
-    switch (type) {
-    case CodeCacheType::Private: {
-        total_size = max_code_cache_size;
-        initial_size = code_cache_sizes[0];
-        break;
-    }
-    case CodeCacheType::Shared: {
-        total_size = shared_code_cache_size;
-        initial_size = shared_code_cache_size;
-        break;
-    }
-    }
+    const u64 total_size = shared_code_cache_size;
+    const u64 initial_size = shared_code_cache_size;
     // Try allocating code cache near the program so that rip-relative immediates can be made in fewer instructions
     u64 min = std::min(g_executable_start, g_interpreter_start);
     // If the program is allocated in 32-bit address space then it's not worth performing this optimization
@@ -87,47 +64,34 @@ CodeCache::CodeCache(CodeCacheType type) {
         u64 end_of_reservation = (u64)getBlockArea() + getBlockAreaSize();
         g_process_globals.perf->addToFile(pointers.start_of_code_cache, end_of_reservation - pointers.start_of_code_cache, name);
     }
+
+    for (int i = 0; i < segment_count; i++) {
+        segments[i] = Segment(mapping_start + i * segment_size);
+    }
 }
 
 CodeCache::~CodeCache() {
     munmap(reservation_base, reservation_size);
 }
 
+BlockMetadata* CodeCache::publish(const PublishInfo& info) {
+    Segment chosen_segment = chooseSegment(info);
+    auto [instructions_pointer, metadata_pointer] =
+        chosen_segment.allocatePointers(info.size, sizeof(BlockMetadata) + info.translation_counts.size());
+    memcpy(instructions_pointer, info.riscv_code, info.size);
+    BlockMetadata* metadata = (BlockMetadata*)metadata_pointer;
+    metadata->count = info.translation_counts.size();
+    metadata->guest_address = TaggedAddress::make(info.guest_rip, info.mode32);
+    metadata->self_validating = info.self_validating;
+    metadata->unused = 0;
+    std::copy(info.translation_counts.begin(), info.translation_counts.end(), metadata->translation_sizes);
+    return metadata;
+}
+
+Segment& CodeCache::chooseSegment(const PublishInfo& info) {}
+
 u64 CodeCache::getBlockAreaSize() const {
-    return (u64)mapping_start + max_code_cache_size - (u64)getBlockArea();
-}
-
-u8* CodeCache::getMappedEnd() const {
-    return mapping_start + code_cache_sizes[size_index];
-}
-
-bool CodeCache::grow() {
-    if (size_index == code_cache_sizes_count - 1) {
-        return false;
-    }
-
-    // Allocate more of our reserved buffer
-    u64 old_size = code_cache_sizes[size_index];
-    u8* past_end = mapping_start + old_size;
-    ASSERT(!((u64)past_end & 0xFFF));
-    size_index++;
-    u64 new_size = code_cache_sizes[size_index];
-    u64 size_difference = new_size - old_size;
-
-    void* address = ::mmap(past_end, size_difference, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
-    if (address != past_end) {
-        // TODO: investigate
-        // Unsure what causes this to happen, but it does. In that case, clear code cache and carry on
-        // Perhaps PR_MDWE_REFUSE_EXEC_GAIN
-        WARN("Couldn't increment code cache because mmap returned %p (errno: %s), clearing code cache", address, strerror(errno));
-
-        // Undo the size increment
-        size_index--;
-        return false;
-    }
-
-    madvise(address, size_difference, MADV_HUGEPAGE);
-    return true;
+    return (u64)mapping_start + shared_code_cache_size - (u64)getBlockArea();
 }
 
 void CodeCache::addBlockToPages(BlockMetadata* block, u64 guest_start, u64 guest_end) {

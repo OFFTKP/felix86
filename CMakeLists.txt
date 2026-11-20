@@ -170,6 +170,7 @@ set(FELIX86_COMMON_SOURCES
     src/felix86/common/utility.cpp
     src/felix86/common/x87.cpp
     src/felix86/common/xsave.cpp
+    src/felix86/common/qsbr.cpp
     src/felix86/common/decoder.c
 )
 

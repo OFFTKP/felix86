@@ -12,10 +12,46 @@
 #define FELIX86_HINT_NOT_EXEC 0xec
 #define FELIX86_ERESTARTNOINTR 513
 
-using InterruptibleSyscallFunc = u64 (*)(u64* effective_deferred_signals, u64 nr, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5, u64 arg6);
+constexpr static u64 shared_code_cache_size = 256 * MB;
+constexpr static u64 segment_count = 32;
+constexpr static u64 segment_size = shared_code_cache_size / segment_count;
 
-struct ThreadState;
-struct felix86_frame;
+// This layout allows us to atomically increment both offsets with a single fetch_add
+// Since we know each segment is always going to be < 32 bits, the low counter won't overflow into the top one
+union SegmentOffsets {
+    struct {
+        u64 instructions_offset : 32;
+        u64 metadata_offset : 32;
+    } combined;
+    u64 raw;
+};
+
+struct Segment {
+    Segment() : base(nullptr) {};
+    explicit Segment(u8* base) : base(base) {
+        offsets.raw = 0;
+    };
+
+    std::pair<u8*, u8*> allocatePointers(u32 instructions_size, u32 metadata_size) {
+        u64 add = (u64)metadata_size << 32 | instructions_size;
+        SegmentOffsets old = {.raw = __atomic_fetch_add(&offsets.raw, add, __ATOMIC_RELAXED)};
+        SegmentOffsets added = {.raw = old.raw + add};
+        ASSERT(old.combined.instructions_offset < added.combined.instructions_offset);
+        ASSERT(old.combined.metadata_offset < added.combined.metadata_offset);
+        ASSERT(base);
+        u8* instructions_pointer = base + old.combined.instructions_offset;
+        u8* metadata_pointer = base + segment_size - added.combined.metadata_offset;
+        if (metadata_pointer < instructions_pointer) {
+            return {nullptr, nullptr}; // out of space
+        }
+        return {instructions_pointer, metadata_pointer};
+    }
+
+private:
+    SegmentOffsets offsets;
+    u8* base;
+    static_assert(sizeof(offsets) == sizeof(u64));
+};
 
 struct TranslationSize {
     u16 x86_instruction_size : 4;
@@ -23,18 +59,58 @@ struct TranslationSize {
 };
 static_assert(sizeof(TranslationSize) == sizeof(u16));
 
+struct PublishInfo {
+    void* riscv_code;
+    u64 size;
+    u64 guest_rip;
+    u64 guest_rip_end;
+    std::vector<TranslationSize> translation_counts;
+    // If this bool is set, this code is part of a block that changes often. This makes it go
+    // into specific segments, so as to not pollute and cause clears in the static code segments
+    bool volatile_code;
+    bool mode32;
+    bool self_validating;
+};
+
+using InterruptibleSyscallFunc = u64 (*)(u64* effective_deferred_signals, u64 nr, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5, u64 arg6);
+
+struct ThreadState;
+struct felix86_frame;
+
 enum class PendingLinkFlags : u64 {
     HasReturnHint = 0x8000'0000'0000'0000,
 };
 
 enum class CodeCacheType { Private, Shared };
 
+// This metadata is part of the code cache. This way once a segment is cleared, the block metadata associated with
+// the blocks in that segment go with it. BlockSlot points to this, and BlockSlot lives in the heap. When blocks get invalidated
+// the BlockMetadata pointer in BlockSlot becomes null, so the smc info survive past invalidates.
 struct BlockMetadata {
-    u64 host_address{};
-    u64 guest_address{};
+    u32 offset;              // offset into the code cache
+    u32 count : 24;          // instruction count
+    u32 self_validating : 1; // whether it's a sv block
+    u32 unused : 7;
+    TaggedAddress guest_address;
     // This gives us a count of x86 instructions per block, the size of each instruction
     // and the size of the risc-v instructions used to translate it
-    std::vector<TranslationSize> translation_sizes{};
+    TranslationSize translation_sizes[/* count sized */];
+};
+static_assert(sizeof(BlockMetadata) == sizeof(u64) * 2);
+
+union SmcInfo {
+    struct {
+        // How many times this block was recompiled. After smc_threshold it will no longer protect the page
+        // and instead emit a self-validating block
+        u64 smc_hits : 8;
+        u64 last_smc_ms : 32;
+        u64 unused : 24;
+    };
+    u64 raw{};
+};
+
+struct BlockSlot {
+    BlockMetadata* metadata{};
     // We always end blocks on CALL. This is because some games (e.g. Celeste) may include garbage or
     // unmapped pages if we don't end sequences on CALL. Since we want to do the CALL/RET optimization,
     // and the hardware RSB needs to match the return address, but we can't continue scanning after the call,
@@ -43,17 +119,7 @@ struct BlockMetadata {
     // When the block would get recompiled the address cache entry would point to the new block and RSB prediction
     // would fail. We want RSB to succeed and to not compile past the CALL, so this is our compromise.
     u64 ret_stub{};
-    union {
-        struct {
-            // How many times this block was recompiled. After smc_threshold it will no longer protect the page
-            // and instead emit a self-validating block
-            u64 smc_hits : 8;
-            u64 self_validating : 1;
-            u64 last_smc_ms : 32;
-            u64 unused : 23;
-        };
-        u64 raw{};
-    } misc_info{};
+    SmcInfo smc{};
 };
 
 struct CodeCachePointers {
@@ -98,8 +164,6 @@ struct CodeCache {
 
     u64 getBlockAreaSize() const;
 
-    u8* getMappedEnd() const;
-
     bool grow();
 
     BlockMetadata& getBlockMetadata(TaggedAddress address) {
@@ -134,6 +198,8 @@ struct CodeCache {
     void clear();
 
 private:
+    Segment& chooseSegment(const PublishInfo& info);
+
     u8* mapping_start{};
     void* reservation_base{};
     u64 reservation_size{};
@@ -148,6 +214,8 @@ private:
     // For fast host pc -> block metadata lookup (binary search vs looking up one by one)
     // on signal handlers
     std::map<u64, BlockMetadata*> host_pc_map{};
+
+    std::array<Segment, segment_count> segments{};
 };
 
 struct CodeCacheManager {
