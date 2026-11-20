@@ -1272,12 +1272,10 @@ static void defer_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx
     // Asynchronous signal, defer
     // If we were in a safepoint, the signal would've been handled
     ASSERT(sig >= 1 && sig <= 64);
+    u64 full = -1ull;
+    ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &full, nullptr, sizeof(u64)) == 0);
     int index = sig - 1;
     u64 pc = get_pc(ctx);
-    bool signal_masked = state->signal_mask.__val[0] & (1ull << index);
-    if (!signal_masked && state->recompiler->isInInterruptibleSyscall(pc)) {
-        set_pc(ctx, (u64)state->recompiler->getInterruptibleSyscallEintrAddress());
-    }
 
     state->deferred_signals |= 1ull << index;
     if (index <= 30) {
@@ -1316,9 +1314,15 @@ static void defer_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx
     if (effective_deferred_signals != 0) {
         ASSERT(::mprotect(state->getDeferredFaultPage(), 4096, PROT_NONE) == 0);
     }
-    state->effective_deferred_signals = effective_deferred_signals;
+    state->effective_deferred_signals |= effective_deferred_signals;
+    if (state->recompiler->isInInterruptibleSyscall(pc) &&
+        // If there's no effective deferred signals then continue with the syscall
+        state->effective_deferred_signals != 0) {
+        set_pc(ctx, (u64)state->recompiler->getInterruptibleSyscallEintrAddress());
+    }
     SIGLOG("Deferring signal %s (%d) during RIP=%lx", sigdescr_np(sig), sig, state->GetRip());
 }
+
 static bool handle_scan_ahead_fault(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
     if (!current_state->in_scan_ahead) {
         return false;
@@ -1423,6 +1427,10 @@ static bool handle_safepoint(ThreadState* current_state, siginfo_t* info, uconte
         }
         current_state->deferred_realtime_info[sig - 31] = node->next;
         ASSERT(munmap(node, 4096) == 0);
+    }
+
+    if (current_state->effective_deferred_signals == 0) {
+        ASSERT(::mprotect(current_state->getDeferredFaultPage(), 4096, PROT_READ | PROT_WRITE) == 0);
     }
 
     // Safe to restore our mask now
@@ -1581,6 +1589,10 @@ static bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, uco
         // TODO: we already have a path for default behavior terminating signals, but it only happens
         // on signals that are in jit code. Fix and replace this entire branch with return false
         if (in_jit_code) {
+            return false;
+        }
+
+        if (info->si_code <= 0) {
             return false;
         }
 
