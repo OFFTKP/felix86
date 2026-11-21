@@ -1273,12 +1273,10 @@ static void defer_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx
     // Asynchronous signal, defer
     // If we were in a safepoint, the signal would've been handled
     ASSERT(sig >= 1 && sig <= 64);
+    u64 full = -1ull;
+    ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &full, nullptr, sizeof(u64)) == 0);
     int index = sig - 1;
     u64 pc = get_pc(ctx);
-    bool signal_masked = state->signal_mask.__val[0] & (1ull << index);
-    if (!signal_masked && state->recompiler->isInInterruptibleSyscall(pc)) {
-        set_pc(ctx, (u64)state->recompiler->getInterruptibleSyscallEintrAddress());
-    }
 
     state->deferred_signals |= 1ull << index;
     if (index <= 30) {
@@ -1315,11 +1313,17 @@ static void defer_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx
     // Make our safepoints fault
     u64 effective_deferred_signals = state->deferred_signals & ~state->signal_mask.__val[0];
     if (effective_deferred_signals != 0) {
-        ASSERT(::mprotect(state->getDeferredFaultPage(), 4096, PROT_NONE) == 0);
+        state->ArmSafepoint();
     }
-    state->effective_deferred_signals = effective_deferred_signals;
+    state->effective_deferred_signals |= effective_deferred_signals;
+    if (state->recompiler->isInInterruptibleSyscall(pc) &&
+        // If there's no effective deferred signals then continue with the syscall
+        state->effective_deferred_signals != 0) {
+        set_pc(ctx, (u64)state->recompiler->getInterruptibleSyscallEintrAddress());
+    }
     SIGLOG("Deferring signal %s (%d) during RIP=%lx", sigdescr_np(sig), sig, state->GetRip());
 }
+
 static bool handle_scan_ahead_fault(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
     if (!current_state->in_scan_ahead) {
         return false;
@@ -1377,7 +1381,7 @@ static bool handle_safepoint(ThreadState* current_state, siginfo_t* info, uconte
     u64 full = -1ull, old;
     ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &full, &old, sizeof(u64)) == 0);
 
-    bool poked = current_state->poked.load(std::memory_order::relaxed);
+    bool poked = current_state->poked.exchange(false, std::memory_order::seq_cst);
     if (poked) {
         QSBR::enter_quiescent_state();
     }
@@ -1433,6 +1437,11 @@ static bool handle_safepoint(ThreadState* current_state, siginfo_t* info, uconte
         }
     }
 
+    // Restore safepoint as there's no signals
+    if (current_state->effective_deferred_signals == 0) {
+        current_state->DisarmSafepoint();
+    }
+
     // Safe to restore our mask now
     ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old, nullptr, sizeof(u64)) == 0);
 
@@ -1446,13 +1455,11 @@ static bool handle_safepoint(ThreadState* current_state, siginfo_t* info, uconte
         // to return because sigreturn will set the PC according to the ucontext. Or it will longjmp out, but we don't care because we are out of the
         // host signal handler. Being in a safepoint means we can do this PC manipulation without worrying about potential locks or stack overflows
         prepare_guest_signal(sig, &guest_info, context);
-    } else {
-        // If not poked then we shouldn't be here...
-        ASSERT(poked);
+    }
+
+    if (poked && get_pc(context) == pc) {
         // We were poked and there's no pending signal, go back to the dispatcher as our block may no longer exist
         set_pc(context, current_state->recompiler->getCompileNext(current_state->ctx.Mode32()));
-        // Restore safepoint as there's no signals
-        ASSERT(mprotect(current_state->getDeferredFaultPage(), 4096, PROT_READ | PROT_WRITE) == 0);
     }
     return true;
 }
@@ -1598,6 +1605,10 @@ static bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, uco
         // TODO: we already have a path for default behavior terminating signals, but it only happens
         // on signals that are in jit code. Fix and replace this entire branch with return false
         if (in_jit_code) {
+            return false;
+        }
+
+        if (info->si_code <= 0) {
             return false;
         }
 
@@ -2004,9 +2015,9 @@ int Signals::sigprocmask(ThreadState* state, int how, sigset_t* set, sigset_t* o
         // Otherwise, make it read/write
         state->effective_deferred_signals = state->deferred_signals & ~state->signal_mask.__val[0];
         if (state->effective_deferred_signals != 0) {
-            ASSERT(mprotect(state->getDeferredFaultPage(), 4096, PROT_NONE) == 0);
+            state->ArmSafepoint();
         } else {
-            ASSERT(mprotect(state->getDeferredFaultPage(), 4096, PROT_READ | PROT_WRITE) == 0);
+            state->DisarmSafepoint();
         }
 
         // Finally, set our new host mask
