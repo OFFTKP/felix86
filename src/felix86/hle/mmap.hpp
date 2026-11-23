@@ -91,7 +91,19 @@ struct Mapper {
 
     void mark_rw(u64 address, u64 size);
 
+    [[nodiscard]] SemaphoreGuard lock_smc() {
+        return smc_lock.lock();
+    }
+
+    void lock_before_fork();
+
+    void unlock_after_fork();
+
 private:
+    // We don't lock the entire compile section, we use smc_counters to check if protections have changed
+    // This short lived lock ensures the block invalidation to the smc_counters bump doesn't race
+    Semaphore smc_lock;
+
     Freelist freelist;
     std::unordered_map<u64, int> page_to_shmid{};
     /// Tracks the amount of currently mapped regions in memory.

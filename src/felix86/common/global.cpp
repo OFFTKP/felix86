@@ -122,6 +122,7 @@ void ProcessGlobals::initialize() {
 }
 
 void ProcessGlobals::before_fork() {
+    g_mapper->lock_before_fork();
     states_lock.lock_before_fork();
     symbols_lock.lock_before_fork();
     shm_manager.lock_before_fork();
@@ -133,6 +134,7 @@ void ProcessGlobals::after_fork_child() {
     shm_manager.unlock_after_fork();
     symbols_lock.unlock_after_fork();
     states_lock.unlock_after_fork();
+    g_mapper->unlock_after_fork();
     Logger::afterForkChild();
 }
 
@@ -141,6 +143,7 @@ void ProcessGlobals::after_fork_parent() {
     shm_manager.unlock_after_fork();
     symbols_lock.unlock_after_fork();
     states_lock.unlock_after_fork();
+    g_mapper->unlock_after_fork();
 }
 
 #define X(ext) bool Extensions::ext = false;
