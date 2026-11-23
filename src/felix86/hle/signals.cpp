@@ -1483,8 +1483,11 @@ static bool handle_smc(ThreadState* current_state, siginfo_t* info, ucontext_t* 
     SMCLOG("Handling SMC on %lx during PC: %lx and RIP of block: %lx", (u64)info->si_addr, pc, rip);
 #endif
     u64 write_address = (u64)info->si_addr & ~0xFFFull;
-    g_mapper->mark_rw(write_address, 0x1000);
-    Recompiler::invalidateRangeGlobal(write_address, write_address + 1, "self-modifying code", InvalidationKind::Modify);
+    {
+        auto smc_guard = g_mapper->lock_smc();
+        Recompiler::invalidateRangeGlobal(write_address, write_address + 1, "self-modifying code", InvalidationKind::Modify);
+        g_mapper->mark_rw(write_address, 0x1000);
+    }
     FELIX86_PROFILE_INSTANT_INCREMENT(current_state->thread_stats, AccumulatedSMCCount, 1);
     return true;
 }

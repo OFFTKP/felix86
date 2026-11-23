@@ -732,6 +732,7 @@ std::vector<u32> Mapper::get_smc_trackers(u64 address, u64 size) {
 }
 
 bool Mapper::check_smc_trackers(u64 address, u64 size, const std::vector<u32>& old) {
+    auto guard = smc_lock.lock();
     const u64 start_page = address & ~0xFFFull;
     const u64 end_page = (address + size - 1) & ~0xFFFull;
     for (u64 i = start_page, j = 0; i <= end_page; i += 4096, j++) {
@@ -740,6 +741,14 @@ bool Mapper::check_smc_trackers(u64 address, u64 size, const std::vector<u32>& o
         }
     }
     return false;
+}
+
+void Mapper::lock_before_fork() {
+    smc_lock.lock_before_fork();
+}
+
+void Mapper::unlock_after_fork() {
+    smc_lock.unlock_after_fork();
 }
 
 void Mapper::mark_ro(u64 address, u64 size) {
@@ -805,4 +814,7 @@ void Mapper::mark_rw(u64 address, u64 size) {
     } else {
         mprotect_assert((void*)address, size, PROT_READ | PROT_WRITE);
     }
+
+    // Bump counters after changing protection to finalize
+    bump_smc(address, address + size);
 }
