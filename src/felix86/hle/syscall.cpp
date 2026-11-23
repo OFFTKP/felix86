@@ -2339,6 +2339,10 @@ u64 felix86_syscall_gate(felix86_frame* frame, u64 rip_next, u64 return_address)
         QSBR::mark_online();
     }
 
+    if (state->sigreturned) {
+        return 1;
+    }
+
     const bool ruined = (generation & 1) || code_cache.codeGeneration(return_address) != generation;
     if (!ruined) {
         return return_address;
