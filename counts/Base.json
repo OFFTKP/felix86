@@ -17595,7 +17595,7 @@
             "LWU             t3, ra, 0x0(0)",
             "SW              t1, ra, 0x0(0)",
             "FENCE          ",
-            "ADDI            t4, state, 0x770(1904)",
+            "ADDI            t4, state, 0x778(1912)",
             "ADDIW           t2, zero, 0x1(1)",
             "AMOADD.D        zero, t4, t2, aq, rl",
             "ADD.UW          rbx, t3, zero"
@@ -17615,7 +17615,7 @@
             "LD              t2, ra, 0x0(0)",
             "SD              rbx, ra, 0x0(0)",
             "FENCE          ",
-            "ADDI            t3, state, 0x770(1904)",
+            "ADDI            t3, state, 0x778(1912)",
             "ADDIW           t1, zero, 0x1(1)",
             "AMOADD.D        zero, t3, t1, aq, rl",
             "ADDI            rbx, t2, 0x0(0)"

@@ -987,6 +987,7 @@ static void restore_sigcontext_32(ThreadState* state, x86_sigcontext_32* ctx) {
 }
 
 void Signals::sigreturn(ThreadState* state, bool rt) {
+    state->sigreturned = true;
     u64 rsp = state->GetGpr(X86_REF_RSP);
 
     if (state->ctx.Mode32()) {
