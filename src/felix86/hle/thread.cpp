@@ -13,6 +13,7 @@
 #include "felix86/common/exit.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/common/qsbr.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
@@ -696,6 +697,7 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32, bool exec) {
 }
 
 void Threads::StartThread(ThreadState* state) {
+    QSBR::mark_online();
     state->recompiler->enterDispatcher(state);
 }
 

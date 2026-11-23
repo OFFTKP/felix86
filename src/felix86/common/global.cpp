@@ -17,12 +17,14 @@
 #include "felix86/common/log.hpp"
 #include "felix86/common/perf.hpp"
 #include "felix86/common/shm_stats.hpp"
+#include "felix86/common/state.hpp"
 #include "felix86/common/volatile.hpp"
 #include "felix86/hle/fd.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/mmap.hpp"
 #include "felix86/hle/ptrace.hpp"
 #include "felix86/v2/handlers.hpp"
+#include "felix86/v2/recompiler.hpp"
 
 using namespace biscuit;
 
@@ -122,27 +124,36 @@ void ProcessGlobals::initialize() {
 }
 
 void ProcessGlobals::before_fork() {
+    Recompiler* recompiler = ThreadState::Get()->recompiler;
     g_mapper->lock_before_fork();
+    recompiler->lockCodeCachesBeforeFork(true);
     states_lock.lock_before_fork();
     symbols_lock.lock_before_fork();
     shm_manager.lock_before_fork();
     g_mapper->before_fork();
+    recompiler->lockCodeCachesBeforeFork(false);
 }
 
 void ProcessGlobals::after_fork_child() {
+    Recompiler* recompiler = ThreadState::Get()->recompiler;
+    recompiler->unlockCodeCachesAfterFork(false);
     g_mapper->after_fork_child();
     shm_manager.unlock_after_fork();
     symbols_lock.unlock_after_fork();
     states_lock.unlock_after_fork();
+    recompiler->unlockCodeCachesAfterFork(true);
     g_mapper->unlock_after_fork();
     Logger::afterForkChild();
 }
 
 void ProcessGlobals::after_fork_parent() {
+    Recompiler* recompiler = ThreadState::Get()->recompiler;
+    recompiler->unlockCodeCachesAfterFork(false);
     g_mapper->after_fork_parent();
     shm_manager.unlock_after_fork();
     symbols_lock.unlock_after_fork();
     states_lock.unlock_after_fork();
+    recompiler->unlockCodeCachesAfterFork(true);
     g_mapper->unlock_after_fork();
 }
 

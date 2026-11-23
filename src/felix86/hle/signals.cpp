@@ -11,6 +11,7 @@
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/print.hpp"
+#include "felix86/common/qsbr.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
@@ -430,11 +431,12 @@ static BlockMetadata* get_block_metadata(ThreadState* state, u64 host_pc) {
     return state->recompiler->getCodeCache().getBlockByHostPc(host_pc);
 }
 
-static u64 get_actual_rip(BlockMetadata& metadata, u64 fault_pc) {
-    const u64 start_guest_address = metadata.guest_address;
+static u64 get_actual_rip(ThreadState* state, BlockMetadata& metadata, u64 fault_pc) {
+    const u64 start_guest_address = metadata.guest_address.rip();
     u64 guest_address = start_guest_address;
-    u64 host_address = metadata.host_address;
-    size_t instruction_count = metadata.translation_sizes.size();
+    const u64 start_host_address = (u64)state->recompiler->getCodeCache().getBlockCode(&metadata);
+    u64 host_address = start_host_address;
+    size_t instruction_count = metadata.count;
     for (size_t i = 0; i < instruction_count; i++) {
         u64 host_address_end = host_address + metadata.translation_sizes[i].riscv_instructions_size;
         if (fault_pc >= host_address && fault_pc < host_address_end) {
@@ -443,7 +445,7 @@ static u64 get_actual_rip(BlockMetadata& metadata, u64 fault_pc) {
         guest_address += metadata.translation_sizes[i].x86_instruction_size;
         host_address = host_address_end;
     }
-    ERROR("Couldn't find RIP for block of RIP %lx and PC: %lx and fault PC: %lx", start_guest_address, metadata.host_address, fault_pc);
+    ERROR("Couldn't find RIP for block of RIP %lx and PC: %lx and fault PC: %lx", start_guest_address, start_host_address, fault_pc);
     return 0;
 }
 
@@ -1273,12 +1275,10 @@ static void defer_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx
     // Asynchronous signal, defer
     // If we were in a safepoint, the signal would've been handled
     ASSERT(sig >= 1 && sig <= 64);
+    u64 full = -1ull;
+    ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &full, nullptr, sizeof(u64)) == 0);
     int index = sig - 1;
     u64 pc = get_pc(ctx);
-    bool signal_masked = state->signal_mask.__val[0] & (1ull << index);
-    if (!signal_masked && state->recompiler->isInInterruptibleSyscall(pc)) {
-        set_pc(ctx, (u64)state->recompiler->getInterruptibleSyscallEintrAddress());
-    }
 
     state->deferred_signals |= 1ull << index;
     if (index <= 30) {
@@ -1315,11 +1315,17 @@ static void defer_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx
     // Make our safepoints fault
     u64 effective_deferred_signals = state->deferred_signals & ~state->signal_mask.__val[0];
     if (effective_deferred_signals != 0) {
-        ASSERT(::mprotect(state->getDeferredFaultPage(), 4096, PROT_NONE) == 0);
+        state->ArmSafepoint();
     }
-    state->effective_deferred_signals = effective_deferred_signals;
+    state->effective_deferred_signals |= effective_deferred_signals;
+    if (state->recompiler->isInInterruptibleSyscall(pc) &&
+        // If there's no effective deferred signals then continue with the syscall
+        state->effective_deferred_signals != 0) {
+        set_pc(ctx, (u64)state->recompiler->getInterruptibleSyscallEintrAddress());
+    }
     SIGLOG("Deferring signal %s (%d) during RIP=%lx", sigdescr_np(sig), sig, state->GetRip());
 }
+
 static bool handle_scan_ahead_fault(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
     if (!current_state->in_scan_ahead) {
         return false;
@@ -1353,7 +1359,7 @@ static bool handle_safepoint(ThreadState* current_state, siginfo_t* info, uconte
         return false;
     }
 
-    if (!current_state->recompiler->isInJitCode(pc)) {
+    if (!current_state->recompiler->isInJitCode(pc) && !current_state->recompiler->isInThunkArea(pc)) {
         // Not in JIT code, rare but possible
         SIGLOG("Not in jit code");
         return false;
@@ -1363,67 +1369,86 @@ static bool handle_safepoint(ThreadState* current_state, siginfo_t* info, uconte
     u64 full = -1ull, old;
     ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &full, &old, sizeof(u64)) == 0);
 
-    ASSERT_MSG(current_state->effective_deferred_signals, "Faulted at safepoint, but no effective deferred signals, this shouldn't happen");
-
-    // While the order of standard signals is unspecified, if standard and real-time signals are queued
-    // standard signals are serviced first, and real-time signals follow a least to most order
-    // Thus we just get the least significant set bit
-    int sig = __builtin_ctzll(current_state->effective_deferred_signals);
-
-    if (current_state->syscall_restart == SyscallRestart::RestartAlways || current_state->syscall_restart == SyscallRestart::RestartIfSaRestart) {
-        // Check if previous instruction is FELIX86_HINT_SAFEPOINT_SYSCALL, i.e. if this safepoint is right after a syscall
-        u32 expected_previous_instruction;
-        {
-            Assembler tas((u8*)&expected_previous_instruction, sizeof(u32));
-            tas.SLTIU(x0, x0, FELIX86_HINT_SAFEPOINT_SYSCALL);
-        }
-
-        u32 actual_previous_instruction = *(u32*)(pc - 4);
-        RegisteredSignal* signal = SignalHandlerTable::getRegisteredSignal(current_state->signal_table, sig + 1);
-        bool restart = current_state->syscall_restart == SyscallRestart::RestartAlways || (signal->flags & SA_RESTART);
-        if (restart) {
-            ASSERT_MSG(expected_previous_instruction == actual_previous_instruction, "Not at syscall safepoint?");
-            u64* regs = get_regs(context);
-            // Set RIP to RIP - 2 to go back to the syscall instruction and restore the RAX
-            // We do this in the context and then prepare_guest_signal will pick it up
-            regs[Allocations::RIP().Index()] -= 2;
-            u8* data = (u8*)regs[Allocations::RIP().Index()];
-            ASSERT((data[0] == 0x0f && data[1] == 0x05) || (data[0] == 0xcd && data[1] == 0x80));
-            regs[Allocations::RAX().Index()] = current_state->ctx.orig_rax;
-        }
-        current_state->syscall_restart = SyscallRestart::None;
+    bool poked = current_state->poked.exchange(false, std::memory_order::seq_cst);
+    if (poked) {
+        QSBR::enter_quiescent_state();
     }
 
-    // Since we block signals, race here due to another signal being deferred is not possible
+    int sig;
     siginfo_t guest_info;
-    if (sig <= 30) {
-        guest_info = current_state->deferred_standard_info[sig];
-        current_state->deferred_signals = current_state->deferred_signals & ~(1ull << sig);
-        current_state->effective_deferred_signals = current_state->effective_deferred_signals & ~(1ull << sig);
-    } else {
-        SignalQueueNode* node = current_state->deferred_realtime_info[sig - 31];
-        ASSERT(node);
-        guest_info = node->info;
-        if (node->next == nullptr) {
+    bool is_signal = current_state->effective_deferred_signals;
+    if (is_signal) {
+        // While the order of standard signals is unspecified, if standard and real-time signals are queued
+        // standard signals are serviced first, and real-time signals follow a least to most order
+        // Thus we just get the least significant set bit
+        sig = __builtin_ctzll(current_state->effective_deferred_signals);
+
+        if (current_state->syscall_restart == SyscallRestart::RestartAlways || current_state->syscall_restart == SyscallRestart::RestartIfSaRestart) {
+            // Check if previous instruction is FELIX86_HINT_SAFEPOINT_SYSCALL, i.e. if this safepoint is right after a syscall
+            u32 expected_previous_instruction;
+            {
+                Assembler tas((u8*)&expected_previous_instruction, sizeof(u32));
+                tas.SLTIU(x0, x0, FELIX86_HINT_SAFEPOINT_SYSCALL);
+            }
+
+            u32 actual_previous_instruction = *(u32*)(pc - 4);
+            RegisteredSignal* signal = SignalHandlerTable::getRegisteredSignal(current_state->signal_table, sig + 1);
+            bool restart = current_state->syscall_restart == SyscallRestart::RestartAlways || (signal->flags & SA_RESTART);
+            if (restart) {
+                ASSERT_MSG(expected_previous_instruction == actual_previous_instruction, "Not at syscall safepoint?");
+                u64* regs = get_regs(context);
+                // Set RIP to RIP - 2 to go back to the syscall instruction and restore the RAX
+                // We do this in the context and then prepare_guest_signal will pick it up
+                regs[Allocations::RIP().Index()] -= 2;
+                u8* data = (u8*)regs[Allocations::RIP().Index()];
+                ASSERT((data[0] == 0x0f && data[1] == 0x05) || (data[0] == 0xcd && data[1] == 0x80));
+                regs[Allocations::RAX().Index()] = current_state->ctx.orig_rax;
+            }
+            current_state->syscall_restart = SyscallRestart::None;
+        }
+
+        // Since we block signals, race here due to another signal being deferred is not possible
+        if (sig <= 30) {
+            guest_info = current_state->deferred_standard_info[sig];
             current_state->deferred_signals = current_state->deferred_signals & ~(1ull << sig);
             current_state->effective_deferred_signals = current_state->effective_deferred_signals & ~(1ull << sig);
+        } else {
+            SignalQueueNode* node = current_state->deferred_realtime_info[sig - 31];
+            ASSERT(node);
+            guest_info = node->info;
+            if (node->next == nullptr) {
+                current_state->deferred_signals = current_state->deferred_signals & ~(1ull << sig);
+                current_state->effective_deferred_signals = current_state->effective_deferred_signals & ~(1ull << sig);
+            }
+            current_state->deferred_realtime_info[sig - 31] = node->next;
+            ASSERT(munmap(node, 4096) == 0);
         }
-        current_state->deferred_realtime_info[sig - 31] = node->next;
-        ASSERT(munmap(node, 4096) == 0);
+    }
+
+    // Restore safepoint as there's no signals
+    if (current_state->effective_deferred_signals == 0) {
+        current_state->DisarmSafepoint();
     }
 
     // Safe to restore our mask now
     ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old, nullptr, sizeof(u64)) == 0);
 
-    // This gives us a 0-indexed signal, but the actual signal number starts from 1
-    sig += 1;
+    if (is_signal) {
+        // This gives us a 0-indexed signal, but the actual signal number starts from 1
+        sig += 1;
 
-    // Handle signal...
-    // In order to handle the signal, we need to set the context in such a way that the JIT will jump
-    // to the dispatcher after returning, the stack will be well prepared. When finished, the code will naturally return to where it was supposed
-    // to return because sigreturn will set the PC according to the ucontext. Or it will longjmp out, but we don't care because we are out of the
-    // host signal handler. Being in a safepoint means we can do this PC manipulation without worrying about potential locks or stack overflows
-    prepare_guest_signal(sig, &guest_info, context);
+        // Handle signal...
+        // In order to handle the signal, we need to set the context in such a way that the JIT will jump
+        // to the dispatcher after returning, the stack will be well prepared. When finished, the code will naturally return to where it was supposed
+        // to return because sigreturn will set the PC according to the ucontext. Or it will longjmp out, but we don't care because we are out of the
+        // host signal handler. Being in a safepoint means we can do this PC manipulation without worrying about potential locks or stack overflows
+        prepare_guest_signal(sig, &guest_info, context);
+    }
+
+    if (poked && get_pc(context) == pc) {
+        // We were poked and there's no pending signal, go back to the dispatcher as our block may no longer exist
+        set_pc(context, current_state->recompiler->getCompileNext(current_state->ctx.Mode32()));
+    }
     return true;
 }
 
@@ -1525,9 +1550,10 @@ static bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, uco
             WARN("Jump to bad address: %lx", pc);
             WARN("RIP: %lx", current_state->ctx.rip);
             TaggedAddress address = TaggedAddress::make(current_state->ctx.rip, current_state->ctx.Mode32());
-            BlockMetadata& meta = current_state->recompiler->getBlockMetadata(address);
+            BlockMetadata* meta = current_state->recompiler->getCodeCache().getPublishedBlock(address);
+            u64 host_address = meta ? (u64)current_state->recompiler->getCodeCache().getBlockCode(meta) : 0;
             AddressCacheEntry& entry = current_state->getAddressCacheEntry(current_state->ctx.rip);
-            WARN("BlockMetadata: [%lx, %lx], address_cache: [%lx, %lx]", meta.guest_address, meta.host_address, entry.guest.raw, entry.host);
+            WARN("BlockMetadata: [%lx, %lx], address_cache: [%lx, %lx]", current_state->ctx.rip, host_address, entry.guest.raw, entry.host);
         }
 
         felix86_coredump();
@@ -1550,7 +1576,7 @@ static bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, uco
             if (in_jit_code) {
                 auto current_block = get_block_metadata(current_state, pc);
                 if (current_block) {
-                    u64 actual_rip = get_actual_rip(*current_block, pc);
+                    u64 actual_rip = get_actual_rip(current_state, *current_block, pc);
                     print_address(actual_rip);
                 } else {
 #ifdef __riscv
@@ -1571,6 +1597,10 @@ static bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, uco
         // TODO: we already have a path for default behavior terminating signals, but it only happens
         // on signals that are in jit code. Fix and replace this entire branch with return false
         if (in_jit_code) {
+            return false;
+        }
+
+        if (info->si_code <= 0) {
             return false;
         }
 
@@ -1613,7 +1643,7 @@ static bool handle_wild_sigabrt(ThreadState* current_state, siginfo_t* info, uco
             if (in_jit_code) {
                 auto current_block = get_block_metadata(current_state, pc);
                 if (current_block) {
-                    u64 actual_rip = get_actual_rip(*current_block, pc);
+                    u64 actual_rip = get_actual_rip(current_state, *current_block, pc);
                     print_address(actual_rip);
                 } else {
 #ifdef __riscv
@@ -1707,7 +1737,7 @@ static bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucon
     } else {
         BlockMetadata* current_block = get_block_metadata(current_state, pc);
         ASSERT_MSG(current_block, "Failed to get current block during synchronous signal with PC=%lx, RIP=%lx", pc, current_state->ctx.rip);
-        actual_rip = get_actual_rip(*current_block, pc);
+        actual_rip = get_actual_rip(current_state, *current_block, pc);
     }
 
     int sig;
@@ -1866,8 +1896,8 @@ static void signal_handler(int sig, siginfo_t* info, void* ctx) {
         if (state->recompiler->isInJitCode(pc)) {
             BlockMetadata* current_block = get_block_metadata(state, pc);
             ASSERT_MSG(current_block, "Failed to get current block during synchronous signal with PC=%lx, RIP=%lx", pc, state->ctx.rip);
-            u64 actual_rip = get_actual_rip(*current_block, pc);
-            VERBOSE("Synchronous signal block: %lx, actual rip: %lx", current_block->guest_address, actual_rip);
+            u64 actual_rip = get_actual_rip(state, *current_block, pc);
+            VERBOSE("Synchronous signal block: %lx, actual rip: %lx", current_block->guest_address.rip(), actual_rip);
             return prepare_synchronous_signal(state, sig, info, ctx, actual_rip);
         } else {
             AddressCacheEntry entry = state->getAddressCacheEntry(state->ctx.rip);
@@ -1977,9 +2007,9 @@ int Signals::sigprocmask(ThreadState* state, int how, sigset_t* set, sigset_t* o
         // Otherwise, make it read/write
         state->effective_deferred_signals = state->deferred_signals & ~state->signal_mask.__val[0];
         if (state->effective_deferred_signals != 0) {
-            ASSERT(mprotect(state->getDeferredFaultPage(), 4096, PROT_NONE) == 0);
+            state->ArmSafepoint();
         } else {
-            ASSERT(mprotect(state->getDeferredFaultPage(), 4096, PROT_READ | PROT_WRITE) == 0);
+            state->DisarmSafepoint();
         }
 
         // Finally, set our new host mask

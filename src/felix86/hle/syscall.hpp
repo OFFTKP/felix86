@@ -8,6 +8,8 @@ void felix86_syscall(felix86_frame* state);
 
 void felix86_syscall32(felix86_frame* state, u32 rip_next);
 
+u64 felix86_syscall_gate(felix86_frame* frame, u64 rip_next, u64 return_address);
+
 long interruptible_syscall(long nr, u64 arg1 = 0, u64 arg2 = 0, u64 arg3 = 0, u64 arg4 = 0, u64 arg5 = 0, u64 arg6 = 0);
 
 enum {

@@ -28,15 +28,11 @@
 #define FELIX86_HINT_UD2 0xd2
 #define FELIX86_HINT_TF 0x7f
 
+constexpr u64 staging_buffer_size = 256 * 1024;
+
 constexpr int scan_ahead_count = 64;
 constexpr int scan_ahead_budget = 512;
 constexpr int scan_ahead_depth = 2;
-
-enum class InvalidationKind {
-    Reset,
-    Modify,
-    NoExec,
-};
 
 enum class SequenceResult {
     Compiled,
@@ -148,7 +144,8 @@ struct CompileState {
     bool instruction_on_stack = false;
     bool block_big = false;
     FlagAccessData flag_access{};
-    BlockMetadata* block_metadata{};
+    u64 block_start_rip = 0;
+    u64 block_start = 0;
     bool block_self_validating = false;
     u64 scan_end = 0;
     bool mode32 = false;
@@ -156,6 +153,13 @@ struct CompileState {
 
     std::vector<SideExit> side_exits;
     bool superblocks_disabled = false;
+
+    std::vector<LinkSite> link_sites;
+    std::vector<TranslationSize> translation_sizes;
+    bool self_validating = false;
+    std::vector<std::pair<u64, u32>> breakpoint_sites;
+    bool track_smc = false;
+    std::vector<u32> smc_trackers;
 
     u64 self_validating_start = 0;
     std::vector<u8> self_validating_bytes{};
@@ -329,15 +333,19 @@ struct Recompiler {
 
     void jumpAndLinkConditional(BranchCond cond, biscuit::GPR lhs, biscuit::GPR rhs, u64 rip_true, u64 rip_false);
 
-    void invalidateBlock(BlockMetadata* block, bool is_smc);
+    void linkPublishedBlock(const BlockMetadata* metadata, const PublishInfo& info);
+
+    bool isInStagingBuffer(const u8* pointer) const {
+        return pointer >= (const u8*)staging_buffer && pointer < (const u8*)staging_buffer + staging_buffer_size;
+    }
 
     static void patchBlockEntry(u64 host_address);
 
     static u32 smcClockMs();
 
-    static bool shouldSelfValidate(const BlockMetadata& block);
+    static bool shouldSelfValidate(const BlockSlot& slot);
 
-    static void addSmcHit(BlockMetadata& block);
+    static void addSmcHit(BlockSlot& slot);
 
     void emitSelfValidation(biscuit::Label* expected_bytes);
 
@@ -348,6 +356,10 @@ struct Recompiler {
     static void invalidateRangeGlobal(u64 start, u64 end, const char* reason, InvalidationKind kind = InvalidationKind::Reset);
 
     int invalidateRange(u64 start, u64 end, InvalidationKind kind);
+
+    void lockCodeCachesBeforeFork(bool outer);
+
+    void unlockCodeCachesAfterFork(bool outer);
 
     bool isSingleStepping() const {
         return g_config.single_step || compile_state.single_step_mode != SingleStepMode::None;
@@ -465,8 +477,8 @@ struct Recompiler {
         compile_state.lock_handled = true;
     }
 
-    BlockMetadata& getBlockMetadata(TaggedAddress address) {
-        return code_cache->getBlockMetadata(address);
+    BlockSlot& getSlot(TaggedAddress address) {
+        return code_cache->getSlot(address);
     }
 
     bool blockExists(TaggedAddress address) {
@@ -512,18 +524,25 @@ struct Recompiler {
             clearCodeCache(state);
         }
 
+        if (shared_cache && needsPrivateCodeCache(state) != (code_cache != shared_cache)) {
+            selectCodeCache(state);
+        }
+
         if (!isAddressable(rip)) {
             return code_cache->getPointers().not_mapped;
         }
 
         bool mode32 = state->ctx.Mode32();
         TaggedAddress address = TaggedAddress::make(rip, mode32);
-        BlockMetadata& meta = getBlockMetadata(address);
-        if (meta.host_address != 0) {
+        BlockSlot& slot = getSlot(address);
+        BlockMetadata* published = __atomic_load_n(&slot.metadata, __ATOMIC_ACQUIRE);
+        if (published) {
+            u64 host_address = (u64)code_cache->getBlockCode(published);
             AddressCacheEntry& entry = state->getAddressCacheEntry(rip);
             entry.guest = address;
-            entry.host = meta.ret_stub ? meta.ret_stub : meta.host_address;
-            return meta.host_address;
+            const u64 ret_stub = slot.getRetStub();
+            entry.host = ret_stub ? ret_stub : host_address;
+            return host_address;
         }
 
         return compile(state, rip);
@@ -571,8 +590,6 @@ struct Recompiler {
 
     void setFlag(x86_ref_e flag);
 
-    void resizeOrClearCodeCache(ThreadState* state);
-
     void clearCodeCache(ThreadState* state);
 
     void clearAddressCache();
@@ -593,6 +610,25 @@ struct Recompiler {
 
     bool isRelocatable() {
         return relocatable;
+    }
+
+    void alignLinkSite() {
+        if ((u64)as.GetCursorPointer() & 0x2) {
+            as.C_NOP();
+        }
+    }
+
+    void callSyscallThunk() {
+        ASSERT(ScratchAllocator::isScratch(t4));
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winvalid-offsetof"
+        as.LD(t4, offsetof(felix86_frame, syscall_thunk_ptr), sp);
+#pragma GCC diagnostic pop
+        as.JALR(t4);
+    }
+
+    bool isInThunkArea(u64 pc) const {
+        return code_cache->isInThunkArea(pc);
     }
 
     void pushCalltrace() {
@@ -619,11 +655,15 @@ struct Recompiler {
     }
 
     u8* getEndOfCodeCache() const {
+        return code_cache->getBlockArea() + code_cache->getBlockAreaSize();
+    }
+
+    u8* getCursor() const {
         return (u8*)as.GetCursorPointer();
     }
 
     bool isInJitCode(u64 pc) const {
-        return pc >= (u64)getStartOfCodeCache() && pc < (u64)getEndOfCodeCache();
+        return code_cache->isInBlockArea(pc);
     }
 
     static bool isXMM(x86_ref_e ref) {
@@ -752,9 +792,16 @@ struct Recompiler {
 
     void switchToX87();
 
-    BlockMetadata& getCurrentMetadata() {
-        ASSERT(compile_state.block_metadata);
-        return *compile_state.block_metadata;
+    u64 getCurrentRip() const {
+        return compile_state.rip;
+    }
+
+    u64 getBlockStart() const {
+        return compile_state.block_start;
+    }
+
+    const std::vector<TranslationSize>& getTranslationSizes() const {
+        return compile_state.translation_sizes;
     }
 
     void setFsrmSSE(bool is_sse) {
@@ -829,6 +876,14 @@ struct Recompiler {
 private:
     bool scanAhead(u64 rip);
 
+    BlockMetadata* publishBlock(PublishInfo& info, u64 protect_end);
+
+    void emitDirectLink(u64 target, bool return_link);
+
+    static int dispatcherHandlerOffset(bool mode32, bool skip_lookup);
+
+    static u64 encodePendingLink(u8* link_location, bool return_hint);
+
     u32 scanLandingBlock(ThreadState* state, u64 initial_rip, u64 rip_ahead, int depth, int& instrs_left);
 
     void expirePendingLinks(TaggedAddress address);
@@ -843,19 +898,35 @@ private:
 
     void discardSideExits();
 
+    void initializeAssembler();
+
     bool canCompileSpeculatively(const ZydisDecodedInstruction& instruction, const ZydisDecodedOperand* operands);
 
-    std::unique_ptr<CodeCache> code_cache = std::make_unique<CodeCache>();
+    template <typename Emit>
+    void patchCode(u8* location, Emit&& emit) {
+        biscuit::Assembler patcher(location, 2 * sizeof(u32));
+        std::swap(as, patcher);
+        emit();
+        std::swap(as, patcher);
+    }
+
+    CodeCache* createPrivateCodeCache();
+
+    void useCodeCache(CodeCache* cache);
+
+    bool needsPrivateCodeCache(ThreadState* state) const;
+
+    void selectCodeCache(ThreadState* state);
+
+    CodeCache* code_cache = nullptr;
+    CodeCache* shared_cache = nullptr;
+    CodeCache* private_cache = nullptr;
     biscuit::Assembler as{};
     ZydisDecoder decoder{};
 
     std::array<std::pair<bool, u64>, 4> breakpoints;
 
     CompileState compile_state{};
-
-    /// Pointers to blocks to be linked. The top 7 bits are used to denote various flags
-    // related to the block as a bitset.
-    std::unordered_map<TaggedAddress, std::vector<u64>> pending_links{};
 
     std::deque<u64> calltrace{};
 
@@ -864,4 +935,6 @@ private:
     int optimization_guard_counter = 0; // see OptimizationGuard
 
     bool relocatable = false;
+
+    void* staging_buffer = nullptr;
 };

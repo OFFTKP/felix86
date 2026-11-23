@@ -28,6 +28,7 @@
 #include "felix86/common/global.hpp"
 #undef VMIN
 #include "felix86/common/log.hpp"
+#include "felix86/common/qsbr.hpp"
 #include "felix86/common/script.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/strace.hpp"
@@ -1863,7 +1864,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         state->signal_mask.__val[0] = new_mask.__val[0];
         state->effective_deferred_signals |= state->deferred_signals & ~new_mask.__val[0];
         if (state->effective_deferred_signals) {
-            ASSERT(::mprotect(state->getDeferredFaultPage(), 4096, PROT_NONE) == 0);
+            state->ArmSafepoint();
             state->saved_signal_mask = old_mask;
             state->restore_saved_signal_mask = true;
             ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &host_mask, nullptr, sizeof(host_mask)) == 0);
@@ -2040,7 +2041,7 @@ void felix86_syscall(felix86_frame* frame) {
             u64 effective = state->deferred_signals & ~state->signal_mask.__val[0];
             if (effective) {
                 state->effective_deferred_signals = effective;
-                ASSERT(mprotect(state->getDeferredFaultPage(), 4096, PROT_NONE) == 0);
+                state->ArmSafepoint();
                 ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old, nullptr, sizeof(old)) == 0);
                 SIGLOG("pause returning without waiting, a deferred signal is already deliverable");
                 result = -EINTR;
@@ -2318,6 +2319,39 @@ enum {
     SYS_SENDMMSG = 20,
 };
 
+u64 felix86_syscall_gate(felix86_frame* frame, u64 rip_next, u64 return_address) {
+    ThreadState* state = frame->state;
+    CodeCache& code_cache = state->recompiler->getCodeCache();
+    const u64 rip = state->ctx.rip;
+    const u16 cs = state->ctx.cs;
+    const u64 generation = code_cache.codeGeneration(return_address);
+
+    const bool was_online = !state->offline.load(std::memory_order::relaxed);
+    if (was_online) {
+        QSBR::mark_offline();
+    }
+    if (rip_next) {
+        felix86_syscall32(frame, rip_next);
+    } else {
+        felix86_syscall(frame);
+    }
+    if (was_online) {
+        QSBR::mark_online();
+    }
+
+    const bool ruined = (generation & 1) || code_cache.codeGeneration(return_address) != generation;
+    if (!ruined) {
+        return return_address;
+    }
+
+    if (state->ctx.rip != rip || state->ctx.cs != cs) {
+        return 1;
+    }
+
+    state->ctx.rip = rip + 2;
+    return 0;
+}
+
 void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
     ASSERT(frame->magic == felix86_frame::expected_magic);
     ThreadState* state = frame->state;
@@ -2477,7 +2511,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             u64 effective = state->deferred_signals & ~state->signal_mask.__val[0];
             if (effective) {
                 state->effective_deferred_signals = effective;
-                ASSERT(mprotect(state->getDeferredFaultPage(), 4096, PROT_NONE) == 0);
+                state->ArmSafepoint();
                 ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old, nullptr, sizeof(old)) == 0);
                 SIGLOG("pause returning without waiting, a deferred signal is already deliverable");
                 result = -EINTR;

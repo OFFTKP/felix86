@@ -136,9 +136,7 @@ static void compile(const std::string& input) {
     std::unique_ptr<Recompiler> rec = std::make_unique<Recompiler>(true);
     rec->setFlagMode(flag_mode);
     rec->compileSequence(mode32, (u64)guest, nullptr);
-
-    TaggedAddress guest_address = TaggedAddress::make((u64)guest, mode32);
-    BlockMetadata& metadata = rec->getBlockMetadata(guest_address);
+    const std::vector<TranslationSize>& translation_sizes = rec->getTranslationSizes();
 
     auto print_range = [](u64 start, u64 end, int color_index) {
         for (u64 address = start; address < end; address += 4) {
@@ -153,20 +151,20 @@ static void compile(const std::string& input) {
         }
     };
 
-    u64 address = metadata.host_address;
+    u64 address = rec->getBlockStart();
     u64 guest_offset = 0;
-    for (size_t i = 0; i < metadata.translation_sizes.size(); i++) {
-        const u64 riscv_size = metadata.translation_sizes[i].riscv_instructions_size;
+    for (size_t i = 0; i < translation_sizes.size(); i++) {
+        const u64 riscv_size = translation_sizes[i].riscv_instructions_size;
         if (guest_offset < ud2_offset) {
             // Skip the safepoint at the start of the sequence
             const u64 print_start = i == 0 ? address + 4 : address;
             print_range(print_start, address + riscv_size, i);
         }
         address += riscv_size;
-        guest_offset += metadata.translation_sizes[i].x86_instruction_size;
+        guest_offset += translation_sizes[i].x86_instruction_size;
     }
 
-    const u64 code_end = (u64)rec->getEndOfCodeCache();
+    const u64 code_end = (u64)rec->getCursor();
     if (address < code_end) {
         printf("Exits:\n");
         print_range(address, code_end, -1);

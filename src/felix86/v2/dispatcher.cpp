@@ -3,6 +3,7 @@
 #include "felix86/common/perf.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/utility.hpp"
+#include "felix86/hle/syscall.hpp"
 #include "felix86/v2/allocations.hpp"
 #include "felix86/v2/common_emit.hpp"
 #include "felix86/v2/dispatcher.hpp"
@@ -113,6 +114,10 @@ static void emitDispatcherCore(biscuit::Assembler& as, CodeCachePointers& pointe
 
     as.LILabel(t1, &compile_next_skip_address_cache_label);
     as.SD(t1, offsetof(felix86_frame, compile_next_skip_address_cache_ptr), sp);
+
+    biscuit::Label syscall_thunk;
+    as.LILabel(t1, &syscall_thunk);
+    as.SD(t1, offsetof(felix86_frame, syscall_thunk_ptr), sp);
 
     as.MV(Allocations::threadStatePointer(), a0);
 
@@ -229,6 +234,26 @@ static void emitDispatcherCore(biscuit::Assembler& as, CodeCachePointers& pointe
     CommonEmit::call(as, (u64)Recompiler::invalidateAt, relocatable);
     CommonEmit::restoreGuestState(as, scratches, true); // TODO: Jump to a skip writeback place in dispatcher
     as.J(&compile_next_skip_address_cache_label);
+
+    as.Bind(&syscall_thunk);
+    as.MV(a2, ra);
+    CommonEmit::call(as, (u64)felix86_syscall_gate, relocatable);
+    biscuit::Label code_ruined, rip_changed;
+    as.LI(t0, 1);
+    as.BGEU(t0, a0, &code_ruined);
+    as.MV(ra, a0);
+    as.RET();
+
+    as.Bind(&code_ruined);
+    as.BNEZ(a0, &rip_changed);
+    CommonEmit::restoreGuestState(as, scratches, true);
+    as.SLTIU(x0, x0, FELIX86_HINT_SAFEPOINT_SYSCALL);
+    as.LD(x0, -8, Allocations::threadStatePointer());
+    as.J(&compile_next_skip_address_cache_label);
+
+    as.Bind(&rip_changed);
+    CommonEmit::restoreGuestState(as, scratches, true);
+    as.J(&compile_next_skip_address_cache_label);
 }
 
 void Dispatcher::emitDispatcher(u8* buffer, u64 size, CodeCachePointers& pointers, bool relocatable) {
@@ -237,6 +262,7 @@ void Dispatcher::emitDispatcher(u8* buffer, u64 size, CodeCachePointers& pointer
     emitInterruptibleSyscallThunk(as, pointers);
     emitDispatcherCore(as, pointers, relocatable);
     emitBadAddressThunks(as, pointers);
+    ASSERT_MSG((u64)as.GetCursorPointer() - start <= size, "Dispatcher thunks overflow the thunk area");
 
     flush_icache(start, (u64)as.GetCursorPointer());
     if (g_config.perf_blocks || g_config.perf_global || g_config.perf_libs || g_config.perf_jitdump) {

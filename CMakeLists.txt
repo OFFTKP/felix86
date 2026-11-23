@@ -170,6 +170,7 @@ set(FELIX86_COMMON_SOURCES
     src/felix86/common/utility.cpp
     src/felix86/common/x87.cpp
     src/felix86/common/xsave.cpp
+    src/felix86/common/qsbr.cpp
     src/felix86/common/decoder.c
 )
 
@@ -202,6 +203,8 @@ set(FELIX86_HLE_SOURCES
 
 set(FELIX86_V2_SOURCES
     src/felix86/v2/code_cache.cpp
+    src/felix86/v2/private_code_cache.cpp
+    src/felix86/v2/shared_code_cache.cpp
     src/felix86/v2/common_emit.cpp
     src/felix86/v2/dispatcher.cpp
     src/felix86/v2/recompiler.cpp

@@ -7,6 +7,7 @@
 #include <sys/wait.h>
 #include "felix86/common/feature.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/common/qsbr.hpp"
 #include "felix86/hle/ptrace.hpp"
 #include "felix86/hle/signals.hpp"
 #include "felix86/v2/recompiler.hpp"
@@ -43,7 +44,7 @@ struct RemoteState {
     RemoteState& operator=(RemoteState&& other) {
         if (this != &other) {
             commit();
-            data = other.data;
+            memcpy((void*)&data, (const void*)&other.data, sizeof(ThreadState));
             remote_state = other.remote_state;
             pid = other.pid;
             other.remote_state = nullptr;
@@ -1367,6 +1368,10 @@ i64 sys_ptrace(felix86_ptrace_request op, pid_t pid, void* addr, void* data) {
 
 void raise_stop(StopType stop, int& sig, siginfo_t* guest_info, int event, u64 event_msg) {
     ThreadState* local_state = ThreadState::Get();
+    const bool was_online = !local_state->offline.load(std::memory_order::relaxed);
+    if (was_online) {
+        QSBR::mark_offline();
+    }
     PtraceData& data = local_state->ptrace_data;
     bool old_tf = local_state->ctx.tf;
     data.stop_info.mode32 = local_state->ctx.Mode32();
@@ -1450,6 +1455,10 @@ void raise_stop(StopType stop, int& sig, siginfo_t* guest_info, int event, u64 e
     if (local_state->ctx.tf != old_tf) {
         WARN("Trap flag changed during stop");
         felix86_tf_changed(local_state, local_state->ctx.tf);
+    }
+
+    if (was_online) {
+        QSBR::mark_online();
     }
 }
 

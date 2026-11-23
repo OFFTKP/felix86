@@ -1,29 +1,27 @@
 #include <algorithm>
 #include <cerrno>
 #include <cstring>
-#include <iterator>
 #include <sys/mman.h>
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/perf.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/v2/code_cache.hpp"
+#include "felix86/v2/dispatcher.hpp"
+#include "felix86/v2/private_code_cache.hpp"
+#include "felix86/v2/recompiler.hpp"
+#include "felix86/v2/shared_code_cache.hpp"
 
-constexpr static u64 code_cache_sizes[] = {
-    4 * MB,
-    8 * MB,
-    16 * MB,
-    32 * MB,
-};
+CodeCache* g_shared_code_cache = nullptr;
 
-constexpr static u64 code_cache_sizes_count = std::size(code_cache_sizes);
-constexpr static u64 max_code_cache_size = code_cache_sizes[code_cache_sizes_count - 1];
+CodeCache::~CodeCache() {
+    munmap(reservation_base, reservation_size);
+}
 
-CodeCache::CodeCache() {
-    constexpr size_t total_size = max_code_cache_size;
-    // Try allocating code cache near program so that rip-relative immediates can be made in fewer instructions
-    u64 min = std::min(g_executable_start, g_interpreter_start);
+void CodeCache::reserve(u64 total_size, u64 initial_size) {
     void* address = MAP_FAILED;
+    // Try allocating code cache near the program so that rip-relative immediates can be made in fewer instructions
+    u64 min = std::min(g_executable_start, g_interpreter_start);
     // If the program is allocated in 32-bit address space then it's not worth performing this optimization
     // as to not interfere with MAP_32BIT and because immediates can be made in 2 instructions
     if (min > 5 * GB) {
@@ -55,63 +53,40 @@ CodeCache::CodeCache() {
         }
     }
     ASSERT_MSG(address != MAP_FAILED, "Failed to reserve code cache for thread %d?", gettid());
-    u8* first_chunk =
-        (u8*)::mmap((u8*)address, code_cache_sizes[0], PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+    u8* first_chunk = (u8*)::mmap((u8*)address, initial_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
     ASSERT(first_chunk == (u8*)address);
     mapping_start = first_chunk;
-    pointers.start_of_code_cache = (u64)getBlockArea();
 
     int result = madvise(address, total_size, MADV_HUGEPAGE);
     if (result != 0) {
         WARN("Failed to set MADV_HUGEPAGE for code cache");
     }
+}
+
+void CodeCache::setAreas(u8* thunk_area, u8* block_area, u64 block_area_size) {
+    this->thunk_area = thunk_area;
+    this->block_area = block_area;
+    this->block_area_size = block_area_size;
+    pointers.start_of_code_cache = (u64)getBlockArea();
 
     if (g_config.perf_global) {
         std::string name = "felix86 code cache " + std::to_string(gettid());
-        u64 end_of_reservation = (u64)getBlockArea() + getBlockAreaSize();
-        g_process_globals.perf->addToFile(pointers.start_of_code_cache, end_of_reservation - pointers.start_of_code_cache, name);
+        g_process_globals.perf->addToFile(pointers.start_of_code_cache, getBlockAreaSize(), name);
     }
 }
 
-CodeCache::~CodeCache() {
-    munmap(reservation_base, reservation_size);
-}
-
-u64 CodeCache::getBlockAreaSize() const {
-    return (u64)mapping_start + max_code_cache_size - (u64)getBlockArea();
-}
-
-u8* CodeCache::getMappedEnd() const {
-    return mapping_start + code_cache_sizes[size_index];
-}
-
-bool CodeCache::grow() {
-    if (size_index == code_cache_sizes_count - 1) {
-        return false;
-    }
-
-    // Allocate more of our reserved buffer
-    u64 old_size = code_cache_sizes[size_index];
-    u8* past_end = mapping_start + old_size;
-    ASSERT(!((u64)past_end & 0xFFF));
-    size_index++;
-    u64 new_size = code_cache_sizes[size_index];
-    u64 size_difference = new_size - old_size;
-
-    void* address = ::mmap(past_end, size_difference, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
-    if (address != past_end) {
-        // TODO: investigate
-        // Unsure what causes this to happen, but it does. In that case, clear code cache and carry on
-        // Perhaps PR_MDWE_REFUSE_EXEC_GAIN
-        WARN("Couldn't increment code cache because mmap returned %p (errno: %s), clearing code cache", address, strerror(errno));
-
-        // Undo the size increment
-        size_index--;
-        return false;
-    }
-
-    madvise(address, size_difference, MADV_HUGEPAGE);
-    return true;
+BlockMetadata* CodeCache::writeBlock(u8* code, u64 code_size, u8* record, const PublishInfo& info) {
+    ASSERT(code_size >= info.size);
+    memcpy(code, info.riscv_code, info.size);
+    memset(code + info.size, 0, code_size - info.size);
+    BlockMetadata* metadata = (BlockMetadata*)record;
+    metadata->offset = code - mapping_start;
+    metadata->count = info.translation_counts.size();
+    metadata->guest_address = TaggedAddress::make(info.guest_rip, info.mode32);
+    metadata->self_validating = info.self_validating;
+    metadata->unused = 0;
+    std::copy(info.translation_counts.begin(), info.translation_counts.end(), metadata->translation_sizes);
+    return metadata;
 }
 
 void CodeCache::addBlockToPages(BlockMetadata* block, u64 guest_start, u64 guest_end) {
@@ -127,23 +102,80 @@ void CodeCache::addBlockToPages(BlockMetadata* block, u64 guest_start, u64 guest
 }
 
 BlockMetadata* CodeCache::getBlockByHostPc(u64 host_pc) {
-    auto it = host_pc_map.lower_bound(host_pc);
-    ASSERT(it != host_pc_map.end());
-    BlockMetadata* block = it->second;
-    u64 address_end = block->host_address;
-    for (auto& sizes : block->translation_sizes) {
-        address_end += sizes.riscv_instructions_size;
+    BlockMetadata* block;
+    {
+        auto guard = host_pc_lock.lock();
+        auto it = host_pc_map.lower_bound(host_pc);
+        if (it == host_pc_map.end()) {
+            WARN("PC: %lx not inside any block?", host_pc);
+            return nullptr;
+        }
+        block = it->second;
     }
-    if (!(host_pc >= block->host_address && host_pc < address_end)) {
-        WARN("PC: %lx not inside range %lx-%lx?", host_pc, block->host_address, address_end);
+    u64 address_start = (u64)getBlockCode(block);
+    u64 address_end = address_start;
+    for (u32 i = 0; i < block->count; i++) {
+        address_end += block->translation_sizes[i].riscv_instructions_size;
+    }
+    if (!(host_pc >= address_start && host_pc < address_end)) {
+        WARN("PC: %lx not inside range %lx-%lx?", host_pc, address_start, address_end);
         return nullptr;
     }
     return block;
 }
 
-void CodeCache::clear() {
-    auto guard = page_map_lock.lock();
-    block_metadata.clear();
-    host_pc_map.clear();
-    page_map.clear();
+int CodeCache::invalidateRange(u64 start, u64 end, InvalidationKind kind) {
+    const bool is_smc = kind != InvalidationKind::Reset;
+    const bool keep_self_validating = kind == InvalidationKind::Modify;
+    return eraseBlocksInRange(start, end, [&](BlockMetadata* block) {
+        if (keep_self_validating && block->self_validating) {
+            // Don't invalidate self-validating blocks
+            return false;
+        }
+        invalidateBlock(block, is_smc);
+        return true;
+    });
+}
+
+void CodeCache::invalidateBlock(BlockMetadata* block, bool is_smc) {
+    BlockSlot& slot = getSlot(block->guest_address);
+    if (!is_smc) {
+        slot.smc.smc_hits = 0;
+    }
+
+    Recompiler::patchBlockEntry((u64)getBlockCode(block));
+
+    BlockMetadata* expected = block;
+    bool cleared = __atomic_compare_exchange_n(&slot.metadata, &expected, nullptr, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
+    if (cleared && is_smc) {
+        Recompiler::addSmcHit(slot);
+    }
+}
+
+void CodeCache::lockBeforeFork() {
+    links_lock.lock_before_fork();
+    page_map_lock.lock_before_fork();
+    slots_lock.lock_before_fork();
+    host_pc_lock.lock_before_fork();
+    pending_links_lock.lock_before_fork();
+}
+
+void CodeCache::unlockAfterFork() {
+    pending_links_lock.unlock_after_fork();
+    host_pc_lock.unlock_after_fork();
+    slots_lock.unlock_after_fork();
+    page_map_lock.unlock_after_fork();
+    links_lock.unlock_after_fork();
+}
+
+CodeCache* CodeCacheManager::createPrivate() {
+    return new PrivateCodeCache();
+}
+
+CodeCache* CodeCacheManager::getShared() {
+    if (!g_shared_code_cache) {
+        g_shared_code_cache = new SharedCodeCache();
+        Dispatcher::emitDispatcher(g_shared_code_cache->getThunkArea(), CodeCache::thunk_area_size, g_shared_code_cache->getPointers(), false);
+    }
+    return g_shared_code_cache;
 }

@@ -2,6 +2,7 @@
 
 #include <array>
 #include <csetjmp>
+#include <sys/mman.h>
 #include "biscuit/isa.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
@@ -334,6 +335,29 @@ struct ThreadState {
     FEXCore::SHMStats::ThreadStats* thread_stats = nullptr;
 
     void* reservation_base = nullptr;
+
+    std::atomic<u64> local_qsbr_epoch = 0;
+    std::atomic_bool offline = true;
+    std::atomic_bool poked = false;
+
+    void ArmSafepoint() {
+        ASSERT(mprotect(getDeferredFaultPage(), 4096, PROT_NONE) == 0);
+    }
+
+    void Poke() {
+        poked.store(true, std::memory_order::seq_cst);
+        ArmSafepoint();
+    }
+
+    void DisarmSafepoint() {
+        ASSERT(mprotect(getDeferredFaultPage(), 4096, PROT_READ | PROT_WRITE) == 0);
+        // We disarm safepoints when all signals are masked for the thread, so no new signals can enter while we protect
+        // However, poked can still be set from other threads and then we could mark as RW and ruin our safepoint PROT_NONE for poking
+        // So we check if poked is set and re-arm the safepoint
+        if (poked.load(std::memory_order::seq_cst)) {
+            ArmSafepoint();
+        }
+    }
 
     u64 GetGpr(x86_ref_e ref) const {
         if (ref < X86_REF_RAX || ref > X86_REF_R15) {

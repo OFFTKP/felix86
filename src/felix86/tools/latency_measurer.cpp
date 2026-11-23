@@ -52,15 +52,13 @@ void reset_recompiler() {
 void compile_sequence(u64 rip) {
     reset_recompiler();
     g_rec->compileSequence(g_mode32, rip, nullptr);
-    TaggedAddress address = TaggedAddress::make(rip, g_mode32);
-    BlockMetadata& metadata = g_rec->getBlockMetadata(address);
-    u64 start = metadata.host_address;
+    u64 start = g_rec->getBlockStart();
     u64 end = start;
-    for (auto instr : metadata.translation_sizes) {
+    for (auto instr : g_rec->getTranslationSizes()) {
         end += instr.riscv_instructions_size;
     }
     u64 spans_end = end;
-    u64 code_end = (u64)g_rec->getEndOfCodeCache();
+    u64 code_end = (u64)g_rec->getCursor();
     if (spans_end == code_end) {
         // Remove compiled UNDEF instructions off the end, if any
         u16* fin = (u16*)(end - 2);

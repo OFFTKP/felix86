@@ -21,6 +21,7 @@ struct alignas(16) felix86_frame {
     u64 compile_next_handler_ptr;
     u64 compile_next_32_handler_ptr;
     u64 compile_next_skip_address_cache_ptr;
+    u64 syscall_thunk_ptr;
     u64 gprs[saved_gprs.size()];
     // We don't modify the saved FPRs so we don't need to save them
 };
