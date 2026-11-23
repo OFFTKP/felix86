@@ -1344,16 +1344,9 @@ static bool handle_scan_ahead_fault(ThreadState* current_state, siginfo_t* info,
 }
 
 static bool handle_safepoint(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
-    // First we need to check if we are a safepoint
-    // Safepoint instructions perform LD(x0, -8, Allocations::threadStatePointer())
-    u32 expected_instruction;
-    {
-        Assembler tas((u8*)&expected_instruction, sizeof(u32));
-        tas.LD(x0, -8, Allocations::threadStatePointer());
-    }
-
-    u32 current_instruction = *(u32*)pc;
-    if (current_instruction != expected_instruction) {
+    // We used to check if the faulting instruction is the safepoint instruction, but that can get patched away
+    // if the block is invalidated, so check if we are at the deferred fault page address instead
+    if (info->si_addr != (u8*)current_state - 8) {
         // Not in a safepoint, don't handle signal now
         // Return. If no host signal handler picks up this signal, then it will be deferred
         return false;
@@ -1362,13 +1355,6 @@ static bool handle_safepoint(ThreadState* current_state, siginfo_t* info, uconte
     if (!current_state->recompiler->isInJitCode(pc)) {
         // Not in JIT code, rare but possible
         SIGLOG("Not in jit code");
-        return false;
-    }
-
-    if (info->si_addr != (u8*)current_state - 8) {
-        // Sanity check. An LD(x0, -8, Allocations::threadStatePointer()) that is inside
-        // the JIT code will always be a safe point but we can never have enough checks
-        WARN("Faulting address expected to be safepoint page but it's not?");
         return false;
     }
 
