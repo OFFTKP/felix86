@@ -287,6 +287,7 @@ struct ThreadState {
                       // check presence of cpuid... on x86-64 processors... lol...
     bool ac_bit{};    // this is checked by Java to see if it's i386 or not
     bool pending_cache_clear{};
+    bool sigreturned{};
     SingleStepMode single_step_mode = SingleStepMode::None;
 
     u32 robust_list{};

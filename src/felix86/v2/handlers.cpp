@@ -5543,6 +5543,8 @@ FAST_HANDLE(SYSCALL) {
     // TODO: we can get this faster by returning
     biscuit::GPR temp = rec.scratch();
     biscuit::Label changed;
+    as.LBU(temp, offsetof(ThreadState, sigreturned), Allocations::threadStatePointer());
+    as.BNEZ(temp, &changed);
     as.LI(temp, rip);
     as.BNE(ripreg, temp, &changed);
     as.LHU(temp, offsetof(ThreadState, ctx.cs), Allocations::threadStatePointer());
@@ -14611,6 +14613,8 @@ FAST_HANDLE(INT) {
         // TODO: we can get this faster by returning
         biscuit::GPR temp = rec.scratch();
         biscuit::Label changed;
+        as.LBU(temp, offsetof(ThreadState, sigreturned), Allocations::threadStatePointer());
+        as.BNEZ(temp, &changed);
         as.LI(temp, rip);
         as.BNE(ripreg, temp, &changed);
         as.LHU(temp, offsetof(ThreadState, ctx.cs), Allocations::threadStatePointer());

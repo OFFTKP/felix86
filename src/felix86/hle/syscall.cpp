@@ -1952,6 +1952,7 @@ void felix86_syscall(felix86_frame* frame) {
     ThreadState* state = frame->state;
     bool mode32 = state->ctx.Mode32();
     state->syscall_restart = SyscallRestart::None;
+    state->sigreturned = false;
     u64 syscall_number = state->GetGpr(X86_REF_RAX);
     state->ctx.orig_rax = syscall_number;
     u64 args[6];
@@ -2326,6 +2327,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         WARN("Executing 32-bit syscall %lu on 64-bit process", syscall_number);
     }
     state->syscall_restart = SyscallRestart::None;
+    state->sigreturned = false;
     state->ctx.orig_rax = syscall_number;
     u64 args[6];
     read_syscall_args(state, syscall32_arg_regs, args);
