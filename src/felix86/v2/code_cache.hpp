@@ -12,16 +12,35 @@
 #define FELIX86_HINT_NOT_EXEC 0xec
 #define FELIX86_ERESTARTNOINTR 513
 
-using InterruptibleSyscallFunc = u64 (*)(u64* effective_deferred_signals, u64 nr, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5, u64 arg6);
-
-struct ThreadState;
-struct felix86_frame;
+constexpr static u64 block_code_alignment = 8;
 
 struct TranslationSize {
     u16 x86_instruction_size : 4;
     u16 riscv_instructions_size : 12;
 };
 static_assert(sizeof(TranslationSize) == sizeof(u16));
+
+struct LinkSite {
+    u32 offset;
+    bool return_hint;
+    TaggedAddress target;
+};
+
+struct PublishInfo {
+    void* riscv_code;
+    u64 size;
+    u64 guest_rip;
+    u64 guest_rip_end;
+    std::vector<TranslationSize> translation_counts;
+    std::vector<LinkSite> link_sites;
+    bool mode32;
+    bool self_validating;
+};
+
+using InterruptibleSyscallFunc = u64 (*)(u64* effective_deferred_signals, u64 nr, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5, u64 arg6);
+
+struct ThreadState;
+struct felix86_frame;
 
 enum class PendingLinkFlags : u64 {
     HasReturnHint = 0x8000'0000'0000'0000,
@@ -88,9 +107,11 @@ struct CodeCache {
 
     u64 getBlockAreaSize() const;
 
-    u8* getMappedEnd() const;
+    bool isInBlockArea(u64 pc) const {
+        return pc >= (u64)getBlockArea() && pc < (u64)getBlockArea() + getBlockAreaSize();
+    }
 
-    bool grow();
+    u8* copyBlock(const PublishInfo& info);
 
     BlockMetadata& getBlockMetadata(TaggedAddress address) {
         return block_metadata[address];
@@ -124,10 +145,15 @@ struct CodeCache {
     void clear();
 
 private:
+    u8* getMappedEnd() const;
+
+    bool grow();
+
     u8* mapping_start{};
     void* reservation_base{};
     u64 reservation_size{};
     u64 size_index = 0;
+    u8* cursor{};
     CodeCachePointers pointers{};
 
     std::unordered_map<TaggedAddress, BlockMetadata> block_metadata{};

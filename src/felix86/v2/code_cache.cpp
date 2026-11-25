@@ -60,6 +60,7 @@ CodeCache::CodeCache() {
     ASSERT(first_chunk == (u8*)address);
     mapping_start = first_chunk;
     pointers.start_of_code_cache = (u64)getBlockArea();
+    cursor = getBlockArea();
 
     int result = madvise(address, total_size, MADV_HUGEPAGE);
     if (result != 0) {
@@ -114,6 +115,21 @@ bool CodeCache::grow() {
     return true;
 }
 
+u8* CodeCache::copyBlock(const PublishInfo& info) {
+    u64 code_size = (info.size + block_code_alignment - 1) & ~(block_code_alignment - 1);
+    while (cursor + code_size > getMappedEnd()) {
+        if (!grow()) {
+            return nullptr;
+        }
+    }
+
+    u8* code = cursor;
+    memcpy(code, info.riscv_code, info.size);
+    memset(code + info.size, 0, code_size - info.size);
+    cursor += code_size;
+    return code;
+}
+
 void CodeCache::addBlockToPages(BlockMetadata* block, u64 guest_start, u64 guest_end) {
     auto guard = page_map_lock.lock();
     u64 start_masked = guest_start & ~0xFFFull;
@@ -146,4 +162,5 @@ void CodeCache::clear() {
     block_metadata.clear();
     host_pc_map.clear();
     page_map.clear();
+    cursor = getBlockArea();
 }
