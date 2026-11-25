@@ -44,16 +44,21 @@ void felix86_cpuid(ThreadState* state);
 
 #define HAS_REP (instruction.attributes & (ZYDIS_ATTRIB_HAS_REP | ZYDIS_ATTRIB_HAS_REPZ | ZYDIS_ATTRIB_HAS_REPNZ))
 
+static void EmitUD(Recompiler& rec, Assembler& as);
+
 static void UnimplementedHandler(Recompiler& rec, biscuit::Assembler& as, const CompileState& state) {
     const u64 rip = state.rip;
     const ZydisDecodedInstruction& instruction = *state.instruction;
     ZydisDisassembledInstruction disassembled;
     auto mode = MODE32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
     if (ZYAN_SUCCESS(ZydisDisassembleIntel(mode, rip, (u8*)rip, 15, &disassembled))) {
-        ERROR("Unhandled instruction %s (%02x)", disassembled.text, (int)instruction.opcode);
+        IMPORTANT("Unhandled instruction %s (%02x) at %016lx", disassembled.text, (int)instruction.opcode, rip);
     } else {
-        ERROR("Unhandled instruction %s (%02x)", ZydisMnemonicGetString(instruction.mnemonic), (int)instruction.opcode);
+        IMPORTANT("Unhandled instruction %s (%02x) at %016lx", ZydisMnemonicGetString(instruction.mnemonic), (int)instruction.opcode, rip);
     }
+
+    EmitUD(rec, as);
+    rec.stopCompiling();
 }
 
 #define X(name) HandlerPtr Handlers::ptr_##name = UnimplementedHandler;
@@ -106,7 +111,6 @@ static void EmitUD(Recompiler& rec, Assembler& as) {
     // Unreachable
     as.C_UNDEF();
     as.C_UNDEF();
-    rec.stopCompiling();
 }
 
 static void EmitGP(Assembler& as) {
@@ -2485,8 +2489,74 @@ FAST_HANDLE(INVD) {
     rec.stopCompiling();
 }
 
+FAST_HANDLE(CLTS) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(LGDT) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(LIDT) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(LLDT) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(LMSW) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(LTR) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(RDMSR) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(WRMSR) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(RDPMC) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(SWAPGS) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(XSETBV) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(SYSRET) {
+    if (MODE32) {
+        EmitUD(rec, as);
+        rec.stopCompiling();
+    } else {
+        EmitGP(as);
+        rec.stopCompiling();
+    }
+}
+
 FAST_HANDLE(FEMMS) {
     EmitUD(rec, as);
+    rec.stopCompiling();
 }
 
 FAST_HANDLE(FDISI8087_NOP) {}
@@ -2498,21 +2568,25 @@ FAST_HANDLE(FSETPM287_NOP) {}
 FAST_HANDLE(UD2) {
     WARN_ONCE("UD2 instruction being compiled?");
     EmitUD(rec, as);
+    rec.stopCompiling();
 }
 
 FAST_HANDLE(VMCALL) {
     WARN_ONCE("VMCALL instruction being compiled");
     EmitUD(rec, as);
+    rec.stopCompiling();
 }
 
 FAST_HANDLE(VMMCALL) {
     WARN_ONCE("VMMCALL instruction being compiled");
     EmitUD(rec, as);
+    rec.stopCompiling();
 }
 
 FAST_HANDLE(VMFUNC) {
     WARN_ONCE("VMFUNC instruction being compiled");
     EmitUD(rec, as);
+    rec.stopCompiling();
 }
 
 FAST_HANDLE(CALL) {
@@ -3168,6 +3242,50 @@ FAST_HANDLE(PREFETCHNTA) {}
 FAST_HANDLE(PREFETCHW) {}
 
 FAST_HANDLE(PREFETCHWT1) {}
+
+FAST_HANDLE(PREFETCH) {
+    WARN_ONCE("PREFETCH instruction compiled as a NOP");
+}
+
+FAST_HANDLE(PREFETCHIT0) {
+    WARN_ONCE("PREFETCHIT0 instruction compiled as a NOP");
+}
+
+FAST_HANDLE(PREFETCHIT1) {
+    WARN_ONCE("PREFETCHIT1 instruction compiled as a NOP");
+}
+
+FAST_HANDLE(CLDEMOTE) {
+    WARN_ONCE("CLDEMOTE instruction compiled as a NOP");
+}
+
+FAST_HANDLE(BNDCL) {
+    WARN_ONCE("BNDCL instruction compiled as a NOP");
+}
+
+FAST_HANDLE(BNDCN) {
+    WARN_ONCE("BNDCN instruction compiled as a NOP");
+}
+
+FAST_HANDLE(BNDCU) {
+    WARN_ONCE("BNDCU instruction compiled as a NOP");
+}
+
+FAST_HANDLE(BNDLDX) {
+    WARN_ONCE("BNDLDX instruction compiled as a NOP");
+}
+
+FAST_HANDLE(BNDMK) {
+    WARN_ONCE("BNDMK instruction compiled as a NOP");
+}
+
+FAST_HANDLE(BNDMOV) {
+    WARN_ONCE("BNDMOV instruction compiled as a NOP");
+}
+
+FAST_HANDLE(BNDSTX) {
+    WARN_ONCE("BNDSTX instruction compiled as a NOP");
+}
 
 FAST_HANDLE(FNCLEX) {
     biscuit::GPR sw = rec.scratch();
@@ -5538,7 +5656,9 @@ FAST_HANDLE(SYSCALL) {
 
     if (MODE32) {
         WARN("Syscall instruction compiled during 32-bit mode");
-        return EmitUD(rec, as);
+        EmitUD(rec, as);
+        rec.stopCompiling();
+        return;
     }
 
     if (Seccomp::hasFilters() && !g_config.seccomp_always_allow) {
@@ -5601,11 +5721,13 @@ FAST_HANDLE(SYSCALL) {
 FAST_HANDLE(SYSENTER) {
     WARN("SYSENTER being compiled?");
     EmitUD(rec, as);
+    rec.stopCompiling();
 }
 
 FAST_HANDLE(SYSEXIT) {
     WARN("SYSEXIT being compiled?");
     EmitUD(rec, as);
+    rec.stopCompiling();
 }
 
 FAST_HANDLE(MOVZX) {
@@ -11082,6 +11204,7 @@ FAST_HANDLE(PHSUBSW) {
 FAST_HANDLE(PCLMULQDQ) {
     if (!Extensions::Zvbc) {
         EmitUD(rec, as);
+        rec.stopCompiling();
         return;
     }
 
@@ -11116,6 +11239,7 @@ FAST_HANDLE(PCLMULQDQ) {
 FAST_HANDLE(CRC32) {
     if (!Extensions::Zbc) {
         EmitUD(rec, as);
+        rec.stopCompiling();
         return;
     }
 
@@ -12808,6 +12932,7 @@ FAST_HANDLE(AESENC) {
         rec.setVec(&operands[0], dst);
     } else {
         EmitUD(rec, as);
+        rec.stopCompiling();
     }
 }
 
@@ -12821,6 +12946,7 @@ FAST_HANDLE(AESENCLAST) {
         rec.setVec(&operands[0], dst);
     } else {
         EmitUD(rec, as);
+        rec.stopCompiling();
     }
 }
 
@@ -12852,6 +12978,7 @@ FAST_HANDLE(AESDEC) {
         rec.setVec(&operands[0], dst);
     } else {
         EmitUD(rec, as);
+        rec.stopCompiling();
     }
 }
 
@@ -12865,6 +12992,7 @@ FAST_HANDLE(AESDECLAST) {
         rec.setVec(&operands[0], dst);
     } else {
         EmitUD(rec, as);
+        rec.stopCompiling();
     }
 }
 
@@ -12882,6 +13010,7 @@ FAST_HANDLE(AESIMC) {
         rec.setVec(&operands[0], dst);
     } else {
         EmitUD(rec, as);
+        rec.stopCompiling();
     }
 }
 
@@ -15345,6 +15474,7 @@ FAST_HANDLE(VAESENC) {
         rec.setVec(&operands[0], result);
     } else {
         EmitUD(rec, as);
+        rec.stopCompiling();
     }
 }
 
@@ -15360,6 +15490,7 @@ FAST_HANDLE(VAESENCLAST) {
         rec.setVec(&operands[0], result);
     } else {
         EmitUD(rec, as);
+        rec.stopCompiling();
     }
 }
 
@@ -15385,6 +15516,7 @@ FAST_HANDLE(VAESDEC) {
         rec.setVec(&operands[0], srctemp);
     } else {
         EmitUD(rec, as);
+        rec.stopCompiling();
     }
 }
 
@@ -15400,6 +15532,7 @@ FAST_HANDLE(VAESDECLAST) {
         rec.setVec(&operands[0], result);
     } else {
         EmitUD(rec, as);
+        rec.stopCompiling();
     }
 }
 
@@ -15417,6 +15550,7 @@ FAST_HANDLE(VAESIMC) {
         rec.setVec(&operands[0], dst);
     } else {
         EmitUD(rec, as);
+        rec.stopCompiling();
     }
 }
 
@@ -17297,6 +17431,7 @@ FAST_HANDLE(VPGATHERQQ) {
 FAST_HANDLE(VPCLMULQDQ) {
     if (!Extensions::Zvbc) {
         EmitUD(rec, as);
+        rec.stopCompiling();
         return;
     }
 

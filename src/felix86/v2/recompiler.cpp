@@ -80,6 +80,46 @@ static bool is_mov_control_or_debug(const ZydisDecodedInstruction& instruction) 
            instruction.opcode <= 0x23;
 }
 
+static bool always_faults(ZydisMnemonic mnemonic) {
+    switch (mnemonic) {
+    case ZYDIS_MNEMONIC_UD2:
+    case ZYDIS_MNEMONIC_VMCALL:
+    case ZYDIS_MNEMONIC_VMMCALL:
+    case ZYDIS_MNEMONIC_VMFUNC:
+    case ZYDIS_MNEMONIC_INSB:
+    case ZYDIS_MNEMONIC_INSW:
+    case ZYDIS_MNEMONIC_INSD:
+    case ZYDIS_MNEMONIC_OUTSB:
+    case ZYDIS_MNEMONIC_OUTSW:
+    case ZYDIS_MNEMONIC_OUTSD:
+    case ZYDIS_MNEMONIC_IN:
+    case ZYDIS_MNEMONIC_OUT:
+    case ZYDIS_MNEMONIC_HLT:
+    case ZYDIS_MNEMONIC_CLI:
+    case ZYDIS_MNEMONIC_STI:
+    case ZYDIS_MNEMONIC_WBINVD:
+    case ZYDIS_MNEMONIC_INVD:
+    case ZYDIS_MNEMONIC_FEMMS:
+    case ZYDIS_MNEMONIC_SYSEXIT:
+    case ZYDIS_MNEMONIC_SYSENTER:
+    case ZYDIS_MNEMONIC_CLTS:
+    case ZYDIS_MNEMONIC_LGDT:
+    case ZYDIS_MNEMONIC_LIDT:
+    case ZYDIS_MNEMONIC_LLDT:
+    case ZYDIS_MNEMONIC_LMSW:
+    case ZYDIS_MNEMONIC_LTR:
+    case ZYDIS_MNEMONIC_RDMSR:
+    case ZYDIS_MNEMONIC_WRMSR:
+    case ZYDIS_MNEMONIC_RDPMC:
+    case ZYDIS_MNEMONIC_SWAPGS:
+    case ZYDIS_MNEMONIC_XSETBV:
+    case ZYDIS_MNEMONIC_SYSRET:
+        return true;
+    default:
+        return false;
+    }
+}
+
 static bool is_stack_operand(const ZydisDecodedOperand& operand) {
     return operand.type == ZYDIS_OPERAND_TYPE_MEMORY && (operand.mem.base == ZYDIS_REGISTER_RSP || operand.mem.base == ZYDIS_REGISTER_ESP);
 }
@@ -467,8 +507,9 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
     while (compile_state.compiling) {
         auto& [instruction, operands] = compile_state.instructions[compile_state.instruction_index];
 
-        bool is_mmx = is_mmx_operand(operands[0]) || is_mmx_operand(operands[1]);
-        bool is_x87 = instruction.meta.isa_ext == ZYDIS_ISA_EXT_X87 || instruction.mnemonic == ZYDIS_MNEMONIC_FISTTP;
+        const bool implemented = Handlers::isImplemented(instruction.mnemonic);
+        bool is_mmx = implemented && (is_mmx_operand(operands[0]) || is_mmx_operand(operands[1]));
+        bool is_x87 = implemented && (instruction.meta.isa_ext == ZYDIS_ISA_EXT_X87 || instruction.mnemonic == ZYDIS_MNEMONIC_FISTTP);
         bool is_sse = is_sse_or_avx_operand(operands[0]) || is_sse_or_avx_operand(operands[1]);
 
         bool push_pop_reg = (instruction.mnemonic == ZYDIS_MNEMONIC_PUSH || instruction.mnemonic == ZYDIS_MNEMONIC_POP) &&
@@ -2022,11 +2063,7 @@ u32 Recompiler::scanLandingBlock(ThreadState* state, u64 initial_rip, u64 rip_ah
         bool is_jump = instruction_ahead.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
         bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET || mnemonic == ZYDIS_MNEMONIC_IRETD || mnemonic == ZYDIS_MNEMONIC_IRETQ;
         bool is_call = mnemonic == ZYDIS_MNEMONIC_CALL;
-        bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2 || mnemonic == ZYDIS_MNEMONIC_VMCALL || mnemonic == ZYDIS_MNEMONIC_VMMCALL ||
-                          mnemonic == ZYDIS_MNEMONIC_VMFUNC || mnemonic == ZYDIS_MNEMONIC_OUTSB || mnemonic == ZYDIS_MNEMONIC_OUTSW ||
-                          mnemonic == ZYDIS_MNEMONIC_OUTSD || mnemonic == ZYDIS_MNEMONIC_INSB || mnemonic == ZYDIS_MNEMONIC_INSW ||
-                          mnemonic == ZYDIS_MNEMONIC_INSD || is_mov_control_or_debug(instruction_ahead);
-        bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
+        bool is_illegal = always_faults(mnemonic) || !Handlers::isImplemented(mnemonic) || is_mov_control_or_debug(instruction_ahead);
         bool is_int3 = mnemonic == ZYDIS_MNEMONIC_INT3;
 
         u32 changed = instruction_ahead.cpu_flags->modified | instruction_ahead.cpu_flags->set_0 | instruction_ahead.cpu_flags->set_1 |
@@ -2056,7 +2093,7 @@ u32 Recompiler::scanLandingBlock(ThreadState* state, u64 initial_rip, u64 rip_ah
             break;
         }
 
-        if (is_jump || is_illegal || is_hlt || is_int3) {
+        if (is_jump || is_illegal || is_int3) {
             // Check if we can follow the jump trivially
             if (mnemonic == ZYDIS_MNEMONIC_JMP && !jump_to_self) {
                 operands_ahead = operands_ahead_storage;
@@ -2162,12 +2199,7 @@ bool Recompiler::scanAhead(u64 rip) {
         bool is_jump = instruction.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
         bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET || mnemonic == ZYDIS_MNEMONIC_IRETD || mnemonic == ZYDIS_MNEMONIC_IRETQ;
         bool is_call = mnemonic == ZYDIS_MNEMONIC_CALL;
-        bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2 || mnemonic == ZYDIS_MNEMONIC_VMCALL || mnemonic == ZYDIS_MNEMONIC_VMMCALL ||
-                          mnemonic == ZYDIS_MNEMONIC_VMFUNC || mnemonic == ZYDIS_MNEMONIC_OUTSB || mnemonic == ZYDIS_MNEMONIC_OUTSW ||
-                          mnemonic == ZYDIS_MNEMONIC_OUTSD || mnemonic == ZYDIS_MNEMONIC_INSB || mnemonic == ZYDIS_MNEMONIC_INSW ||
-                          mnemonic == ZYDIS_MNEMONIC_INSD || mnemonic == ZYDIS_MNEMONIC_IN || mnemonic == ZYDIS_MNEMONIC_OUT ||
-                          is_mov_control_or_debug(instruction);
-        bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
+        bool is_illegal = always_faults(mnemonic) || !Handlers::isImplemented(mnemonic) || is_mov_control_or_debug(instruction);
         bool is_int3 = mnemonic == ZYDIS_MNEMONIC_INT3;
 
         if (compile_state.instructions.size() > 1 && rip + instruction.length > lowest_rip_write) {
@@ -2245,7 +2277,7 @@ bool Recompiler::scanAhead(u64 rip) {
         }
 
         if (too_big) {
-            if (is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3) {
+            if (is_jump || is_ret || is_call || is_illegal || is_int3) {
                 // If a jump/ret/call/... that would end the block anyway, don't mark this block as big
                 // This way if current_block_big == true we know that it doesn't end in a block-ending instruction
                 compile_state.block_big = false;
@@ -2256,10 +2288,10 @@ bool Recompiler::scanAhead(u64 rip) {
             }
         }
 
-        if (is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3) {
+        if (is_jump || is_ret || is_call || is_illegal || is_int3) {
             volatile bool extend_block = false;
             if (g_config.scan_ahead_multi && !g_config.paranoid && !compile_state.block_self_validating && !is_ret && !is_call && !is_illegal &&
-                !is_hlt && !is_int3 && operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+                !is_int3 && operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
                 // In some cases, the program may deliberately jump to a bad location
                 // This was seen in a Ubisoft installer, for example. Now, we could use Mapper::is_guest_address,
                 // but these cases are so exceptionally rare that it is not worth the locked semaphore
