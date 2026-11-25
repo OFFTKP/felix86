@@ -1805,7 +1805,7 @@ static bool handle_sigptrace(ThreadState* current_state, siginfo_t* info, uconte
     }
 }
 
-constexpr static std::array<RegisteredHostSignal, 8> host_signals = {{
+constexpr static std::array<RegisteredHostSignal, 7> host_signals = {{
     {SIGSEGV, 0, handle_scan_ahead_fault},
     {SIGSEGV, SEGV_ACCERR, handle_safepoint},
     {SIGSEGV, SEGV_ACCERR, handle_smc},
