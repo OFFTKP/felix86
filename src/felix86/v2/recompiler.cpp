@@ -524,12 +524,6 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
         // Make sure we factor in the safepoint for the first instruction
         u64 start_pc = compile_state.instruction_index == 0 ? block_meta.host_address : (u64)as.GetCursorPointer();
 
-        if (g_breakpoints.find(rip) != g_breakpoints.end()) {
-            u64 current_address = (u64)as.GetCursorPointer();
-            g_breakpoints[rip].push_back(current_address);
-            as.GetCodeBuffer().Emit32(0); // UNIMP instruction
-        }
-
         if (checkIfBreakpoint(rip)) {
             emitBreakpoint(rip, start_pc, instruction.length);
             break;

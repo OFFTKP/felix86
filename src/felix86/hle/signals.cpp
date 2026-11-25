@@ -102,7 +102,7 @@ static u64* get_regs(void* ctx) {
 }
 
 struct RegisteredHostSignal {
-    int sig;                                                                            // ie SIGILL etc
+    int sig;                                                                            // ie SIGSEGV etc
     int code;                                                                           // stuff like BUS_ADRALN, 0 if all
     bool (*func)(ThreadState* current_state, siginfo_t* info, ucontext_t* ctx, u64 pc); // the function to call
 };
@@ -1502,28 +1502,6 @@ static bool handle_smc(ThreadState* current_state, siginfo_t* info, ucontext_t* 
     return true;
 }
 
-static bool handle_breakpoint(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
-    if (current_state->recompiler->isInJitCode(pc)) {
-        // Search to see if it is our breakpoint
-        // Note the we don't use EBREAK as gdb refuses to continue when it hits that if it doesn't have a breakpoint,
-        // and also refuses to call our signal handler.
-        // So we use illegal instructions to emulate breakpoints.
-        // GDB *can* be configured to do what we want, but that would also require configuring, which I don't like,
-        // I prefer it when it just works out of the box
-        for (auto& bp : g_breakpoints) {
-            for (u64 location : bp.second) {
-                if (location == pc) {
-                    printf("Guest breakpoint %016lx hit at %016lx, continuing...\n", bp.first, pc);
-                    set_pc(context, pc + 4); // skip the unimp instruction
-                    return true;
-                }
-            }
-        }
-    }
-
-    return false;
-}
-
 static bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
     if (g_config.abort_sigsegv) {
         // A bug that may pop up if we have issues in our address cache or code cache is an invalid address
@@ -1833,7 +1811,6 @@ constexpr static std::array<RegisteredHostSignal, 8> host_signals = {{
     {SIGSEGV, SEGV_ACCERR, handle_smc},
     {SIGSEGV, SEGV_MAPERR, handle_synchronous},
     {FELIX86_PTRACE_SIGNAL, 0, handle_sigptrace},
-    {SIGILL, 0, handle_breakpoint},
     {SIGSEGV, 0, handle_wild_sigsegv}, // order matters, relevant sigsegvs are handled before this handler
     {SIGABRT, 0, handle_wild_sigabrt},
 }};

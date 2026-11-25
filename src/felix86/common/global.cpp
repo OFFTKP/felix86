@@ -32,7 +32,6 @@ std::atomic_bool g_symbols_cached = {false};
 u64 g_initial_brk = 0;
 u64 g_current_brk = 0;
 u64 g_current_brk_size = 0;
-std::unordered_map<u64, std::vector<u64>> g_breakpoints{};
 ProcessGlobals g_process_globals{};
 std::unique_ptr<Mapper> g_mapper{};
 VolatileMemory g_volatile{};
