@@ -1200,6 +1200,16 @@ static bool is_loadable_selector(ThreadState* state, u16 selector, u64 segment) 
     return index == 4 || index == 5 || index == 6 || index == 15 || tls;
 }
 
+u64 felix86_load_segment(ThreadState* state, u64 selector, u64 segment) {
+    selector &= 0xFFFF;
+    if (!is_loadable_selector(state, selector, segment)) {
+        return 0;
+    }
+
+    felix86_set_segment(state, selector, segment);
+    return 1;
+}
+
 u64 felix86_load_far_pointer(ThreadState* state, u64 offset, u64 selector, u64 segment, u64 operand_size, u64 ref) {
     selector &= 0xFFFF;
     if (!is_loadable_selector(state, selector, segment)) {

@@ -882,7 +882,23 @@ static void SHIFT_noflags(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedI
     rec.setGPR(&operands[0], result);
 }
 
+static bool is_control_or_debug(const ZydisDecodedOperand& operand) {
+    if (operand.type != ZYDIS_OPERAND_TYPE_REGISTER) {
+        return false;
+    }
+    const ZydisRegisterClass reg_class = ZydisRegisterGetClass(operand.reg.value);
+    return reg_class == ZYDIS_REGCLASS_CONTROL || reg_class == ZYDIS_REGCLASS_DEBUG;
+}
+
 FAST_HANDLE(MOV) {
+    // Thankfully, Zydis decodes CR1, CR5–7, CR9–15, DR8–15 and LOCK forms as illegal
+    // So the rest that pass through are just #GP
+    if (is_control_or_debug(operands[0]) || is_control_or_debug(operands[1])) {
+        EmitGP(as);
+        rec.stopCompiling();
+        return;
+    }
+
     if (is_segment(operands[0])) {
         if (MODE32) {
             ASSERT(operands[0].reg.value != ZYDIS_REGISTER_CS);
@@ -2866,18 +2882,27 @@ FAST_HANDLE(POP) {
     }
 
     if (is_segment(operands[0])) {
-        ASSERT_MSG(MODE32, "Popping segment not in 32-bit mode?");
         ASSERT(operands[0].reg.value != ZYDIS_REGISTER_CS);
-        biscuit::GPR src = rec.scratch();
+        if (!MODE32) {
+            IMPORTANT("Popping segment not in 32-bit mode?");
+        }
+        biscuit::GPR selector = rec.scratch();
+        biscuit::GPR loaded = rec.scratch();
         biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
         int imm = size_to_bytes(instruction.operand_width);
-        rec.readMemory(src, rsp, 0, X86_SIZE_WORD);
+        rec.readMemory(selector, rsp, 0, X86_SIZE_WORD);
         rec.writebackState();
         as.MV(a0, Allocations::threadStatePointer());
-        as.MV(a1, src);
+        as.MV(a1, selector);
         as.LI(a2, operands[0].reg.value);
-        rec.callPointer(offsetof(ThreadState, felix86_set_segment));
+        rec.callPointer(offsetof(ThreadState, felix86_load_segment));
+        as.MV(loaded, a0);
         rec.restoreState();
+
+        biscuit::Label done;
+        as.BNEZ(loaded, &done);
+        EmitGP(as);
+        as.Bind(&done);
         as.ADDI(rsp, rsp, imm);
         rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
     } else {

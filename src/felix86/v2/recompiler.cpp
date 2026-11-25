@@ -75,6 +75,11 @@ static bool is_sse_or_avx_operand(const ZydisDecodedOperand& operand) {
     return is_register(operand, ZYDIS_REGISTER_XMM0, ZYDIS_REGISTER_XMM15) || is_register(operand, ZYDIS_REGISTER_YMM0, ZYDIS_REGISTER_YMM15);
 }
 
+static bool is_mov_control_or_debug(const ZydisDecodedInstruction& instruction) {
+    return instruction.mnemonic == ZYDIS_MNEMONIC_MOV && instruction.opcode_map == ZYDIS_OPCODE_MAP_0F && instruction.opcode >= 0x20 &&
+           instruction.opcode <= 0x23;
+}
+
 static bool is_stack_operand(const ZydisDecodedOperand& operand) {
     return operand.type == ZYDIS_OPERAND_TYPE_MEMORY && (operand.mem.base == ZYDIS_REGISTER_RSP || operand.mem.base == ZYDIS_REGISTER_ESP);
 }
@@ -2020,7 +2025,7 @@ u32 Recompiler::scanLandingBlock(ThreadState* state, u64 initial_rip, u64 rip_ah
         bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2 || mnemonic == ZYDIS_MNEMONIC_VMCALL || mnemonic == ZYDIS_MNEMONIC_VMMCALL ||
                           mnemonic == ZYDIS_MNEMONIC_VMFUNC || mnemonic == ZYDIS_MNEMONIC_OUTSB || mnemonic == ZYDIS_MNEMONIC_OUTSW ||
                           mnemonic == ZYDIS_MNEMONIC_OUTSD || mnemonic == ZYDIS_MNEMONIC_INSB || mnemonic == ZYDIS_MNEMONIC_INSW ||
-                          mnemonic == ZYDIS_MNEMONIC_INSD;
+                          mnemonic == ZYDIS_MNEMONIC_INSD || is_mov_control_or_debug(instruction_ahead);
         bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
         bool is_int3 = mnemonic == ZYDIS_MNEMONIC_INT3;
 
@@ -2160,7 +2165,8 @@ bool Recompiler::scanAhead(u64 rip) {
         bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2 || mnemonic == ZYDIS_MNEMONIC_VMCALL || mnemonic == ZYDIS_MNEMONIC_VMMCALL ||
                           mnemonic == ZYDIS_MNEMONIC_VMFUNC || mnemonic == ZYDIS_MNEMONIC_OUTSB || mnemonic == ZYDIS_MNEMONIC_OUTSW ||
                           mnemonic == ZYDIS_MNEMONIC_OUTSD || mnemonic == ZYDIS_MNEMONIC_INSB || mnemonic == ZYDIS_MNEMONIC_INSW ||
-                          mnemonic == ZYDIS_MNEMONIC_INSD || mnemonic == ZYDIS_MNEMONIC_IN || mnemonic == ZYDIS_MNEMONIC_OUT;
+                          mnemonic == ZYDIS_MNEMONIC_INSD || mnemonic == ZYDIS_MNEMONIC_IN || mnemonic == ZYDIS_MNEMONIC_OUT ||
+                          is_mov_control_or_debug(instruction);
         bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
         bool is_int3 = mnemonic == ZYDIS_MNEMONIC_INT3;
 
