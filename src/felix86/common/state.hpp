@@ -172,6 +172,7 @@ struct SignalHandlerTable;
     X(felix86_x87_FXAM)                                                                                                                              \
     X(felix86_exit_dispatcher)                                                                                                                       \
     X(felix86_load_far_pointer)                                                                                                                      \
+    X(felix86_load_segment)                                                                                                                          \
     X(felix86_lsl)
 
 struct UserContext {

@@ -34,6 +34,8 @@ void felix86_iret(struct ThreadState* state, u64 size);
 
 u64 felix86_load_far_pointer(struct ThreadState* state, u64 offset, u64 selector, u64 segment, u64 operand_size, u64 ref);
 
+u64 felix86_load_segment(struct ThreadState* state, u64 selector, u64 segment);
+
 void felix86_lsl(struct ThreadState* state, u64 selector, u64 ref, u64 operand_size);
 
 u64 sext(u64 value, u8 size);
