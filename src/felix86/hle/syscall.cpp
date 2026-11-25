@@ -1863,7 +1863,7 @@ static Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 a
         state->signal_mask.__val[0] = new_mask.__val[0];
         state->effective_deferred_signals |= state->deferred_signals & ~new_mask.__val[0];
         if (state->effective_deferred_signals) {
-            ASSERT(::mprotect(state->getDeferredFaultPage(), 4096, PROT_NONE) == 0);
+            state->ArmSafepoint();
             state->saved_signal_mask = old_mask;
             state->restore_saved_signal_mask = true;
             ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &host_mask, nullptr, sizeof(host_mask)) == 0);
@@ -2040,7 +2040,7 @@ void felix86_syscall(felix86_frame* frame) {
             u64 effective = state->deferred_signals & ~state->signal_mask.__val[0];
             if (effective) {
                 state->effective_deferred_signals = effective;
-                ASSERT(mprotect(state->getDeferredFaultPage(), 4096, PROT_NONE) == 0);
+                state->ArmSafepoint();
                 ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old, nullptr, sizeof(old)) == 0);
                 SIGLOG("pause returning without waiting, a deferred signal is already deliverable");
                 result = -EINTR;
@@ -2477,7 +2477,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             u64 effective = state->deferred_signals & ~state->signal_mask.__val[0];
             if (effective) {
                 state->effective_deferred_signals = effective;
-                ASSERT(mprotect(state->getDeferredFaultPage(), 4096, PROT_NONE) == 0);
+                state->ArmSafepoint();
                 ASSERT(syscall(SYS_rt_sigprocmask, SIG_SETMASK, &old, nullptr, sizeof(old)) == 0);
                 SIGLOG("pause returning without waiting, a deferred signal is already deliverable");
                 result = -EINTR;
