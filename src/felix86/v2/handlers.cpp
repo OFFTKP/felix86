@@ -58,6 +58,7 @@ static void UnimplementedHandler(Recompiler& rec, biscuit::Assembler& as, const 
     }
 
     EmitUD(rec, as);
+    rec.stopCompiling();
 }
 
 #define X(name) HandlerPtr Handlers::ptr_##name = UnimplementedHandler;
@@ -110,7 +111,6 @@ static void EmitUD(Recompiler& rec, Assembler& as) {
     // Unreachable
     as.C_UNDEF();
     as.C_UNDEF();
-    rec.stopCompiling();
 }
 
 static void EmitGP(Assembler& as) {
@@ -2547,6 +2547,7 @@ FAST_HANDLE(XSETBV) {
 FAST_HANDLE(SYSRET) {
     if (MODE32) {
         EmitUD(rec, as);
+        rec.stopCompiling();
     } else {
         EmitGP(as);
         rec.stopCompiling();
@@ -2555,6 +2556,7 @@ FAST_HANDLE(SYSRET) {
 
 FAST_HANDLE(FEMMS) {
     EmitUD(rec, as);
+    rec.stopCompiling();
 }
 
 FAST_HANDLE(FDISI8087_NOP) {}
@@ -2566,21 +2568,25 @@ FAST_HANDLE(FSETPM287_NOP) {}
 FAST_HANDLE(UD2) {
     WARN_ONCE("UD2 instruction being compiled?");
     EmitUD(rec, as);
+    rec.stopCompiling();
 }
 
 FAST_HANDLE(VMCALL) {
     WARN_ONCE("VMCALL instruction being compiled");
     EmitUD(rec, as);
+    rec.stopCompiling();
 }
 
 FAST_HANDLE(VMMCALL) {
     WARN_ONCE("VMMCALL instruction being compiled");
     EmitUD(rec, as);
+    rec.stopCompiling();
 }
 
 FAST_HANDLE(VMFUNC) {
     WARN_ONCE("VMFUNC instruction being compiled");
     EmitUD(rec, as);
+    rec.stopCompiling();
 }
 
 FAST_HANDLE(CALL) {
@@ -5650,7 +5656,9 @@ FAST_HANDLE(SYSCALL) {
 
     if (MODE32) {
         WARN("Syscall instruction compiled during 32-bit mode");
-        return EmitUD(rec, as);
+        EmitUD(rec, as);
+        rec.stopCompiling();
+        return;
     }
 
     if (Seccomp::hasFilters() && !g_config.seccomp_always_allow) {
@@ -5713,11 +5721,13 @@ FAST_HANDLE(SYSCALL) {
 FAST_HANDLE(SYSENTER) {
     WARN("SYSENTER being compiled?");
     EmitUD(rec, as);
+    rec.stopCompiling();
 }
 
 FAST_HANDLE(SYSEXIT) {
     WARN("SYSEXIT being compiled?");
     EmitUD(rec, as);
+    rec.stopCompiling();
 }
 
 FAST_HANDLE(MOVZX) {
@@ -11194,6 +11204,7 @@ FAST_HANDLE(PHSUBSW) {
 FAST_HANDLE(PCLMULQDQ) {
     if (!Extensions::Zvbc) {
         EmitUD(rec, as);
+        rec.stopCompiling();
         return;
     }
 
@@ -11228,6 +11239,7 @@ FAST_HANDLE(PCLMULQDQ) {
 FAST_HANDLE(CRC32) {
     if (!Extensions::Zbc) {
         EmitUD(rec, as);
+        rec.stopCompiling();
         return;
     }
 
@@ -12920,6 +12932,7 @@ FAST_HANDLE(AESENC) {
         rec.setVec(&operands[0], dst);
     } else {
         EmitUD(rec, as);
+        rec.stopCompiling();
     }
 }
 
@@ -12933,6 +12946,7 @@ FAST_HANDLE(AESENCLAST) {
         rec.setVec(&operands[0], dst);
     } else {
         EmitUD(rec, as);
+        rec.stopCompiling();
     }
 }
 
@@ -12964,6 +12978,7 @@ FAST_HANDLE(AESDEC) {
         rec.setVec(&operands[0], dst);
     } else {
         EmitUD(rec, as);
+        rec.stopCompiling();
     }
 }
 
@@ -12977,6 +12992,7 @@ FAST_HANDLE(AESDECLAST) {
         rec.setVec(&operands[0], dst);
     } else {
         EmitUD(rec, as);
+        rec.stopCompiling();
     }
 }
 
@@ -12994,6 +13010,7 @@ FAST_HANDLE(AESIMC) {
         rec.setVec(&operands[0], dst);
     } else {
         EmitUD(rec, as);
+        rec.stopCompiling();
     }
 }
 
@@ -15457,6 +15474,7 @@ FAST_HANDLE(VAESENC) {
         rec.setVec(&operands[0], result);
     } else {
         EmitUD(rec, as);
+        rec.stopCompiling();
     }
 }
 
@@ -15472,6 +15490,7 @@ FAST_HANDLE(VAESENCLAST) {
         rec.setVec(&operands[0], result);
     } else {
         EmitUD(rec, as);
+        rec.stopCompiling();
     }
 }
 
@@ -15497,6 +15516,7 @@ FAST_HANDLE(VAESDEC) {
         rec.setVec(&operands[0], srctemp);
     } else {
         EmitUD(rec, as);
+        rec.stopCompiling();
     }
 }
 
@@ -15512,6 +15532,7 @@ FAST_HANDLE(VAESDECLAST) {
         rec.setVec(&operands[0], result);
     } else {
         EmitUD(rec, as);
+        rec.stopCompiling();
     }
 }
 
@@ -15529,6 +15550,7 @@ FAST_HANDLE(VAESIMC) {
         rec.setVec(&operands[0], dst);
     } else {
         EmitUD(rec, as);
+        rec.stopCompiling();
     }
 }
 
@@ -17409,6 +17431,7 @@ FAST_HANDLE(VPGATHERQQ) {
 FAST_HANDLE(VPCLMULQDQ) {
     if (!Extensions::Zvbc) {
         EmitUD(rec, as);
+        rec.stopCompiling();
         return;
     }
 
