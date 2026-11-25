@@ -3237,27 +3237,49 @@ FAST_HANDLE(PREFETCHW) {}
 
 FAST_HANDLE(PREFETCHWT1) {}
 
-FAST_HANDLE(PREFETCH) {}
+FAST_HANDLE(PREFETCH) {
+    WARN_ONCE("PREFETCH instruction compiled as a NOP");
+}
 
-FAST_HANDLE(PREFETCHIT0) {}
+FAST_HANDLE(PREFETCHIT0) {
+    WARN_ONCE("PREFETCHIT0 instruction compiled as a NOP");
+}
 
-FAST_HANDLE(PREFETCHIT1) {}
+FAST_HANDLE(PREFETCHIT1) {
+    WARN_ONCE("PREFETCHIT1 instruction compiled as a NOP");
+}
 
-FAST_HANDLE(CLDEMOTE) {}
+FAST_HANDLE(CLDEMOTE) {
+    WARN_ONCE("CLDEMOTE instruction compiled as a NOP");
+}
 
-FAST_HANDLE(BNDCL) {}
+FAST_HANDLE(BNDCL) {
+    WARN_ONCE("BNDCL instruction compiled as a NOP");
+}
 
-FAST_HANDLE(BNDCN) {}
+FAST_HANDLE(BNDCN) {
+    WARN_ONCE("BNDCN instruction compiled as a NOP");
+}
 
-FAST_HANDLE(BNDCU) {}
+FAST_HANDLE(BNDCU) {
+    WARN_ONCE("BNDCU instruction compiled as a NOP");
+}
 
-FAST_HANDLE(BNDLDX) {}
+FAST_HANDLE(BNDLDX) {
+    WARN_ONCE("BNDLDX instruction compiled as a NOP");
+}
 
-FAST_HANDLE(BNDMK) {}
+FAST_HANDLE(BNDMK) {
+    WARN_ONCE("BNDMK instruction compiled as a NOP");
+}
 
-FAST_HANDLE(BNDMOV) {}
+FAST_HANDLE(BNDMOV) {
+    WARN_ONCE("BNDMOV instruction compiled as a NOP");
+}
 
-FAST_HANDLE(BNDSTX) {}
+FAST_HANDLE(BNDSTX) {
+    WARN_ONCE("BNDSTX instruction compiled as a NOP");
+}
 
 FAST_HANDLE(FNCLEX) {
     biscuit::GPR sw = rec.scratch();
