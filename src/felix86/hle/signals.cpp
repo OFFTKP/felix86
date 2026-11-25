@@ -1313,7 +1313,7 @@ static void defer_signal(ThreadState* state, int sig, siginfo_t* info, void* ctx
     // Make our safepoints fault
     u64 effective_deferred_signals = state->deferred_signals & ~state->signal_mask.__val[0];
     if (effective_deferred_signals != 0) {
-        ASSERT(::mprotect(state->getDeferredFaultPage(), 4096, PROT_NONE) == 0);
+        state->ArmSafepoint();
     }
     state->effective_deferred_signals |= effective_deferred_signals;
     if (state->recompiler->isInInterruptibleSyscall(pc) &&
@@ -1416,8 +1416,9 @@ static bool handle_safepoint(ThreadState* current_state, siginfo_t* info, uconte
         ASSERT(munmap(node, 4096) == 0);
     }
 
+    // Restore safepoint as there's no signals
     if (current_state->effective_deferred_signals == 0) {
-        ASSERT(::mprotect(current_state->getDeferredFaultPage(), 4096, PROT_READ | PROT_WRITE) == 0);
+        current_state->DisarmSafepoint();
     }
 
     // Safe to restore our mask now
@@ -1989,9 +1990,9 @@ int Signals::sigprocmask(ThreadState* state, int how, sigset_t* set, sigset_t* o
         // Otherwise, make it read/write
         state->effective_deferred_signals = state->deferred_signals & ~state->signal_mask.__val[0];
         if (state->effective_deferred_signals != 0) {
-            ASSERT(mprotect(state->getDeferredFaultPage(), 4096, PROT_NONE) == 0);
+            state->ArmSafepoint();
         } else {
-            ASSERT(mprotect(state->getDeferredFaultPage(), 4096, PROT_READ | PROT_WRITE) == 0);
+            state->DisarmSafepoint();
         }
 
         // Finally, set our new host mask
