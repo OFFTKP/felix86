@@ -44,16 +44,20 @@ void felix86_cpuid(ThreadState* state);
 
 #define HAS_REP (instruction.attributes & (ZYDIS_ATTRIB_HAS_REP | ZYDIS_ATTRIB_HAS_REPZ | ZYDIS_ATTRIB_HAS_REPNZ))
 
+static void EmitUD(Recompiler& rec, Assembler& as);
+
 static void UnimplementedHandler(Recompiler& rec, biscuit::Assembler& as, const CompileState& state) {
     const u64 rip = state.rip;
     const ZydisDecodedInstruction& instruction = *state.instruction;
     ZydisDisassembledInstruction disassembled;
     auto mode = MODE32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
     if (ZYAN_SUCCESS(ZydisDisassembleIntel(mode, rip, (u8*)rip, 15, &disassembled))) {
-        ERROR("Unhandled instruction %s (%02x)", disassembled.text, (int)instruction.opcode);
+        IMPORTANT("Unhandled instruction %s (%02x) at %016lx", disassembled.text, (int)instruction.opcode, rip);
     } else {
-        ERROR("Unhandled instruction %s (%02x)", ZydisMnemonicGetString(instruction.mnemonic), (int)instruction.opcode);
+        IMPORTANT("Unhandled instruction %s (%02x) at %016lx", ZydisMnemonicGetString(instruction.mnemonic), (int)instruction.opcode, rip);
     }
+
+    EmitUD(rec, as);
 }
 
 #define X(name) HandlerPtr Handlers::ptr_##name = UnimplementedHandler;
@@ -2485,6 +2489,70 @@ FAST_HANDLE(INVD) {
     rec.stopCompiling();
 }
 
+FAST_HANDLE(CLTS) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(LGDT) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(LIDT) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(LLDT) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(LMSW) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(LTR) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(RDMSR) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(WRMSR) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(RDPMC) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(SWAPGS) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(XSETBV) {
+    EmitGP(as);
+    rec.stopCompiling();
+}
+
+FAST_HANDLE(SYSRET) {
+    if (MODE32) {
+        EmitUD(rec, as);
+    } else {
+        EmitGP(as);
+        rec.stopCompiling();
+    }
+}
+
 FAST_HANDLE(FEMMS) {
     EmitUD(rec, as);
 }
@@ -3168,6 +3236,28 @@ FAST_HANDLE(PREFETCHNTA) {}
 FAST_HANDLE(PREFETCHW) {}
 
 FAST_HANDLE(PREFETCHWT1) {}
+
+FAST_HANDLE(PREFETCH) {}
+
+FAST_HANDLE(PREFETCHIT0) {}
+
+FAST_HANDLE(PREFETCHIT1) {}
+
+FAST_HANDLE(CLDEMOTE) {}
+
+FAST_HANDLE(BNDCL) {}
+
+FAST_HANDLE(BNDCN) {}
+
+FAST_HANDLE(BNDCU) {}
+
+FAST_HANDLE(BNDLDX) {}
+
+FAST_HANDLE(BNDMK) {}
+
+FAST_HANDLE(BNDMOV) {}
+
+FAST_HANDLE(BNDSTX) {}
 
 FAST_HANDLE(FNCLEX) {
     biscuit::GPR sw = rec.scratch();
