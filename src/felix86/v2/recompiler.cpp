@@ -347,8 +347,9 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
     expirePendingLinks(address);
 
     if (g_config.gdb) {
-        size_t inst_count = info.translation_counts.size();
-        while (inst_count > 0 && info.translation_counts[inst_count - 1].x86_instruction_size == 0) {
+        const std::vector<TranslationSize>& translation_sizes = published->translation_sizes;
+        size_t inst_count = translation_sizes.size();
+        while (inst_count > 0 && translation_sizes[inst_count - 1].x86_instruction_size == 0) {
             inst_count--;
         }
         felix86_jit_block_t* gdb_block = GDBJIT::createBlock(inst_count);
@@ -363,7 +364,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
             gdb_block->lines[i].line = 1 + i;
             gdb_block->lines[i].pc = host_address;
             guest_address += inst.info.length;
-            host_address += info.translation_counts[i].riscv_instructions_size;
+            host_address += translation_sizes[i].riscv_instructions_size;
         }
 
         gdb_block->host_start = block_host_address;
@@ -413,10 +414,6 @@ BlockMetadata* Recompiler::publishBlock(PublishInfo& info, u64 protect_end) {
     info.guest_rip_end = compile_state.scan_end;
     info.mode32 = compile_state.mode32;
     info.self_validating = compile_state.self_validating;
-    info.link_sites = std::move(compile_state.link_sites);
-    info.translation_counts = std::move(compile_state.translation_sizes);
-    compile_state.link_sites.clear();
-    compile_state.translation_sizes.clear();
 
     ASSERT(info.size >= 8); // At least 2 instructions, so that our unlinking logic works
     ASSERT((getBlockStart() & (block_code_alignment - 1)) == 0);
@@ -431,7 +428,7 @@ BlockMetadata* Recompiler::publishBlock(PublishInfo& info, u64 protect_end) {
     BlockMetadata* published = &getBlockMetadata(TaggedAddress::make(info.guest_rip, info.mode32));
     published->host_address = (u64)code;
     published->guest_address = info.guest_rip;
-    published->translation_sizes = info.translation_counts;
+    published->translation_sizes.assign(compile_state.translation_sizes.begin(), compile_state.translation_sizes.end());
     published->misc_info.self_validating = info.self_validating;
     code_cache->addBlockToPages(published, info.guest_rip, info.guest_rip_end);
 
@@ -691,10 +688,10 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
     if (is_self_validating) {
         ASSERT(rip > start_rip && rip - start_rip <= compile_state.self_validating_bytes.size());
         compile_state.self_validating_bytes.resize(rip - start_rip);
-        while ((u64)as.GetCursorPointer() & 0x7) {
+        while ((u64)as.GetCursorPointer() & 0x3) {
             as.GetCodeBuffer().Emit(u8(0));
         }
-        as.GetCodeBuffer().Emit<u64>(compile_state.self_validating_bytes.size());
+        as.GetCodeBuffer().Emit<u32>(compile_state.self_validating_bytes.size());
         as.Bind(&expected_bytes);
         for (u8 byte : compile_state.self_validating_bytes) {
             as.GetCodeBuffer().Emit(byte);
@@ -3039,12 +3036,12 @@ bool Recompiler::canCompileSpeculatively(const ZydisDecodedInstruction& instruct
 }
 
 void Recompiler::linkPublishedBlock(const BlockMetadata* metadata, const PublishInfo& info) {
-    if (info.link_sites.empty()) {
+    if (compile_state.link_sites.empty()) {
         return;
     }
 
     u8* code = (u8*)metadata->host_address;
-    for (const LinkSite& site : info.link_sites) {
+    for (const LinkSite& site : compile_state.link_sites) {
         ASSERT(site.offset + 2 * sizeof(u32) <= info.size);
         u8* link_location = code + site.offset;
         ASSERT(((u64)link_location & 0x3) == 0);
@@ -3780,7 +3777,7 @@ void Recompiler::emitSelfValidation(biscuit::Label* expected_bytes) {
     Label loop, mismatch, valid;
     as.MV(address_block, Allocations::RIP());
     as.LILabel(address_bytes, expected_bytes);
-    as.LD(remaining, -8, address_bytes);
+    as.LWU(remaining, -4, address_bytes);
     as.Bind(&loop);
     as.VSETVLI(count, remaining, SEW::E8, LMUL::M2);
     as.VLE8(block_bytes, address_block);

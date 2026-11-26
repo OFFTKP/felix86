@@ -12,7 +12,7 @@
 #define FELIX86_HINT_NOT_EXEC 0xec
 #define FELIX86_ERESTARTNOINTR 513
 
-constexpr static u64 block_code_alignment = 8;
+constexpr static u64 block_code_alignment = 4;
 
 struct TranslationSize {
     u16 x86_instruction_size : 4;
@@ -31,8 +31,6 @@ struct PublishInfo {
     u64 size;
     u64 guest_rip;
     u64 guest_rip_end;
-    std::vector<TranslationSize> translation_counts;
-    std::vector<LinkSite> link_sites;
     bool mode32;
     bool self_validating;
 };
