@@ -92,7 +92,6 @@ struct Signals {
         static bool initialized = false;
         if (!initialized) {
             sigfillset(&mask);
-            sigdelset(&mask, SIGILL);
             sigdelset(&mask, SIGSEGV);
             sigdelset(&mask, SIGABRT);
             sigdelset(&mask, FELIX86_PTRACE_SIGNAL);

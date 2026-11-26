@@ -231,11 +231,6 @@ void flush_icache_global(u64 start, u64 end) {
 #endif
 }
 
-__attribute__((visibility("default"))) int guest_breakpoint_abs(u64 address) {
-    g_breakpoints[address] = {};
-    return g_breakpoints.size();
-}
-
 __attribute__((visibility("default"))) std::string disassemble_one(bool mode32, u64 address) {
     ZydisMachineMode mode = mode32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
     ZydisDisassembledInstruction instruction;
@@ -287,12 +282,6 @@ __attribute__((visibility("default"))) void disassemble(u64 host_address) {
             cur += instruction.length;
         }
     }
-}
-
-int clear_breakpoints() {
-    int count = g_breakpoints.size();
-    g_breakpoints.clear();
-    return count;
 }
 
 void felix86_iret(struct ThreadState* state, u64 size) {

@@ -88,7 +88,6 @@ extern struct statx g_original_rootfs_statx;
 extern u64 g_interpreter_start, g_interpreter_end;
 extern u64 g_executable_start, g_executable_end;
 extern const char* g_git_hash;
-extern std::unordered_map<u64, std::vector<u64>> g_breakpoints;
 extern u64 g_guest_auxv;
 extern size_t g_guest_auxv_size;
 extern bool g_execve_process;
