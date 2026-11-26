@@ -647,8 +647,12 @@ struct Recompiler {
         return (u8*)as.GetCursorPointer();
     }
 
+    void rewindStagingBuffer() {
+        as.RewindBuffer();
+    }
+
     bool isInJitCode(u64 pc) const {
-        return code_cache->isInBlockArea(pc);
+        return code_cache->isInUsedArea(pc);
     }
 
     static bool isXMM(x86_ref_e ref) {

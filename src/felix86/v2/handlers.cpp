@@ -2656,6 +2656,7 @@ FAST_HANDLE(CALL) {
         rec.writeMemory(scratch, rsp, 0, rec.stackWidth());
         if (rec.canPredictReturns()) {
             rec.storeReturnTarget(scratch, return_rip, &return_target, MODE32);
+            rec.alignLinkSite();
         }
         rec.backToDispatcher(MODE32, rec.canPredictReturns());
         break;

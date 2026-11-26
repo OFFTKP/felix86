@@ -107,8 +107,8 @@ struct CodeCache {
 
     u64 getBlockAreaSize() const;
 
-    bool isInBlockArea(u64 pc) const {
-        return pc >= (u64)getBlockArea() && pc < (u64)getBlockArea() + getBlockAreaSize();
+    bool isInUsedArea(u64 pc) const {
+        return pc >= (u64)getBlockArea() && pc < (u64)cursor;
     }
 
     u8* copyBlock(const PublishInfo& info);

@@ -37,6 +37,7 @@ static void from_json(const ordered_json& j, Instruction& p) {
 }
 
 static void gen_many(Recompiler& rec, const std::string& name, nlohmann::ordered_json& json, void (*func)(Xbyak::CodeGenerator&)) {
+    rec.rewindStagingBuffer();
     rec.setVectorState(SEW::E1024, 0);
     Xbyak::CodeGenerator x;
     auto x86_start = x.getCurr();
@@ -74,6 +75,7 @@ static void gen_sequence(Recompiler& rec, nlohmann::ordered_json& json, const ch
     int status = pclose(pipe);
     ASSERT_MSG(status == 0 && !bytes.empty(), "nasm failed for %s", name);
 
+    rec.rewindStagingBuffer();
     rec.setVectorState(SEW::E1024, 0);
     rec.compileSequence(mode32, (u64)bytes.data(), nullptr);
     auto bisc = (u8*)rec.getBlockStart();
@@ -103,6 +105,7 @@ static void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbya
         ZydisDecoderEnableMode(&zydis, ZYDIS_DECODER_MODE_AMD_BRANCHES, ZYAN_TRUE);
     }
 
+    rec.rewindStagingBuffer();
     // Set bogus vector state so we see the vector state changes
     rec.setVectorState(SEW::E1024, 0);
     rec.setFlagMode(flags ? FlagMode::AlwaysEmit : FlagMode::NeverEmit);
