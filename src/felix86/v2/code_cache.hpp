@@ -33,14 +33,6 @@ struct BlockMetadata {
     // This gives us a count of x86 instructions per block, the size of each instruction
     // and the size of the risc-v instructions used to translate it
     std::vector<TranslationSize> translation_sizes{};
-    // We always end blocks on CALL. This is because some games (e.g. Celeste) may include garbage or
-    // unmapped pages if we don't end sequences on CALL. Since we want to do the CALL/RET optimization,
-    // and the hardware RSB needs to match the return address, but we can't continue scanning after the call,
-    // we place a jumpAndLink after the CALL, and populate the address cache with it. But if the address cache
-    // entry of the return block gets evicted, the next return misses and the dispatcher re-inserts an entry.
-    // When the block would get recompiled the address cache entry would point to the new block and RSB prediction
-    // would fail. We want RSB to succeed and to not compile past the CALL, so this is our compromise.
-    u64 ret_stub{};
     union {
         struct {
             // How many times this block was recompiled. After smc_threshold it will no longer protect the page

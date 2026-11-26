@@ -199,10 +199,9 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_
         // to jump to before getting hit by this invalidation. So we can jumpAndLink there.
         u32 link_instruction = *(u32*)(link_location + sizeof(u32));
         bool return_hint = ((link_instruction >> 7) & 0x1f) == ra.Index();
-        // Don't make the ret stub jump go to address cache, as it would jump to itself
-        bool is_ret_stub = metadata.ret_stub == (u64)link_location;
+        // Don't make the jump go to address cache, if this is a CALL return target the entry points here so it would jump to itself
         state->recompiler->compile_state.single_step_mode = state->single_step_mode;
-        state->recompiler->jumpAndLink(rip, mode32, return_hint, is_ret_stub);
+        state->recompiler->jumpAndLink(rip, mode32, return_hint, true);
         state->recompiler->as.SetCursorPointer(cursor);
         flush_icache((u64)link_location, (u64)link_location + 4096);
     } else {
@@ -339,7 +338,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
     code_cache->addHostPcLookup(host_address_end - 1, &block_meta);
 
     AddressCacheEntry& entry = state->getAddressCacheEntry(start_rip);
-    entry.host = block_meta.ret_stub ? block_meta.ret_stub : block_meta.host_address;
+    entry.host = block_meta.host_address;
     entry.guest = address;
 
     // If other blocks were waiting for this block to be linked, link them now
@@ -3859,6 +3858,31 @@ void Recompiler::switchToX87() {
     popScratch();
 
     compile_state.block_state.x87_state = x87State::x87;
+}
+
+void Recompiler::storeReturnTarget(biscuit::GPR return_address, u64 return_rip, biscuit::Label* return_target, bool mode32) {
+    static_assert(address_cache_offset % sizeof(AddressCacheEntry) == 0);
+    static_assert(sizeof(AddressCacheEntry) == 16 && offsetof(AddressCacheEntry, host) == 0 && offsetof(AddressCacheEntry, guest) == 8);
+    OptimizationGuard guard(as, optimization_guard_counter);
+    const u64 index = return_rip & ((1ull << address_cache_bits) - 1);
+    const i64 offset = (i64)(index * sizeof(AddressCacheEntry)) - (i64)address_cache_offset;
+    const i32 lo12 = (i32)(((offset & 0xFFF) ^ 0x800) - 0x800);
+    const i64 hi = offset - lo12;
+    ASSERT(lo12 + 8 <= 2047 && (hi & 0xFFF) == 0 && IsValid2GBImm(hi));
+    biscuit::GPR entry = scratch();
+    biscuit::GPR value = scratch();
+    as.LUI(entry, (u32)((hi >> 12) & 0xFFFFF));
+    as.ADD(entry, entry, Allocations::threadStatePointer());
+    as.LILabel(value, return_target);
+    as.SD(value, lo12, entry);
+    if (mode32) {
+        as.NOT(value, return_address);
+        as.SD(value, lo12 + 8, entry);
+    } else {
+        as.SD(return_address, lo12 + 8, entry);
+    }
+    popScratch();
+    popScratch();
 }
 
 void Recompiler::addressCacheLookup(biscuit::GPR guest_address, void on_hit(Assembler&, biscuit::GPR), bool mode32, bool use_ra) {
