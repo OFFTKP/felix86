@@ -2638,6 +2638,8 @@ FAST_HANDLE(CALL) {
     }
 
     biscuit::GPR ripreg = Allocations::RIP();
+    const u64 return_rip = rip + instruction.length;
+    biscuit::Label return_target;
 
     switch (operands[0].type) {
     case ZYDIS_OPERAND_TYPE_REGISTER:
@@ -2652,7 +2654,10 @@ FAST_HANDLE(CALL) {
         rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
 
         rec.writeMemory(scratch, rsp, 0, rec.stackWidth());
-        rec.backToDispatcher(MODE32, rec.canEmitRetStub());
+        if (rec.canPredictReturns()) {
+            rec.storeReturnTarget(scratch, return_rip, &return_target, MODE32);
+        }
+        rec.backToDispatcher(MODE32, rec.canPredictReturns());
         break;
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
@@ -2665,18 +2670,21 @@ FAST_HANDLE(CALL) {
 
         rec.addi(ripreg, ripreg, return_address_offset);
         rec.writeMemory(ripreg, rsp, 0, rec.stackWidth());
+        if (rec.canPredictReturns()) {
+            rec.storeReturnTarget(ripreg, return_rip, &return_target, MODE32);
+        }
         rec.addi(ripreg, ripreg, displacement);
         u64 address = rip + instruction.length + displacement;
         if (MODE32) {
             rec.zext(ripreg, ripreg, X86_SIZE_DWORD);
             address = (u32)address;
         }
-        if (rec.canEmitRetStub()) {
+        if (rec.canPredictReturns()) {
             as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
         } else {
             // No need for AUIPC if not an RSB CALL, as the JAL will link t5
         }
-        rec.jumpAndLink(address, MODE32, rec.canEmitRetStub());
+        rec.jumpAndLink(address, MODE32, rec.canPredictReturns());
         break;
     }
     default: {
@@ -2685,20 +2693,13 @@ FAST_HANDLE(CALL) {
     }
     }
 
-    if (rec.canEmitRetStub()) {
-        u64 return_rip = rip + instruction.length;
+    if (rec.canPredictReturns()) {
         if (MODE32) {
             ASSERT(return_rip <= UINT32_MAX);
         }
-        u64 stub = (u64)as.GetCursorPointer();
-        // Don't make the ret stub jump go to address cache, as it would jump to itself
+        as.Bind(&return_target);
+        // Don't make the return target jump go to address cache, the CALL points the address cache entry here so it would jump to itself
         rec.jumpAndLink(return_rip, MODE32, false, true);
-        const TaggedAddress return_address = TaggedAddress::make(return_rip, MODE32);
-        rec.getBlockMetadata(return_address).ret_stub = stub;
-        ThreadState* state = ThreadState::Get();
-        AddressCacheEntry& entry = state->getAddressCacheEntry(return_rip);
-        entry.guest = return_address;
-        entry.host = stub;
     }
     rec.stopCompiling();
 }
@@ -2765,7 +2766,7 @@ FAST_HANDLE(RET) {
     // Don't need to zero extend here as it's loaded as a DWORD
     as.MV(ripreg, scratch);
 
-    bool inline_lookup = rec.canEmitRetStub();
+    bool inline_lookup = rec.canPredictReturns();
     if (inline_lookup) {
         // If the guest address exists inside of the guest address cache lookup table then we may assume a block is compiled for that address.
         rec.addressCacheLookup(scratch, [](Assembler& as, biscuit::GPR ret) { as.JALR(x0, 0, ret); }, MODE32, true);

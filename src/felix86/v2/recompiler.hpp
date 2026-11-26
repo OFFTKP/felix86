@@ -360,7 +360,9 @@ struct Recompiler {
 
     void exitIfPendingCacheClear();
 
-    bool canEmitRetStub() const {
+    void storeReturnTarget(biscuit::GPR return_address, u64 return_rip, biscuit::Label* return_target, bool mode32);
+
+    bool canPredictReturns() const {
         return g_config.return_address_hint && !relocatable && !isSingleStepping();
     }
 
@@ -522,7 +524,7 @@ struct Recompiler {
         if (meta.host_address != 0) {
             AddressCacheEntry& entry = state->getAddressCacheEntry(rip);
             entry.guest = address;
-            entry.host = meta.ret_stub ? meta.ret_stub : meta.host_address;
+            entry.host = meta.host_address;
             return meta.host_address;
         }
 
