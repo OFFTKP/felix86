@@ -203,8 +203,16 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block, u8* invalid_
         u32 link_instruction = *(u32*)(link_location + sizeof(u32));
         bool return_hint = ((link_instruction >> 7) & 0x1f) == ra.Index();
         // Don't make the jump go to address cache, if this is a CALL return target the entry points here so it would jump to itself
-        state->recompiler->compile_state.single_step_mode = state->single_step_mode;
-        state->recompiler->patchCode(link_location, [&] { state->recompiler->jumpAndLink(rip, mode32, return_hint, true); });
+        Recompiler& rec = *state->recompiler;
+        rec.compile_state.single_step_mode = state->single_step_mode;
+        if (rec.isSingleStepping()) {
+            writeDispatcherExit(link_location, mode32, return_hint, true);
+        } else if (rec.blockExists(address)) {
+            writeDirectLink(link_location, rec.getBlockMetadata(address).host_address, return_hint);
+        } else {
+            writeDispatcherExit(link_location, mode32, return_hint, true);
+            rec.addPendingLink(link_location, address, return_hint);
+        }
         flush_icache((u64)link_location, (u64)link_location + 4096);
     } else {
         // The dispatcher makes sure the third argument is set to 0 if we get here not from a link
@@ -631,16 +639,7 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
 
         if (is_single_step && compile_state.compiling) {
             flushBlockState(rip);
-            if (compile_state.single_step_mode != SingleStepMode::None) {
-                as.SD(x0, 0, x0);
-                as.SLTIU(x0, x0, FELIX86_HINT_TF);
-                // Unreachable
-                as.C_UNDEF();
-                as.C_UNDEF();
-            } else {
-                // g_config.single_step
-                backToDispatcher(compile_state.mode32);
-            }
+            backToDispatcher(compile_state.mode32);
             stopCompiling();
         }
 
@@ -1999,6 +1998,10 @@ void Recompiler::restoreState() {
     compile_state.scratches = saved_scratches;
 }
 
+void Recompiler::addPendingLink(u8* link_location, TaggedAddress target, bool return_hint) {
+    pending_links[target].push_back(encodePendingLink(link_location, return_hint));
+}
+
 u64 Recompiler::encodePendingLink(u8* link_location, bool return_hint) {
     // The top 7 bits are used as flags.
     u64 link = (u64)link_location & (((u64)1 << 57) - 1);
@@ -2024,16 +2027,23 @@ void Recompiler::backToDispatcher(bool mode32, bool return_hint, bool skip_looku
         as.SD(x0, 0, x0);
         as.SLTIU(x0, x0, FELIX86_HINT_TF);
         // Unreachable
-        as.C_UNDEF();
-        as.C_UNDEF();
     } else {
-        ASSERT(ScratchAllocator::isScratch(t6));
-        as.LD(t6, dispatcherHandlerOffset(mode32, skip_lookup), sp);
-        if (return_hint)
-            as.JALR(x1, 0, t6);
-        else
-            as.JALR(t5, 0, t6); // t5 is used to mark a link location, see invalidateAt
+        emitDispatcherExit(as, mode32, return_hint, skip_lookup);
     }
+}
+
+void Recompiler::emitDispatcherExit(Assembler& as, bool mode32, bool return_hint, bool skip_lookup) {
+    ASSERT(ScratchAllocator::isScratch(t6));
+    as.LD(t6, dispatcherHandlerOffset(mode32, skip_lookup), sp);
+    if (return_hint)
+        as.JALR(x1, 0, t6);
+    else
+        as.JALR(t5, 0, t6); // t5 is used to mark a link location, see invalidateAt
+}
+
+void Recompiler::writeDispatcherExit(u8* location, bool mode32, bool return_hint, bool skip_lookup) {
+    Assembler patcher(location, 2 * sizeof(u32));
+    emitDispatcherExit(patcher, mode32, return_hint, skip_lookup);
 }
 
 void Recompiler::enterDispatcher(ThreadState* state) {
@@ -2732,27 +2742,21 @@ void Recompiler::jumpAndLink(TaggedAddress address, bool return_link, bool skip_
 
     u8* start = as.GetCursorPointer();
     const ptrdiff_t start_offset = as.GetCodeBuffer().GetCursorOffset();
-    if (isInStagingBuffer(start)) {
-        LinkSite& site = compile_state.link_sites.emplace_back();
-        site.offset = (u64)start - getBlockStart();
-        site.return_hint = return_link;
-        site.target = address;
-        backToDispatcher(mode32, return_link, skip_lookup);
-    } else if (!blockExists(address)) {
-        backToDispatcher(mode32, return_link, skip_lookup);
-        pending_links[address].push_back(encodePendingLink(start, return_link));
-    } else {
-        emitDirectLink(getBlockMetadata(address).host_address, return_link);
-    }
+    ASSERT(isInStagingBuffer(start));
+    LinkSite& site = compile_state.link_sites.emplace_back();
+    site.offset = (u64)start - getBlockStart();
+    site.return_hint = return_link;
+    site.target = address;
+    backToDispatcher(mode32, return_link, skip_lookup);
 
     // These jumps are always 2 instructions to keep consistent when backpatching is needed
     ASSERT(as.GetCodeBuffer().GetCursorOffset() - start_offset == 2 * 4);
 }
 
-void Recompiler::emitDirectLink(u64 target, bool return_link) {
-    OptimizationGuard guard(as, optimization_guard_counter);
+void Recompiler::writeDirectLink(u8* location, u64 target, bool return_link) {
+    Assembler as(location, 2 * sizeof(u32));
     const ptrdiff_t start_offset = as.GetCodeBuffer().GetCursorOffset();
-    u64 offset = target - (u64)as.GetCursorPointer();
+    u64 offset = target - (u64)location;
     if (IsValidJTypeImm(offset - 4)) {
         if (offset - 4 == 4) {
             as.AUIPC(t5, 0);
@@ -3045,11 +3049,11 @@ void Recompiler::linkPublishedBlock(const BlockMetadata* metadata, const Publish
         u8* link_location = code + site.offset;
         ASSERT(((u64)link_location & 0x3) == 0);
         if (!blockExists(site.target)) {
-            pending_links[site.target].push_back(encodePendingLink(link_location, site.return_hint));
+            addPendingLink(link_location, site.target, site.return_hint);
             continue;
         }
 
-        patchCode(link_location, [&] { emitDirectLink(getBlockMetadata(site.target).host_address, site.return_hint); });
+        writeDirectLink(link_location, getBlockMetadata(site.target).host_address, site.return_hint);
     }
 }
 
@@ -3069,13 +3073,14 @@ void Recompiler::expirePendingLinks(TaggedAddress address) {
         return;
     }
 
+    const u64 target = getBlockMetadata(address).host_address;
     auto& links = it->second;
     for (uintptr_t link : links) {
         bool has_return_hint = link & (u64)PendingLinkFlags::HasReturnHint;
 
         intptr_t signed_link = link;
         u8* link_addr = (u8*)((signed_link << 7) >> 7);
-        patchCode(link_addr, [&] { jumpAndLink(address, has_return_hint); });
+        writeDirectLink(link_addr, target, has_return_hint);
 
         u64 addr = (u64)link_addr;
         if (addr < min) {

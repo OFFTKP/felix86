@@ -863,7 +863,13 @@ private:
 
     BlockMetadata* publishBlock(PublishInfo& info, u64 protect_end);
 
-    void emitDirectLink(u64 target, bool return_link);
+    static void writeDirectLink(u8* location, u64 target, bool return_link);
+
+    static void emitDispatcherExit(Assembler& as, bool mode32, bool return_hint, bool skip_lookup);
+
+    static void writeDispatcherExit(u8* location, bool mode32, bool return_hint, bool skip_lookup);
+
+    void addPendingLink(u8* link_location, TaggedAddress target, bool return_hint);
 
     static int dispatcherHandlerOffset(bool mode32, bool skip_lookup);
 
@@ -884,14 +890,6 @@ private:
     void discardSideExits();
 
     bool canCompileSpeculatively(const ZydisDecodedInstruction& instruction, const ZydisDecodedOperand* operands);
-
-    template <typename Emit>
-    void patchCode(u8* location, Emit&& emit) {
-        biscuit::Assembler patcher(location, 2 * sizeof(u32));
-        std::swap(as, patcher);
-        emit();
-        std::swap(as, patcher);
-    }
 
     std::unique_ptr<CodeCache> code_cache = std::make_unique<CodeCache>();
     biscuit::Assembler as{};
