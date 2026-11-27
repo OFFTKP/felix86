@@ -34,6 +34,10 @@ struct TaggedAddress {
         return raw >> 63;
     }
 
+    u64 rip() const {
+        return mode32() ? ~raw : raw;
+    }
+
     // We store 32-bit addresses as ~address in address cache and block map, such that no collisions can happen
     // with 64-bit blocks. If we didn't do this and instead used the top bit to mark 32-bit blocks, if a thread
     // tried to jump to the invalid address 0x8000'0000'0001'0000, we would either have to catch it in the addressCacheLookup

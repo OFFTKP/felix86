@@ -28,6 +28,8 @@
 #define FELIX86_HINT_UD2 0xd2
 #define FELIX86_HINT_TF 0x7f
 
+constexpr u64 staging_buffer_size = 256 * 1024;
+
 constexpr int scan_ahead_count = 64;
 constexpr int scan_ahead_budget = 512;
 constexpr int scan_ahead_depth = 2;
@@ -148,7 +150,8 @@ struct CompileState {
     bool instruction_on_stack = false;
     bool block_big = false;
     FlagAccessData flag_access{};
-    BlockMetadata* block_metadata{};
+    u64 block_start_rip = 0;
+    u64 block_start = 0;
     bool block_self_validating = false;
     u64 scan_end = 0;
     bool mode32 = false;
@@ -156,6 +159,12 @@ struct CompileState {
 
     std::vector<SideExit> side_exits;
     bool superblocks_disabled = false;
+
+    std::vector<LinkSite> link_sites;
+    std::vector<TranslationSize> translation_sizes;
+    bool self_validating = false;
+    bool track_smc = false;
+    std::vector<u32> smc_trackers;
 
     u64 self_validating_start = 0;
     std::vector<u8> self_validating_bytes{};
@@ -330,6 +339,12 @@ struct Recompiler {
     void jumpAndLinkConditional(BranchCond cond, biscuit::GPR lhs, biscuit::GPR rhs, u64 rip_true, u64 rip_false);
 
     void invalidateBlock(BlockMetadata* block, bool is_smc);
+
+    void linkPublishedBlock(const BlockMetadata* metadata, const PublishInfo& info);
+
+    bool isInStagingBuffer(const u8* pointer) const {
+        return pointer >= (const u8*)staging_buffer && pointer < (const u8*)staging_buffer + staging_buffer_size;
+    }
 
     static void patchBlockEntry(u64 host_address);
 
@@ -573,8 +588,6 @@ struct Recompiler {
 
     void setFlag(x86_ref_e flag);
 
-    void resizeOrClearCodeCache(ThreadState* state);
-
     void clearCodeCache(ThreadState* state);
 
     void clearAddressCache();
@@ -595,6 +608,12 @@ struct Recompiler {
 
     bool isRelocatable() {
         return relocatable;
+    }
+
+    void alignLinkSite() {
+        if ((u64)as.GetCursorPointer() & 0x2) {
+            as.C_NOP();
+        }
     }
 
     void pushCalltrace() {
@@ -621,11 +640,19 @@ struct Recompiler {
     }
 
     u8* getEndOfCodeCache() const {
+        return code_cache->getBlockArea() + code_cache->getBlockAreaSize();
+    }
+
+    u8* getCursor() const {
         return (u8*)as.GetCursorPointer();
     }
 
+    void rewindStagingBuffer() {
+        as.RewindBuffer();
+    }
+
     bool isInJitCode(u64 pc) const {
-        return pc >= (u64)getStartOfCodeCache() && pc < (u64)getEndOfCodeCache();
+        return code_cache->isInUsedArea(pc);
     }
 
     static bool isXMM(x86_ref_e ref) {
@@ -754,9 +781,16 @@ struct Recompiler {
 
     void switchToX87();
 
-    BlockMetadata& getCurrentMetadata() {
-        ASSERT(compile_state.block_metadata);
-        return *compile_state.block_metadata;
+    u64 getCurrentRip() const {
+        return compile_state.rip;
+    }
+
+    u64 getBlockStart() const {
+        return compile_state.block_start;
+    }
+
+    const std::vector<TranslationSize>& getTranslationSizes() const {
+        return compile_state.translation_sizes;
     }
 
     void setFsrmSSE(bool is_sse) {
@@ -831,6 +865,20 @@ struct Recompiler {
 private:
     bool scanAhead(u64 rip);
 
+    BlockMetadata* publishBlock(PublishInfo& info, u64 protect_end);
+
+    static void writeDirectLink(u8* location, u64 target, bool return_link);
+
+    static void emitDispatcherExit(Assembler& as, bool mode32, bool return_hint, bool skip_lookup);
+
+    static void writeDispatcherExit(u8* location, bool mode32, bool return_hint, bool skip_lookup);
+
+    void addPendingLink(u8* link_location, TaggedAddress target, bool return_hint);
+
+    static int dispatcherHandlerOffset(bool mode32, bool skip_lookup);
+
+    static u64 encodePendingLink(u8* link_location, bool return_hint);
+
     u32 scanLandingBlock(ThreadState* state, u64 initial_rip, u64 rip_ahead, int depth, int& instrs_left);
 
     void expirePendingLinks(TaggedAddress address);
@@ -866,4 +914,6 @@ private:
     int optimization_guard_counter = 0; // see OptimizationGuard
 
     bool relocatable = false;
+
+    void* staging_buffer = nullptr;
 };

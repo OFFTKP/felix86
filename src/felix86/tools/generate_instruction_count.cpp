@@ -37,14 +37,15 @@ static void from_json(const ordered_json& j, Instruction& p) {
 }
 
 static void gen_many(Recompiler& rec, const std::string& name, nlohmann::ordered_json& json, void (*func)(Xbyak::CodeGenerator&)) {
+    rec.rewindStagingBuffer();
     rec.setVectorState(SEW::E1024, 0);
     Xbyak::CodeGenerator x;
     auto x86_start = x.getCurr();
     func(x);
 
-    auto bisc = rec.getEndOfCodeCache();
     rec.compileSequence(false, (u64)x86_start, nullptr);
-    auto after = rec.getEndOfCodeCache();
+    auto bisc = (u8*)rec.getBlockStart();
+    auto after = rec.getCursor();
     int count = 0;
     Instruction inst;
     for (int i = 0; i < after - bisc;) {
@@ -74,10 +75,11 @@ static void gen_sequence(Recompiler& rec, nlohmann::ordered_json& json, const ch
     int status = pclose(pipe);
     ASSERT_MSG(status == 0 && !bytes.empty(), "nasm failed for %s", name);
 
+    rec.rewindStagingBuffer();
     rec.setVectorState(SEW::E1024, 0);
-    auto bisc = rec.getEndOfCodeCache();
     rec.compileSequence(mode32, (u64)bytes.data(), nullptr);
-    auto after = rec.getEndOfCodeCache();
+    auto bisc = (u8*)rec.getBlockStart();
+    auto after = rec.getCursor();
     int count = 0;
     Instruction inst;
     for (int i = 0; i < after - bisc;) {
@@ -103,6 +105,7 @@ static void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbya
         ZydisDecoderEnableMode(&zydis, ZYDIS_DECODER_MODE_AMD_BRANCHES, ZYAN_TRUE);
     }
 
+    rec.rewindStagingBuffer();
     // Set bogus vector state so we see the vector state changes
     rec.setVectorState(SEW::E1024, 0);
     rec.setFlagMode(flags ? FlagMode::AlwaysEmit : FlagMode::NeverEmit);
@@ -113,7 +116,7 @@ static void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbya
     auto x86_start = x.getCurr();
     func(x);
     auto x86_end = x.getCurr();
-    auto bisc = rec.getEndOfCodeCache();
+    auto bisc = rec.getCursor();
     ZydisDecodedInstruction zinstruction;
     ZydisDecodedOperand zoperands[10];
     u64 rip = (u64)x86_start;
@@ -124,7 +127,7 @@ static void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbya
     rec.resetScratch();
     rec.flushX87();
     rec.flushPushpop();
-    auto after = rec.getEndOfCodeCache();
+    auto after = rec.getCursor();
     int count = 0;
     Instruction inst;
     std::string bytes;

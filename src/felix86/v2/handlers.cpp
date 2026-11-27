@@ -2656,6 +2656,7 @@ FAST_HANDLE(CALL) {
         rec.writeMemory(scratch, rsp, 0, rec.stackWidth());
         if (rec.canPredictReturns()) {
             rec.storeReturnTarget(scratch, return_rip, &return_target, MODE32);
+            rec.alignLinkSite();
         }
         rec.backToDispatcher(MODE32, rec.canPredictReturns());
         break;
@@ -2680,6 +2681,7 @@ FAST_HANDLE(CALL) {
             address = (u32)address;
         }
         if (rec.canPredictReturns()) {
+            rec.alignLinkSite();
             as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
         } else {
             // No need for AUIPC if not an RSB CALL, as the JAL will link t5
@@ -14831,7 +14833,7 @@ FAST_HANDLE(INVLPG) {
         ASSERT(name_size > 0);
         VERBOSE("Generating trampoline for %s", name);
         rec.writebackState();
-        void* trampoline = Thunks::generateTrampoline(rec.isRelocatable(), as, name);
+        void* trampoline = Thunks::generateTrampoline(true, as, name);
         ASSERT_MSG(trampoline != nullptr, "Failed to install trampoline for \"%s\" (%lx)", name, (u64)name);
         rec.restoreState();
         rip += name_size + 1; // also skip null byte
@@ -14849,7 +14851,7 @@ FAST_HANDLE(INVLPG) {
         size_t name_size = strlen(name);
         VERBOSE("Generating trampoline for %lx (%s %s)", address, name, signature);
         rec.writebackState();
-        void* trampoline = Thunks::generateTrampoline(rec.isRelocatable(), as, name, signature, address);
+        void* trampoline = Thunks::generateTrampoline(true, as, name, signature, address);
         ASSERT_MSG(trampoline != nullptr, "Failed to install trampoline for %lx", address);
         rec.restoreState();
         rip += 8 + signature_size + 1 + name_size + 1; // also skip null bytes
@@ -17510,7 +17512,7 @@ static void VCMP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instru
     rec.setVectorState(sew, elements);
     switch (imm & 0b11111) {
     case EQ_OS: {
-        WARN("Signaling comparison at rip=%lx", rec.getCurrentMetadata().host_address);
+        WARN("Signaling comparison at rip=%lx", rec.getCurrentRip());
         [[fallthrough]];
     }
     case EQ_OQ: {
@@ -17518,7 +17520,7 @@ static void VCMP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instru
         break;
     }
     case LT_OS: {
-        WARN("Signaling comparison at rip=%lx", rec.getCurrentMetadata().host_address);
+        WARN("Signaling comparison at rip=%lx", rec.getCurrentRip());
         [[fallthrough]];
     }
     case LT_OQ: {
@@ -17526,7 +17528,7 @@ static void VCMP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instru
         break;
     }
     case LE_OS: {
-        WARN("Signaling comparison at rip=%lx", rec.getCurrentMetadata().host_address);
+        WARN("Signaling comparison at rip=%lx", rec.getCurrentRip());
         [[fallthrough]];
     }
     case LE_OQ: {
@@ -17534,7 +17536,7 @@ static void VCMP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instru
         break;
     }
     case UNORD_S: {
-        WARN("Signaling comparison at rip=%lx", rec.getCurrentMetadata().host_address);
+        WARN("Signaling comparison at rip=%lx", rec.getCurrentRip());
         [[fallthrough]];
     }
     case UNORD_Q: {
@@ -17545,7 +17547,7 @@ static void VCMP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instru
         break;
     }
     case NEQ_US: {
-        WARN("Signaling comparison at rip=%lx", rec.getCurrentMetadata().host_address);
+        WARN("Signaling comparison at rip=%lx", rec.getCurrentRip());
         [[fallthrough]];
     }
     case NEQ_UQ: {
@@ -17557,7 +17559,7 @@ static void VCMP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instru
         break;
     }
     case NLT_US: {
-        WARN("Signaling comparison at rip=%lx", rec.getCurrentMetadata().host_address);
+        WARN("Signaling comparison at rip=%lx", rec.getCurrentRip());
         [[fallthrough]];
     }
     case NLT_UQ: {
@@ -17569,7 +17571,7 @@ static void VCMP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instru
         break;
     }
     case NLE_US: {
-        WARN("Signaling comparison at rip=%lx", rec.getCurrentMetadata().host_address);
+        WARN("Signaling comparison at rip=%lx", rec.getCurrentRip());
         [[fallthrough]];
     }
     case NLE_UQ: {
@@ -17581,7 +17583,7 @@ static void VCMP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instru
         break;
     }
     case ORD_S: {
-        WARN("Signaling comparison at rip=%lx", rec.getCurrentMetadata().host_address);
+        WARN("Signaling comparison at rip=%lx", rec.getCurrentRip());
         [[fallthrough]];
     }
     case ORD_Q: {
@@ -17592,7 +17594,7 @@ static void VCMP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instru
         break;
     }
     case EQ_US: {
-        WARN("Signaling comparison at rip=%lx", rec.getCurrentMetadata().host_address);
+        WARN("Signaling comparison at rip=%lx", rec.getCurrentRip());
         [[fallthrough]];
     }
     case EQ_UQ: {
@@ -17604,7 +17606,7 @@ static void VCMP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instru
         break;
     }
     case NGE_US: {
-        WARN("Signaling comparison at rip=%lx", rec.getCurrentMetadata().host_address);
+        WARN("Signaling comparison at rip=%lx", rec.getCurrentRip());
         [[fallthrough]];
     }
     case NGE_UQ: {
@@ -17616,7 +17618,7 @@ static void VCMP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instru
         break;
     }
     case NGT_US: {
-        WARN("Signaling comparison at rip=%lx", rec.getCurrentMetadata().host_address);
+        WARN("Signaling comparison at rip=%lx", rec.getCurrentRip());
         [[fallthrough]];
     }
     case NGT_UQ: {
@@ -17628,7 +17630,7 @@ static void VCMP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instru
         break;
     }
     case FALSE_OS: {
-        WARN("Signaling comparison at rip=%lx", rec.getCurrentMetadata().host_address);
+        WARN("Signaling comparison at rip=%lx", rec.getCurrentRip());
         [[fallthrough]];
     }
     case FALSE_OQ: {
@@ -17636,7 +17638,7 @@ static void VCMP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instru
         break;
     }
     case NEQ_OS: {
-        WARN("Signaling comparison at rip=%lx", rec.getCurrentMetadata().host_address);
+        WARN("Signaling comparison at rip=%lx", rec.getCurrentRip());
         [[fallthrough]];
     }
     case NEQ_OQ: {
@@ -17648,7 +17650,7 @@ static void VCMP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instru
         break;
     }
     case GE_OS: {
-        WARN("Signaling comparison at rip=%lx", rec.getCurrentMetadata().host_address);
+        WARN("Signaling comparison at rip=%lx", rec.getCurrentRip());
         [[fallthrough]];
     }
     case GE_OQ: {
@@ -17656,7 +17658,7 @@ static void VCMP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instru
         break;
     }
     case GT_OS: {
-        WARN("Signaling comparison at rip=%lx", rec.getCurrentMetadata().host_address);
+        WARN("Signaling comparison at rip=%lx", rec.getCurrentRip());
         [[fallthrough]];
     }
     case GT_OQ: {
@@ -17664,7 +17666,7 @@ static void VCMP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instru
         break;
     }
     case TRUE_US: {
-        WARN("Signaling comparison at rip=%lx", rec.getCurrentMetadata().host_address);
+        WARN("Signaling comparison at rip=%lx", rec.getCurrentRip());
         [[fallthrough]];
     }
     case TRUE_UQ: {
