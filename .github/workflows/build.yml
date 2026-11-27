@@ -185,28 +185,118 @@ jobs:
           git pull --rebase origin master
           git push
 
-  publish_nightly:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+  publish:
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/'))
     needs: [build, test]
+    runs-on: ubuntu-latest
+    environment: ${{ startsWith(github.ref, 'refs/tags/') && 'release' || 'nightly' }}
     permissions:
       contents: read
       actions: read
       id-token: write
-    uses: ./.github/workflows/publish.yml
-    with:
-      kind: nightly
-      artifact-id: ${{ needs.build.outputs.artifact-id }}
-      artifact-digest: ${{ needs.build.outputs.artifact-digest }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@45666896f5d8e0f10ae255413f3a4cdd03bdc8f5
+        with:
+          role-to-assume: ${{ vars.ROLE_ARN }}
+          aws-region: us-east-2
+          allowed-account-ids: "562041964394"
+      - name: Publish
+        shell: bash
+        env:
+          KIND: ${{ startsWith(github.ref, 'refs/tags/') && 'release' || 'nightly' }}
+          BUCKET: felix86-builds
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          COMMIT: ${{ github.sha }}
+          ARTIFACT_ID: ${{ needs.build.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ needs.build.outputs.artifact-digest }}
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          NIGHTLY_PUBKEY: |
+            -----BEGIN PUBLIC KEY-----
+            MCowBQYDK2VwAyEAm+MY5z6dHoXUd+m7VUKez4j3eZRSd/8W1xy0fdSe8zk=
+            -----END PUBLIC KEY-----
+          RELEASE_PUBKEY: |
+            -----BEGIN PUBLIC KEY-----
+            MCowBQYDK2VwAyEAyPmX409Bi6QkPYBCG5CKA8z0ODrSdwI/qhMHLX1SlHU=
+            -----END PUBLIC KEY-----
+        run: |
+          set -euo pipefail
 
-  publish_release:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-    needs: [build, test]
-    permissions:
-      contents: read
-      actions: read
-      id-token: write
-    uses: ./.github/workflows/publish.yml
-    with:
-      kind: release
-      artifact-id: ${{ needs.build.outputs.artifact-id }}
-      artifact-digest: ${{ needs.build.outputs.artifact-digest }}
+          die() { echo "Error: $*" >&2; exit 1; }
+
+          [[ -n "$SIGNING_KEY" ]] || die "SIGNING_KEY is not set in the $KIND environment"
+          [[ -n "$ARTIFACT_ID" && -n "$ARTIFACT_DIGEST" ]] || die "the build job did not report the artifact id and digest"
+
+          case "$KIND" in
+            nightly)
+              [[ "$GITHUB_REF" == "refs/heads/master" ]] || die "nightly builds are only published from master"
+              prefix="nightly"
+              dir="builds/$RUN_ID"
+              zip_cache="public, max-age=31536000, immutable"
+              pubkey="$NIGHTLY_PUBKEY"
+              ;;
+            release)
+              [[ "$GITHUB_REF" =~ ^refs/tags/[0-9]{2}\.[0-9]{2}$ ]] || die "releases are only published from NN.NN tags"
+              version="${GITHUB_REF#refs/tags/}"
+              prefix="releases"
+              dir="$version"
+              zip_cache="public, max-age=300"
+              pubkey="$RELEASE_PUBKEY"
+              ;;
+            *)
+              die "unknown kind: $KIND"
+              ;;
+          esac
+
+          key="$RUNNER_TEMP/signing-key.pem"
+          trap 'rm -f "$key"' EXIT
+          (umask 077; printf '%s\n' "$SIGNING_KEY" > "$key")
+          unset SIGNING_KEY
+
+          work="$RUNNER_TEMP/publish"
+          rm -rf "$work"
+          mkdir -p "$work"
+          cd "$work"
+
+          gh api "repos/$REPO/actions/artifacts/$ARTIFACT_ID/zip" > felix86.zip
+          unset GH_TOKEN
+          expected="${ARTIFACT_DIGEST#sha256:}"
+          sha256=$(sha256sum felix86.zip | cut -d' ' -f1)
+          [[ "$sha256" == "$expected" ]] || die "artifact changed after the build job: build reported $expected, downloaded $sha256"
+
+          openssl pkeyutl -sign -rawin -inkey "$key" -in felix86.zip -out felix86.zip.sig
+          rm -f "$key"
+          printf '%s' "$pubkey" > key.pub
+          openssl pkeyutl -verify -rawin -pubin -inkey key.pub -in felix86.zip -sigfile felix86.zip.sig >/dev/null \
+            || die "the SIGNING_KEY of the $KIND environment is not the $KIND key"
+
+          aws s3api get-object --bucket "$BUCKET" --key "$prefix/index.json" index.old.json >/dev/null
+          now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          if [[ "$KIND" == "nightly" ]]; then
+            cutoff=$(date -u -d '-80 days' +%s)
+            jq --argjson run "$RUN_ID" --arg commit "$COMMIT" --arg date "$now" --arg sha "$sha256" \
+               --arg path "$dir/felix86.zip" --argjson cutoff "$cutoff" '
+              .builds = (
+                [{run_id: $run, commit: $commit, date: $date, sha256: $sha, path: $path}]
+                + [.builds[] | select(.run_id != $run and (.date | fromdateiso8601) >= $cutoff)]
+              )' index.old.json > index.json
+          else
+            jq --arg version "$version" --argjson run "$RUN_ID" --arg commit "$COMMIT" --arg date "$now" \
+               --arg sha "$sha256" --arg path "$dir/felix86.zip" '
+              .releases = (
+                [.releases[] | select(.version != $version)]
+                + [{version: $version, run_id: $run, commit: $commit, date: $date, sha256: $sha, path: $path}]
+                | sort_by(.version) | reverse
+              )' index.old.json > index.json
+          fi
+
+          aws s3 cp felix86.zip "s3://$BUCKET/$prefix/$dir/felix86.zip" \
+            --content-type application/zip --cache-control "$zip_cache"
+          aws s3 cp felix86.zip.sig "s3://$BUCKET/$prefix/$dir/felix86.zip.sig" \
+            --content-type application/octet-stream --cache-control "$zip_cache"
+          aws s3 cp index.json "s3://$BUCKET/$prefix/index.json" \
+            --content-type application/json --cache-control "max-age=60"
+          echo "Published $KIND build $sha256 to $prefix/$dir"
