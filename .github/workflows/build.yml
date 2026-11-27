@@ -155,9 +155,10 @@ jobs:
         with:
           app-id: ${{ secrets.LATENCY_APP_ID }}
           private-key: ${{ secrets.LATENCY_APP_KEY }}
-      - name: Check out repository code
+      - name: Check out latency results
         uses: actions/checkout@v4
         with:
+          ref: latency-results
           token: ${{ steps.app.outputs.token }}
       - name: Download test artifact
         uses: actions/download-artifact@v5
@@ -182,8 +183,8 @@ jobs:
             echo "[skip ci]"
           } > $RUNNER_TEMP/commit_message.txt
           git commit -F $RUNNER_TEMP/commit_message.txt
-          git pull --rebase origin master
-          git push
+          git pull --rebase origin latency-results
+          git push origin HEAD:latency-results
 
   publish:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/'))
