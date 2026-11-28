@@ -148,11 +148,10 @@
         "disassembly": "add [rdi], dx"
     },
     "0117": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
-            "ADD.UW          t1, rdx, zero",
-            "LWU             t2, rdi, 0x0(0)",
-            "ADD             ra, t2, t1",
+            "LWU             t1, rdi, 0x0(0)",
+            "ADD             ra, t1, rdx",
             "SW              ra, rdi, 0x0(0)"
         ],
         "disassembly": "add [rdi], edx"
@@ -2233,10 +2232,9 @@
         "disassembly": "shl dx, 0x01"
     },
     "d1e2": {
-        "instruction_count": 3,
+        "instruction_count": 2,
         "expected_asm": [
-            "ADD.UW          t1, rdx, zero",
-            "SLLI            ra, t1, 0x1(1)",
+            "SLLI            ra, rdx, 0x1(1)",
             "ADD.UW          rdx, ra, zero"
         ],
         "disassembly": "shl edx, 0x01"
@@ -2286,10 +2284,9 @@
         "disassembly": "shl dx, 0x3F"
     },
     "c1e23f": {
-        "instruction_count": 3,
+        "instruction_count": 2,
         "expected_asm": [
-            "ADD.UW          t1, rdx, zero",
-            "SLLI            ra, t1, 0x1f(31)",
+            "SLLI            ra, rdx, 0x1f(31)",
             "ADD.UW          rdx, ra, zero"
         ],
         "disassembly": "shl edx, 0x3F"
