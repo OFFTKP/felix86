@@ -124,6 +124,72 @@ static bool is_stack_operand(const ZydisDecodedOperand& operand) {
     return operand.type == ZYDIS_OPERAND_TYPE_MEMORY && (operand.mem.base == ZYDIS_REGISTER_RSP || operand.mem.base == ZYDIS_REGISTER_ESP);
 }
 
+static bool isGPRClass(ZydisRegister reg) {
+    switch (ZydisRegisterGetClass(reg)) {
+    case ZYDIS_REGCLASS_GPR8:
+    case ZYDIS_REGCLASS_GPR16:
+    case ZYDIS_REGCLASS_GPR32:
+    case ZYDIS_REGCLASS_GPR64: {
+        return true;
+    }
+    default: {
+        return false;
+    }
+    }
+}
+
+static bool isAlwaysWritten(const ZydisDecodedInstruction& instruction, const ZydisDecodedOperand& operand, int index) {
+    if (index == 0 && (instruction.mnemonic == ZYDIS_MNEMONIC_BSF || instruction.mnemonic == ZYDIS_MNEMONIC_BSR)) {
+        return false;
+    }
+
+    return operand.actions & ZYDIS_OPERAND_ACTION_WRITE;
+}
+
+static bool readsOnlyLowHalfOf32BitOperands(const ZydisDecodedInstruction& instruction, const ZydisDecodedOperand* operands) {
+    switch (instruction.mnemonic) {
+    case ZYDIS_MNEMONIC_ADD:
+    case ZYDIS_MNEMONIC_SUB:
+    case ZYDIS_MNEMONIC_AND:
+    case ZYDIS_MNEMONIC_OR:
+    case ZYDIS_MNEMONIC_XOR:
+    case ZYDIS_MNEMONIC_MOV:
+    case ZYDIS_MNEMONIC_LEA:
+    case ZYDIS_MNEMONIC_SHL:
+    case ZYDIS_MNEMONIC_SHR:
+    case ZYDIS_MNEMONIC_SAR:
+    case ZYDIS_MNEMONIC_CMP:
+    case ZYDIS_MNEMONIC_TEST:
+    case ZYDIS_MNEMONIC_IMUL:
+    case ZYDIS_MNEMONIC_MOVZX:
+    case ZYDIS_MNEMONIC_MOVSX:
+    case ZYDIS_MNEMONIC_MOVSXD:
+    case ZYDIS_MNEMONIC_NEG:
+    case ZYDIS_MNEMONIC_NOT:
+    case ZYDIS_MNEMONIC_PUSH:
+    case ZYDIS_MNEMONIC_POP:
+    case ZYDIS_MNEMONIC_NOP: {
+        break;
+    }
+    default: {
+        return false;
+    }
+    }
+
+    for (int i = 0; i < instruction.operand_count; i++) {
+        if (operands[i].type != ZYDIS_OPERAND_TYPE_REGISTER) {
+            continue;
+        }
+
+        ZydisRegisterClass reg_class = ZydisRegisterGetClass(operands[i].reg.value);
+        if (!isGPRClass(operands[i].reg.value) && reg_class != ZYDIS_REGCLASS_FLAGS && reg_class != ZYDIS_REGCLASS_IP) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
     Dispatcher::emitDispatcher(code_cache->getThunkArea(), CodeCache::thunk_area_size, code_cache->getPointers(), relocatable);
 
@@ -429,6 +495,7 @@ BlockMetadata* Recompiler::publishBlock(PublishInfo& info, u64 protect_end) {
     published->host_address = (u64)code;
     published->guest_address = info.guest_rip;
     published->translation_sizes.assign(compile_state.translation_sizes.begin(), compile_state.translation_sizes.end());
+    published->dirty_upper_gprs.assign(compile_state.dirty_upper_gprs.begin(), compile_state.dirty_upper_gprs.end());
     published->misc_info.self_validating = info.self_validating;
     code_cache->addBlockToPages(published, info.guest_rip, info.guest_rip_end);
 
@@ -454,20 +521,6 @@ void Recompiler::insertSafepoint() {
 
 void Recompiler::loadRoundingMode(bool sse) {
     CommonEmit::loadRoundingMode(as, compile_state.scratches, sse);
-}
-
-static bool isGPRClass(ZydisRegister reg) {
-    switch (ZydisRegisterGetClass(reg)) {
-    case ZYDIS_REGCLASS_GPR8:
-    case ZYDIS_REGCLASS_GPR16:
-    case ZYDIS_REGCLASS_GPR32:
-    case ZYDIS_REGCLASS_GPR64: {
-        return true;
-    }
-    default: {
-        return false;
-    }
-    }
 }
 
 SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_end) {
@@ -539,8 +592,10 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
 
     ASSERT((u64)as.GetCursorPointer() == getBlockStart());
     compile_state.translation_sizes.assign(compile_state.instructions.size(), TranslationSize{});
+    compile_state.dirty_upper_gprs.clear();
 
     resetBlockState(rip);
+    computeElidableZext32();
 
     bool ran_mmx_once = false;
 
@@ -642,6 +697,11 @@ SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_en
             ASSERT(!is_mmx && !is_x87);
             resetScratch();
             flushX87();
+        }
+
+        if (compile_state.block_state.dirty_upper_gprs) {
+            compile_state.dirty_upper_gprs.resize(compile_state.instructions.size());
+            compile_state.dirty_upper_gprs[compile_state.instruction_index] = compile_state.block_state.dirty_upper_gprs;
         }
 
         compileInstruction(instruction, operands, rip);
@@ -916,6 +976,7 @@ void Recompiler::resetBlockState(u64 rip) {
     compile_state.block_state.x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
     compile_state.block_state.fsrm_sse = true;               // dispatcher loads SSE rounding mode as a default
     compile_state.block_state.v0_has_mask = false;
+    compile_state.block_state.dirty_upper_gprs = 0;
     compile_state.block_state.zext = {};
     if (compile_state.mode32 && !g_config.paranoid) {
         // Zeroed on 32-bit mode entry
@@ -1376,11 +1437,13 @@ void Recompiler::markGPR(x86_ref_e ref, x86_size_e size, u8 known_width) {
         // For example, on mov eax, 0xFF we know that eax holds a value that fits in 8 bits,
         // so then on getGPR of al, it won't use a ZEXT.B
         facts.set(index, std::min<u8>(known_width, 32));
+        compile_state.block_state.dirty_upper_gprs &= ~(1 << index);
         break;
     }
     case X86_SIZE_QWORD: {
         // Same as above
         facts.set(index, known_width);
+        compile_state.block_state.dirty_upper_gprs &= ~(1 << index);
         break;
     }
     default: {
@@ -1407,6 +1470,78 @@ void Recompiler::markGPRJoin(x86_ref_e ref, u8 old_width) {
 
     ZextFacts& facts = compile_state.block_state.zext;
     facts.set(ref - X86_REF_RAX, std::max<u8>(facts.width(ref - X86_REF_RAX), old_width));
+}
+
+void Recompiler::computeElidableZext32() {
+    const size_t count = compile_state.instructions.size();
+    compile_state.elidable_zext32.assign(count, 0);
+    if (g_config.paranoid) {
+        return;
+    }
+
+    u16 upper_live = 0xFFFF;
+    for (size_t i = count; i-- > 0;) {
+        auto& [instruction, operands] = compile_state.instructions[i];
+        if (!readsOnlyLowHalfOf32BitOperands(instruction, operands)) {
+            upper_live = 0xFFFF;
+            continue;
+        }
+
+        bool lea32 = instruction.mnemonic == ZYDIS_MNEMONIC_LEA && instruction.operand_width == 32;
+        u16 defs = 0;
+        u16 defs32 = 0;
+        u16 uses = 0;
+        for (int j = 0; j < instruction.operand_count; j++) {
+            const ZydisDecodedOperand& operand = operands[j];
+            if (operand.type == ZYDIS_OPERAND_TYPE_MEMORY && !lea32) {
+                for (ZydisRegister reg : {operand.mem.base, operand.mem.index}) {
+                    if (isGPRClass(reg)) {
+                        uses |= 1 << (zydisToRef(reg) - X86_REF_RAX);
+                    }
+                }
+                continue;
+            }
+
+            if (operand.type != ZYDIS_OPERAND_TYPE_REGISTER) {
+                continue;
+            }
+
+            ZydisRegisterClass reg_class = ZydisRegisterGetClass(operand.reg.value);
+            if (reg_class != ZYDIS_REGCLASS_GPR32 && reg_class != ZYDIS_REGCLASS_GPR64) {
+                continue;
+            }
+
+            u16 bit = 1 << (zydisToRef(operand.reg.value) - X86_REF_RAX);
+            if (reg_class == ZYDIS_REGCLASS_GPR64 && (operand.actions & ZYDIS_OPERAND_ACTION_MASK_READ)) {
+                uses |= bit;
+            }
+
+            if (isAlwaysWritten(instruction, operand, j)) {
+                defs |= bit;
+                if (reg_class == ZYDIS_REGCLASS_GPR32) {
+                    defs32 |= bit;
+                }
+            }
+        }
+
+        compile_state.elidable_zext32[i] = defs32 & ~upper_live;
+        upper_live = (upper_live & ~defs) | uses;
+    }
+}
+
+bool Recompiler::elideZext32(x86_ref_e ref) {
+    if (ref < X86_REF_RAX || ref > X86_REF_R15 || compile_state.instruction_index >= compile_state.elidable_zext32.size()) {
+        return false;
+    }
+
+    u16 bit = 1 << (ref - X86_REF_RAX);
+    if (!(compile_state.elidable_zext32[compile_state.instruction_index] & bit)) {
+        return false;
+    }
+
+    compile_state.block_state.zext.set(ref - X86_REF_RAX, 64);
+    compile_state.block_state.dirty_upper_gprs |= bit;
+    return true;
 }
 
 biscuit::GPR Recompiler::getGPRSigned(const ZydisDecodedOperand* operand, bool dont_sext32) {
@@ -1708,7 +1843,7 @@ void Recompiler::setGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg, u8 kno
     case X86_SIZE_DWORD: {
         biscuit::GPR dest = Allocations::allocatedGPR(ref); // don't need to load as the entire register is overwritten
         markGPR(ref, size, known_width);
-        if (known_width > 32) {
+        if (known_width > 32 && !elideZext32(ref)) {
             as.ZEXTW(dest, reg);
         } else if (dest != reg) {
             as.MV(dest, reg);
@@ -2093,7 +2228,7 @@ void Recompiler::restoreState() {
     const ScratchAllocator saved_scratches = compile_state.scratches;
     resetVectorState();
     compile_state.block_state.zext = {};
-    if (compile_state.mode32 && !g_config.paranoid) {
+    if (compile_state.mode32 && !g_config.paranoid && !(compile_state.block_state.dirty_upper_gprs & (1 << (X86_REF_RSP - X86_REF_RAX)))) {
         compile_state.block_state.zext.set(X86_REF_RSP - X86_REF_RAX, 32);
     }
 

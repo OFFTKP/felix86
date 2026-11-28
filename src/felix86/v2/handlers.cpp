@@ -7237,10 +7237,14 @@ FAST_HANDLE(NEG) {
         biscuit::GPR temp = rec.scratch();
         switch (size) {
         case X86_SIZE_BYTE:
-        case X86_SIZE_WORD:
-        case X86_SIZE_DWORD: {
+        case X86_SIZE_WORD: {
             as.NEGW(temp, dst);
             rec.setGPR(&operands[0], temp);
+            break;
+        }
+        case X86_SIZE_DWORD: {
+            as.NEGW(dst, dst);
+            rec.setGPR(&operands[0], dst);
             break;
         }
         case X86_SIZE_BYTE_HIGH: {

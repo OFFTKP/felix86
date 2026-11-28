@@ -430,26 +430,51 @@ static BlockMetadata* get_block_metadata(ThreadState* state, u64 host_pc) {
     return state->recompiler->getCodeCache().getBlockByHostPc(host_pc);
 }
 
-static u64 get_actual_rip(BlockMetadata& metadata, u64 fault_pc) {
-    const u64 start_guest_address = metadata.guest_address;
-    u64 guest_address = start_guest_address;
+static size_t get_instruction_index(BlockMetadata& metadata, u64 fault_pc) {
     u64 host_address = metadata.host_address;
     size_t instruction_count = metadata.translation_sizes.size();
     for (size_t i = 0; i < instruction_count; i++) {
         u64 host_address_end = host_address + metadata.translation_sizes[i].riscv_instructions_size;
         if (fault_pc >= host_address && fault_pc < host_address_end) {
-            return guest_address;
+            return i;
         }
-        guest_address += metadata.translation_sizes[i].x86_instruction_size;
         host_address = host_address_end;
     }
-    ERROR("Couldn't find RIP for block of RIP %lx and PC: %lx and fault PC: %lx", start_guest_address, metadata.host_address, fault_pc);
-    return 0;
+    return instruction_count;
+}
+
+static u64 get_actual_rip(BlockMetadata& metadata, u64 fault_pc) {
+    const u64 start_guest_address = metadata.guest_address;
+    size_t index = get_instruction_index(metadata, fault_pc);
+    if (index == metadata.translation_sizes.size()) {
+        ERROR("Couldn't find RIP for block of RIP %lx and PC: %lx and fault PC: %lx", start_guest_address, metadata.host_address, fault_pc);
+        return 0;
+    }
+
+    u64 guest_address = start_guest_address;
+    for (size_t i = 0; i < index; i++) {
+        guest_address += metadata.translation_sizes[i].x86_instruction_size;
+    }
+    return guest_address;
 }
 
 #ifndef REG_PC
 #define REG_PC 0 // risc-v stores it in gpr 0
 #endif
+
+static void zext_dirty_upper_halves(BlockMetadata& metadata, u64 fault_pc, void* ctx) {
+    size_t index = get_instruction_index(metadata, fault_pc);
+    if (index >= metadata.dirty_upper_gprs.size()) {
+        return;
+    }
+
+    for (int i = 0; i < 16; i++) {
+        if (metadata.dirty_upper_gprs[index] & (1 << i)) {
+            u64& reg = get_regs(ctx)[Allocations::allocatedGPR((x86_ref_e)(X86_REF_RAX + i)).Index()];
+            reg = (u32)reg;
+        }
+    }
+}
 
 static int sa_ss_flags(ThreadState* state) {
     u64 rsp = state->GetGpr(X86_REF_RSP);
@@ -1699,6 +1724,7 @@ static bool handle_synchronous(ThreadState* current_state, siginfo_t* info, ucon
         BlockMetadata* current_block = get_block_metadata(current_state, pc);
         ASSERT_MSG(current_block, "Failed to get current block during synchronous signal with PC=%lx, RIP=%lx", pc, current_state->ctx.rip);
         actual_rip = get_actual_rip(*current_block, pc);
+        zext_dirty_upper_halves(*current_block, pc, context);
     }
 
     int sig;
@@ -1857,6 +1883,7 @@ static void signal_handler(int sig, siginfo_t* info, void* ctx) {
             BlockMetadata* current_block = get_block_metadata(state, pc);
             ASSERT_MSG(current_block, "Failed to get current block during synchronous signal with PC=%lx, RIP=%lx", pc, state->ctx.rip);
             u64 actual_rip = get_actual_rip(*current_block, pc);
+            zext_dirty_upper_halves(*current_block, pc, ctx);
             VERBOSE("Synchronous signal block: %lx, actual rip: %lx", current_block->guest_address, actual_rip);
             return prepare_synchronous_signal(state, sig, info, ctx, actual_rip);
         } else {

@@ -154,6 +154,7 @@ struct BlockState {
     bool fsrm_sse = true;
     bool v0_has_mask = false;
     ZextFacts zext{};
+    u16 dirty_upper_gprs = 0;
 };
 
 struct SideExit {
@@ -190,6 +191,8 @@ struct CompileState {
 
     std::vector<LinkSite> link_sites;
     std::vector<TranslationSize> translation_sizes;
+    std::vector<u16> dirty_upper_gprs;
+    std::vector<u16> elidable_zext32;
     bool self_validating = false;
     bool track_smc = false;
     std::vector<u32> smc_trackers;
@@ -928,6 +931,10 @@ private:
     void discardSideExits();
 
     bool canCompileSpeculatively(const ZydisDecodedInstruction& instruction, const ZydisDecodedOperand* operands);
+
+    void computeElidableZext32();
+
+    bool elideZext32(x86_ref_e ref);
 
     std::unique_ptr<CodeCache> code_cache = std::make_unique<CodeCache>();
     biscuit::Assembler as{};
