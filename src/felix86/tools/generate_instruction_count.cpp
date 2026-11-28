@@ -106,6 +106,7 @@ static void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbya
     }
 
     rec.rewindStagingBuffer();
+    rec.resetBlockState(0);
     // Set bogus vector state so we see the vector state changes
     rec.setVectorState(SEW::E1024, 0);
     rec.setFlagMode(flags ? FlagMode::AlwaysEmit : FlagMode::NeverEmit);

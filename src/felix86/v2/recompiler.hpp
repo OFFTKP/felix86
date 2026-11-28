@@ -116,6 +116,33 @@ struct RegisterAccess {
     bool valid;  // true if loaded and potentially modified, false if written back to memory and allocated register holds garbage
 };
 
+struct ZextFacts {
+    u16 below8 = 0;
+    u16 below16 = 0;
+    u16 below32 = 0;
+
+    u8 width(int index) const {
+        u16 bit = 1 << index;
+        if (below8 & bit) {
+            return 8;
+        }
+        if (below16 & bit) {
+            return 16;
+        }
+        if (below32 & bit) {
+            return 32;
+        }
+        return 64;
+    }
+
+    void set(int index, u8 width) {
+        u16 bit = 1 << index;
+        below8 = width <= 8 ? (below8 | bit) : (below8 & ~bit);
+        below16 = width <= 16 ? (below16 | bit) : (below16 & ~bit);
+        below32 = width <= 32 ? (below32 | bit) : (below32 & ~bit);
+    }
+};
+
 struct BlockState {
     u64 ripreg_value;
     i16 pushpop_offset = 0;
@@ -126,6 +153,7 @@ struct BlockState {
     x87State x87_state = x87State::Unknown;
     bool fsrm_sse = true;
     bool v0_has_mask = false;
+    ZextFacts zext{};
 };
 
 struct SideExit {
@@ -251,11 +279,17 @@ struct Recompiler {
 
     biscuit::GPR getGPRSigned(const ZydisDecodedOperand* operand, bool dont_sext32 = false);
 
-    bool isDirty32(biscuit::GPR reg, x86_size_e size);
+    bool isKnownZext(x86_ref_e ref, x86_size_e size);
 
-    biscuit::GPR zextIfDirty32(biscuit::GPR reg, x86_size_e size);
+    u8 knownZextWidth(x86_ref_e ref);
 
-    biscuit::GPR zextIfDirty32(biscuit::GPR reg, x86_size_e size, biscuit::GPR into);
+    u8 knownZextWidth(const ZydisDecodedOperand& operand);
+
+    void markGPR(x86_ref_e ref, x86_size_e size, u8 known_width = 64);
+
+    void markGPR(const ZydisDecodedOperand* operand, u8 known_width = 64);
+
+    void markGPRJoin(x86_ref_e ref, u8 old_width);
 
     biscuit::Vec getVec(const ZydisDecodedOperand* operand);
 
@@ -264,14 +298,14 @@ struct Recompiler {
     biscuit::Vec getVec(x86_ref_e ref);
     biscuit::FPR getElementFPR(ZydisDecodedOperand* operand, x86_size_e size, int element);
 
-    void setGPR(const ZydisDecodedOperand* operand, biscuit::GPR reg);
+    void setGPR(const ZydisDecodedOperand* operand, biscuit::GPR reg, u8 known_width = 64);
 
     void setVec(const ZydisDecodedOperand* operand, biscuit::Vec reg);
 
-    void setGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg, bool zexted = false);
+    void setGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg, u8 known_width = 64);
 
-    void setGPR(ZydisRegister ref, x86_size_e size, biscuit::GPR reg) {
-        return setGPR(zydisToRef(ref), size, reg);
+    void setGPR(ZydisRegister ref, x86_size_e size, biscuit::GPR reg, u8 known_width = 64) {
+        return setGPR(zydisToRef(ref), size, reg, known_width);
     }
 
     void setVec(x86_ref_e ref, biscuit::Vec vec);
@@ -458,7 +492,7 @@ struct Recompiler {
 
     void writeMemory(biscuit::GPR src, biscuit::GPR address, i64 offset, x86_size_e size);
 
-    void repPrologue(Label* loop_end, biscuit::GPR rcx, x86_size_e address_width);
+    void repPrologue(Label* loop_end, biscuit::GPR rcx);
 
     void repEpilogue(Label* loop_body, biscuit::GPR rcx);
 
@@ -572,7 +606,7 @@ struct Recompiler {
 
     void updateCarryAdd(biscuit::GPR lhs, biscuit::GPR result, x86_size_e size);
 
-    void updateCarrySub(biscuit::GPR lhs, biscuit::GPR rhs, x86_size_e size);
+    void updateCarrySub(biscuit::GPR lhs, biscuit::GPR rhs);
 
     void updateAuxiliaryAdd(biscuit::GPR lhs, biscuit::GPR result);
 
