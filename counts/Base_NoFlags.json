@@ -5504,8 +5504,8 @@
     "f7da": {
         "instruction_count": 2,
         "expected_asm": [
-            "SUBW            ra, zero, rdx",
-            "ADD.UW          rdx, ra, zero"
+            "SUBW            rdx, zero, rdx",
+            "ADD.UW          rdx, rdx, zero"
         ],
         "disassembly": "neg edx"
     },

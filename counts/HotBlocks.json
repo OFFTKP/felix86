@@ -118,7 +118,7 @@
         ]
     },
     "crysis3": {
-        "instruction_count": 267,
+        "instruction_count": 266,
         "expected_asm": [
             "LD              zero, state, 0xfffffff8(-8)",
             "ADD             ra, rbp, r11",
@@ -310,9 +310,8 @@
             "VMV.X.S         ra, xmm1",
             "ADD.UW          rdx, ra, zero",
             "SLLI            ra, rcx, 0x8(8)",
-            "ADD.UW          rcx, ra, zero",
+            "ADDI            rcx, ra, 0x0(0)",
             "SUBW            rcx, rcx, rdx",
-            "ADD.UW          rcx, rcx, zero",
             "ADDW            rcx, rcx, rax",
             "ADD.UW          rcx, rcx, zero",
             "ADDIW           r8, rcx, 0x0(0)",
@@ -383,7 +382,7 @@
             "XOR             of, of, t2",
             "ADDI            rdi, ra, 0x0(0)",
             "ADDI            t5, zero, 0x0(0)",
-            "BEQ             zf, zero, 0xfffffbe4(-1052)",
+            "BEQ             zf, zero, 0xfffffbe8(-1048)",
             "ADDI            rip, rip, 0x1d2(466)",
             "LD              t6, sp, 0x18(24)",
             "JALR            t5, t6, 0x0(0)"
@@ -686,10 +685,10 @@
         ]
     },
     "7z1": {
-        "instruction_count": 80,
+        "instruction_count": 78,
         "expected_asm": [
             "LD              zero, state, 0xfffffff8(-8)",
-            "ADD.UW          rdi, rax, zero",
+            "ADDI            rdi, rax, 0x0(0)",
             "ADD.UW          t1, rax, zero",
             "SRLI            ra, t1, 0xb(11)",
             "ADDI            rax, ra, 0x0(0)",
@@ -728,9 +727,7 @@
             "SUB             t1, ra, cf",
             "ADD.UW          rbx, t1, zero",
             "SUBW            rdi, rdi, rdx",
-            "ADD.UW          rdi, rdi, zero",
             "SRAIW           rdi, rdi, 0x5(5)",
-            "ADD.UW          rdi, rdi, zero",
             "ADDW            rdi, rdi, rdx",
             "ADD.UW          rdi, rdi, zero",
             "ADD             ra, r11, rsi",

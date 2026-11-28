@@ -50,6 +50,7 @@ struct BlockMetadata {
     // This gives us a count of x86 instructions per block, the size of each instruction
     // and the size of the risc-v instructions used to translate it
     std::vector<TranslationSize> translation_sizes{};
+    std::vector<u16> dirty_upper_gprs{};
     union {
         struct {
             // How many times this block was recompiled. After smc_threshold it will no longer protect the page
