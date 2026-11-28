@@ -52,12 +52,11 @@
         "disassembly": "lock add [rdi], ax"
     },
     "f00107": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
-            "ADD.UW          t1, rax, zero",
-            "ADDI            t2, rdi, 0x0(0)",
-            "AMOADD.W        t3, t2, t1, aq, rl",
-            "ADD.UW          t3, t3, zero"
+            "ADDI            t1, rdi, 0x0(0)",
+            "AMOADD.W        t2, t1, rax, aq, rl",
+            "ADD.UW          t2, t2, zero"
         ],
         "disassembly": "lock add [rdi], eax"
     },

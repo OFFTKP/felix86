@@ -1083,7 +1083,7 @@
             "VSLIDEDOWN.VI   v2, xmm2, 0x5(5), none",
             "VMV.X.S         ra, v2",
             "ANDI            ra, ra, 0xff(255)",
-            "ADD.UW          rax, ra, zero"
+            "ADDI            rax, ra, 0x0(0)"
         ],
         "disassembly": "pextrb eax, xmm2, 0x05"
     },
@@ -1094,7 +1094,7 @@
             "VSLIDEDOWN.VI   v2, xmm2, 0x4(4), none",
             "VMV.X.S         ra, v2",
             "ZEXT.H          ra, ra",
-            "ADD.UW          rax, ra, zero"
+            "ADDI            rax, ra, 0x0(0)"
         ],
         "disassembly": "pextrw eax, xmm2, 0x04"
     },

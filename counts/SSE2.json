@@ -3239,7 +3239,7 @@
             "VMSLT.VX        v2, xmm2, zero, none",
             "VMV.X.S         ra, v2",
             "ANDI            ra, ra, 0x3(3)",
-            "ADD.UW          rax, ra, zero"
+            "ADDI            rax, ra, 0x0(0)"
         ],
         "disassembly": "movmskpd eax, xmm2"
     },
@@ -6499,7 +6499,7 @@
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VMV.X.S         ra, v2",
             "ANDI            ra, ra, 0xff(255)",
-            "ADD.UW          rax, ra, zero"
+            "ADDI            rax, ra, 0x0(0)"
         ],
         "disassembly": "pmovmskb eax, mm2"
     },

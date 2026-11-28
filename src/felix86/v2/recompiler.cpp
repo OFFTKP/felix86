@@ -456,6 +456,20 @@ void Recompiler::loadRoundingMode(bool sse) {
     CommonEmit::loadRoundingMode(as, compile_state.scratches, sse);
 }
 
+static bool isGPRClass(ZydisRegister reg) {
+    switch (ZydisRegisterGetClass(reg)) {
+    case ZYDIS_REGCLASS_GPR8:
+    case ZYDIS_REGCLASS_GPR16:
+    case ZYDIS_REGCLASS_GPR32:
+    case ZYDIS_REGCLASS_GPR64: {
+        return true;
+    }
+    default: {
+        return false;
+    }
+    }
+}
+
 SequenceResult Recompiler::compileSequence(bool mode32, u64 rip, u64* protect_end) {
     const u64 start_rip = rip;
     const bool is_single_step = isSingleStepping();
@@ -902,6 +916,12 @@ void Recompiler::resetBlockState(u64 rip) {
     compile_state.block_state.x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
     compile_state.block_state.fsrm_sse = true;               // dispatcher loads SSE rounding mode as a default
     compile_state.block_state.v0_has_mask = false;
+    compile_state.block_state.zext = {};
+    if (compile_state.mode32 && !g_config.paranoid) {
+        // Zeroed on 32-bit mode entry
+        compile_state.block_state.zext.set(X86_REF_RSP - X86_REF_RAX, 32);
+    }
+
     // may change in a syscall to check for safepoints, or after a set amount of instructions in the future
     compile_state.block_state.ripreg_value = rip;
     compile_state.instruction_index = 0;
@@ -1309,27 +1329,84 @@ biscuit::GPR Recompiler::getGPRSigned(x86_ref_e ref, x86_size_e size, bool dont_
     }
 }
 
-bool Recompiler::isDirty32(biscuit::GPR reg, x86_size_e size) {
-    return size == X86_SIZE_DWORD && compile_state.mode32 && !ScratchAllocator::isScratch(reg);
-}
-
-biscuit::GPR Recompiler::zextIfDirty32(biscuit::GPR reg, x86_size_e size) {
-    if (!isDirty32(reg, size)) {
-        return reg;
+u8 Recompiler::knownZextWidth(x86_ref_e ref) {
+    if (ref < X86_REF_RAX || ref > X86_REF_R15) {
+        return 64;
     }
 
-    biscuit::GPR clean = scratch();
-    as.ZEXTW(clean, reg);
-    return clean;
+    return compile_state.block_state.zext.width(ref - X86_REF_RAX);
 }
 
-biscuit::GPR Recompiler::zextIfDirty32(biscuit::GPR reg, x86_size_e size, biscuit::GPR into) {
-    if (!isDirty32(reg, size)) {
-        return reg;
+u8 Recompiler::knownZextWidth(const ZydisDecodedOperand& operand) {
+    if (operand.type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        return operand.size;
     }
 
-    as.ZEXTW(into, reg);
-    return into;
+    if (operand.type != ZYDIS_OPERAND_TYPE_REGISTER || !isGPRClass(operand.reg.value)) {
+        return 64;
+    }
+
+    return knownZextWidth(zydisToRef(operand.reg.value));
+}
+
+bool Recompiler::isKnownZext(x86_ref_e ref, x86_size_e size) {
+    return size != X86_SIZE_BYTE_HIGH && knownZextWidth(ref) <= getBitSize(size);
+}
+
+void Recompiler::markGPR(x86_ref_e ref, x86_size_e size, u8 known_width) {
+    if (ref < X86_REF_RAX || ref > X86_REF_R15 || g_config.paranoid) {
+        return;
+    }
+
+    int index = ref - X86_REF_RAX;
+    ZextFacts& facts = compile_state.block_state.zext;
+    switch (size) {
+    case X86_SIZE_BYTE: {
+        // This doesn't lower the width as a byte write in x86 preserves the upper bits
+        break;
+    }
+    case X86_SIZE_BYTE_HIGH:
+    case X86_SIZE_WORD: {
+        // If width was marked at 8 we raise it to 16, otherwise leave as is
+        facts.set(index, std::max<u8>(facts.width(index), 16));
+        break;
+    }
+    case X86_SIZE_DWORD: {
+        // Here a known_width that's less than 32 could lower this register's width
+        // For example, on mov eax, 0xFF we know that eax holds a value that fits in 8 bits,
+        // so then on getGPR of al, it won't use a ZEXT.B
+        facts.set(index, std::min<u8>(known_width, 32));
+        break;
+    }
+    case X86_SIZE_QWORD: {
+        // Same as above
+        facts.set(index, known_width);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+}
+
+void Recompiler::markGPR(const ZydisDecodedOperand* operand, u8 known_width) {
+    if (operand->type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        markGPR(zydisToRef(operand->reg.value), zydisToSize(operand->reg.value), known_width);
+    }
+}
+
+// When an instruction could take two separate paths, such as in BSF, we join the old width with the new width
+// For example, BSF will set the register to a small value that fits in 8 bits, or leave the register untouched
+// So if the register was -1ull, we can't just mark it as 8-bit width, because if source was zero it would be untouched
+// and the true width would be 64. So we join it with what the width was initially
+void Recompiler::markGPRJoin(x86_ref_e ref, u8 old_width) {
+    if (ref < X86_REF_RAX || ref > X86_REF_R15) {
+        return;
+    }
+
+    ZextFacts& facts = compile_state.block_state.zext;
+    facts.set(ref - X86_REF_RAX, std::max<u8>(facts.width(ref - X86_REF_RAX), old_width));
 }
 
 biscuit::GPR Recompiler::getGPRSigned(const ZydisDecodedOperand* operand, bool dont_sext32) {
@@ -1506,7 +1583,7 @@ biscuit::GPR Recompiler::getGPR(x86_ref_e ref, x86_size_e size) {
         return gpr16;
     }
     case X86_SIZE_DWORD: {
-        if (!compile_state.mode32 || g_config.paranoid) {
+        if (!isKnownZext(ref, size)) {
             // Need to zext and store in scratch
             biscuit::GPR gpr32 = scratch();
             zext(gpr32, gpr, X86_SIZE_DWORD);
@@ -1554,28 +1631,41 @@ biscuit::Vec Recompiler::getVec(x86_ref_e ref) {
     return vec;
 }
 
-void Recompiler::setGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg, bool zexted) {
+void Recompiler::setGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg, u8 known_width) {
     switch (size) {
     case X86_SIZE_BYTE: {
+        markGPR(ref, size, known_width);
+        if (isKnownZext(ref, size)) {
+            // If ref is 8-bit sized, there's no upper bits to preserve. So we can just and/mv it
+            // instead of ORing it to place
+            biscuit::GPR dest = Allocations::allocatedGPR(ref);
+            if (known_width > 8) {
+                as.ANDI(dest, reg, 0xFF);
+            } else if (dest != reg) {
+                as.MV(dest, reg);
+            }
+            break;
+        }
         ASSERT(reg != Allocations::allocatedGPR(ref));
         biscuit::GPR dest = getGPR(ref, X86_SIZE_QWORD);
         biscuit::GPR gpr8 = reg;
-        if (!zexted) {
+        if (known_width > 8) {
             gpr8 = scratch();
             as.ANDI(gpr8, reg, 0xff);
         }
         as.ANDI(dest, dest, ~0xff);
         as.OR(dest, dest, gpr8);
-        if (!zexted) {
+        if (known_width > 8) {
             popScratch();
         }
         break;
     }
     case X86_SIZE_BYTE_HIGH: {
+        markGPR(ref, size, known_width);
         ASSERT(reg != Allocations::allocatedGPR(ref));
         biscuit::GPR dest = getGPR(ref, X86_SIZE_QWORD);
         biscuit::GPR gpr8 = reg;
-        if (!zexted) {
+        if (known_width > 8) {
             gpr8 = scratch();
             as.ANDI(gpr8, reg, 0xFF);
         }
@@ -1583,35 +1673,51 @@ void Recompiler::setGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg, bool z
         as.ANDI(dest, dest, ~0xFF);
         as.OR(dest, dest, gpr8);
         as.RORI(dest, dest, 56);
-        if (!zexted) {
+        if (known_width > 8) {
             popScratch();
         }
         break;
     }
     case X86_SIZE_WORD: {
+        markGPR(ref, size, known_width);
+        if (isKnownZext(ref, size)) {
+            // Same as X86_SIZE_BYTE
+            biscuit::GPR dest = Allocations::allocatedGPR(ref);
+            if (known_width > 16) {
+                as.ZEXTH(dest, reg);
+            } else if (dest != reg) {
+                as.MV(dest, reg);
+            }
+            break;
+        }
         ASSERT(reg != Allocations::allocatedGPR(ref));
         biscuit::GPR dest = getGPR(ref, X86_SIZE_QWORD);
         biscuit::GPR gpr16 = reg;
-        if (!zexted) {
+        if (known_width > 16) {
             gpr16 = scratch();
             as.ZEXTH(gpr16, reg);
         }
         as.SRLI(dest, dest, 16);
         as.SLLI(dest, dest, 16);
         as.OR(dest, dest, gpr16);
-        if (!zexted) {
+        if (known_width > 16) {
             popScratch();
         }
         break;
     }
     case X86_SIZE_DWORD: {
         biscuit::GPR dest = Allocations::allocatedGPR(ref); // don't need to load as the entire register is overwritten
-        // TODO: in 32-bit mode we prob don't need to zero extend and we can do the same as 64-bit movs
-        as.ZEXTW(dest, reg);
+        markGPR(ref, size, known_width);
+        if (known_width > 32) {
+            as.ZEXTW(dest, reg);
+        } else if (dest != reg) {
+            as.MV(dest, reg);
+        }
         break;
     }
     case X86_SIZE_QWORD: {
         biscuit::GPR dest = Allocations::allocatedGPR(ref); // don't need to load as the entire register is overwritten
+        markGPR(ref, size, known_width);
         if (dest != reg)
             as.MV(dest, reg);
         break;
@@ -1660,12 +1766,12 @@ void Recompiler::setVec(x86_ref_e ref, biscuit::Vec vec) {
     }
 }
 
-void Recompiler::setGPR(const ZydisDecodedOperand* operand, biscuit::GPR reg) {
+void Recompiler::setGPR(const ZydisDecodedOperand* operand, biscuit::GPR reg, u8 known_width) {
     switch (operand->type) {
     case ZYDIS_OPERAND_TYPE_REGISTER: {
         x86_ref_e ref = zydisToRef(operand->reg.value);
         x86_size_e size = zydisToSize(operand->reg.value);
-        setGPR(ref, size, reg);
+        setGPR(ref, size, reg, known_width);
         break;
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
@@ -1869,11 +1975,11 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp, 
     bool rip_relative = operand->mem.base == ZYDIS_REGISTER_RIP || operand->mem.base == ZYDIS_REGISTER_EIP;
     if (!use_temp && forced_dst == x0 && !has_segment && !has_disp && !rip_relative) {
         if (has_base && !has_index) {
-            return zextIfDirty32(getGPR(operand->mem.base), zydisToSize(operand->mem.base));
+            return getGPR(operand->mem.base);
         }
 
         if (!has_base && has_index && operand->mem.scale == 1) {
-            return zextIfDirty32(getGPR(operand->mem.index), zydisToSize(operand->mem.index));
+            return getGPR(operand->mem.index);
         }
     }
 
@@ -1986,6 +2092,10 @@ void Recompiler::writebackState() {
 void Recompiler::restoreState() {
     const ScratchAllocator saved_scratches = compile_state.scratches;
     resetVectorState();
+    compile_state.block_state.zext = {};
+    if (compile_state.mode32 && !g_config.paranoid) {
+        compile_state.block_state.zext.set(X86_REF_RSP - X86_REF_RAX, 32);
+    }
 
     CommonEmit::restoreGuestState(as, compile_state.scratches, compile_state.block_state.fsrm_sse);
 
@@ -2559,25 +2669,13 @@ void Recompiler::updateAuxiliarySbb(biscuit::GPR lhs, biscuit::GPR rhs, biscuit:
 
 void Recompiler::updateCarryAdd(biscuit::GPR lhs, biscuit::GPR result, x86_size_e size) {
     biscuit::GPR cf = flag(X86_REF_CF);
-    biscuit::GPR clean_lhs = zextIfDirty32(lhs, size);
     zext(cf, result, size);
-    as.SLTU(cf, cf, clean_lhs);
-    if (clean_lhs != lhs) {
-        popScratch();
-    }
+    as.SLTU(cf, cf, lhs);
 }
 
-void Recompiler::updateCarrySub(biscuit::GPR lhs, biscuit::GPR rhs, x86_size_e size) {
+void Recompiler::updateCarrySub(biscuit::GPR lhs, biscuit::GPR rhs) {
     biscuit::GPR cf = flag(X86_REF_CF);
-    biscuit::GPR clean_lhs = zextIfDirty32(lhs, size);
-    biscuit::GPR clean_rhs = zextIfDirty32(rhs, size);
-    as.SLTU(cf, clean_lhs, clean_rhs);
-    if (clean_rhs != rhs) {
-        popScratch();
-    }
-    if (clean_lhs != lhs) {
-        popScratch();
-    }
+    as.SLTU(cf, lhs, rhs);
 }
 
 void Recompiler::updateCarryAdc(biscuit::GPR lhs, biscuit::GPR result, biscuit::GPR result_2, x86_size_e size) {
@@ -2585,12 +2683,8 @@ void Recompiler::updateCarryAdc(biscuit::GPR lhs, biscuit::GPR result, biscuit::
     biscuit::GPR temp = scratch();
     zext(temp, result_2, size);
     as.SLTU(temp, temp, cf);
-    biscuit::GPR clean_lhs = zextIfDirty32(lhs, size);
     zext(cf, result, size);
-    as.SLTU(cf, cf, clean_lhs);
-    if (clean_lhs != lhs) {
-        popScratch();
-    }
+    as.SLTU(cf, cf, lhs);
     as.OR(cf, cf, temp);
     popScratch();
 }
@@ -3457,17 +3551,9 @@ x86_size_e Recompiler::zydisToSize(ZyanU8 size) {
     }
 }
 
-void Recompiler::repPrologue(Label* loop_end, biscuit::GPR rcx, x86_size_e address_width) {
+void Recompiler::repPrologue(Label* loop_end, biscuit::GPR rcx) {
     // Signal handling would get tricky if we had to account for this looping mess of an instruction
-    if (isDirty32(rcx, address_width)) {
-        biscuit::GPR count = scratch();
-        as.ZEXTW(count, rcx);
-        as.BEQZ(count, loop_end);
-        popScratch();
-        as.ZEXTW(rcx, rcx);
-    } else {
-        as.BEQZ(rcx, loop_end);
-    }
+    as.BEQZ(rcx, loop_end);
 }
 
 void Recompiler::repEpilogue(Label* loop_body, biscuit::GPR rcx) {
